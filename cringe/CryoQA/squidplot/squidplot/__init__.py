@@ -1,0 +1,1 @@
+from squidplot import squidplotmain

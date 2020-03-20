@@ -1,0 +1,5 @@
+# add the actual device names of your serial ports, and some logical name you 
+# would like to use
+/dev/ttyUSB0 rack
+/dev/ttyUSB1 tower
+/dev/ttyUSB2 vbox
