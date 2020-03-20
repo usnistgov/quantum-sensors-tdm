@@ -1,4 +1,4 @@
-# qsptdm
+# nist-qsp-tdm
 This repo is intended to replace `nist_qsp_readout` and `nist_lab_internals` for the purposes of running TDM system under Python 3. Initially, it will contain only things that Galen needs to run various systems. Anything you need from the source repos can come in, as long as you test it and works with python 3 and PyQt5. I also strongly prefer to leave out all GPIB related things, but if you have something that is GPIB but lacks a serial port, we can include that code as well.
 
 ## cringe
@@ -11,8 +11,6 @@ GUI for homebuilt cryo systems runs automags and a secondary feedback loop that 
 ## Why bother with Python 3?
 The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
 
-## Why no underscores in the name?
-Apparently PEP8 says to use either all lowercase or lowercase and underscores for packages, while pip prefers dashes. So I went with no punctuation.
 
 # Installation
 You probably want to install all the stuff you need for tdm, not just this repo, so
