@@ -86,19 +86,19 @@ class TowerPowerSupplies(object):
         dV_msrd = self.power_supply_2.measureVoltage("P6V")
         if dV_msrd < ( self.kdVd - self.kdVoltageTolerance ) :
             sV_msrd = "%6.3f" %( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd +Vd (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd +Vd (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         if dV_msrd > ( self.kdVd + self.kdVoltageTolerance ) :
             sV_msrd = "%6.3f" %( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd +Vd (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd +Vd (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         #Display Current for +Vd rail
 
         dI_msrd = self.power_supply_2.measureCurrent("P6V")
-	s = "+Vd current = %6.3f_amps" % ( dI_msrd )
-	print s
+        s = "+Vd current = %6.3f_amps" % ( dI_msrd )
+        print(s)
 
 
        #PLus minus tolerance checks for +Vr Rail
@@ -106,53 +106,53 @@ class TowerPowerSupplies(object):
         dV_msrd = self.power_supply_2.measureVoltage("P25V")
         if dV_msrd < ( self.kdVr - self.kdVoltageTolerance ) :
             sV_msrd = "%6.3f" % ( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd +Vr (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd +Vr (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         if dV_msrd > ( self.kdVr + self.kdVoltageTolerance ) :
             sV_msrd = "%6.3f" % ( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd +Vr (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd +Vr (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         #Display Current for +Vr Rail
 
         dI_msrd = self.power_supply_2.measureCurrent("P25V")
         s0 = "+Vr current = %6.3f_amps" % ( dI_msrd )
-	print s0
-	s+="\n"+s0
+        print(s0)
+        s+="\n"+s0
         #Power Supply 1
 
         #Plus minus tolerance checks for +Va Rail
         dV_msrd = self.power_supply_1.measureVoltage("P25V")
         if dV_msrd < ( self.kdVa - self.kdVoltageTolerance ) :
-            print "meas +Va = %f +va = %f tol = %f" % (dV_msrd, self.kdVa, self.kdVoltageTolerance)
+            print(("meas +Va = %f +va = %f tol = %f" % (dV_msrd, self.kdVa, self.kdVoltageTolerance)))
             sV_msrd = "%6.3f" %( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd +Va (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd +Va (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         #Display Current for +Va Rail
         dI_msrd = self.power_supply_1.measureCurrent("P25V")
         s0 = "+Va current = %6.3f_amps" % ( dI_msrd )
-	print s0
-	s+="\n"+s0
+        print(s0)
+        s+="\n"+s0
 
         #PLus minus tolerance checks for -Va rail
         dV_msrd = self.power_supply_1.measureVoltage("N25V")
         if dV_msrd > ( self.kdVoltageTolerance - self.kdVa ) :
-            print "meas -Va = %f -va = %f tol = %f" % (dV_msrd, self.kdVa, self.kdVoltageTolerance)
+            print(("meas -Va = %f -va = %f tol = %f" % (dV_msrd, self.kdVa, self.kdVoltageTolerance)))
             sV_msrd = "%6.3f" % ( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd -Va (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd -Va (" + sV_msrd + ") TOO LOW; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         if dV_msrd > (self.kdVa - self.kdVoltageTolerance ) :
             sV_msrd = "%6.3f" % ( dV_msrd )
-            print "*** 'SetE3631': ERROR: Msrd -Va (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"
+            print(("*** 'SetE3631': ERROR: Msrd -Va (" + sV_msrd + ") TOO HIGH; SHUTTING OUTPUTS OFF"))
             self.powerOffSupplies()
 
         #Display Current for -Va rail
 
         dI_msrd = self.power_supply_1.measureCurrent("N25V")
         s0 = "-Va current = %6.3f_amps" % ( dI_msrd )
-	print s0
-	s+="\n"+s0
-	return s
+        print(s0)
+        s+="\n"+s0
+        return s

@@ -20,13 +20,15 @@ class SerialInstrument(instrument.Instrument):
     Base class for serial controlled instrument
     '''
 
-    def __init__(self, port, baud=9600, shared=True, readtimeout=1.0, min_time_between_writes=0.6, lineend = "\r\n", **kwargs):
+    def __init__(self, port, baud=9600, shared=True, readtimeout=1.0, min_time_between_writes=0.6, lineend = b"\r\n", **kwargs):
         super(SerialInstrument, self).__init__()
 
         self.port = port
         self.baud = baud
         self.shared = shared
         self.serial = None
+        if isinstance(lineend, str):
+            lineend = lineend.encode()
         self.lineend = lineend
         self.min_time_between_writes = min_time_between_writes # Lakeshore370 manual section 6.2.6 requires 50 ms
         self.time_of_last_write = 0 # intial value chosen to avoid wait on first write
@@ -36,13 +38,15 @@ class SerialInstrument(instrument.Instrument):
             #self.serial.setTimeout(readtimeout)
 
         except serial.serialutil.SerialException:
-            print "WARNING: serial port could not be found!"
+            print("WARNING: serial port could not be found!")
 
     def identify(self):
         identify_string = "%s %s" % (self.manufacturer, self.model_number)
         return identify_string
 
     def write(self,x):
+        if isinstance(x,str):
+            x = x.encode()
         x+=self.lineend
         tosleep = self.time_of_last_write+self.min_time_between_writes-time.time()
         if tosleep>0:

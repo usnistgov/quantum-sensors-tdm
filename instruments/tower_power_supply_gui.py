@@ -10,9 +10,9 @@ Versions:
 '''
 
 import sys
-from PyQt4.QtCore import SIGNAL, Qt
-from PyQt4.QtGui import QWidget, QMainWindow,  QVBoxLayout, QPushButton, QHBoxLayout, QApplication, \
-                        QLabel, QIcon, QPixmap
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import tower_power_supplies
 
@@ -73,9 +73,9 @@ class MainWindow(QMainWindow):
         self.buttons_layout.addWidget(self.power_off_button)
         self.buttons_layout.addWidget(self.quit_button)
 
-        self.connect(self.power_on_button, SIGNAL("clicked()"), self.power_on_event)
-        self.connect(self.power_off_button, SIGNAL("clicked()"), self.power_off_event)
-        self.connect(self.quit_button, SIGNAL("clicked()"), self.quit_event)
+        self.power_on_button.clicked.connect(self.power_on_event)
+        self.power_off_button.clicked.connect(self.power_off_event)
+        self.quit_button.clicked.connect(self.quit_event)
 
         # Update the state of the power supplies
         self.updatePowerOnString()
@@ -84,7 +84,7 @@ class MainWindow(QMainWindow):
 
         s = self.power_supplies.powerOnSequence()
         self.updatePowerOnString()
-	self.readingLabel.setText("most recent readings:\n"+s)
+        self.readingLabel.setText("most recent readings:\n"+s)
 
     def power_off_event(self):
 

@@ -16,27 +16,27 @@ class uxMAN_Serial(serial_instrument.SerialInstrument):
 
     def requestkvsetpoint(self):
         cmd = uxMAN_Command(14)
-        print cmd.fullstring()
+        print((cmd.fullstring()))
         return self.ask(cmd.fullstring())
 
     def requestmasetpoint(self):
         cmd = uxMAN_Command(15)
-        print cmd.fullstring()
+        print((cmd.fullstring()))
         return self.ask(cmd.fullstring())
 
     def requestanalogmonitorreadbacks(self):
         cmd = uxMAN_Command(20)
-        print cmd.fullstring()
+        print((cmd.fullstring()))
         return self.ask(cmd.fullstring())
 
     def requeststatus(self):
         cmd = uxMAN_Command(22)
-        print cmd.fullstring()
+        print((cmd.fullstring()))
         return self.ask(cmd.fullstring())
 
     def programkvsetpoint(self):
         cmd=uxMAN_Command(10,4095)
-        print cmd.fullstring()
+        print((cmd.fullstring()))
         return self.ask(cmd.fullstring())
 
 class uxMAN(ethernet_instrument.EthernetInstrument):
@@ -83,14 +83,14 @@ class uxMAN(ethernet_instrument.EthernetInstrument):
         def requestanalogmonitorreadbacks(self):
             cmd = uxMAN_Command(20,add_checksum=False)
             reply =  self.ask(cmd.fullstring(),"request analog monitor readbacks")
-            reply_int = map(int,reply)
+            reply_int = list(map(int,reply))
             return {k:v for (k,v) in zip(self.ANALOGMONITORMEANINGS,reply_int)}
 
 
         def requeststatus(self):
             cmd = uxMAN_Command(22,add_checksum=False)
             reply =  self.ask(cmd.fullstring(),"request status")
-            reply_bool = map(bool,map(int,reply))
+            reply_bool = list(map(bool,list(map(int,reply))))
             return {k:v for (k,v) in zip(self.STATUSMEANINGS,reply_bool)}
 
 
@@ -118,8 +118,8 @@ class uxMAN(ethernet_instrument.EthernetInstrument):
             data = self.askraw(msg)
             if self.verbose:
                 print(description)
-                print("sent: ",msg)
-                print("reply: ",data)
+                print(("sent: ",msg))
+                print(("reply: ",data))
             if data[0] == uxMAN_Command.STX:
                 assert data[-1]==uxMAN_Command.ETX
                 return data.split(",")[1:-1]
@@ -180,7 +180,7 @@ class uxMAN_Command():
 
     def checksum(self):
         if not self.add_checksum: return ""
-        b = map(ord,self.corestring())
+        b = list(map(ord,self.corestring()))
         s = np.sum(b) # sum bytes of the corestring
         tc = 256-s # twos complement
         trunc = tc&0x7F # take only 7 least significant bits
@@ -205,9 +205,9 @@ assert failed
 
 if __name__=="__main__":
     uxman = uxMAN(verbose=True)
-    print uxman.requeststatus()
-    print uxman.requestmasetpoint()
-    print uxman.requestkvsetpoint()
-    print uxman.requestanalogmonitorreadbacks()
-    print uxman.programmasetpoint(0)
-    print uxman.programhighvoltagestatus(True)
+    print((uxman.requeststatus()))
+    print((uxman.requestmasetpoint()))
+    print((uxman.requestkvsetpoint()))
+    print((uxman.requestanalogmonitorreadbacks()))
+    print((uxman.programmasetpoint(0)))
+    print((uxman.programhighvoltagestatus(True)))

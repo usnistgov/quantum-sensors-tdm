@@ -39,11 +39,11 @@ def main(host='localhost', port='2011', npackets_max=-1,
             continue
         for packet_data, h in zip(payloads, headers):
             if dumphead:
-                print h
+                print(h)
             if h['chan']==client.CHANNEL_CODE_ERR_SUMMARY:
-                print 'Error:    ',packet_data
+                print(('Error:    ',packet_data))
             else:
-                print 'Feedback: ',(packet_data/4)
+                print(('Feedback: ',(packet_data/4)))
             npack += 1
     client.stop_streaming()
     client.disconnect_server()

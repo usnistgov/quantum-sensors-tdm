@@ -29,13 +29,13 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         """
         self.connect_server()
         if streamErrorChannels is True and streamFbChannels is True:
-            self.stream_channels = range(self.nchan)
+            self.stream_channels = list(range(self.nchan))
         elif streamErrorChannels is True and streamFbChannels is False:
-            self.stream_channels = range(0, self.nchan, 2)
+            self.stream_channels = list(range(0, self.nchan, 2))
         elif streamErrorChannels is False and streamFbChannels is True:
-            self.stream_channels = range(1, self.nchan, 2)
+            self.stream_channels = list(range(1, self.nchan, 2))
         self.start_streaming()
-        print('streaming channels: '+str(self.stream_channels))
+        print(('streaming channels: '+str(self.stream_channels)))
 
     def getSummaryPackets(self):
         '''getSummaryPackets(self)
@@ -118,8 +118,8 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
             mixVal = numpy.ones((self.ncol, self.nrow))*mixVal
         if not numpy.all(numpy.shape(mixVal) == (self.ncol, self.nrow)):
             raise ValueError('mixVal should either a number or a list/array with (ncol, nrow) elements')
-        for col in xrange(self.ncol):
-            for row in xrange(self.nrow):
+        for col in range(self.ncol):
+            for row in range(self.nrow):
 #                print('col %d, row %d, fbchannel %d, mixVal %f'%(col, row, self.fbChannel(col, row), mixVal[col,row]))
                 self.setMixChannel(self.fbChannel(col, row), mixVal[col,row])
 
@@ -198,14 +198,14 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         return dataOut
 
     def convertPacketsToVolts(self, payloads, headers, numPoints, firstSampleCount, sendMode):
-        print numpy.min(numPoints), len(self.stream_channels)
+        print((numpy.min(numPoints), len(self.stream_channels)))
         try:
             dataOut = numpy.zeros((len(self.stream_channels),numpy.min(numPoints)))
-        except ValueError, e:
-            print('Tried and failed to make an array of size (%d, %d)'%
-                  (len(self.stream_channels),numpy.min(numPoints)))
-            print "The numpoints array is: "
-            print numPoints
+        except ValueError as e:
+            print(('Tried and failed to make an array of size (%d, %d)'%
+                  (len(self.stream_channels),numpy.min(numPoints))))
+            print("The numpoints array is: ")
+            print(numPoints)
             raise e
 
     def sortPackets(self, payloads, headers, numPoints, firstSampleCount):
@@ -222,7 +222,7 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         return dataOut
 
     def toVolts(self,dataOut, sendmode):
-        print "doing toVolts"
+        print("doing toVolts")
         dataOut = numpy.array(dataOut,dtype="float64")
         if sendmode == 0:
             dataOut[:,:,:,0]/=float((2**12-1)*self.num_of_samples) # error
@@ -235,7 +235,7 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
 def main():
     c = EasyClient()
     c.setupAndChooseChannels()
-    print c.getNewData()
+    print((c.getNewData()))
 
 if __name__ == '__main__':
     main()

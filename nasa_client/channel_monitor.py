@@ -37,18 +37,18 @@ class ChannelMonitor(nasa_client.GUIClient):
     def connectToServer(self):
         self.buildStatsBox()
         self.decimateAllChannels()
-        self.stream_channels=range(self.nchan)
+        self.stream_channels=list(range(self.nchan))
         
     def saveSettings(self, filename=None):
         '''
         save settings as XML. Optionally add the filename otherwise it will ask for one. 
         '''
 
-        print "Save settings as xml."
+        print("Save settings as xml.")
         
         # Pick a file to save to
         if filename == None:
-            print "No save file specified."
+            print("No save file specified.")
             return
         if (filename != []):
             if filename[-4:] == '.xml':
@@ -79,14 +79,14 @@ class ChannelMonitor(nasa_client.GUIClient):
 
     def loadSettings(self, filename=""):
         if len(filename) > 0:
-            print "Load XML settings! [%s]" % filename
+            print(("Load XML settings! [%s]" % filename))
             f = None
             root = None
             try:
                 f = open(filename)
                 root = etree.parse(f)
             except:
-                print "No default settings file found!"
+                print("No default settings file found!")
                 return
 
             if root is not None:
@@ -117,7 +117,7 @@ class ChannelMonitor(nasa_client.GUIClient):
         self.last_packet_time=numpy.zeros(self.nchan, dtype=numpy.float)
         self.stored_data=[[] for _i in range(self.nchan)]
 
-        print 'There are %d channels available'%self.nchan
+        print(('There are %d channels available'%self.nchan))
 
         self.stats_widget = QtGui.QWidget(self.central_widget)
         self.stats_grid = QtGui.QGridLayout()

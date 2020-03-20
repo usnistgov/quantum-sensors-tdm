@@ -10,7 +10,7 @@ import os
 from lxml import etree
 import platform
 
-import adrcontrol_mpl
+
 import bluebox
 import crate
 import tower
@@ -28,7 +28,9 @@ class AdrSystem(object):
     '''
 
 
-    def __init__(self, app=None, lsync=40, number_mux_rows=8, dfb_settling_time=27, dfb_number_of_samples=4, doinit=False, logfolder = '/home/pcuser/data/ADRLogs/'):
+    def __init__(self, app=None, lsync=40, number_mux_rows=8, dfb_settling_time=27,
+    dfb_number_of_samples=4, doinit=False,
+    logfolder = '/home/pcuser/data/ADRLogs/'):
         '''
         Constructor
         app = Can pass in an instance of pyqt4 Application class for realtime plotting
@@ -89,7 +91,13 @@ class AdrSystem(object):
         status = self.readConfigFile()
 
         if status == True:
-            self.adr_control = adrcontrol_mpl.Adrcontrol(temperature_controller=self.temperature_controller, vmax=self.vmax, heat_switch=self.heat_switch, app=self.app, logfolder=self.logfolder)
+            try:
+                import adrcontrol_mpl
+                self.adr_control = adrcontrol_mpl.Adrcontrol(temperature_controller=self.temperature_controller,
+                vmax=self.vmax, heat_switch=self.heat_switch, app=self.app,
+                logfolder=self.logfolder)
+            except:
+                print("WARNING: adr_system.py failed to import adrcontrol_mpl")
 
     def readConfigFileXML(self, filename=None):
         '''
@@ -101,11 +109,11 @@ class AdrSystem(object):
             f = None
             root = None
             try:
-                print("Loading ADR system XML settings [%s]" % filename)
+                print(("Loading ADR system XML settings [%s]" % filename))
                 f = open(filename, 'r')
                 root = etree.parse(f)
             except:
-                print "Could not load ADR system XML file."
+                print("Could not load ADR system XML file.")
 
             if root is not None:
                 child = root.find("name")
@@ -128,14 +136,14 @@ class AdrSystem(object):
                 if child is not None:
                     value = child.text
                     self.logfolder = value
-                    print("Setting log folder to [%s]" % self.logfolder)
+                    print(("Setting log folder to [%s]" % self.logfolder))
 
                 # TC Check file
                 child = root.find("tc_check_folder")
                 if child is not None:
                     value = child.text
                     self.tccheckfolder = value
-                    print("Setting Tc check folder to [%s]" % self.tccheckfolder)
+                    print(("Setting Tc check folder to [%s]" % self.tccheckfolder))
 
                 # Temperature Controllers
                 print("Loading temperature controllers...")
@@ -147,7 +155,7 @@ class AdrSystem(object):
                         temperature_controller_type = child_temp_controller.get("type")
                         if temperature_controller_type == 'lakeshore370':
                             temperature_controller_gpib_address = int(child_temp_controller.get("gpib_pad"))
-                            print("Adding lakeshore 370 temperature controller (%i)." % temperature_controller_gpib_address)
+                            print(("Adding lakeshore 370 temperature controller (%i)." % temperature_controller_gpib_address))
                             # Only import the lakeshore class when needed because Mac OS X does not have the gpib class
                             import lakeshore370
                             ls370 = lakeshore370.Lakeshore370(pad=temperature_controller_gpib_address)
@@ -155,7 +163,7 @@ class AdrSystem(object):
                             self.temperature_controllers.append(ls370)
                         if temperature_controller_type == 'lakeshore370_serial':
                             port = child_temp_controller.get("port",default="lakeshore")
-                            print("Adding lakeshore 370 SERIAL temperature controller port = %s."%port)
+                            print(("Adding lakeshore 370 SERIAL temperature controller port = %s."%port))
                             import lakeshore370_serial
                             ls370 = lakeshore370_serial.Lakeshore370(port)
                             self.temperature_controller=ls370
@@ -171,14 +179,14 @@ class AdrSystem(object):
                         heat_switch_type = child_heat_switch.get("type")
                         if heat_switch_type == "zaber":
                             zaber_port = child_heat_switch.get("port")
-                            print("Adding %s heat switch. (port=%s)" % (heat_switch_type, zaber_port))
+                            print(("Adding %s heat switch. (port=%s)" % (heat_switch_type, zaber_port)))
                             a_heat_switch = zaber.Zaber(port=zaber_port)
                             a_heat_switch.SetHoldCurrent(0)
                             self.heat_switch = a_heat_switch
                             self.heat_switches.append(a_heat_switch)
 #                        elif heat_switch_type == "hpdLabjack":
                         elif heat_switch_type == 'hpdLabjack':
-                            print("Adding %s heat switch." % (heat_switch_type))
+                            print(("Adding %s heat switch." % (heat_switch_type)))
                             import heatswitchLabjack
                             self.heat_switch = heatswitchLabjack.HeatswitchLabjack()
                             self.heat_switches.append(self.heat_switch)
@@ -194,11 +202,11 @@ class AdrSystem(object):
                     all_child_relays = child_relays.findall("relay")
                     for child_relay in all_child_relays:
                         relay_type = child_relay.get("type")
-                        print relay_type
+                        print(relay_type)
                         if relay_type == "labjackU3_dougstyle":
                             import labjack
                             self.magnet_control_relay = labjack.Labjack()
-                            print("Adding %s as magnet_control_relay"%relay_type)
+                            print(("Adding %s as magnet_control_relay"%relay_type))
                         else:
                             print('No magnet control relay found.')
 
@@ -212,7 +220,7 @@ class AdrSystem(object):
                     for child_voltage_box in all_child_voltage_boxes:
                         voltage_box_type = child_voltage_box.get("version")
                         voltage_box_port = child_voltage_box.get("port")
-                        print("Adding %s voltage box. (port=%s)" % (voltage_box_type, voltage_box_port))
+                        print(("Adding %s voltage box. (port=%s)" % (voltage_box_type, voltage_box_port)))
                         a_voltage_box = bluebox.BlueBox(port=voltage_box_port, version=voltage_box_type)
                         self.blueboxes.append(a_voltage_box)
 
@@ -221,22 +229,22 @@ class AdrSystem(object):
         return True
 
     def readConfigFile(self):
-        print "Reading ADR system configuration..."
+        print("Reading ADR system configuration...")
         # First try to open the XML config file
         xml_filename = self.config_file_path + XML_CONFIG_FILE
         if os.path.exists(xml_filename):
-            print("Found XML config file %s" % xml_filename)
+            print(("Found XML config file %s" % xml_filename))
             self.readConfigFileXML(xml_filename)
             return True
-        print("ADR system XML configuration file not found. [%s]" % xml_filename)
+        print(("ADR system XML configuration file not found. [%s]" % xml_filename))
 
         # Try the old format
         filename = self.config_file_path + CONFIG_FILE
-	if not os.path.exists(filename):
+        if not os.path.exists(filename):
             print("ADR system configuration file not found.")
             return False
 
-	print("Found old config file %s" % filename)
+        print(("Found old config file %s" % filename))
         self.readConfigFileOld(filename)
         return True
 
@@ -249,7 +257,7 @@ class AdrSystem(object):
         if filename is None:
             filename = self.config_file_path + CONFIG_FILE
         rcfile = open(filename, 'rt')
-        print("Reading adr system configuration [%s]" % filename)
+        print(("Reading adr system configuration [%s]" % filename))
         lines = rcfile.readlines()
         rcfile.close()#On module import, setup the list
         _namedports = {}
@@ -262,29 +270,29 @@ class AdrSystem(object):
 
             if field == "name":
                 self.name = value
-                print("Name: %s" % self.name)
+                print(("Name: %s" % self.name))
             elif field == "temperature_controller":
                 tc_array = value.split(" ")
                 temperature_controller_name = tc_array[0].strip()
                 temperature_controller_gpib_address = int(tc_array[1].strip())
                 if temperature_controller_name == 'lakeshore370':
-                    print("Adding lakeshore 370 temperature controller (%i)." % temperature_controller_gpib_address)
+                    print(("Adding lakeshore 370 temperature controller (%i)." % temperature_controller_gpib_address))
                     # Only import the lakeshore class when needed because Mac OS X does not have the gpib class
                     import lakeshore370
                     ls370 = lakeshore370.Lakeshore370(pad=temperature_controller_gpib_address)
                     self.temperature_controller = ls370
             elif field == "vmax":
                 self.vmax = float(value)
-                print("Vmax = %f V" % self.vmax)
+                print(("Vmax = %f V" % self.vmax))
             elif field == "heater_resistance":
                 self.heater_resistance = float(value)
-                print("heater resistance = %f ohm" % self.heater_resistance)
+                print(("heater resistance = %f ohm" % self.heater_resistance))
             elif field == "heat_switch":
                 hs_array = value.split(" ")
                 hs_type = hs_array[0].strip()
                 hs_port = hs_array[1].strip()
                 if hs_type == "zaber":
-                    print("Adding zaber heat switch. (port=%s)" % hs_port)
+                    print(("Adding zaber heat switch. (port=%s)" % hs_port))
                     self.heat_switch = zaber.Zaber(port=hs_port)
                     self.heat_switch.SetHoldCurrent(0)
             elif field == "magnet_control":
@@ -322,7 +330,7 @@ class AdrSystem(object):
                 bb_array = value.split(" ")
                 bluebox_port = bb_array[0].strip()
                 bluebox_version = bb_array[1].strip()
-                print("Adding bluebox (%s, %s)" % (bluebox_port, bluebox_version))
+                print(("Adding bluebox (%s, %s)" % (bluebox_port, bluebox_version)))
                 bb = bluebox.BlueBox(port=bluebox_port, version=bluebox_version)
                 self.blueboxes.append(bb)
             elif field == "gpib_instrument":
@@ -330,35 +338,35 @@ class AdrSystem(object):
                 gpib_instrument_type = gi_array[0].strip()
                 gpib_instrument_address = gi_array[1].strip()
                 if gpib_instrument_type == 'lakeshore370':
-                    print("Adding lakeshore 370 gpib instrument (%i)." % gpib_instrument_address)
+                    print(("Adding lakeshore 370 gpib instrument (%i)." % gpib_instrument_address))
                     ls370 = lakeshore370.Lakeshore370(pad=gpib_instrument_address)
                     self.gpib_instruments.append(ls370)
             elif field == "log_folder":
                 self.logfolder = value
-                print("log folder = %s" % self.logfolder)
+                print(("log folder = %s" % self.logfolder))
             elif field == "tccheck_folder":
                 self.tccheckfolder = value
-                print("tccheck folder = %s" % self.tccheckfolder)
+                print(("tccheck folder = %s" % self.tccheckfolder))
 
-        print "Done reading legacy config file."
+        print("Done reading legacy config file.")
 
     def displayConfig(self):
         '''
         displayConfig() - Display the instruments on the ADR system.
         '''
-        print("system name: %s" % self.name)
+        print(("system name: %s" % self.name))
         if self.temperature_controller is not None:
-            print("Temperature controller: %s %s" % (self.temperature_controller.manufacturer, self.temperature_controller.model_number))
+            print(("Temperature controller: %s %s" % (self.temperature_controller.manufacturer, self.temperature_controller.model_number)))
         if self.vmax > 0:
-            print "Vmax = %f" % self.vmax
+            print(("Vmax = %f" % self.vmax))
         if self.heat_switch is not None:
             print("Heat switch: zaber")
         if len(self.blueboxes) > 0:
             for bb in self.blueboxes:
-                print("Bluebox %s %s" % (bb.version, bb.address))
+                print(("Bluebox %s %s" % (bb.version, bb.address)))
         if len(self.gpib_instruments) > 0:
             for instrument in self.gpib_instruments:
-                print("gpib instrument: %s %s" % (instrument.manufacturer, instrument.model_number))
+                print(("gpib instrument: %s %s" % (instrument.manufacturer, instrument.model_number)))
 
     def writeConfigFile(self, filename):
         '''

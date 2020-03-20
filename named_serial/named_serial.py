@@ -44,7 +44,7 @@ namedports = __setup()
 
 def getnames():
     '''Convenience routine for building ui - returns all defined names'''
-    return namedports.keys()
+    return list(namedports.keys())
 
 class Serial(serial.Serial):
     ''' Wrapper class around the serial.Serial that uses logical device
@@ -63,7 +63,7 @@ class Serial(serial.Serial):
         self.the_shared = shared
 
         # pass other serial init args?
-        if not namedports.has_key(port):
+        if port not in namedports:
             # Hmmm - raise an exception or just pass it on to serial
             # allowing use of "normal" device names?
             # This is probably better.
@@ -72,17 +72,17 @@ class Serial(serial.Serial):
         try:
             # serial.Serial.__init__(self, myport, baud)
             super(Serial, self).__init__(port=myport, baudrate=baud, **kwargs) #better?
-        except serial.serialutil.SerialException, e:
+        except serial.serialutil.SerialException as e:
             e.args = ("Error auto-loading serial port %s" % port, e.args[0])
             raise e
         if not shared and os.name == 'posix':
             try:
                 fcntl.lockf(self.fd, fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except IOError ,e:
+            except IOError as e:
                 e.args = ('Error locking on serial port %s' % port, e.args[0])
                 raise e
         if shared and os.name != 'posix':
-            raise ValueError, 'No shared ports on non-posix systems'
+            raise ValueError('No shared ports on non-posix systems')
 
 #    def write(self, value):
 #        print "writing [%s]=%s" % (self.the_port, value)
@@ -91,4 +91,4 @@ class Serial(serial.Serial):
     def writelist(self, inlist):
         '''Send a list of integers as characters'''
         outstring = ''.join(map(chr, inlist))
-        return self.write(outstring)
+        return self.write(outstring.encode())

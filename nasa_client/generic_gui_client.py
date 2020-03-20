@@ -37,7 +37,7 @@ information from the packet header.
 
 import sys
 import socket
-import client as nasa_client
+from . import client as nasa_client
 from PyQt4 import QtCore, QtGui
 
 class GUIClient(nasa_client.ZMQClient, QtGui.QMainWindow):
@@ -175,11 +175,11 @@ class GUIClient(nasa_client.ZMQClient, QtGui.QMainWindow):
     def __connectToServer(self):
         #self.connectButton.setEnabled(False)
         try:
-            print("generic client connecting to server %s/%i" % (self.host, self.port))
+            print(("generic client connecting to server %s/%i" % (self.host, self.port)))
             self.connect_server()
             self._isConnected = True
-        except socket.error, e:
-            print("Could not connect to server: error '%s'" % e)
+        except socket.error as e:
+            print(("Could not connect to server: error '%s'" % e))
             #self.connectButton.setEnabled(True)
             self.updateStatusLabel()
             self.updateButtons()
@@ -224,7 +224,7 @@ class GUIClient(nasa_client.ZMQClient, QtGui.QMainWindow):
             self.stop_streaming()
             self.updateStatusLabel()
             #self.status_label.setText("Connected to %s:%s (c:%d r:%d)" % (self.host, self.port, self.ncol, self.nrow))
-            print 'Stop streaming GUI'
+            print('Stop streaming GUI')
         except:
             pass
         self.__subclassCallback('stopStreaming')

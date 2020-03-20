@@ -23,7 +23,7 @@ class JSONClient(object):
 
     def call(self, name, params, verbose=True):
         if self._closed:
-            print "%s(...) ignored because JSON-RPC client is closed." % name
+            print(("%s(...) ignored because JSON-RPC client is closed." % name))
             return None
             # This might seem like it should be impossible to reach, but it is possible
             # because signals like editingFinished can trigger slots when you try
@@ -52,8 +52,8 @@ class JSONClient(object):
 
         if response.get('error') is not None:
             if verbose:
-                print "Yikes! Request is: ", request
-                print "Reponse is: ", response
+                print(("Yikes! Request is: ", request))
+                print(("Reponse is: ", response))
             if self.qtParent is None:
                 raise Exception(response.get('error'))
             else:

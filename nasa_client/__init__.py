@@ -14,5 +14,5 @@ Joe Fowler, NIST
 
 __all__ = ['client', 'generic_gui_client']
 
-from client import Client
-from generic_gui_client import GUIClient
+from .client import Client
+from .generic_gui_client import GUIClient

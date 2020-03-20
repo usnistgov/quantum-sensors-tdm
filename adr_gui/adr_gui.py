@@ -1,8 +1,9 @@
 #Author velociraptor Genjix <aphidia@hotmail.com>
 
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
-import PyQt4.uic
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+import PyQt5.uic
 import matplotlibCanvas
 import numpy
 import time
@@ -15,6 +16,7 @@ import os
 import zmq
 import struct
 from lxml import etree
+import rpc_client_for_easy_client # for stopping dastard
 
 class MyLogger():
     def __init__(self):
@@ -32,12 +34,12 @@ class MyLogger():
             logDirectory = 'logs'
         try:
             if not os.path.isdir(logDirectory): os.mkdir(logDirectory)
-            print("failed to create directory: ",logDirectory)
+            print(("failed to create directory: ",logDirectory))
             print("that directory is in /etc/adr_system_setup.xml but probably the parent directory doesn't exist")
         except OSError:
             logDirectory = 'logs'
             if not os.path.isdir(logDirectory): os.mkdir(logDirectory)
-        print("adr_gui log directory: ",logDirectory)
+        print(("adr_gui log directory: ",logDirectory))
         self.filename = os.path.join(logDirectory,time.strftime("ADRLog_%Y%m%d_t%H%M%S.txt"))
         self.file = open(self.filename,"w")
 
@@ -72,7 +74,7 @@ def adrMagTick(i_now, i_target, i_max=1.0, i_min=0.0, duration_s=60*1.0, step_ti
 
 
 
-class ADR_Gui(PyQt4.QtGui.QMainWindow):
+class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     SIG_magUpDone = pyqtSignal()
     SIG_holdAfterMagUpDone = pyqtSignal()
     SIG_magDownDone = pyqtSignal()
@@ -81,12 +83,13 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
     SIG_startMagUp = pyqtSignal()
     SIG_panic = pyqtSignal()
     SIG_skipToControl = pyqtSignal()
+    SIG_startInitialState_ZeroCurrent = pyqtSignal()
 
     def __init__(self, min_mag_time=20):
-        super(ADR_Gui, self).__init__()        
-        PyQt4.uic.loadUi("adr_gui.ui", self)
+        super(ADR_Gui, self).__init__()
+        PyQt5.uic.loadUi("adr_gui.ui", self)
         self.setWindowIcon(QIcon("adr_gui.png"))
-        
+
         # give variabiles initial values
         self.stateStartTime = time.time()
         self.lastTemp_K, self.lastHOut = 0,0
@@ -94,49 +97,49 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
 
         self.setAttribute(Qt.WA_DeleteOnClose)
 
-        self.settings = QSettings("adr_gui", "adr_gui")                    
+        self.settings = QSettings("adr_gui", "adr_gui")
 
         # Set up labels for settings file, allowed ranges, and start values
         # these really should be spins with all the ranges set in qt designer
         self.setPointmKEdit.label_text = "temperature set point (mK) "
         self.setPointmKEdit.allowed_range = (0.0,1000.0)
-        self.setPointmKEdit.startval = 80.0        
+        self.setPointmKEdit.startval = 80.0
 
         self.startTimeEdit.label_text = "start mag cycle at (time as decimal 24 hour) "
         self.startTimeEdit.allowed_range = (0.0, 23.9)
-        self.startTimeEdit.startval = 7.0        
+        self.startTimeEdit.startval = 7.0
 
         self.startOutEdit.label_text = "dont start mag cycle if heater out is above (%) "
         self.startOutEdit.allowed_range = (0.0, 100.0)
-        self.startOutEdit.startval = 10.0        
+        self.startOutEdit.startval = 10.0
 
         self.maxHeatOutEdit.label_text = "mag up to this heater out percent (%) "
         self.maxHeatOutEdit.allowed_range = (0.0, 100.0)
-        self.maxHeatOutEdit.startval = 35.0        
+        self.maxHeatOutEdit.startval = 35.0
 
         self.magUpMinsEdit.label_text = "mag up takes this long (mins) "
         self.magUpMinsEdit.allowed_range = (min_mag_time, 100.0)
-        self.magUpMinsEdit.startval = 40.0        
+        self.magUpMinsEdit.startval = 40.0
 
         self.magUpHoldMinsEdit.label_text = "hold after mag up takes this long (mins) "
         self.magUpHoldMinsEdit.allowed_range = (0.0, 200.0)
-        self.magUpHoldMinsEdit.startval = 40.0        
+        self.magUpHoldMinsEdit.startval = 40.0
 
         self.magDownMinsEdit.label_text = "mag down takes this long (mins) "
         self.magDownMinsEdit.allowed_range = (min_mag_time, 100.0)
-        self.magDownMinsEdit.startval = 40.0        
+        self.magDownMinsEdit.startval = 40.0
 
         self.magDownHoldMinsEdit.label_text = "hold after mag down takes this long (mins) "
         self.magDownHoldMinsEdit.allowed_range = (0.0, 200.0)
         self.magDownHoldMinsEdit.startval = 15.0
 
         # Load line edit starting values from QSettings
-        self.edits = [self.setPointmKEdit, self.startTimeEdit, self.startOutEdit, self.maxHeatOutEdit, self.magUpMinsEdit, self.magUpHoldMinsEdit, self.magDownMinsEdit, self.magDownHoldMinsEdit]  
+        self.edits = [self.setPointmKEdit, self.startTimeEdit, self.startOutEdit, self.maxHeatOutEdit, self.magUpMinsEdit, self.magUpHoldMinsEdit, self.magDownMinsEdit, self.magDownHoldMinsEdit]
         for iEdit in self.edits:
             try:
-                iEdit.value = self.settings.value(iEdit.label_text, type=float)                
-            except: 
-                iEdit.value = iEdit.startval  
+                iEdit.value = self.settings.value(iEdit.label_text, type=float)
+            except:
+                iEdit.value = iEdit.startval
             iEdit.setText(str(iEdit.value))
 
         self.setPointmKEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.setPointmKEdit))
@@ -150,24 +153,29 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
 
         #self.enableTimeBasedMagCheckbox.setCheckState(Qt.Checked)
         #self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
-        
-        
+
+
         self.excitationCurrentValues = numpy.sqrt(numpy.logspace(1,21,21))*10.0**-12
         self.excitationCurrentStrings = ['3.16 pA', '10.0 pA', '31.6 pA', '100 pA', '316 pA', \
                                          '1.00 nA', '3.16 nA', '10.0 nA', '31.6 nA', '100 nA', '316 nA', \
                                          '1.00 uA', '3.16 uA', '10.0 uA', '31.6 uA', '100 uA', '316 uA', \
                                          '1.00 mA', '3.16 mA', '10.0 mA', '31.6 mA']
-        self.currentExcitationComboBox.addItems(self.excitationCurrentStrings)        
+        self.currentExcitationComboBox.addItems(self.excitationCurrentStrings)
         self.currentExcitationComboBox.label_text = "excitation current"
         self.currentExcitationComboBox.startindex = 7 # 10.0 nA
 
         # disable some possible currents for now
         for i in range(self.excitationCurrentStrings.index('100 uA'),len(self.excitationCurrentStrings)):
             self.currentExcitationComboBox.model().item(i).setEnabled(False)
-                        
-        
+
+        self.controlChannelValues = numpy.arange(16)+1
+        self.controlChannelStrings = list(map(str, self.controlChannelValues))
+        self.controlChannelComboBox.addItems(self.controlChannelStrings)
+        self.controlChannelComboBox.label_text = "control channel"
+        self.controlChannelComboBox.startindex = 0
+
         # Load combo box starting values from QSettings
-        self.comboBoxes = [self.currentExcitationComboBox]        
+        self.comboBoxes = [self.currentExcitationComboBox, self.controlChannelComboBox]
         for iComboBox in self.comboBoxes:
             try:
                 iComboBox.indexValue = self.settings.value(iComboBox.label_text, type=int)
@@ -176,17 +184,19 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
             iComboBox.setCurrentIndex(iComboBox.indexValue)
 
         self.currentExcitationCurrent = self.excitationCurrentValues[self.currentExcitationComboBox.currentIndex()]
+        self.controlChannel = self.controlChannelValues[self.controlChannelComboBox.currentIndex()]
         # Send current excitation to lakeshore here
         # Set some flag for server/client type here
 
         self.currentExcitationComboBox.currentIndexChanged.connect(self.excitationComboBoxChanges)
-        
+        self.controlChannelComboBox.currentIndexChanged.connect(self.controlComboBoxChanges)
+
         self.tempPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'temperature (K)', '')
         self.currentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'heater out %', '')
         self.tempPlotLayout.addWidget(self.tempPlot)
         self.currentPlotLayout.addWidget(self.currentPlot)
 
-        
+
 
         self.machine = QStateMachine(self)
         self.states = {}
@@ -196,6 +206,7 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
         self.states["holdAfterMagDown"] = QState()
         self.states['control'] = QState()
         self.states['goingToMagUp'] = QState()
+        self.states['goingToInitialState_ZeroCurrent'] = QState()
         self.states["initialState_ZeroCurrent"] = QState()
         self.states["panic"] = QState()
 
@@ -206,16 +217,24 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
         self.states['magDown'].addTransition(self.SIG_magDownDone, self.states['holdAfterMagDown'])
         self.states['holdAfterMagDown'].addTransition(self.SIG_holdAfterMagDownDone, self.states["control"])
         self.states['control'].addTransition(self.SIG_startgoingToMagUp, self.states["goingToMagUp"])
+        self.states['control'].addTransition(self.stopControlButton.clicked, self.states["goingToInitialState_ZeroCurrent"])
         self.states['holdAfterMagDown'].addTransition(self.SIG_startgoingToMagUp, self.states["goingToMagUp"])
         self.states['initialState_ZeroCurrent'].addTransition(self.SIG_startgoingToMagUp, self.states['goingToMagUp'])
         self.states['initialState_ZeroCurrent'].addTransition(self.controlNowButton.clicked, self.states['control'])
         self.states['initialState_ZeroCurrent'].addTransition(self.SIG_skipToControl, self.states['control'])
         self.states['goingToMagUp'].addTransition(self.SIG_startMagUp, self.states['magUp'])
+        self.states['goingToInitialState_ZeroCurrent'].addTransition(self.SIG_startInitialState_ZeroCurrent, self.states["initialState_ZeroCurrent"])
         self.magNowButton.clicked.connect(self.SIG_startgoingToMagUp.emit)
         for sname in self.states:
             self.states[sname].assignProperty(self.stateLabel, 'text', "Current State: %s"%sname)
             self.states[sname].addTransition(self.SIG_panic, self.states['panic'])
             self.machine.addState(self.states[sname])
+
+        # only allow certain changes in initial state
+        self.states['initialState_ZeroCurrent'].exited.connect(self.disableModifyControlSettings)
+        self.states['initialState_ZeroCurrent'].entered.connect(self.enableModifyControlSettings)
+
+
 
         timer = QTimer(self)
         timer.timeout.connect(self.timerHandler)
@@ -226,15 +245,17 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
 
         self.timeOfLastAutorange = time.time()-60
 
-        self.tempControl = tempControl.TempControl(QApplication,0.001, controlThermExcitation=self.currentExcitationCurrent)
-        
+        self.tempControl = tempControl.TempControl(PyQt5.QtWidgets.QApplication,0.001,
+        controlThermExcitation=self.currentExcitationCurrent,
+        channel = self.controlChannel)
+
         # these are to turn on and off the crate and tower during and after mags
         self.power_supplies = tower_power_supplies.TowerPowerSupplies()
         self.pccc_card = pccc_card.PCCC_Card()
 
         self.SIG_startMagUp.connect(self.prepForMagup)
-        self.SIG_holdAfterMagDownDone.connect(self.tempControl.setupTempControl)
-        self.controlNowButton.clicked.connect(self.tempControl.setupTempControl)
+        self.SIG_holdAfterMagDownDone.connect(self.setupTempControl)
+        self.controlNowButton.clicked.connect(self.setupTempControl)
         self.SIG_holdAfterMagDownDone.connect(self.powerOnCrateTower)
         self.clearPlotsButton.clicked.connect(self.clearPlots)
         self.SIG_startgoingToMagUp.connect(self.powerOffCrateTower)
@@ -256,18 +277,17 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
             self.settings.setValue(line_edit.label_text, line_edit.value)
 
     def excitationComboBoxChanges(self):
-        self.currentExcitationComboBox.indexValue = self.currentExcitationComboBox.currentIndex()
         if self.settings:
-            self.settings.setValue(self.currentExcitationComboBox.label_text, self.currentExcitationComboBox.indexValue)
+            self.settings.setValue(self.currentExcitationComboBox.label_text, self.currentExcitationComboBox.currentIndex())
         self.currentExcitationCurrent = self.excitationCurrentValues[self.currentExcitationComboBox.currentIndex()]
         self.tempControl.controlThermExcitation = self.currentExcitationCurrent
-        if self.tempControl.readyToControl:
-            self.tempControl.a.temperature_controller.setReadChannelSetup(exciterange=self.tempControl.controlThermExcitation, resistancerange=self.tempControl.baseTempResistance)
-            time.sleep(5)
-            self.tempControl.a.temperature_controller.setHeaterRange(range=100)
-        else:
-            print 'Waiting for temperature control to change excitation current'
-        
+
+    def controlComboBoxChanges(self):
+        if self.settings:
+            self.settings.setValue(self.controlChannelComboBox.label_text, self.controlChannelComboBox.currentIndex())
+        self.controlChannel = self.controlChannelValues[self.controlChannelComboBox.currentIndex()]
+        self.tempControl.controlChannel = self.controlChannel
+
 
     def ensureHeatSwitchIsClosed(self):
         print("heat switch ensure closed")
@@ -306,22 +326,29 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
         ########################################################################
         # Trying to stop the ndfb_server.
         ########################################################################
-
-
         print("tell the server to stop")
         req = self.zmq_context.socket(zmq.REQ)
         req.connect("tcp://localhost:2011")
         req.setsockopt(zmq.RCVTIMEO, 1000)
         req.send(struct.pack("!HHHHII", 0, 7, 0, 0, 0, 0))
         try:
-            print(req.recv())
+            print((req.recv()))
         except zmq.Again:
             pass
         finally:
             print("close zmq socket")
             req.close()
-            print("wait 5 seconds before turning off crate")
-            time.sleep(5) # give the server time to stop before turning off the crate
+        ########################################################################
+        # Trying to stop dastard source.
+        ########################################################################
+        try:
+            rpc = rpc_client_for_easy_client.JSONClient(("localhost", 5500))
+            rpc.call("SourceControl.Stop", "")
+            rpc.close()
+        except Exception as ex:
+            print(("WARNING: exception {} during stopping dastard".format(ex)))
+        print("wait 5 seconds before turning off crate to give server time to stop")
+        time.sleep(5) # give the server time to stop before turning off the crate
 
 
         print("turning off the crate power")
@@ -393,7 +420,7 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
                 0<tc.getRamp()[1]<.2 and\
                 0.04<tc.getTemperatureSetPoint()<0.2 and\
                 numpy.abs(self.tempControl.getTempError())<0.005:
-                    print("started with heater out %0.2f, but determined it is already in control state"%self.lastHOut)
+                    print(("started with heater out %0.2f, but determined it is already in control state"%self.lastHOut))
                     print("STARTING IN CONTROL STATE")
                     self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
                     self.stateStartTime=time.time()
@@ -407,8 +434,12 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
             elif self.adrShouldMagup(self.startTimeEdit.value, self.startOutEdit.value, self.lastHOut):
                 self.SIG_startgoingToMagUp.emit()
                 self.stateStartTime=time.time()
+            else:
+                self.printStatus("intital state zero current")
         elif sname == "goingToMagUp":
             self.goingToMagUpTick()
+        elif sname == "goingToInitialState_ZeroCurrent":
+            self.goingToIntitalState_ZeroCurrentTick()
         elif sname == 'panic':
             if self.tempControl.readyToRamp:
                 self.magDownStateTick()
@@ -491,7 +522,7 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
         m = numpy.floor((startTime24Hour-h)*60)
         if t.tm_hour == h and t.tm_min==m and self.enableTimeBasedMagCheckbox.isChecked():
             if self.lastTemp_K > 4:
-                print("not magging up because temp is %f, not below 4 K"%self.lastTemp_K)
+                print(("not magging up because temp is %f, not below 4 K"%self.lastTemp_K))
                 return False
             return True
         return False
@@ -502,13 +533,28 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
             if self.tempControl.getSetTemp() > 0.001: self.tempControl.setSetTemp(0.001)
         elif self.lastHOut == 0.0:
             if self.lastTemp_K>4:
-                print("in GoingToMagUp state, but temp = %f is too high, needs to be below 4"%self.lastTemp_K)
+                print(("in GoingToMagUp state, but temp = %f is too high, needs to be below 4"%self.lastTemp_K))
             else:
                 time.sleep(5.0)
                 self.SIG_startMagUp.emit()
                 self.stateStartTime=time.time()
         else:
             self.printStatus("something is wrong, in state goingToMagUp with nonzero heater out and not readyToControl")
+
+    def goingToIntitalState_ZeroCurrentTick(self):
+        if self.tempControl.readyToControl and self.lastHOut>0.0:
+            self.printStatus("temp set point should = 0, waiting for heater out = 0.0 before switching to initialState_ZeroCurrent")
+            if self.tempControl.getSetTemp() > 0.001: self.tempControl.setSetTemp(0.001)
+        elif self.lastHOut == 0.0:
+            if self.lastTemp_K>4:
+                self.printStatus("in goingToIntitalState_ZeroCurrent state, but temp = %f is too high, needs to be below 4"%self.lastTemp_K)
+            else:
+                time.sleep(5.0)
+                self.SIG_startInitialState_ZeroCurrent.emit()
+                self.stateStartTime=time.time()
+        else:
+            self.printStatus("something is wrong, in state goingToIntitalState_ZeroCurrentTicket with nonzero heater out and not readyToControl")
+
 
     def controlTempStdDev(self):
         last_n_points = self.tempPlot.last_n_points(61)
@@ -541,6 +587,22 @@ class ADR_Gui(PyQt4.QtGui.QMainWindow):
     def printStatus(self,s):
         self.statusLabel.setText("status: %s"%s)
 
+    def setupTempControl(self):
+        self.tempControl.setupTempControl()
+
+    def disableModifyControlSettings(self):
+        self.controlChannelComboBox.setEnabled(False)
+        self.currentExcitationComboBox.setEnabled(False)
+        self.controlNowButton.setEnabled(False)
+        self.stopControlButton.setEnabled(True)
+
+    def enableModifyControlSettings(self):
+        self.controlChannelComboBox.setEnabled(True)
+        self.currentExcitationComboBox.setEnabled(True)
+        self.controlNowButton.setEnabled(True)
+        self.stopControlButton.setEnabled(False)
+
+
 
 if __name__ == '__main__':
     import sys
@@ -552,7 +614,7 @@ if __name__ == '__main__':
     else:
         min_mag_time=20
 
-    app = PyQt4.QtGui.QApplication(sys.argv)
+    app = PyQt5.QtWidgets.QApplication(sys.argv)
     mainWin = ADR_Gui(min_mag_time)
     mainWin.show()
     sys.exit(app.exec_())

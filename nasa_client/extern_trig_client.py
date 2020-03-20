@@ -55,7 +55,7 @@ class externTrigClient(object):
         self.close_timer = self.absurd_future
         sentinel_filename = os.path.expanduser("~/.daq/latest_ljh_pulse.cur")
         self.sentinel_file = open(sentinel_filename, "r")
-        print '\n*** Starting extern_trig_client version %s ***'%VERSION
+        print(('\n*** Starting extern_trig_client version %s ***'%VERSION))
 
     def check_sentinel_file(self):
         '''Open and close the output file as needed, based on the contents of the sentinel.'''
@@ -72,7 +72,7 @@ class externTrigClient(object):
             if len(words)>1 and 'closed' in words[-1]:
                 if self.close_timer >= self.absurd_future:
                     self.close_timer = now + self.close_delay
-                    print 'Closing output file in %d seconds.'%self.close_delay
+                    print(('Closing output file in %d seconds.'%self.close_delay))
                 return
             return
 
@@ -94,7 +94,7 @@ class externTrigClient(object):
         self.output_filename = filename
         if fp is None: return
 
-        print "Opened output file '%s'"%filename
+        print(("Opened output file '%s'"%filename))
         try:
             _ = fp['/trig_times']
             dataset_exists = True
@@ -119,14 +119,14 @@ class externTrigClient(object):
 
     def close_file(self):
         if self.output_file is not None:
-            print "Closing output file '%s'"%self.output_filename
+            print(("Closing output file '%s'"%self.output_filename))
             trig_rowcounts = self.output_file['trig_times']
             nt = trig_rowcounts.attrs['Ntrigs']
             trig_rowcounts.resize((nt,))
             self.output_file.close()
             self.output_file = None
         if self.binary_file is not None:
-            print "Closing binary backup file '%s'"%self.binary_filename
+            print(("Closing binary backup file '%s'"%self.binary_filename))
             self.binary_file.close()
             self.binary_file = None
 
@@ -198,7 +198,7 @@ class externTrigClient(object):
         for i,q in enumerate(self.chan_queues):
             while q[0][1] < newest_packet:
                 _data, t = q.pop(0)
-                print "Popping packet off queue %d at time %d"%(i, t)
+                print(("Popping packet off queue %d at time %d"%(i, t)))
 
         nerr_flush = 0
         while True:
@@ -255,12 +255,12 @@ class externTrigClient(object):
             if self.output_file is not None:
                 self.output_file.flush()
                 nerr_flush = 0
-        except Exception,e:
+        except Exception as e:
             nerr_flush += 1
             if nerr_flush == 1 or nerr_flush%100 == 0:
-                print "** Failed to flush output file %d times in a row."%nerr_flush
+                print(("** Failed to flush output file %d times in a row."%nerr_flush))
             if nerr_flush >= 1000000:
-                print "** This is apparently a fatal problem."
+                print("** This is apparently a fatal problem.")
                 raise e
         return
 
@@ -278,7 +278,7 @@ def np2bitarray(bitpattern, bitspervalue, startvalue=False):
         for bp in (bitpattern):
             bitvector.frombytes(bp.tostring()[:bytesperstring])
             # Problem: we just added extrabits extra bits
-            for _ in xrange(extrabits):
+            for _ in range(extrabits):
                 bitvector.pop()
     return bitvector
 
@@ -325,8 +325,8 @@ def main(host='localhost', port='2011'):
                     if last_frame <= 0:
                         trig_rate = 0.0
                     timestr = time.strftime("%x %X")
-                    print '%s. ExternTrigRate: %6g Hz. %6g packets seen. %s.' \
-                        %(timestr, trig_rate, total_npackets, "Output off" if client.output_file is None else "Output on")
+                    print(('%s. ExternTrigRate: %6g Hz. %6g packets seen. %s.' \
+                        %(timestr, trig_rate, total_npackets, "Output off" if client.output_file is None else "Output on")))
                     last_ntrig = client.n_triggers
                     last_frame = client.last_packet_frame
                     last_alive_time = now
@@ -345,7 +345,7 @@ def main(host='localhost', port='2011'):
                 client.process_data_packets()
                 total_npackets += npackets
         except KeyboardInterrupt:
-            print '*** Wrapping up extern_trig_client. ***'
+            print('*** Wrapping up extern_trig_client. ***')
         client.stop_streaming()
         client.disconnect_server()
     finally:

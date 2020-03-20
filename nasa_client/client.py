@@ -17,7 +17,7 @@ import numpy
 import socket
 import struct
 
-import xcaldaq_commands
+from . import xcaldaq_commands
 import zmq
 
 class NoMorePackets(StopIteration): pass
@@ -136,12 +136,12 @@ class NDFBClient(object):
                                testname, found, expected))
 
         if self.debug is True:
-            print('_command %s, %s, %s, %s, %s, %s, %s, %s' % (FMT, primary, secondary, rcmd,
-                                                             rprimary, rsecondary, rchannel, rlevel))
+            print(('_command %s, %s, %s, %s, %s, %s, %s, %s' % (FMT, primary, secondary, rcmd,
+                                                             rprimary, rsecondary, rchannel, rlevel)))
         return rlevel
 
     def clear_data_queue_by_getting_all_packets(self):
-        print('cleared data queue, threw away %d packets' % len(self._get_raw_packets()))
+        print(('cleared data queue, threw away %d packets' % len(self._get_raw_packets())))
 
     def clear_data_queue_by_stop_start_streaming(self):
         self.stop_streaming()
@@ -151,8 +151,8 @@ class NDFBClient(object):
         return numpy.fromstring(payload, dtype=numpy_data_type)
 
     def print_server_info(self):
-        print('Lsync = %d clock ticks/pixel, nCol = %d, nRow = %d, nSamples = %d, sampleRate = %d' % (
-                        self.lsync, self.ncol, self.nrow, self.num_of_samples, self.sample_rate))
+        print(('Lsync = %d clock ticks/pixel, nCol = %d, nRow = %d, nSamples = %d, sampleRate = %d' % (
+                        self.lsync, self.ncol, self.nrow, self.num_of_samples, self.sample_rate)))
 
     def _subclassCallback(self, callbackName, *args, **kwargs):
         try:
@@ -362,7 +362,7 @@ class ZMQClient(NDFBClient):
 
         self._command(xcaldaq_commands.primary_comm['TESTCOMM'], 0, 0, 0)
         self.setp('CLIENTTYPE', 0, 2)
-        print "Testing comm pipe...done!"
+        print("Testing comm pipe...done!")
 
         # Find out the geometry, because we basically always want to know this
         self.nchan = self.get('CHANNELS', 0)
@@ -372,7 +372,7 @@ class ZMQClient(NDFBClient):
         self.sample_rate = self.get('SAMPLERATE', 0)
         self.num_of_samples = self.get('SAMPLES', 0)
         self.lsync = int(round(self.clockhz / self.sample_rate / float(self.nrow)))
-        print('Connected to server @ %s:%d' % (self.host, self.port))
+        print(('Connected to server @ %s:%d' % (self.host, self.port)))
         self.print_server_info()
 
         # print "Testing data pipe...",
@@ -389,12 +389,12 @@ class ZMQClient(NDFBClient):
         Disconnect from the ndfb_server.
         """
         if not self.connected:
-            print 'Not currently connected'
+            print('Not currently connected')
             return
-        print 'Shutting down connection to server...'
+        print('Shutting down connection to server...')
         self.commPort.disconnect("tcp://%s:%d" % (self.host, self.port))
         self.dataPort.disconnect("tcp://%s:%d" % (self.host, self.port + 1))
-        print '...server interface disconnected.'
+        print('...server interface disconnected.')
         self.connected = False
 
     def comm_recv(self):
@@ -412,23 +412,23 @@ class ZMQClient(NDFBClient):
                 else: #easy client doesn't like blocking
                     message = self.dataPort.recv_multipart()
                 if len(message[0]) > 8:
-                    print "Error: packet is in the wrong order"
+                    print("Error: packet is in the wrong order")
                     packet = message[0]
                 elif len(message[1]) > 8:
                     packet = message[1]
                     # print "Receive packet of size %d from chan %d"%(len(packet), 
                     #     struct.unpack("<i", message[0])[0])
                 else:
-                    print "Error: packet messages have size (%d,%d)" % (len(message[0]), len(message[1]))
+                    print("Error: packet messages have size (%d,%d)" % (len(message[0]), len(message[1])))
                     continue
                 packets.append(packet)
                 total_bytes += len(packet)
-            except zmq.ZMQError, e:
+            except zmq.ZMQError as e:
                 # Return packets found so far if receive needed to block.
                 if isinstance(e, zmq.error.Again):
                     # print "Received %d packets of total size %d"%(len(packets), total_bytes)
                     return packets
-                print "Error not anticipated: ", e
+                print("Error not anticipated: ", e)
                 return packets
         # print "Received %d packets of total size %d"%(len(packets), total_bytes)
         return packets
@@ -453,7 +453,7 @@ class ZMQClient(NDFBClient):
 
 
 
-import network_pipe
+from . import network_pipe
 
 class TCPClient(NDFBClient):
     """
@@ -520,7 +520,7 @@ class TCPClient(NDFBClient):
         self.commPort.settimeout(3.0)
         self._command(xcaldaq_commands.primary_comm['TESTCOMM'], 0, 0, 0)
         self.setp('CLIENTTYPE', 0, 2)
-        print "Testing comm pipe...done!"
+        print("Testing comm pipe...done!")
 
         # Find out the geometry, because we basically always want to know this
         self.nchan = self.get('CHANNELS', 0)
@@ -530,13 +530,13 @@ class TCPClient(NDFBClient):
         self.sample_rate = self.get('SAMPLERATE', 0)
         self.num_of_samples = self.get('SAMPLES', 0)
         self.lsync = int(round(self.clockhz / self.sample_rate / float(self.nrow)))
-        print('Connected to server @ %s:%d' % (self.host, self.port))
+        print(('Connected to server @ %s:%d' % (self.host, self.port)))
         self.print_server_info()
 
-        print "Testing data pipe...",
+        print("Testing data pipe...", end=' ')
         self._command(xcaldaq_commands.primary_comm['TESTDATA'], 0, 0, 64)
         _reply = self.dataPort.recv(64)
-        print "done!"
+        print("done!")
         for i in range(self.nchan):
             self.setp('ACTIVEFLAG', i, 0)  # Turn all channels to "inactive"
         self.connected = True
@@ -550,12 +550,12 @@ class TCPClient(NDFBClient):
         Disconnect from the ndfb_server.
         """
         if not self.connected:
-            print 'Not currently connected'
+            print('Not currently connected')
             return
-        print 'Shutting down connection to server...'
+        print('Shutting down connection to server...')
         self.commPort = None
         self.dataPort = None
-        print '...server interface disconnected.'
+        print('...server interface disconnected.')
         self.connected = False
 
 
@@ -579,7 +579,7 @@ class TCPClient(NDFBClient):
         finally:
             self.dataPort.release_lock()
         if self.debug is True:
-            print 'bytes_read %d' % bytes_read
+            print('bytes_read %d' % bytes_read)
         if bytes_read <= 0:
             block = ""
         if self.partial_packet is not None:
@@ -595,7 +595,7 @@ class TCPClient(NDFBClient):
 
         lendata = len(dataString)
         if self.debug is True:
-            print "len(dataString) %d" % (lendata,)
+            print("len(dataString) %d" % (lendata,))
 
         packet_index = 0
         while packet_index < lendata:
@@ -613,7 +613,7 @@ class TCPClient(NDFBClient):
             if packet_size == 0:
                 # not sure why this was happening, but it caused infinite loops,
                 # so I just break out of it emulating no data received
-                print "_get_raw_data: packet_size = 0, which should never happen"
+                print("_get_raw_data: packet_size = 0, which should never happen")
                 return packets
 
             if lendata < packet_index + packet_size:
@@ -648,7 +648,7 @@ class TCPClient(NDFBClient):
         # Now clear the partial packet AND any bytes on the TCP socket buffer
         runt = self._get_raw_block()
         if self.debug:
-            print "Stopped streaming... had to ignore %d bytes" % len(runt)
+            print("Stopped streaming... had to ignore %d bytes" % len(runt))
         self.__subclassCallback('stopStreaming')
         self.streaming = False
 
@@ -662,6 +662,6 @@ def Client(*args, **kwargs):
         c.connect_server()
         c.disconnect_server()
         return c
-    except Exception, e:
+    except Exception as e:
         c = ZMQClient(*args, **kwargs)
         return c

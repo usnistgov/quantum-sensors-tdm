@@ -5,7 +5,7 @@ import zaber
 
 class TempControl():
     def __init__(self, app=None, tempTarget = 0.035, adr_system_in = None, controlThermExcitation = 10e-9, baseTempResistance = 60e3,
-                 rampRate = 0.050):
+                 rampRate = 0.050, channel = 1):
         if adr_system_in is None:
             self.a = adr_system.AdrSystem(app)
         else:
@@ -16,6 +16,7 @@ class TempControl():
         self.rampRate = rampRate
         self.readyToControl = False
         self.readyToRamp = False
+        self.controlChannel = channel
 
 
     def setupRamp(self):
@@ -32,17 +33,19 @@ class TempControl():
 
 
     def setupTempControl(self):
+        print(("setup temp control channel={}".format(self.controlChannel)))
+        print(("and excitation = {}".format(self.controlThermExcitation)))
         heaterOut = self.getHeaterOut()
         if heaterOut == 0:
             self.a.magnet_control_relay.setRelayToControl()
-            self.a.temperature_controller.setScan(channel = 1, autoscan = 'off')
+            self.a.temperature_controller.setScan(channel = self.controlChannel, autoscan = 'off')
             time.sleep(5)
-            self.a.temperature_controller.setReadChannelSetup(exciterange=self.controlThermExcitation, resistancerange=self.baseTempResistance)
+            self.a.temperature_controller.setReadChannelSetup(channel=self.controlChannel,exciterange=self.controlThermExcitation, resistancerange=self.baseTempResistance)
             time.sleep(5) # let the transition from changing the thermometer settle
 
             self.a.temperature_controller.setHeaterRange(range=0)
             # temp setpoint should respond instantly when heater range is zero
-            self.a.temperature_controller.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay=2, output='current', filterread='unfiltered')
+            self.a.temperature_controller.setTemperatureControlSetup(channel = self.controlChannel, units='Kelvin', maxrange=100, delay=2, output='current', filterread='unfiltered')
             self.a.temperature_controller.setControlMode(controlmode = 'closed')
             self.a.temperature_controller.setControlPolarity(polarity = 'unipolar')
             self.a.temperature_controller.setTemperatureSetPoint(setpoint=0.035)
@@ -59,19 +62,21 @@ class TempControl():
 
     def goToTemp(self, tempTarget = 0.035):
         if self.readyToControl is True:
-            self.a.temperature_controller.setReadChannelSetup(exciterange=self.controlThermExcitation, resistancerange=self.baseTempResistance)
+            self.a.temperature_controller.setReadChannelSetup(channel=self.controlChannel,
+            exciterange=self.controlThermExcitation, resistancerange=self.baseTempResistance)
             time.sleep(3)
             self.a.temperature_controller.setTemperatureSetPoint(tempTarget)
         else:
             print("did not goToTemp because readyToControl is False")
 
     def safeAutorange(self):
-        resistance = self.a.temperature_controller.getResistance(channel=1)
-        newstring = self.resistanceToResistanceRangeString(resistance)
+        resistance = self.a.temperature_controller.getResistance(channel=self.controlChannel)
+        newstring = self.resistanceToResistanceRangeString(resistance).encode()
         nowstring = self.getCurrentResistanceRangeString()
+        # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
         if newstring != nowstring:
-            self.a.temperature_controller.setReadChannelSetup(exciterange=self.controlThermExcitation, resistancerange=resistance*1.1)
-            print("safeAutorange changing from %s to %s"%(nowstring, newstring))
+            self.a.temperature_controller.setReadChannelSetup(channel=self.controlChannel,exciterange=self.controlThermExcitation, resistancerange=resistance*1.1)
+            print(("safeAutorange changing from %s to %s"%(nowstring, newstring)))
             return True
         else:
             return False
@@ -80,18 +85,18 @@ class TempControl():
         return self.a.temperature_controller.getTemperatureSetPoint()
     def setSetTemp(self,v):
         self.a.temperature_controller.setTemperatureSetPoint(v)
-    def getTemp(self, channel=1):
-        return self.a.temperature_controller.getTemperature(channel)
+    def getTemp(self):
+        return self.a.temperature_controller.getTemperature(channel=self.controlChannel)
 
-    def getHeaterOut(self, channel=1):
+    def getHeaterOut(self):
         return self.a.temperature_controller.getHeaterOut()
 
     def setHeaterOut(self,v):
         self.a.temperature_controller.setManualHeaterOut(v)
 
-    def getTempError(self, channel=1):
+    def getTempError(self):
         setPoint = self.a.temperature_controller.getTemperatureSetPoint()
-        currentTemp = self.getTemp(channel)
+        currentTemp = self.getTemp()
         return currentTemp-setPoint
 
     def resistanceToResistanceRangeString(self, resistancerange):
@@ -147,5 +152,5 @@ class TempControl():
         return resistancerangestring
 
     def getCurrentResistanceRangeString(self):
-        data = self.a.temperature_controller.ask("RDGRNG? 1")
-        return data.split(",")[2]
+        data = self.a.temperature_controller.ask("RDGRNG? {}".format(self.controlChannel))
+        return data.split(b",")[2]

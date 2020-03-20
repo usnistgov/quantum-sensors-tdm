@@ -90,7 +90,7 @@
     <property name="geometry">
      <rect>
       <x>420</x>
-      <y>190</y>
+      <y>230</y>
       <width>361</width>
       <height>23</height>
      </rect>
@@ -611,13 +611,59 @@
     <property name="geometry">
      <rect>
       <x>400</x>
-      <y>210</y>
+      <y>280</y>
       <width>401</width>
       <height>16</height>
      </rect>
     </property>
     <property name="orientation">
      <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="controlChannelComboBox">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>190</y>
+      <width>91</width>
+      <height>22</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="controlChannelLabel">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>190</y>
+      <width>181</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Control Channel</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stopControlButton">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>260</y>
+      <width>361</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>STOP TEMP CONTROL (FROM CONTROL STATE ONLY)</string>
     </property>
    </widget>
   </widget>

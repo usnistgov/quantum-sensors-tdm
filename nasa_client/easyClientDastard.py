@@ -1,4 +1,4 @@
-import rpc_client_for_easy_client
+from . import rpc_client_for_easy_client
 import numpy
 import zmq
 import time
@@ -36,6 +36,7 @@ class EasyClientDastard():
         self.baseport = baseport
         self.context = zmq.Context()
         self.samplePeriod = None # learn this from first observed data packet
+        self._restoredOldTriggerSettings = False
         if setupOnInit:
             self.setupAndChooseChannels()
 
@@ -47,7 +48,7 @@ class EasyClientDastard():
         self.statusSub.setsockopt(zmq.RCVTIMEO, 1000) # this doesn't seem to do anything
         self.statusSub.setsockopt( zmq.LINGER,      0 )
         self.statusSub.connect(address)
-        print("Collecting updates from dastard at %s" % address)
+        print(("Collecting updates from dastard at %s" % address))
         self.statusSub.setsockopt(zmq.SUBSCRIBE, "")
         self.messagesSeen = collections.Counter()
 
@@ -59,13 +60,13 @@ class EasyClientDastard():
         self.recordSub.setsockopt(zmq.RCVHWM, 5000)
         self.recordSub.setsockopt(zmq.LINGER, 0)
         self.recordSub.connect(self.recordSubAddress)
-        if verbose: print("Collecting records from dastard at %s" % self.recordSubAddress)
+        if verbose: print(("Collecting records from dastard at %s" % self.recordSubAddress))
         self.recordSub.setsockopt(zmq.SUBSCRIBE, "")
 
     def _connectRPC(self):
         """ connect to the rpc port of dastard """
         self.rpc = rpc_client_for_easy_client.JSONClient((self.host, self.baseport))
-        print("Dastard is at %s:%d" % (self.host, self.baseport))
+        print(("Dastard is at %s:%d" % (self.host, self.baseport)))
 
     def _getStatus(self):
         self._sourceRecieved = False
@@ -80,22 +81,22 @@ class EasyClientDastard():
             topic, contents = self.statusSub.recv_multipart()
             self.messagesSeen[topic] += 1
             self._handleStatusMessage(topic, contents)
-            print self.messagesSeen, self._sourceRecieved, self._statusRecieved
-            if self._sourceRecieved and self._statusRecieved:
+            print((self.messagesSeen))
+            if all([self.messagesSeen[t]>0 for t in ["STATUS", "LANCERO", "TRIGGER", "SIMPULSE"]]):
                     return
         raise Exception("didn't get source and status messages")
 
     def _handleStatusMessage(self,topic, contents):
         if DEBUG:
-            print "topic=%s"%topic
-            print contents
+            print(("topic=%s"%topic))
+            print(contents)
         if topic in ["CURRENTTIME"]:
             if DEBUG:
-                print("skipping topic %s"%topic)
+                print(("skipping topic %s"%topic))
             return
         d = json.loads(contents)
         if DEBUG:
-            print d
+            print(d)
         if topic == "STATUS":
             self._statusRecieved = True
             self.numChannels = d["Nchannels"]
@@ -108,28 +109,36 @@ class EasyClientDastard():
             else:
                 self.numRows = d["Nrow"][0]
             self.sourceName = d["SourceName"]
+            self._oldNSamples = d["Nsamples"]
+            self._oldNPresamples = d["Npresamp"]
         if topic == "SIMPULSE" and self.sourceName=="SimPulses":
             if not DEBUG:
                 raise Exception("dont use a SIMPULSE in non-debug mode")
             print("using SIMPULSE")
             self.nSamp = 2
             self.clockMhz = 125
-            self._sourceRecieved = True
         if topic == "LANCERO" and self.sourceName=="Lancero":
             self.nSamp = d["DastardOutput"]["Nsamp"]
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
-            self._sourceRecieved = True
+        if topic == "TRIGGER":
+            self._oldTriggerDict = d[0]
 
+    def restoreOldTriggerSettings(self):
+        configLengths  = {"Nsamp": self._oldNSamples, "Npre": self._oldNPresamples}
+        self.rpc.call("SourceControl.ConfigurePulseLengths", configLengths)
+        self.rpc.call("SourceControl.ConfigureTriggers", self._oldTriggerDict)
+        self._restoredOldTriggerSettings = True
 
 
     def _configDastardAutoTrigs(self):
         """ configure dastard to have auto trigger with about 1/20th of a second record lengths """
-        configLengths  = {"Nsamp": 20000, "Npre": 3}
+        configLengths  = {"Nsamp": 10000, "Npre": 5000}
         self.rpc.call("SourceControl.ConfigurePulseLengths", configLengths)
-        autoDelayNanoseconds = int(0)
         configTriggers = {"AutoTrigger":True,
-                  "AutoDelay":autoDelayNanoseconds,
+                  "AutoDelay":int(0),
                   "ChannelIndicies":self.channelIndicies}
+        # sending new trigger settings should reset the last trigger value in Dastard
+        # so all channels trigge at the same starting point
         self.rpc.call("SourceControl.ConfigureTriggers", configTriggers)
         # possibly should be using CoupleErrToFB here
 
@@ -146,11 +155,11 @@ class EasyClientDastard():
         self.samplePeriod = header["samplePeriod"]
         self.linePeriodSeconds = self.samplePeriod/self.numRows
         self.linePeriod = int(round(self.linePeriodSeconds*self.clockMhz*1e6))
-        print self
+        print(self)
 
     @property
     def channelIndicies(self):
-        return range(self.numChannels)
+        return list(range(self.numChannels))
 
     def getSummaryPackets(self):
         raise Exception("not implmented (there are no summary packets in dastard)")
@@ -158,14 +167,18 @@ class EasyClientDastard():
 
     def clearSocket(self):
         """ recieve all messages queued on the sub socket and throw them away """
+        # close and reconnect to flush the recieve side buffer
+        # recieve data until there is no more data to recieve to
+        self.recordSub.close() # close socket and reconnect, rely on ZMQ_LINGER=0
+        self._connectRecordSub(verbose=False)
+        # the ZMQ send hwm should be set to 1 in dastard
+        # and there is a channel with buffer size 500 in dastard
         # while True:
         #     try:
         #         self.recordSub.recv(zmq.NOBLOCK)
         #     except zmq.ZMQError:
         #         break
         # return
-        self.recordSub.close() # close socket and reconnect, rely on ZMQ_LINGER=0
-        self._connectRecordSub(verbose=False)
 
     def getMessage(self, sendMode=0):
         m = self.recordSub.recv_multipart()
@@ -180,39 +193,6 @@ class EasyClientDastard():
         assert header["nsamples"] == len(data)
         assert header["headerVersion"] == 0
         return header, data
-
-    def clearWithLatencyCheck(self, delaySeconds):
-        """ return the first message (header,data) timestamped at least delaySeconds after the call
-        to this function. if delayseconds is zero negative, returns the first message read """
-        delayNano=int(delaySeconds*1e9)
-        mytimeNano = time.time()*1e9
-        self.clearSocket()
-        header, data = self.getMessage()
-        firstDastardNano = header["unixnano"]
-        if mytimeNano<firstDastardNano:
-            raise Exception("doesnt seem right")
-        if delayNano <=0:
-            raise Exception("use positive delaySeconds")
-        while True:
-            dastardNano = header["unixnano"]
-            # print("chan {}, nanoRel {}, delayNano {}".format(header["chan"],
-            # dastardNano-mytimeNano,delayNano))
-            if dastardNano - mytimeNano > delayNano:
-                return header, data
-            header, data = self.getMessage()
-
-
-
-    def reshapeDataToColRowFrame(self, dataIn):
-        dataOut = numpy.zeros((self.numColumns, self.numRows, dataIn.shape[1], 2),dtype="int32")
-        for col in range(self.numColumns):
-            for row in range(self.numRows):
-                errorIndex = self.errorChannel(col, row)
-                fbIndex = self.fbChannel(col, row)
-                # [col, row, frame, 0=error/1=feedback]
-                dataOut[col,row,:,0] = dataIn[errorIndex,:]
-                dataOut[col,row,:,1] = dataIn[fbIndex,:]
-        return dataOut
 
     def fbChannel(self, col, row):
         return 2*(col*self.numRows+row)+1
@@ -232,8 +212,6 @@ class EasyClientDastard():
                   "MixFractions": mixFractions.flatten().tolist()}
         self.rpc.call("SourceControl.ConfigureMixFraction", config)
 
-
-
     def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3):
         '''
         getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0)
@@ -245,58 +223,67 @@ class EasyClientDastard():
         retries - how many times to retry upon an error
         '''
 
-        header, data = self.clearWithLatencyCheck(delaySeconds) # works best on same computer, use bigger latency on different computers
-        acceptFramecount = header["triggerFramecount"]
-        numPoints = [0]*self.numChannels
-        messagesSeen = [0]*self.numChannels
-        firstFramecount = -np.ones(self.numChannels,dtype=np.int64) # triggerFramecount of first saple of first data in datas
-        lastFramecount = -np.ones(self.numChannels,dtype=np.int64) # triggerFramecount of last sample of last data in datas
-        headers, datas = [],[]
+        if self._restoredOldTriggerSettings:
+            self.setupAndChooseChannels()
+
+        delayNano=int(delaySeconds*1e9)
+        mytimeNano = time.time()*1e9
+        self.clearSocket()
+        counter = collections.Counter()
+        firstTriggerFramecount = None
+        target_triggerFramecount = -1 # impossible framecount
+        datas_dict = collections.defaultdict(lambda: [None]*self.numChannels)
+        i = 0
+        n_thrown_away_for_delay_seconds = 0
         while True:
-            if header["chan"] >= self.numChannels:
-                raise Exception("shouldn't be possible")
-            channelIndex = header["chan"]
-            triggerFramecount = header['triggerFramecount']
-            # trigger framecount is the first sample framecount because we set npresamples = 0
-            if triggerFramecount < acceptFramecount:
-                pass
-                # raise Exception("got a triggerFramecount from backwards in time")
-            elif numPoints[channelIndex] > minimumNumPoints:
-                pass
-            else:
-                if lastFramecount[channelIndex] < triggerFramecount:
-                    if lastFramecount[channelIndex] != triggerFramecount-1 and lastFramecount[channelIndex]>0:
-                        # print "lastFramecount {}".format(lastFramecount)
-                        raise Exception('getNewData is not getting continuous data, channelIndex {}, lastFramecount[channelIndex]{},\
-                        triggerFramecount-1 {}'.format(channelIndex,lastFramecount[channelIndex], triggerFramecount-1))
-                    lastFramecount[channelIndex] = triggerFramecount+len(data)-1
-                if firstFramecount[channelIndex] < 0:
-                    firstFramecount[channelIndex] = triggerFramecount
-                datas.append(data)
-                headers.append(header)
-            messagesSeen[channelIndex]+=1
-            numPoints = lastFramecount-firstFramecount+1
-            #print 'numPoints',numPoints
-            if all(numPoints>minimumNumPoints):
-                break
-            # raise an error if a channel is too far behind another
-            tooFarBehindSec = 0.5
-            tooFarBehindSamp = int(round(tooFarBehindSec/self.samplePeriod))
-            if numPoints.max()-numPoints.min() > tooFarBehindSamp:
-                print numPoints
-                print messagesSeen
-                raise Exception("missing some channels?")
-            header, data = self.getMessage() # a message carries data from a single channel
+            i+=1
+            if i>40*self.numChannels:
+                raise Exception("couldn't get the data you wantd")
+            header, data = self.getMessage()
+            dastardNano = header["unixnano"]
+            if delayNano >= 0 and (mytimeNano + delayNano > dastardNano):
+                n_thrown_away_for_delay_seconds+=1
+                continue
+            # if delayNano < 0 accept any data
+            if firstTriggerFramecount is None:
+                firstTriggerFramecount=header["triggerFramecount"]
+            counter[header["triggerFramecount"]-firstTriggerFramecount] += 1
+            n_observed = counter[header["triggerFramecount"]-firstTriggerFramecount]
+            datas_dict[header["triggerFramecount"]][header["chan"]] = data
+            if n_observed == self.numChannels:
+                # check if we have enough samples
+                keys = sorted(datas_dict.keys())
+                k_complete = [k for k in keys if counter[k-firstTriggerFramecount] == self.numChannels]
+                n_have = len(data)*len(k_complete)
+                if n_have >= minimumNumPoints:
+                    break
+        
+        # print "keys",keys
+        # print "lengths", [len(datas_dict[k]) for k in keys]
+        # print "k_complete", k_complete
+        # print "n_have", n_have
+        # print "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds
+        # print self.numChannels, self.numRows, self.numColumns
+        # print "triggerFramecount Counter", counter
+        assert(all(np.diff(k_complete)==len(data)))
 
-        # make sure all the data is aligned
-        # the response is to just throw away all the data grabbed so far
-        # and hope the next set is aligned
-        # it would be better to be smarter here
-        if any(numpy.diff(firstFramecount)>0):
-            raise Exception('getNewData does not have all time aligned data')
 
-        dataOut = self.sortPackets(datas, headers, numPoints, firstFramecount)
-        dataOut = self.reshapeDataToColRowFrame(dataOut)
+        dataOut = np.zeros((self.numColumns, self.numRows, n_have, 2),dtype="int32")
+        for col in range(self.numColumns):
+            for row in range(self.numRows):
+                errorIndex = self.errorChannel(col, row)
+                fbIndex = self.fbChannel(col, row)
+                # [col, row, frame, 0=error/1=feedback]
+                j=0    
+                for k in k_complete:
+                    data_error = datas_dict[k][errorIndex]
+                    data_fb = datas_dict[k][fbIndex]
+                    n = len(data_fb)
+                    assert(len(data_error)==n)
+                    dataOut[col,row,j:j+n,0] = data_error
+                    dataOut[col,row,j:j+n,1] = data_fb
+                    j += len(data_fb)
+
 
         if sendMode != "raw":
             dataOut[:,:,:,1]=dataOut[:,:,:,1]>>2 # ignore 2 lsbs (frame bit and trigger)
@@ -313,21 +300,8 @@ class EasyClientDastard():
         return dataOut
 
 
-    def sortPackets(self, datas, headers, numPoints, firstFramecount):
-        dataOut = numpy.zeros((self.numChannels,numpy.min(numPoints)),dtype="int32")
-        for data, header in zip(datas, headers):
-            channelIndex = header["chan"]
-            indexOfFirstSample = int(header["triggerFramecount"]-firstFramecount[channelIndex])
-            indexOfLastSample = int(indexOfFirstSample+len(data))
-            if indexOfLastSample >= dataOut.shape[1]:
-                indexOfLastSample = dataOut.shape[1]
-            if indexOfFirstSample<=indexOfLastSample:
-                dataOut[channelIndex, indexOfFirstSample:indexOfLastSample] = data[:indexOfLastSample-indexOfFirstSample]
-
-        return dataOut
-
     def toVolts(self,dataOut, sendmode):
-        print "doing toVolts"
+        print("doing toVolts")
         dataOut = numpy.array(dataOut,dtype="float64")
         if sendmode == 0:
             dataOut[:,:,:,0]/=float((2**12-1)*self.nSamp) # error
@@ -400,7 +374,7 @@ if __name__ == '__main__':
             plt.legend()
 
         plt.show()
-        input()
+        eval(input())
 
     if True:
         # search for drops in one channel
@@ -417,7 +391,7 @@ if __name__ == '__main__':
                 print(i)
             firsts.append(header["triggerFramecount"])
             if np.sum(np.diff(firsts)<0)>0:
-                print np.sum(np.diff(firsts)<0), firsts
+                print((np.sum(np.diff(firsts)<0), firsts))
             if np.sum(np.diff(firsts)>len(data))>ndrops:
                 ndrops+=1
-                print "drop", ndrops, np.diff(firsts)/len(data)
+                print(("drop", ndrops, np.diff(firsts)/len(data)))

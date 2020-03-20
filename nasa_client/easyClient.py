@@ -1,5 +1,5 @@
-import easyClientNDFB
-import easyClientDastard
+from . import easyClientNDFB
+from . import easyClientDastard
 
 
 def EasyClient(host='localhost', port=2011, clockmhz=50):

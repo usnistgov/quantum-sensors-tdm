@@ -93,7 +93,7 @@ class Zaber(serial_instrument.SerialInstrument):
 
         result = self.serial.writelist(bytestowrite)
         if result != len(bytestowrite):
-            print 'Error in serial write to Zaber, result, len(bytestowrite)', result, len(bytestowrite)
+            print(('Error in serial write to Zaber, result, len(bytestowrite)', result, len(bytestowrite)))
         return result
 
 

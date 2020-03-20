@@ -12,7 +12,7 @@ import numpy
 import pylab
 import scipy
 from scipy.interpolate import interp1d
-from tkSimpleDialog import askfloat
+from tkinter.simpledialog import askfloat
 import serial_instrument
 import serial
 
@@ -39,15 +39,15 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         #self.compare_identity()
 
         self.control_mode_switch = Lookup({
-            'closed' : '1',
-            'zone' : '2',
-            'open' : '3',
-            'off' : '4'
+            'closed' : b'1',
+            'zone' : b'2',
+            'open' : b'3',
+            'off' : b'4'
             })
 
         self.on_off_switch = Lookup({
-            'off' : '0',
-            'on' : '1'
+            'off' : b'0',
+            'on' : b'1'
             })
 
     def getTemperature(self, channel=1):
@@ -80,8 +80,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         #    'off' : '4'
         #}
 
-        #commandstring = 'CMODE ' + switch.get(controlmode,'4')
-        commandstring = 'CMODE ' + self.control_mode_switch.get(controlmode,'4')
+        commandstring = b'CMODE ' + self.control_mode_switch.get(controlmode)
         self.write(commandstring)
 
     def getControlMode(self):
@@ -94,7 +93,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         #    '4' : 'off'
         #}
 
-        commandstring = 'CMODE?'
+        commandstring = b'CMODE?'
         result = self.ask(commandstring).rstrip()
         #mode = switch.get(result, 'com error')
         mode = self.control_mode_switch.get_key(result)
@@ -112,7 +111,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         commandstring = 'PID?'
         result = self.ask(commandstring)
-        valuestrings = result.split(',')
+        valuestrings = result.split(b',')
         PIDvalues = [0,0,0]
         PIDvalues[0] = float(valuestrings[0])
         PIDvalues[1] = float(valuestrings[1])
@@ -265,7 +264,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         commandstring = 'RAMP?'
         result = self.ask(commandstring)
-        results = result.split(',')
+        results = result.split(','.encode())
         ramp = ['off', 0]
         ramp[0] = switch.get(results[0] , 'com error')
         ramp[1] = float(results[1])
@@ -532,7 +531,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''
 
         if curveindex < 1 or curveindex > 20:
-            print ' 1 <= curveindex <= 20 for lakeshore 370'
+            print(' 1 <= curveindex <= 20 for lakeshore 370')
             return 1
 
 
@@ -558,7 +557,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
             datapointstring = 'CRVPT ' + str(curveindex) + ', ' + str(pntindex) + ', ' + stringRPoint + ', ' + stringTPoint
             self.write(datapointstring)
-            print datapointstring
+            print(datapointstring)
 
         if makeFig:
             pylab.figure()
@@ -585,11 +584,11 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''
 
         if curveindex < 1 or curveindex > 20:
-            print ' 1 <= curveindex <= 20 for lakeshore 370'
+            print(' 1 <= curveindex <= 20 for lakeshore 370')
             return 1
 
         #rawdata = read_array(filename) #obsolete, replace with genfromtxt
-	rawdata = numpy.genfromtxt(filename)
+        rawdata = numpy.genfromtxt(filename)
         rawdatat = rawdata.transpose()
         datat = numpy.array(rawdatat[:,rawdatat[datacol,:].argsort()])
 
@@ -614,9 +613,9 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             Rs = scipy.linspace(min(datat[datacol]),max(datat[datacol]), num = 200)
         else:
             Rs = datat[datacol]
-	Rs[1] = 2730
-	Rs[2] = 2930
-	Rs[3] = 3100
+        Rs[1] = 2730
+        Rs[2] = 2930
+        Rs[3] = 3100
         Temps = f(Rs)
 
         pylab.figure()
@@ -630,7 +629,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CRVHDR ' + str(curveindex) + ', ' + thermname + ', ' + serialnumber + ', '+str(units)+', '+\
             str(temp_lim)+', '+ str(tempco)
         self.write(commandstring)
-        print commandstring
+        print(commandstring)
 
         # Send Data Points
         for i in range(len(Rs)):
@@ -650,7 +649,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
             datapointstring = 'CRVPT ' + str(curveindex) + ', ' + str(pntindex) + ', ' + stringlogrofpoint + ', ' + stringtempofpoint
             self.write(datapointstring)
-            print datapointstring
+            print(datapointstring)
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
@@ -680,7 +679,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''
 
         if curveindex < 1 or curveindex > 20:
-            print ' 1 <= curveindex <= 20 for lakeshore 370'
+            print(' 1 <= curveindex <= 20 for lakeshore 370')
             return 1
 
         #rawdata = read_array(filename)
@@ -722,7 +721,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CRVHDR ' + str(curveindex) + ', ' + thermname + ', ' + serialnumber + ', '+str(units)+', '+\
             str(temp_lim)+', '+ str(tempco)
         self.write(commandstring)
-        print commandstring
+        print(commandstring)
 
         # Send Data Points
         for i in range(len(Rs)):
@@ -739,7 +738,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
             datapointstring = 'CRVPT ' + str(curveindex) + ', ' + str(pntindex) + ', ' + stringlogrofpoint + ', ' + stringtempofpoint
             self.write(datapointstring)
-            print datapointstring
+            print(datapointstring)
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
@@ -1230,11 +1229,11 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''
 
         if curveindex < 1 or curveindex > 20:
-            print ' 1 <= curveindex <= 20 for lakeshore 370'
+            print(' 1 <= curveindex <= 20 for lakeshore 370')
             return 1
 
         #rawdata = read_array(filename) #obsolete, replace with genfromtxt
-	rawdata = numpy.genfromtxt(filename)
+        rawdata = numpy.genfromtxt(filename)
         rawdatat = rawdata.transpose()
         datat = numpy.array(rawdatat[:,rawdatat[datacol,:].argsort()])
 
@@ -1272,7 +1271,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CRVHDR ' + str(curveindex) + ', ' + thermname + ', ' + serialnumber + ', '+str(units)+', '+\
             str(temp_lim)+', '+ str(tempco)
         self.write(commandstring)
-        print commandstring
+        print(commandstring)
 
         # Send Data Points
         for i in range(len(Rs)):
@@ -1292,7 +1291,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
             datapointstring = 'CRVPT ' + str(curveindex) + ', ' + str(pntindex) + ', ' + stringlogrofpoint + ', ' + stringtempofpoint
             self.write(datapointstring)
-            print datapointstring
+            print(datapointstring)
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
@@ -1320,7 +1319,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''
 
         if curveindex < 1 or curveindex > 20:
-            print ' 1 <= curveindex <= 20 for lakeshore 370'
+            print(' 1 <= curveindex <= 20 for lakeshore 370')
             return 1
 
         #rawdata = read_array(filename)
@@ -1362,7 +1361,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CRVHDR ' + str(curveindex) + ', ' + thermname + ', ' + serialnumber + ', '+str(units)+', '+\
             str(temp_lim)+', '+ str(tempco)
         self.write(commandstring)
-        print commandstring
+        print(commandstring)
 
         # Send Data Points
         for i in range(len(Rs)):
@@ -1379,7 +1378,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
             datapointstring = 'CRVPT ' + str(curveindex) + ', ' + str(pntindex) + ', ' + stringlogrofpoint + ', ' + stringtempofpoint
             self.write(datapointstring)
-            print datapointstring
+            print(datapointstring)
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')

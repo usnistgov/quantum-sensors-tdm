@@ -15,7 +15,7 @@ def setSerialPort(port, baud=115200, shared=True):
     
     '''Usage: setSerialPort(port)   - Set the serial port from named_serial'''
     
-    print "serial socket server: set serial [%s] %i" % (port, baud)
+    print(("serial socket server: set serial [%s] %i" % (port, baud)))
     
     serialport = named_serial.Serial(port, baud=baud, shared=shared)
     
@@ -23,7 +23,7 @@ def setSerialPort(port, baud=115200, shared=True):
 
 def send(serialport, msg):
 
-    print "Received [%s]" % msg
+    print(("Received [%s]" % msg))
     #print serialport
 
     msg_array = msg.split(" ")
@@ -53,7 +53,7 @@ def send(serialport, msg):
 def breakout_packets(serialport, packet):
 
     packet_array = packet.split('\n')
-    print "Received %i data packets" % len(packet_array)
+    print(("Received %i data packets" % len(packet_array)))
     #print packet
     
     for p in packet_array:
@@ -65,7 +65,7 @@ s.bind((HOST, PORT))
 
 s.listen(1)
 conn, addr = s.accept()
-print 'Connected by', addr
+print(('Connected by', addr))
 
 serialport = setSerialPort(serial_port)
 #print serialport
@@ -74,7 +74,7 @@ while 1:
     ###receive up to 1024 bytes
     data = conn.recv(1024)
     if not data: break
-    print "Received ", len(data), " bytes"
+    print(("Received ", len(data), " bytes"))
     #print "Data = ", data
     breakout_packets(serialport, data)
 
