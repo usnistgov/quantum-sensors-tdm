@@ -1,3 +1,4 @@
+""" example script to look at adr gui logs"""
 import numpy as np
 import pylab as plt
 import matplotlib.dates as mdates

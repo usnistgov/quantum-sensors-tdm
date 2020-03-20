@@ -17,6 +17,7 @@ import numpy
 import socket
 import struct
 
+from . import network_pipe
 from . import xcaldaq_commands
 import zmq
 
@@ -453,7 +454,6 @@ class ZMQClient(NDFBClient):
 
 
 
-from . import network_pipe
 
 class TCPClient(NDFBClient):
     """

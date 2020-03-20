@@ -1,8 +1,8 @@
 from time import sleep
-import serial_instrument
+from . import serial_instrument
 import serial
 import numpy as np
-import ethernet_instrument
+from . import ethernet_instrument
 import socket
 
 class uxMAN_Serial(serial_instrument.SerialInstrument):

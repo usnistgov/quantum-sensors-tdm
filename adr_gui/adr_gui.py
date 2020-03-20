@@ -4,19 +4,18 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import PyQt5.uic
-import matplotlibCanvas
+from . import matplotlibCanvas
 import numpy
 import time
-import tempControl
-import pccc_card
-import tower_power_supplies
-import daqinfo
+from . import tempControl
+from instruments import pccc_card
+from instruments import tower_power_supplies
 import argparse
 import os
 import zmq
 import struct
 from lxml import etree
-import rpc_client_for_easy_client # for stopping dastard
+from nasa_client import JSONClient # for stopping dastard
 
 class MyLogger():
     def __init__(self):
@@ -342,7 +341,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         # Trying to stop dastard source.
         ########################################################################
         try:
-            rpc = rpc_client_for_easy_client.JSONClient(("localhost", 5500))
+            rpc = JSONClient(("localhost", 5500))
             rpc.call("SourceControl.Stop", "")
             rpc.close()
         except Exception as ex:

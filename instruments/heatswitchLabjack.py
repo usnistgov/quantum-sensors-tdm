@@ -1,4 +1,4 @@
-import labjack
+from . import labjack
 import time
 
 class HeatswitchLabjack():

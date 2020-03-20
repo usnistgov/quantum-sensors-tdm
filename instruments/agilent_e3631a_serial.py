@@ -5,7 +5,7 @@ Created on Jan 12, 2010
 '''
 
 from time import sleep
-import serial_instrument
+from . import serial_instrument
 import serial
 import numpy as np
 

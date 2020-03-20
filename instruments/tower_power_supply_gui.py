@@ -14,7 +14,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-import tower_power_supplies
+from . import tower_power_supplies
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -103,12 +103,12 @@ class MainWindow(QMainWindow):
             self.power_state_string = "Power is OFF"
         self.power_state_label.setText(self.power_state_string)
 
-def main(args):
-    app = QApplication(args)
+def main():
+    app = QApplication(sys.argv)
     win = MainWindow(app)
     win.show()
     win.setWindowIcon(QIcon("towerpowericon.png"))
     app.exec_()
 
 if __name__=="__main__":
-    main(sys.argv)
+    main()

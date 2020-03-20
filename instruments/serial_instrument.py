@@ -9,7 +9,7 @@ Created on Feb 17, 2010
 
 #import time
 
-import instrument
+from . import instrument
 from named_serial import Serial
 import serial
 import numpy as np

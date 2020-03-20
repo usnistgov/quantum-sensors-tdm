@@ -40,11 +40,18 @@ def __setup():
         port, name = line.split()
         _namedports[name] = port
     return _namedports
-namedports = __setup()
+
+_setup_done = False
+def namedports():
+    global _namedports
+    if not _setup_done:
+        _namedports = __setup()
+    return _namedports
+
 
 def getnames():
     '''Convenience routine for building ui - returns all defined names'''
-    return list(namedports.keys())
+    return list(namedports().keys())
 
 class Serial(serial.Serial):
     ''' Wrapper class around the serial.Serial that uses logical device
@@ -63,12 +70,12 @@ class Serial(serial.Serial):
         self.the_shared = shared
 
         # pass other serial init args?
-        if port not in namedports:
+        if port not in namedports():
             # Hmmm - raise an exception or just pass it on to serial
             # allowing use of "normal" device names?
             # This is probably better.
             raise ValueError("Named port '%s' not in configuration file" % port)
-        myport = namedports[port]
+        myport = namedports()[port]
         try:
             # serial.Serial.__init__(self, myport, baud)
             super(Serial, self).__init__(port=myport, baudrate=baud, **kwargs) #better?

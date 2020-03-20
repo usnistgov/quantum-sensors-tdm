@@ -4,7 +4,7 @@ Created on Mar 11, 2009
 @author: bennett
 '''
 
-from lookup import Lookup
+from .lookup import Lookup
 from time import sleep
 import math
 import numpy
@@ -12,8 +12,7 @@ import numpy
 import pylab
 import scipy
 from scipy.interpolate import interp1d
-from tkinter.simpledialog import askfloat
-import serial_instrument
+from . import serial_instrument
 import serial
 
 class Lakeshore370(serial_instrument.SerialInstrument):

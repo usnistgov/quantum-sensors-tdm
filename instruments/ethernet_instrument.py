@@ -4,7 +4,7 @@ created June 11, 2012 by Frank Schima
 '''
 import socket
 import time
-import instrument
+from . import instrument
 
 
 class EthernetInstrument(instrument.Instrument):

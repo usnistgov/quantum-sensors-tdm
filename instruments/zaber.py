@@ -2,7 +2,7 @@ import math
 from time import sleep
 import struct
 
-import serial_instrument
+from . import serial_instrument
 
 #########################################################################
 #
