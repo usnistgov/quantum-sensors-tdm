@@ -604,7 +604,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
 
 
-if __name__ == '__main__':
+def main():
     import sys
     parser = argparse.ArgumentParser()
     parser.add_argument("--fastmag",help="remove mag up and down times for testing",action="store_true")
@@ -618,3 +618,6 @@ if __name__ == '__main__':
     mainWin = ADR_Gui(min_mag_time)
     mainWin.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
