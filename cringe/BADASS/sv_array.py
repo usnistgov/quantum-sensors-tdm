@@ -1,9 +1,9 @@
 import sys
 import optparse
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 # from PyUtil.terminal_color import terminal_color
 
@@ -11,7 +11,7 @@ from . import state_vector_builder
 import named_serial
 import time
 
-class SV_array(QtGui.QWidget):
+class SV_array(QWidget):
 
     def __init__(self, parent=None, seqln=None, addr=None):
         super(SV_array, self).__init__()
@@ -45,52 +45,52 @@ class SV_array(QtGui.QWidget):
         self.setWindowTitle("PRISM")	# Program for Reconfiguration & Initialization of State Matrices
         self.setGeometry(50,50,700,900)
 
-        self.layout_widget = QtGui.QWidget(self)
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout_widget = QWidget(self)
+        self.layout = QVBoxLayout(self)
 
-        self.globals_widget = QtGui.QWidget(self.layout_widget)
-        self.globals_layout = QtGui.QGridLayout(self.globals_widget)
+        self.globals_widget = QWidget(self.layout_widget)
+        self.globals_layout = QGridLayout(self.globals_widget)
 
-# 		self.seqln_indicator = QtGui.QLineEdit()
+# 		self.seqln_indicator = QLineEdit()
 # 		self.seqln_indicator.setReadOnly(True)
 # 		self.seqln_indicator.setFixedWidth(40)
 # 		self.seqln_indicator.setText(str(seqln))
 # 		self.seqln_indicator.setAlignment(QtCore.Qt.AlignRight)
 # 		self.globals_layout.addWidget(self.seqln_indicator,0,0,QtCore.Qt.AlignLeft)
 # 		
-# 		self.seqln_label = QtGui.QLabel("states in sequence")
+# 		self.seqln_label = QLabel("states in sequence")
 # 		self.globals_layout.addWidget(self.seqln_label,0,1,1,4,QtCore.Qt.AlignLeft)
 
-        self.loadseq = QtGui.QPushButton(self, text = "load sequence")
+        self.loadseq = QPushButton(self, text = "load sequence")
         self.globals_layout.addWidget(self.loadseq,0,0,QtCore.Qt.AlignTop)
 
-        self.saveseq = QtGui.QPushButton(self, text = "save sequence")
+        self.saveseq = QPushButton(self, text = "save sequence")
         self.globals_layout.addWidget(self.saveseq,0,1,QtCore.Qt.AlignTop)
 
-        self.filenameEdit = QtGui.QLineEdit()
+        self.filenameEdit = QLineEdit()
         self.filenameEdit.setReadOnly(True)
         self.globals_layout.addWidget(self.filenameEdit,0,2,1,5)
 
-        self.filename_label = QtGui.QLabel("file")
+        self.filename_label = QLabel("file")
         self.globals_layout.addWidget(self.filename_label,0,7,QtCore.Qt.AlignLeft)
 
-        self.setseq = QtGui.QPushButton(self, text = "send sequence")
+        self.setseq = QPushButton(self, text = "send sequence")
         self.setseq.setToolTip("send current state vectors to card")
         self.globals_layout.addWidget(self.setseq,0,8,QtCore.Qt.AlignTop)
 
-        self.initseq = QtGui.QPushButton(self, text = "initialize sequence")
+        self.initseq = QPushButton(self, text = "initialize sequence")
         self.initseq.setToolTip("set all internal state vectors to 0x0000, hit send sequence to send null states to card")
         self.globals_layout.addWidget(self.initseq,0,9,QtCore.Qt.AlignTop)
         self.initseq.clicked.connect(self.initSeq)
 
-        self.restore_seq = QtGui.QPushButton(self, text = "restore sequence")
+        self.restore_seq = QPushButton(self, text = "restore sequence")
         self.restore_seq.setToolTip("restore all internal state vectors to values from last load file, hit send sequence to send restored states to card")
         self.globals_layout.addWidget(self.restore_seq,0,10,QtCore.Qt.AlignTop)
         self.restore_seq.clicked.connect(self.fillSV)
 
 
-        self.arrayframe = QtGui.QWidget(self.layout_widget)
-        self.array_layout = QtGui.QVBoxLayout(self.arrayframe)
+        self.arrayframe = QWidget(self.layout_widget)
+        self.array_layout = QVBoxLayout(self.arrayframe)
         self.array_layout.setSpacing(0)
         self.array_layout.setMargin(0)
 
@@ -101,7 +101,7 @@ class SV_array(QtGui.QWidget):
                 self.state_vectors.append(state_vector_builder.state_vector_builder(self,self.array_layout,state=i,enb=0, vectors=self.state_vector_val, serialport=self.serialport, cardaddr=self.addr))
             self.state_vector_val.append(0)
 
-        self.scrollarea = QtGui.QScrollArea(self.layout_widget)
+        self.scrollarea = QScrollArea(self.layout_widget)
         self.scrollarea.setWidget(self.arrayframe)
         self.layout.addWidget(self.globals_widget)
         self.layout.addWidget(self.scrollarea)
@@ -207,7 +207,7 @@ class SV_array(QtGui.QWidget):
 
 def main():
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     win = SV_array(seqln=seqln, addr=addr)
     win.show()
     sys.exit(app.exec_())

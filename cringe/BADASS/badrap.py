@@ -2,14 +2,14 @@ import sys
 import optparse
 import struct
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import named_serial
 from .badchn_builder import badChn
 
-class badrap(QtGui.QWidget):
+class badrap(QWidget):
 
 # 	def __init__(self, parent=None, **kwargs):
 # 		print kwargs
@@ -33,10 +33,10 @@ class badrap(QtGui.QWidget):
         self.white = "FFFFFF"
         self.grey = "808080"
 
-# 		print QtGui.QApplication.palette()	
-# 		self.color_list = QtGui.QColor.colorNames()
+# 		print QApplication.palette()	
+# 		self.color_list = QColor.colorNames()
 # 		print self.color_list
-# 		self.tt_palette = QtGui.QPalette(self)
+# 		self.tt_palette = QPalette(self)
 # 		self.tt_palette.setColor(2, 18, Qt.white)
 # 		self.tt_palette.setColor(2, 19, Qt.black)
 # 		self.tt_palette.setColor(2,10,Qt.yellow)
@@ -86,37 +86,37 @@ class badrap(QtGui.QWidget):
         self.setGeometry(30,30,1200,800)
         self.setContentsMargins(0,0,0,0)
 
-        self.layout_widget = QtGui.QWidget(self)
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout_widget = QWidget(self)
+        self.layout = QVBoxLayout(self)
 
         '''
         build widget for GLOBALS header
         '''
         if parent == None:
-            self.class_interface_widget = QtGui.QGroupBox(self)
+            self.class_interface_widget = QGroupBox(self)
             self.class_interface_widget.setFixedWidth(1035)
             self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
             self.class_interface_widget.setTitle("CLASS INTERFACE CONTROLS")
 
-            self.controls_layout = QtGui.QGridLayout(self.class_interface_widget)
+            self.controls_layout = QGridLayout(self.class_interface_widget)
             self.controls_layout.setContentsMargins(5,5,5,5)
             self.controls_layout.setSpacing(5)
 
-    # 		self.controls_widget = QtGui.QWidget(self.layout_widget)
-    # 		self.globals_layout = QtGui.QGridLayout(self.globals_widget)
+    # 		self.controls_widget = QWidget(self.layout_widget)
+    # 		self.globals_layout = QGridLayout(self.globals_widget)
 
 
-            self.addr_indicator = QtGui.QLineEdit()
+            self.addr_indicator = QLineEdit()
             self.addr_indicator.setReadOnly(True)
             self.addr_indicator.setText(str(addr))
             self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
             self.addr_indicator.setFocusPolicy(Qt.NoFocus)
             self.controls_layout.addWidget(self.addr_indicator,0,0,QtCore.Qt.AlignRight)
 
-            self.addr_label = QtGui.QLabel("card address")
+            self.addr_label = QLabel("card address")
             self.controls_layout.addWidget(self.addr_label,0,1,QtCore.Qt.AlignLeft)
 
-            self.seqln_indicator = QtGui.QLineEdit()
+            self.seqln_indicator = QLineEdit()
             self.seqln_indicator.setReadOnly(True)
             self.seqln_indicator.setText('%3d'%seqln)
             self.seqln_indicator.setAlignment(QtCore.Qt.AlignRight)
@@ -124,20 +124,20 @@ class badrap(QtGui.QWidget):
             self.seqln_indicator.setFocusPolicy(Qt.NoFocus)
             self.controls_layout.addWidget(self.seqln_indicator,0,2,1,1)
 
-            self.seqln_lbl = QtGui.QLabel("sequence length")
+            self.seqln_lbl = QLabel("sequence length")
     # 		self.seqln_lbl.setAlignment(QtCore.Qt.AlignLeft)
             self.controls_layout.addWidget(self.seqln_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
-            self.loadsetup = QtGui.QPushButton(self, text = "load setup")
+            self.loadsetup = QPushButton(self, text = "load setup")
             self.controls_layout.addWidget(self.loadsetup,0,6,QtCore.Qt.AlignTop)
 
-            self.savesetup = QtGui.QPushButton(self, text = "save setup")
+            self.savesetup = QPushButton(self, text = "save setup")
             self.controls_layout.addWidget(self.savesetup,0,7,QtCore.Qt.AlignTop)
 
-            self.sendALLchns = QtGui.QPushButton(self, text = "send setup")
+            self.sendALLchns = QPushButton(self, text = "send setup")
             self.controls_layout.addWidget(self.sendALLchns,0,8,QtCore.Qt.AlignTop)
 
-            self.slot_indicator = QtGui.QLineEdit()
+            self.slot_indicator = QLineEdit()
             self.slot_indicator.setReadOnly(True)
     # 		self.addr_indicator.setFixedWidth(40)
             self.slot_indicator.setText('%2d'%slot)
@@ -145,10 +145,10 @@ class badrap(QtGui.QWidget):
             self.slot_indicator.setFocusPolicy(Qt.NoFocus)
             self.controls_layout.addWidget(self.slot_indicator,1,0,QtCore.Qt.AlignRight)
 
-            self.slot_label = QtGui.QLabel("card slot")
+            self.slot_label = QLabel("card slot")
             self.controls_layout.addWidget(self.slot_label,1,1,QtCore.Qt.AlignLeft)
 
-            self.lsync_indicator = QtGui.QLineEdit()
+            self.lsync_indicator = QLineEdit()
             self.lsync_indicator.setReadOnly(True)
             self.lsync_indicator.setText('%4d'%lsync)
             self.lsync_indicator.setAlignment(QtCore.Qt.AlignRight)
@@ -156,14 +156,14 @@ class badrap(QtGui.QWidget):
             self.lsync_indicator.setFocusPolicy(Qt.NoFocus)
             self.controls_layout.addWidget(self.lsync_indicator,1,2,1,1)
 
-            self.seqln_lbl = QtGui.QLabel("line period")
+            self.seqln_lbl = QLabel("line period")
     # 		self.seqln_lbl.setAlignment(QtCore.Qt.AlignLeft)
             self.controls_layout.addWidget(self.seqln_lbl,1,3,1,1,QtCore.Qt.AlignLeft)
 
-            self.filename_label = QtGui.QLabel("file")
+            self.filename_label = QLabel("file")
             self.controls_layout.addWidget(self.filename_label,1,5,QtCore.Qt.AlignRight)
 
-            self.filenameEdit = QtGui.QLineEdit()
+            self.filenameEdit = QLineEdit()
             self.filenameEdit.setReadOnly(True)
             self.controls_layout.addWidget(self.filenameEdit,1,6,1,3)
 
@@ -172,19 +172,19 @@ class badrap(QtGui.QWidget):
             '''
             build widget for GLOBAL VARIABLE CONTROL
             '''
-            self.glb_var_widget = QtGui.QGroupBox(self)
+            self.glb_var_widget = QGroupBox(self)
             self.glb_var_widget.setTitle("CARD GLOBAL VARIABLES")
-            self.glb_var_layout = QtGui.QGridLayout(self.glb_var_widget)
+            self.glb_var_layout = QGridLayout(self.glb_var_widget)
             self.glb_var_layout.setContentsMargins(5,5,10,5)
             self.glb_var_layout.setSpacing(5)
 
-            self.card_delay = QtGui.QLineEdit()
+            self.card_delay = QLineEdit()
             self.card_delay.setFocusPolicy(Qt.NoFocus)
             self.card_delay.setText('%2d'%self.delay)
             self.card_delay.setAlignment(QtCore.Qt.AlignRight)
             self.glb_var_layout.addWidget(self.card_delay,0,0,1,1,QtCore.Qt.AlignRight)
 
-            self.card_delay_lbl = QtGui.QLabel("card delay")
+            self.card_delay_lbl = QLabel("card delay")
             self.glb_var_layout.addWidget(self.card_delay_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
             self.LED_button = QToolButton(self, text = 'ON')
@@ -195,7 +195,7 @@ class badrap(QtGui.QWidget):
             self.glb_var_layout.addWidget(self.LED_button,0,2,1,1)
             self.LED_button.toggled.connect(self.LED_changed)
 
-            self.led_lbl = QtGui.QLabel("LED control")
+            self.led_lbl = QLabel("LED control")
             self.glb_var_layout.addWidget(self.led_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
             self.status_button = QToolButton(self, text = 'ST')
@@ -206,10 +206,10 @@ class badrap(QtGui.QWidget):
             self.glb_var_layout.addWidget(self.status_button,0,4,1,1)
             self.status_button.toggled.connect(self.status_changed)
 
-            self.status_lbl = QtGui.QLabel("status bit")
+            self.status_lbl = QLabel("status bit")
             self.glb_var_layout.addWidget(self.status_lbl,0,5,1,3,QtCore.Qt.AlignLeft)
 
-            self.glb_send = QtGui.QPushButton(self, text = "send globals")
+            self.glb_send = QPushButton(self, text = "send globals")
             self.glb_send.setFixedHeight(25)
     # 		self.glb_send.setFixedWidth(160)
             self.glb_var_layout.addWidget(self.glb_send,0,10,1,2,QtCore.Qt.AlignRight)
@@ -221,13 +221,13 @@ class badrap(QtGui.QWidget):
             '''
             build widget for Triangle Waveform Generator
             '''
-            self.tri_wvfm_widget = QtGui.QGroupBox(self)
+            self.tri_wvfm_widget = QGroupBox(self)
     # 		self.tri_wvfm_widget.setFixedHeight(25)
             self.tri_wvfm_widget.setTitle("TRIANGLE WAVEFORM GENERATOR")
             self.tri_wvfm_widget.setCheckable(1)
             self.tri_wvfm_widget.toggled.connect(self.tri_widget_toggle)
 
-            self.tri_wvfm_layout = QtGui.QGridLayout(self.tri_wvfm_widget)
+            self.tri_wvfm_layout = QGridLayout(self.tri_wvfm_widget)
             self.tri_wvfm_layout.setContentsMargins(5,5,5,5)
             self.tri_wvfm_layout.setSpacing(5)
 
@@ -240,10 +240,10 @@ class badrap(QtGui.QWidget):
             self.tri_wvfm_layout.addWidget(self.dwell,0,0,1,1,QtCore.Qt.AlignRight)
             self.dwell.valueChanged.connect(self.dwell_changed)
 
-            self.dwell_lbl = QtGui.QLabel("dwell (2^N)")
+            self.dwell_lbl = QLabel("dwell (2^N)")
             self.tri_wvfm_layout.addWidget(self.dwell_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
-            self.dwell_indicator = QtGui.QLineEdit()
+            self.dwell_indicator = QLineEdit()
             self.dwell_indicator.setReadOnly(True)
             self.dwell_indicator.setFixedHeight(25)
             self.dwell_indicator.setText('%5i'%2**(self.dwell_val))
@@ -251,7 +251,7 @@ class badrap(QtGui.QWidget):
             self.dwell_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.dwell_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
 
-            self.range_indicator_lbl = QtGui.QLabel("dwell")
+            self.range_indicator_lbl = QLabel("dwell")
             self.tri_wvfm_layout.addWidget(self.range_indicator_lbl,1,1,1,1,QtCore.Qt.AlignLeft)
 
             self.range = QSpinBox()
@@ -263,10 +263,10 @@ class badrap(QtGui.QWidget):
             self.tri_wvfm_layout.addWidget(self.range,0,2,1,1,QtCore.Qt.AlignRight)
             self.range.valueChanged.connect(self.range_changed)
 
-            self.range_lbl = QtGui.QLabel("steps (2^N)")
+            self.range_lbl = QLabel("steps (2^N)")
             self.tri_wvfm_layout.addWidget(self.range_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
-            self.range_indicator = QtGui.QLineEdit()
+            self.range_indicator = QLineEdit()
             self.range_indicator.setReadOnly(True)
     # 		self.range_indicator.setFixedWidth(60)
             self.range_indicator.setText(str(2**(self.range_val)))
@@ -274,7 +274,7 @@ class badrap(QtGui.QWidget):
             self.range_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.range_indicator,1,2,1,1,QtCore.Qt.AlignRight)
 
-            self.range_indicator_lbl = QtGui.QLabel("steps")
+            self.range_indicator_lbl = QLabel("steps")
             self.tri_wvfm_layout.addWidget(self.range_indicator_lbl,1,3,1,1,QtCore.Qt.AlignLeft)
 
             self.step = QSpinBox()
@@ -286,10 +286,10 @@ class badrap(QtGui.QWidget):
             self.tri_wvfm_layout.addWidget(self.step,0,4,1,1,QtCore.Qt.AlignRight)
             self.step.valueChanged.connect(self.step_changed)
 
-            self.step_lbl = QtGui.QLabel("step size")
+            self.step_lbl = QLabel("step size")
             self.tri_wvfm_layout.addWidget(self.step_lbl,0,5,1,1,QtCore.Qt.AlignLeft)
 
-            self.period_indicator = QtGui.QLineEdit()
+            self.period_indicator = QLineEdit()
             self.period_indicator.setReadOnly(True)
     # 		self.period_indicator.setFixedWidth(120)
             self.period_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
@@ -297,10 +297,10 @@ class badrap(QtGui.QWidget):
             self.period_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.period_indicator,0,6,1,1,QtCore.Qt.AlignRight)
 
-            self.period_indicator_lbl = QtGui.QLabel("period")
+            self.period_indicator_lbl = QLabel("period")
             self.tri_wvfm_layout.addWidget(self.period_indicator_lbl,0,7,1,1,QtCore.Qt.AlignLeft)
 
-            self.period_eng_indicator = QtGui.QLineEdit()
+            self.period_eng_indicator = QLineEdit()
             self.period_eng_indicator.setReadOnly(True)
     # 		self.period_eng_indicator.setFixedWidth(120)
     # 		self.period_eng_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
@@ -309,10 +309,10 @@ class badrap(QtGui.QWidget):
             self.period_eng_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.period_eng_indicator,1,6,1,1,QtCore.Qt.AlignRight)
 
-            self.period_eng_indicator_lbl = QtGui.QLabel("period [us]")
+            self.period_eng_indicator_lbl = QLabel("period [us]")
             self.tri_wvfm_layout.addWidget(self.period_eng_indicator_lbl,1,7,1,1,QtCore.Qt.AlignLeft)
 
-            self.amp_indicator = QtGui.QLineEdit()
+            self.amp_indicator = QLineEdit()
             self.amp_indicator.setReadOnly(True)
     # 		self.amp_indicator.setFixedWidth(80)
             self.amp_indicator.setText(str((2**self.range_val)*self.step_val))
@@ -320,10 +320,10 @@ class badrap(QtGui.QWidget):
             self.amp_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.amp_indicator,0,8,1,1,QtCore.Qt.AlignRight)
 
-            self.amp_indicator_lbl = QtGui.QLabel("amplitude")
+            self.amp_indicator_lbl = QLabel("amplitude")
             self.tri_wvfm_layout.addWidget(self.amp_indicator_lbl,0,9,1,1,QtCore.Qt.AlignLeft)
 
-            self.amp_eng_indicator = QtGui.QLineEdit()
+            self.amp_eng_indicator = QLineEdit()
             self.amp_eng_indicator.setReadOnly(True)
     # 		self.amp_eng_indicator.setFixedWidth(80)
             self.amp_eng_indicator.setText(str(int(self.amp_indicator.text())/16.383)[:6])
@@ -331,7 +331,7 @@ class badrap(QtGui.QWidget):
             self.amp_eng_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.amp_eng_indicator,1,8,1,1,QtCore.Qt.AlignRight)
 
-            self.amp_eng_indicator_lbl = QtGui.QLabel("amplitude [mV]")
+            self.amp_eng_indicator_lbl = QLabel("amplitude [mV]")
             self.tri_wvfm_layout.addWidget(self.amp_eng_indicator_lbl,1,9,1,1,QtCore.Qt.AlignLeft)
 
             self.tri_idx_button = QToolButton(self, text = 'LSYNC')
@@ -342,16 +342,16 @@ class badrap(QtGui.QWidget):
             self.tri_wvfm_layout.addWidget(self.tri_idx_button,1,4,1,1,QtCore.Qt.AlignLeft)
             self.tri_idx_button.toggled.connect(self.tri_idx_changed)
 
-            self.tri_idx_lbl = QtGui.QLabel("timebase")
+            self.tri_idx_lbl = QLabel("timebase")
             self.tri_wvfm_layout.addWidget(self.tri_idx_lbl,1,5,1,1,QtCore.Qt.AlignLeft)
 
-            self.tri_send = QtGui.QPushButton(self, text = "send triangle")
+            self.tri_send = QPushButton(self, text = "send triangle")
             self.tri_send.setFixedHeight(25)
     # 		self.tri_send.setFixedWidth(160)
             self.tri_wvfm_layout.addWidget(self.tri_send,0,10,1,2, QtCore.Qt.AlignVCenter)
             self.tri_send.clicked.connect(self.send_wreg1)
 
-            self.freq_eng_indicator = QtGui.QLineEdit()
+            self.freq_eng_indicator = QLineEdit()
             self.freq_eng_indicator.setReadOnly(True)
     # 		self.freq_eng_indicator.setFixedWidth(80)
             self.freq_eng_indicator.setText(str(1000/float(self.period_eng_indicator.text()))[:6])
@@ -359,7 +359,7 @@ class badrap(QtGui.QWidget):
             self.freq_eng_indicator.setFocusPolicy(Qt.NoFocus)
             self.tri_wvfm_layout.addWidget(self.freq_eng_indicator,1,10,1,1,QtCore.Qt.AlignRight)
 
-            self.amp_eng_indicator_lbl = QtGui.QLabel("freq [kHz]")
+            self.amp_eng_indicator_lbl = QLabel("freq [kHz]")
             self.tri_wvfm_layout.addWidget(self.amp_eng_indicator_lbl,1,11,1,1,QtCore.Qt.AlignLeft)
 
             self.layout.addWidget(self.tri_wvfm_widget)
@@ -367,9 +367,9 @@ class badrap(QtGui.QWidget):
         '''
         build widget for MASTER CONTROL VECTOR: these controls effect all channels on a card
         '''
-        self.master_ctrl_widget = QtGui.QGroupBox(self)
+        self.master_ctrl_widget = QGroupBox(self)
         self.master_ctrl_widget.setTitle("MASTER CONTROL VECTOR")
-        self.master_ctrl_layout = QtGui.QGridLayout(self.master_ctrl_widget)
+        self.master_ctrl_layout = QGridLayout(self.master_ctrl_widget)
 
         self.master_vector = badChn(self, self.master_ctrl_layout, chn=-1, cardaddr=self.address, serialport=self.serialport, master = 'master')
         self.master_vector.counter_label.setText("all")
@@ -382,15 +382,15 @@ class badrap(QtGui.QWidget):
         '''
         build widget for arrayed channel parameters
         '''
-        self.arrayframe = QtGui.QWidget(self.layout_widget)
-        self.array_layout = QtGui.QVBoxLayout(self.arrayframe)
+        self.arrayframe = QWidget(self.layout_widget)
+        self.array_layout = QVBoxLayout(self.arrayframe)
         self.array_layout.setSpacing(5)
         self.array_layout.setMargin(10)
 
         for idx in range(self.chns):
             self.chn_vectors.append(badChn(self, self.array_layout, chn=idx, cardaddr=self.address, serialport=self.serialport))
 
-        self.scrollarea = QtGui.QScrollArea(self.layout_widget)
+        self.scrollarea = QScrollArea(self.layout_widget)
         self.scrollarea.setWidget(self.arrayframe)
         self.layout.addWidget(self.scrollarea)
 # 		self.show()
@@ -641,7 +641,7 @@ class badrap(QtGui.QWidget):
 
 def main():
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}""")

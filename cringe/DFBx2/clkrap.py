@@ -4,15 +4,15 @@ import optparse
 import struct
 import time
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton, QGroupBox
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import named_serial
 from .dfbchn import dfbChn
 # print "importing dfbrap"
 
-class clkrap(QtGui.QWidget):
+class clkrap(QWidget):
 
 # 	def __init__(self, parent=None, **kwargs):
 # 		print kwargs
@@ -58,13 +58,13 @@ class clkrap(QtGui.QWidget):
         self.setGeometry(30,30,400,200)
         self.setContentsMargins(0,0,0,0)
 
-        self.layout_widget = QtGui.QWidget(self)
-        self.layout = QtGui.QGridLayout(self)
+        self.layout_widget = QWidget(self)
+        self.layout = QGridLayout(self)
 
-        self.lp_title = QtGui.QLabel("LSYNC")
+        self.lp_title = QLabel("LSYNC")
         self.layout.addWidget(self.lp_title,0,0,1,1,QtCore.Qt.AlignLeft)
 
-# 		self.lsync_spin = QtGui.QSpinBox(self)
+# 		self.lsync_spin = QSpinBox(self)
 # 		self.lsync_spin.setRange(20,256)
 # 		self.lsync_spin.setSingleStep(1)
 # 		self.lsync_spin.setKeyboardTracking(0)
@@ -74,7 +74,7 @@ class clkrap(QtGui.QWidget):
 # 		self.layout.addWidget(self.lsync_spin,1,0,1,1)
 # 		self.lsync_spin.valueChanged.connect(self.lsync_changed)
 
-        self.lsync_indicator = QtGui.QLineEdit()
+        self.lsync_indicator = QLineEdit()
         self.lsync_indicator.setReadOnly(True)
         self.lsync_indicator.setFixedHeight(25)
         self.lsync_indicator.setText(str(self.lsync))
@@ -83,13 +83,13 @@ class clkrap(QtGui.QWidget):
         self.layout.addWidget(self.lsync_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
         self.lsync_indicator.textChanged.connect(self.lsync_changed)
 
-        self.lsync_lbl = QtGui.QLabel("MCLK cycles")
+        self.lsync_lbl = QLabel("MCLK cycles")
         self.layout.addWidget(self.lsync_lbl,1,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.lp_title = QtGui.QLabel("line period")
+        self.lp_title = QLabel("line period")
         self.layout.addWidget(self.lp_title,2,0,1,1,QtCore.Qt.AlignLeft)
 
-        self.line_period_indicator = QtGui.QLineEdit()
+        self.line_period_indicator = QLineEdit()
         self.line_period_indicator.setReadOnly(True)
         self.line_period_indicator.setFixedHeight(25)
         self.line_period_indicator.setText(str(8*(self.lsync)))
@@ -97,13 +97,13 @@ class clkrap(QtGui.QWidget):
         self.line_period_indicator.setFocusPolicy(Qt.NoFocus)
         self.layout.addWidget(self.line_period_indicator, 3,0,1,1,QtCore.Qt.AlignRight)
 
-        self.line_period_lbl = QtGui.QLabel("ns")
+        self.line_period_lbl = QLabel("ns")
         self.layout.addWidget(self.line_period_lbl,3,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.lp_title = QtGui.QLabel("line rate")
+        self.lp_title = QLabel("line rate")
         self.layout.addWidget(self.lp_title,4,0,1,1,QtCore.Qt.AlignLeft)
 
-        self.line_freq_indicator = QtGui.QLineEdit()
+        self.line_freq_indicator = QLineEdit()
         self.line_freq_indicator.setReadOnly(True)
         self.line_freq_indicator.setFixedHeight(25)
         self.line_freq_indicator.setText(str(125/(self.lsync))[:6])
@@ -111,13 +111,13 @@ class clkrap(QtGui.QWidget):
         self.line_freq_indicator.setFocusPolicy(Qt.NoFocus)
         self.layout.addWidget(self.line_freq_indicator, 5,0,1,1,QtCore.Qt.AlignRight)
 
-        self.line_freq_lbl = QtGui.QLabel("MHz")
+        self.line_freq_lbl = QLabel("MHz")
         self.layout.addWidget(self.line_freq_lbl,5,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.lp_title = QtGui.QLabel("frame period")
+        self.lp_title = QLabel("frame period")
         self.layout.addWidget(self.lp_title,2,2,1,1,QtCore.Qt.AlignLeft)
 
-        self.frame_period_indicator = QtGui.QLineEdit()
+        self.frame_period_indicator = QLineEdit()
         self.frame_period_indicator.setReadOnly(True)
         self.frame_period_indicator.setFixedHeight(25)
         self.frame_period_indicator.setText(str(self.seqln*0.008*self.lsync)[:6])
@@ -125,13 +125,13 @@ class clkrap(QtGui.QWidget):
         self.frame_period_indicator.setFocusPolicy(Qt.NoFocus)
         self.layout.addWidget(self.frame_period_indicator,3,2,1,1,QtCore.Qt.AlignRight)
 
-        self.frame_period_lbl = QtGui.QLabel("\u00B5s")
+        self.frame_period_lbl = QLabel("\u00B5s")
         self.layout.addWidget(self.frame_period_lbl,3,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.lp_title = QtGui.QLabel("frame rate")
+        self.lp_title = QLabel("frame rate")
         self.layout.addWidget(self.lp_title,4,2,1,1,QtCore.Qt.AlignLeft)
 
-        self.frame_freq_indicator = QtGui.QLineEdit()
+        self.frame_freq_indicator = QLineEdit()
         self.frame_freq_indicator.setReadOnly(True)
         self.frame_freq_indicator.setFixedHeight(25)
         self.frame_freq_indicator.setText(str(125000/(self.lsync*self.seqln))[:6])
@@ -139,10 +139,10 @@ class clkrap(QtGui.QWidget):
         self.frame_freq_indicator.setFocusPolicy(Qt.NoFocus)
         self.layout.addWidget(self.frame_freq_indicator, 5,2,1,1,QtCore.Qt.AlignRight)
 
-        self.frame_freq_lbl = QtGui.QLabel("kHz")
+        self.frame_freq_lbl = QLabel("kHz")
         self.layout.addWidget(self.frame_freq_lbl,5,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.resync_button = QtGui.QPushButton(self, text = "RESYNC")
+        self.resync_button = QPushButton(self, text = "RESYNC")
         self.resync_button.setFixedWidth(125)
         self.resync_button.setFixedHeight(25)
         self.resync_button.setStyleSheet("background-color: #" + self.green + ";")
@@ -157,7 +157,7 @@ class clkrap(QtGui.QWidget):
         self.layout.addWidget(self.CLKstate_button,5,5,1,1,QtCore.Qt.AlignLeft)
         self.CLKstate_button.toggled.connect(self.CLKstate_changed)
 
-        self.CLKstate_lbl = QtGui.QLabel("line clock")
+        self.CLKstate_lbl = QLabel("line clock")
         self.layout.addWidget(self.CLKstate_lbl,5,6,1,1,QtCore.Qt.AlignLeft)
 
     '''
@@ -251,7 +251,7 @@ class clkrap(QtGui.QWidget):
 
 def main():
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}

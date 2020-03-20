@@ -4,16 +4,16 @@ import optparse
 import struct
 import time
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import named_serial
 from . import dfbrap
 from . import dprcal
 # from dprcal import dprcal
 
-class dfbx2(QtGui.QWidget):
+class dfbx2(QWidget):
 
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
@@ -35,10 +35,10 @@ class dfbx2(QtGui.QWidget):
         self.white = "FFFFFF"
         self.grey = "808080"
 
-# 		print QtGui.QApplication.palette()	
-# 		self.color_list = QtGui.QColor.colorNames()
+# 		print QApplication.palette()	
+# 		self.color_list = QColor.colorNames()
 # 		print self.color_list
-# 		self.tt_palette = QtGui.QPalette(self)
+# 		self.tt_palette = QPalette(self)
 # 		self.tt_palette.setColor(2, 18, Qt.white)
 # 		self.tt_palette.setColor(2, 19, Qt.black)
 # 		self.tt_palette.setColor(2,10,Qt.yellow)
@@ -103,40 +103,40 @@ class dfbx2(QtGui.QWidget):
         self.setGeometry(30,30,800,1000)
         self.setContentsMargins(0,0,0,0)
 
-        self.layout_widget = QtGui.QWidget(self)
-        self.layout = QtGui.QGridLayout(self)
-# 		self.layout = QtGui.QVBoxLayout(self)
+        self.layout_widget = QWidget(self)
+        self.layout = QGridLayout(self)
+# 		self.layout = QVBoxLayout(self)
 
         '''
         build widget for file management controls
         '''
-        self.file_mgmt_widget = QtGui.QGroupBox(self)
+        self.file_mgmt_widget = QGroupBox(self)
 # 		self.file_mgmt_widget.setFlat(1)
         self.file_mgmt_widget.setFixedWidth(1080)
         self.file_mgmt_widget.setFocusPolicy(Qt.NoFocus)
         self.file_mgmt_widget.setTitle("FILE MANAGEMENT INTERFACE")
 
-        self.file_mgmt_layout = QtGui.QGridLayout(self.file_mgmt_widget)
+        self.file_mgmt_layout = QGridLayout(self.file_mgmt_widget)
         self.file_mgmt_layout.setContentsMargins(5,5,5,5)
         self.file_mgmt_layout.setSpacing(5)
 
-        self.loadsetup = QtGui.QPushButton(self, text = "load setup")
+        self.loadsetup = QPushButton(self, text = "load setup")
         self.loadsetup.setFixedHeight(25)
         self.file_mgmt_layout.addWidget(self.loadsetup,0,0,1,1,QtCore.Qt.AlignLeft)
 
-        self.savesetup = QtGui.QPushButton(self, text = "save setup")
+        self.savesetup = QPushButton(self, text = "save setup")
         self.savesetup.setFixedHeight(25)
         self.file_mgmt_layout.addWidget(self.savesetup,0,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.sendALLchns = QtGui.QPushButton(self, text = "send setup")
+        self.sendALLchns = QPushButton(self, text = "send setup")
         self.sendALLchns.setFixedHeight(25)
         self.file_mgmt_layout.addWidget(self.sendALLchns,0,2,1,1,QtCore.Qt.AlignLeft)
 
-        self.filenameEdit = QtGui.QLineEdit()
+        self.filenameEdit = QLineEdit()
         self.filenameEdit.setReadOnly(True)
         self.file_mgmt_layout.addWidget(self.filenameEdit,0,4,1,4)
 
-        self.filename_label = QtGui.QLabel("file")
+        self.filename_label = QLabel("file")
         self.file_mgmt_layout.addWidget(self.filename_label,0,3,1,1,QtCore.Qt.AlignRight)
 
         self.layout.addWidget(self.file_mgmt_widget, 0,0,1,2)
@@ -144,12 +144,12 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for SYSTEM GLOBALS header
         '''
-        self.sys_glob_hdr_widget = QtGui.QGroupBox(self)
+        self.sys_glob_hdr_widget = QGroupBox(self)
         self.sys_glob_hdr_widget.setFixedWidth(1080)
         self.sys_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
         self.sys_glob_hdr_widget.setTitle("SYSTEM GLOBALS")
 
-        self.sys_glob_layout = QtGui.QGridLayout(self.sys_glob_hdr_widget)
+        self.sys_glob_layout = QGridLayout(self.sys_glob_hdr_widget)
         self.sys_glob_layout.setContentsMargins(5,5,5,5)
         self.sys_glob_layout.setSpacing(5)
 
@@ -164,7 +164,7 @@ class dfbx2(QtGui.QWidget):
         self.sys_glob_layout.addWidget(self.seqln_spin,0,0,1,1)
         self.seqln_spin.valueChanged.connect(self.seqln_changed)
 
-        self.seqln_lbl = QtGui.QLabel("sequence length")
+        self.seqln_lbl = QLabel("sequence length")
 # 		self.seqln_lbl.setAlignment(QtCore.Qt.AlignLeft)
         self.sys_glob_layout.addWidget(self.seqln_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
@@ -179,10 +179,10 @@ class dfbx2(QtGui.QWidget):
         self.sys_glob_layout.addWidget(self.lsync_spin,0,2,1,1)
         self.lsync_spin.valueChanged.connect(self.lsync_changed)
 
-        self.seqln_lbl = QtGui.QLabel("line period")
+        self.seqln_lbl = QLabel("line period")
         self.sys_glob_layout.addWidget(self.seqln_lbl,0,3,1,5,QtCore.Qt.AlignLeft)
 
-        self.sys_glob_send = QtGui.QPushButton(self, text = "send system globals")
+        self.sys_glob_send = QPushButton(self, text = "send system globals")
         self.sys_glob_send.setFixedHeight(25)
 # 		self.sys_glob_send.setFixedWidth(160)
         self.sys_glob_layout.addWidget(self.sys_glob_send,0,9,1,2, QtCore.Qt.AlignRight)
@@ -193,12 +193,12 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for CLASS GLOBALS header: OLD
         '''
-# 		self.class_glob_hdr_widget = QtGui.QGroupBox(self)
+# 		self.class_glob_hdr_widget = QGroupBox(self)
 # 		self.class_glob_hdr_widget.setFixedWidth(1080)
 # 		self.class_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
 # 		self.class_glob_hdr_widget.setTitle("CLASS GLOBALS")
 # 		
-# 		self.class_glob_layout = QtGui.QGridLayout(self.class_glob_hdr_widget)
+# 		self.class_glob_layout = QGridLayout(self.class_glob_hdr_widget)
 # 		self.class_glob_layout.setContentsMargins(5,5,5,5)
 # 		self.class_glob_layout.setSpacing(5)
 # 
@@ -211,7 +211,7 @@ class dfbx2(QtGui.QWidget):
 # 		self.class_glob_layout.addWidget(self.card_delay,0,0,1,1)
 # 		self.card_delay.valueChanged.connect(self.card_delay_changed)
 # 
-# 		self.card_delay_lbl = QtGui.QLabel("card delay")
+# 		self.card_delay_lbl = QLabel("card delay")
 # 		self.class_glob_layout.addWidget(self.card_delay_lbl,0,1,1,7,QtCore.Qt.AlignLeft)
 # 		
 # 		self.layout.addWidget(self.class_glob_hdr_widget)
@@ -219,12 +219,12 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for CLASS GLOBALS header
         '''
-        self.class_glob_hdr_widget = QtGui.QGroupBox(self)
+        self.class_glob_hdr_widget = QGroupBox(self)
         self.class_glob_hdr_widget.setFixedWidth(1080)
         self.class_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
         self.class_glob_hdr_widget.setTitle("DFB CLASS GLOBALS")
 
-        self.class_glob_layout = QtGui.QGridLayout(self.class_glob_hdr_widget)
+        self.class_glob_layout = QGridLayout(self.class_glob_hdr_widget)
         self.class_glob_layout.setContentsMargins(5,5,5,5)
         self.class_glob_layout.setSpacing(5)
 
@@ -239,10 +239,10 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.card_delay_spin,0,0,1,1)
         self.card_delay_spin.valueChanged.connect(self.card_delay_changed)
 
-        self.card_delay_lbl = QtGui.QLabel("card delay")
+        self.card_delay_lbl = QLabel("card delay")
         self.class_glob_layout.addWidget(self.card_delay_lbl,0,1,1,7,QtCore.Qt.AlignLeft)
 
-        self.prop_delay_spin = QtGui.QSpinBox()
+        self.prop_delay_spin = QSpinBox()
         self.prop_delay_spin.setRange(0,15)
         self.prop_delay_spin.setSingleStep(1)
         self.prop_delay_spin.setKeyboardTracking(0)
@@ -252,10 +252,10 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.prop_delay_spin,0,2,1,1)
         self.prop_delay_spin.valueChanged.connect(self.prop_delay_changed)
 
-        self.prop_delay_lbl = QtGui.QLabel("prop delay")
+        self.prop_delay_lbl = QLabel("prop delay")
         self.class_glob_layout.addWidget(self.prop_delay_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.xpt_mode = QtGui.QComboBox()
+        self.xpt_mode = QComboBox()
         self.xpt_mode.setFixedHeight(25)
         self.xpt_mode.addItem('0: A-C-B-D')
         self.xpt_mode.addItem('1: C-A-D-B')
@@ -268,10 +268,10 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.xpt_mode,0,4,1,1)
         self.xpt_mode.currentIndexChanged.connect(self.XPT_changed)
 
-        self.status_lbl = QtGui.QLabel("crosspoint mode")
+        self.status_lbl = QLabel("crosspoint mode")
         self.class_glob_layout.addWidget(self.status_lbl,0,5,1,3,QtCore.Qt.AlignLeft)
 
-        self.tp_mode = QtGui.QComboBox()
+        self.tp_mode = QComboBox()
         self.tp_mode.setFixedHeight(25)
         self.tp_mode.addItem('DEADBEEF')
         self.tp_mode.addItem('55555555')
@@ -287,10 +287,10 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.tp_mode,0,6,1,1)
         self.tp_mode.currentIndexChanged.connect(self.TP_changed)
 
-        self.status_lbl = QtGui.QLabel("test pattern")
+        self.status_lbl = QLabel("test pattern")
         self.class_glob_layout.addWidget(self.status_lbl,0,7,1,3,QtCore.Qt.AlignLeft)
 
-        self.class_glb_send = QtGui.QPushButton(self, text = "send DFBx2 class globals")
+        self.class_glb_send = QPushButton(self, text = "send DFBx2 class globals")
         self.class_glb_send.setFixedHeight(25)
         self.class_glb_send.setFixedWidth(200)
         self.class_glob_layout.addWidget(self.class_glb_send,0,9,1,1,QtCore.Qt.AlignRight)
@@ -307,10 +307,10 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.NSAMP_spin,1,0,1,1)
         self.NSAMP_spin.valueChanged.connect(self.NSAMP_changed)
 
-        self.NSAMP_spin_lbl = QtGui.QLabel("NSAMP")
+        self.NSAMP_spin_lbl = QLabel("NSAMP")
         self.class_glob_layout.addWidget(self.NSAMP_spin_lbl,1,1,1,7,QtCore.Qt.AlignLeft)
 
-        self.SETT_spin = QtGui.QSpinBox()
+        self.SETT_spin = QSpinBox()
         self.SETT_spin.setRange(0,255)
         self.SETT_spin.setSingleStep(1)
         self.SETT_spin.setKeyboardTracking(0)
@@ -320,7 +320,7 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.SETT_spin,1,2,1,1)
         self.SETT_spin.valueChanged.connect(self.SETT_changed)
 
-        self.SETT_spin_lbl = QtGui.QLabel("SETT")
+        self.SETT_spin_lbl = QLabel("SETT")
         self.class_glob_layout.addWidget(self.SETT_spin_lbl,1,3,1,1,QtCore.Qt.AlignLeft)
 
         self.PS_button = QToolButton(self, text = 'PS')
@@ -331,7 +331,7 @@ class dfbx2(QtGui.QWidget):
         self.class_glob_layout.addWidget(self.PS_button,1,4,1,1,QtCore.Qt.AlignRight)
         self.PS_button.toggled.connect(self.PS_changed)
 
-        self.status_lbl = QtGui.QLabel("parallel stream")
+        self.status_lbl = QLabel("parallel stream")
         self.class_glob_layout.addWidget(self.status_lbl,1,5,1,3,QtCore.Qt.AlignLeft)
 
         self.layout.addWidget(self.class_glob_hdr_widget,2,0,1,2)
@@ -339,14 +339,14 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for ARL control
         '''
-        self.arl_widget = QtGui.QGroupBox(self)
+        self.arl_widget = QGroupBox(self)
 # 		self.tri_wvfm_widget.setFixedHeight(25)
         self.arl_widget.setTitle("AUTO RELOCK CONTROL")
-        self.arl_layout = QtGui.QGridLayout(self.arl_widget)
+        self.arl_layout = QGridLayout(self.arl_widget)
         self.arl_layout.setContentsMargins(5,5,5,5)
         self.arl_layout.setSpacing(5)
 
-        self.ARLsense_title = QtGui.QLabel("flux jump threshold")
+        self.ARLsense_title = QLabel("flux jump threshold")
         self.arl_layout.addWidget(self.ARLsense_title,0,0,1,1, QtCore.Qt.AlignRight)
 
         self.ARLsense_spin = QSpinBox()
@@ -359,10 +359,10 @@ class dfbx2(QtGui.QWidget):
         self.arl_layout.addWidget(self.ARLsense_spin,1,0,1,1,QtCore.Qt.AlignRight)
         self.ARLsense_spin.valueChanged.connect(self.ARLsense_changed)
 
-        self.ARLsense_lbl = QtGui.QLabel("2^N index")
+        self.ARLsense_lbl = QLabel("2^N index")
         self.arl_layout.addWidget(self.ARLsense_lbl,1,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.ARLsense_indicator = QtGui.QLineEdit()
+        self.ARLsense_indicator = QLineEdit()
         self.ARLsense_indicator.setReadOnly(True)
         self.ARLsense_indicator.setFixedHeight(25)
         self.ARLsense_indicator.setText('%5i'%2**(self.ARLsense))
@@ -370,10 +370,10 @@ class dfbx2(QtGui.QWidget):
         self.ARLsense_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.ARLsense_indicator, 2,0,1,1,QtCore.Qt.AlignRight)
 
-        self.ARLsense_indicator_lbl = QtGui.QLabel("DAC units")
+        self.ARLsense_indicator_lbl = QLabel("DAC units")
         self.arl_layout.addWidget(self.ARLsense_indicator_lbl,2,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.ARLsense_eng_indicator = QtGui.QLineEdit()
+        self.ARLsense_eng_indicator = QLineEdit()
         self.ARLsense_eng_indicator.setReadOnly(True)
         self.ARLsense_eng_indicator.setFixedHeight(25)
         self.ARLsense_eng_indicator.setText(str(2**(self.ARLsense)/16.383)[:6])
@@ -381,10 +381,10 @@ class dfbx2(QtGui.QWidget):
         self.ARLsense_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.ARLsense_eng_indicator, 3,0,1,1,QtCore.Qt.AlignRight)
 
-        self.ARLsense_eng_indicator_lbl = QtGui.QLabel("mV")
+        self.ARLsense_eng_indicator_lbl = QLabel("mV")
         self.arl_layout.addWidget(self.ARLsense_eng_indicator_lbl,3,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDpos_title = QtGui.QLabel("[+] event reset delay")
+        self.RLDpos_title = QLabel("[+] event reset delay")
         self.arl_layout.addWidget(self.RLDpos_title,0,2,1,1, QtCore.Qt.AlignRight)
 
         self.RLDpos_spin = QSpinBox()
@@ -397,10 +397,10 @@ class dfbx2(QtGui.QWidget):
         self.arl_layout.addWidget(self.RLDpos_spin,1,2,1,1,QtCore.Qt.AlignRight)
         self.RLDpos_spin.valueChanged.connect(self.RLDpos_changed)
 
-        self.RLDpos_lbl = QtGui.QLabel("2^N index")
+        self.RLDpos_lbl = QLabel("2^N index")
         self.arl_layout.addWidget(self.RLDpos_lbl,1,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDpos_indicator = QtGui.QLineEdit()
+        self.RLDpos_indicator = QLineEdit()
         self.RLDpos_indicator.setReadOnly(True)
 # 		self.range_indicator.setFixedWidth(60)
         self.RLDpos_indicator.setText(str(2**(self.RLDpos)))
@@ -408,10 +408,10 @@ class dfbx2(QtGui.QWidget):
         self.RLDpos_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDpos_indicator,2,2,1,1,QtCore.Qt.AlignRight)
 
-        self.RLDpos_indicator_lbl = QtGui.QLabel("FRM units")
+        self.RLDpos_indicator_lbl = QLabel("FRM units")
         self.arl_layout.addWidget(self.RLDpos_indicator_lbl,2,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDpos_eng_indicator = QtGui.QLineEdit()
+        self.RLDpos_eng_indicator = QLineEdit()
         self.RLDpos_eng_indicator.setReadOnly(True)
         self.RLDpos_eng_indicator.setFixedHeight(25)
         self.RLDpos_eng_indicator.setText(str(2**(self.RLDpos)*self.frame_period)[:6])
@@ -419,10 +419,10 @@ class dfbx2(QtGui.QWidget):
         self.RLDpos_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDpos_eng_indicator, 3,2,1,1,QtCore.Qt.AlignRight)
 
-        self.RLDpos_eng_indicator_lbl = QtGui.QLabel("\u00B5s")
+        self.RLDpos_eng_indicator_lbl = QLabel("\u00B5s")
         self.arl_layout.addWidget(self.RLDpos_eng_indicator_lbl,3,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDneg_title = QtGui.QLabel("[-] event reset delay")
+        self.RLDneg_title = QLabel("[-] event reset delay")
         self.arl_layout.addWidget(self.RLDneg_title,0,4,1,1, QtCore.Qt.AlignRight)
 
         self.RLDneg_spin = QSpinBox()
@@ -435,10 +435,10 @@ class dfbx2(QtGui.QWidget):
         self.arl_layout.addWidget(self.RLDneg_spin,1,4,1,1,QtCore.Qt.AlignRight)
         self.RLDneg_spin.valueChanged.connect(self.RLDneg_changed)
 
-        self.RLDneg_lbl = QtGui.QLabel("2^N index")
+        self.RLDneg_lbl = QLabel("2^N index")
         self.arl_layout.addWidget(self.RLDneg_lbl,1,5,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDneg_indicator = QtGui.QLineEdit()
+        self.RLDneg_indicator = QLineEdit()
         self.RLDneg_indicator.setReadOnly(True)
 # 		self.range_indicator.setFixedWidth(60)
         self.RLDneg_indicator.setText(str(2**(self.RLDneg)))
@@ -446,10 +446,10 @@ class dfbx2(QtGui.QWidget):
         self.RLDneg_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDneg_indicator,2,4,1,1,QtCore.Qt.AlignRight)
 
-        self.RLDneg_indicator_lbl = QtGui.QLabel("FRM units")
+        self.RLDneg_indicator_lbl = QLabel("FRM units")
         self.arl_layout.addWidget(self.RLDneg_indicator_lbl,2,5,1,1,QtCore.Qt.AlignLeft)
 
-        self.RLDneg_eng_indicator = QtGui.QLineEdit()
+        self.RLDneg_eng_indicator = QLineEdit()
         self.RLDneg_eng_indicator.setReadOnly(True)
         self.RLDneg_eng_indicator.setFixedHeight(25)
         self.RLDneg_eng_indicator.setText(str(2**(self.RLDneg)*self.frame_period)[:6])
@@ -457,7 +457,7 @@ class dfbx2(QtGui.QWidget):
         self.RLDneg_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDneg_eng_indicator, 3,4,1,1,QtCore.Qt.AlignRight)
 
-        self.RLDneg_eng_indicator_lbl = QtGui.QLabel("\u00B5s")
+        self.RLDneg_eng_indicator_lbl = QLabel("\u00B5s")
         self.arl_layout.addWidget(self.RLDneg_eng_indicator_lbl,3,5,1,1,QtCore.Qt.AlignLeft)
 
         self.layout.addWidget(self.arl_widget,3,0,1,1)
@@ -465,10 +465,10 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for Triangle Waveform Generator
         '''
-        self.tri_wvfm_widget = QtGui.QGroupBox(self)
+        self.tri_wvfm_widget = QGroupBox(self)
 # 		self.tri_wvfm_widget.setFixedHeight(25)
         self.tri_wvfm_widget.setTitle("TRIANGLE WAVEFORM GENERATOR")
-        self.tri_wvfm_layout = QtGui.QGridLayout(self.tri_wvfm_widget)
+        self.tri_wvfm_layout = QGridLayout(self.tri_wvfm_widget)
         self.tri_wvfm_layout.setContentsMargins(5,5,5,5)
         self.tri_wvfm_layout.setSpacing(5)
 
@@ -482,10 +482,10 @@ class dfbx2(QtGui.QWidget):
         self.tri_wvfm_layout.addWidget(self.dwell,0,0,1,1,QtCore.Qt.AlignRight)
         self.dwell.valueChanged.connect(self.dwell_changed)
 
-        self.dwell_lbl = QtGui.QLabel("dwell (2^N)")
+        self.dwell_lbl = QLabel("dwell (2^N)")
         self.tri_wvfm_layout.addWidget(self.dwell_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
-# 		self.dwell_indicator = QtGui.QLineEdit()
+# 		self.dwell_indicator = QLineEdit()
 # 		self.dwell_indicator.setReadOnly(True)
 # 		self.dwell_indicator.setFixedHeight(25)
 # 		self.dwell_indicator.setText('%5i'%2**(self.dwell_val))
@@ -493,7 +493,7 @@ class dfbx2(QtGui.QWidget):
 # 		self.dwell_indicator.setFocusPolicy(Qt.NoFocus)
 # 		self.tri_wvfm_layout.addWidget(self.dwell_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
 # 		
-# 		self.range_indicator_lbl = QtGui.QLabel("dwell")
+# 		self.range_indicator_lbl = QLabel("dwell")
 # 		self.tri_wvfm_layout.addWidget(self.range_indicator_lbl,1,1,1,1,QtCore.Qt.AlignLeft)
 
         self.range = QSpinBox()
@@ -506,17 +506,17 @@ class dfbx2(QtGui.QWidget):
         self.tri_wvfm_layout.addWidget(self.range,0,2,1,1,QtCore.Qt.AlignRight)
         self.range.valueChanged.connect(self.range_changed)
 
-        self.range_lbl = QtGui.QLabel("steps (2^N)")
+        self.range_lbl = QLabel("steps (2^N)")
         self.tri_wvfm_layout.addWidget(self.range_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
-# 		self.range_indicator = QtGui.QLineEdit()
+# 		self.range_indicator = QLineEdit()
 # 		self.range_indicator.setReadOnly(True)
 # 		self.range_indicator.setText(str(2**(self.range_val)))
 # 		self.range_indicator.setAlignment(QtCore.Qt.AlignRight)
 # 		self.range_indicator.setFocusPolicy(Qt.NoFocus)
 # 		self.tri_wvfm_layout.addWidget(self.range_indicator,1,2,1,1,QtCore.Qt.AlignRight)
 # 		
-# 		self.range_indicator_lbl = QtGui.QLabel("steps")
+# 		self.range_indicator_lbl = QLabel("steps")
 # 		self.tri_wvfm_layout.addWidget(self.range_indicator_lbl,1,3,1,1,QtCore.Qt.AlignLeft)
 
         self.step = QSpinBox()
@@ -529,10 +529,10 @@ class dfbx2(QtGui.QWidget):
         self.tri_wvfm_layout.addWidget(self.step,0,4,1,1,QtCore.Qt.AlignRight)
         self.step.valueChanged.connect(self.step_changed)
 
-        self.step_lbl = QtGui.QLabel("step size")
+        self.step_lbl = QLabel("step size")
         self.tri_wvfm_layout.addWidget(self.step_lbl,0,5,1,1,QtCore.Qt.AlignLeft)
 
-        self.period_indicator = QtGui.QLineEdit()
+        self.period_indicator = QLineEdit()
         self.period_indicator.setReadOnly(True)
 # 		self.period_indicator.setFixedWidth(120)
         self.period_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
@@ -540,10 +540,10 @@ class dfbx2(QtGui.QWidget):
         self.period_indicator.setFocusPolicy(Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.period_indicator,2,0,1,1,QtCore.Qt.AlignRight)
 
-        self.period_indicator_lbl = QtGui.QLabel("period")
+        self.period_indicator_lbl = QLabel("period")
         self.tri_wvfm_layout.addWidget(self.period_indicator_lbl,2,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.period_eng_indicator = QtGui.QLineEdit()
+        self.period_eng_indicator = QLineEdit()
         self.period_eng_indicator.setReadOnly(True)
 # 		self.period_eng_indicator.setFixedWidth(120)
 # 		self.period_eng_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
@@ -552,10 +552,10 @@ class dfbx2(QtGui.QWidget):
         self.period_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.period_eng_indicator,3,0,1,1,QtCore.Qt.AlignRight)
 
-        self.period_eng_indicator_lbl = QtGui.QLabel("period [""\u00B5s]")
+        self.period_eng_indicator_lbl = QLabel("period [""\u00B5s]")
         self.tri_wvfm_layout.addWidget(self.period_eng_indicator_lbl,3,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.amp_indicator = QtGui.QLineEdit()
+        self.amp_indicator = QLineEdit()
         self.amp_indicator.setReadOnly(True)
 # 		self.amp_indicator.setFixedWidth(80)
         self.amp_indicator.setText(str((2**self.range_val)*self.step_val))
@@ -563,10 +563,10 @@ class dfbx2(QtGui.QWidget):
         self.amp_indicator.setFocusPolicy(Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.amp_indicator,2,2,1,1,QtCore.Qt.AlignRight)
 
-        self.amp_indicator_lbl = QtGui.QLabel("amplitude")
+        self.amp_indicator_lbl = QLabel("amplitude")
         self.tri_wvfm_layout.addWidget(self.amp_indicator_lbl,2,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.amp_eng_indicator = QtGui.QLineEdit()
+        self.amp_eng_indicator = QLineEdit()
         self.amp_eng_indicator.setReadOnly(True)
 # 		self.amp_eng_indicator.setFixedWidth(80)
         self.amp_eng_indicator.setText(str(int(self.amp_indicator.text())/16.383)[:6])
@@ -574,7 +574,7 @@ class dfbx2(QtGui.QWidget):
         self.amp_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.amp_eng_indicator,3,2,1,1,QtCore.Qt.AlignRight)
 
-        self.amp_eng_indicator_lbl = QtGui.QLabel("amplitude [mV]")
+        self.amp_eng_indicator_lbl = QLabel("amplitude [mV]")
         self.tri_wvfm_layout.addWidget(self.amp_eng_indicator_lbl,3,3,1,1,QtCore.Qt.AlignLeft)
 
         self.tri_idx_button = QToolButton(self, text = 'LSYNC')
@@ -585,16 +585,16 @@ class dfbx2(QtGui.QWidget):
         self.tri_wvfm_layout.addWidget(self.tri_idx_button,0,6,1,1,QtCore.Qt.AlignRight)
         self.tri_idx_button.toggled.connect(self.tri_idx_changed)
 
-        self.tri_idx_lbl = QtGui.QLabel("timebase")
+        self.tri_idx_lbl = QLabel("timebase")
         self.tri_wvfm_layout.addWidget(self.tri_idx_lbl,0,7,1,1,QtCore.Qt.AlignLeft)
 
-        self.tri_send = QtGui.QPushButton(self, text = "send triangle")
+        self.tri_send = QPushButton(self, text = "send triangle")
         self.tri_send.setFixedHeight(25)
         self.tri_send.setFixedWidth(200)
         self.tri_wvfm_layout.addWidget(self.tri_send,2,4,1,4, QtCore.Qt.AlignRight)
         self.tri_send.clicked.connect(self.send_triangle)
 
-        self.freq_eng_indicator = QtGui.QLineEdit()
+        self.freq_eng_indicator = QLineEdit()
         self.freq_eng_indicator.setReadOnly(True)
 # 		self.freq_eng_indicator.setFixedWidth(80)
         self.freq_eng_indicator.setText(str(1000/float(self.period_eng_indicator.text()))[:6])
@@ -602,7 +602,7 @@ class dfbx2(QtGui.QWidget):
         self.freq_eng_indicator.setFocusPolicy(Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.freq_eng_indicator,3,4,1,1,QtCore.Qt.AlignRight)
 
-        self.amp_eng_indicator_lbl = QtGui.QLabel("freq [kHz]")
+        self.amp_eng_indicator_lbl = QLabel("freq [kHz]")
         self.tri_wvfm_layout.addWidget(self.amp_eng_indicator_lbl,3,5,1,1,QtCore.Qt.AlignLeft)
 
         self.layout.addWidget(self.tri_wvfm_widget,3,1,1,1,QtCore.Qt.AlignRight)
@@ -610,9 +610,9 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for CARD GLOBAL VARIABLE control
         '''
-        self.card_glb_widget = QtGui.QGroupBox(self)
+        self.card_glb_widget = QGroupBox(self)
         self.card_glb_widget.setTitle("CARD GLOBAL VARIABLES")
-        self.card_glb_layout = QtGui.QGridLayout(self.card_glb_widget)
+        self.card_glb_layout = QGridLayout(self.card_glb_widget)
         self.card_glb_layout.setContentsMargins(5,5,10,5)
         self.card_glb_layout.setSpacing(5)
 
@@ -625,7 +625,7 @@ class dfbx2(QtGui.QWidget):
         self.LED_button.toggled.connect(self.LED_changed)
         self.LED_button.setEnabled(1)
 
-        self.led_lbl = QtGui.QLabel("LED control")
+        self.led_lbl = QLabel("LED control")
         self.card_glb_layout.addWidget(self.led_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
         self.status_button = QToolButton(self, text = 'ST')
@@ -636,10 +636,10 @@ class dfbx2(QtGui.QWidget):
         self.card_glb_layout.addWidget(self.status_button,0,2,1,1)
         self.status_button.toggled.connect(self.status_changed)
 
-        self.status_lbl = QtGui.QLabel("status bit")
+        self.status_lbl = QLabel("status bit")
         self.card_glb_layout.addWidget(self.status_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 
-        self.card_glb_send = QtGui.QPushButton(self, text = "send CARD globals")
+        self.card_glb_send = QPushButton(self, text = "send CARD globals")
         self.card_glb_send.setFixedHeight(25)
         self.card_glb_send.setFixedWidth(200)
         self.card_glb_layout.addWidget(self.card_glb_send,0,4,1,1,QtCore.Qt.AlignRight)
@@ -650,26 +650,26 @@ class dfbx2(QtGui.QWidget):
         '''
         build widget for CARD INTERFACE PARAMETERS header
         '''
-        self.class_interface_widget = QtGui.QGroupBox(self)
+        self.class_interface_widget = QGroupBox(self)
         self.class_interface_widget.setFixedWidth(1080)
         self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
         self.class_interface_widget.setTitle("CARD INTERFACE PARAMETERS")
 
-        self.controls_layout = QtGui.QGridLayout(self.class_interface_widget)
+        self.controls_layout = QGridLayout(self.class_interface_widget)
         self.controls_layout.setContentsMargins(5,5,5,5)
         self.controls_layout.setSpacing(5)
 
-        self.addr_indicator = QtGui.QLineEdit()
+        self.addr_indicator = QLineEdit()
         self.addr_indicator.setReadOnly(True)
         self.addr_indicator.setText(str(addr))
         self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
         self.addr_indicator.setFocusPolicy(Qt.NoFocus)
         self.controls_layout.addWidget(self.addr_indicator,0,0,1,1,QtCore.Qt.AlignRight)
 
-        self.addr_label = QtGui.QLabel("card address")
+        self.addr_label = QLabel("card address")
         self.controls_layout.addWidget(self.addr_label,0,1,1,1,QtCore.Qt.AlignLeft)
 
-        self.slot_indicator = QtGui.QLineEdit()
+        self.slot_indicator = QLineEdit()
         self.slot_indicator.setReadOnly(True)
 # 		self.addr_indicator.setFixedWidth(40)
         self.slot_indicator.setText('%2d'%slot)
@@ -677,7 +677,7 @@ class dfbx2(QtGui.QWidget):
         self.slot_indicator.setFocusPolicy(Qt.NoFocus)
         self.controls_layout.addWidget(self.slot_indicator,0,2,1,1,QtCore.Qt.AlignRight)
 
-        self.slot_label = QtGui.QLabel("card slot")
+        self.slot_label = QLabel("card slot")
         self.controls_layout.addWidget(self.slot_label,0,3,1,5,QtCore.Qt.AlignLeft)
 
         self.layout.addWidget(self.class_interface_widget,4,1,1,1,QtCore.Qt.AlignRight)
@@ -685,7 +685,7 @@ class dfbx2(QtGui.QWidget):
         '''
         create TAB widget for embedding BAD16 functional widgets
         '''
-        self.dfbx2_widget = QtGui.QTabWidget(self)
+        self.dfbx2_widget = QTabWidget(self)
 
         self.dfbx2_widget1 = dfbrap.dfbrap(parent=self, addr=addr, slot=slot, column=1, seqln=seqln, lsync=lsync)
         self.dfbx2_widget.addTab(self.dfbx2_widget1, "CH1")
@@ -1053,7 +1053,7 @@ class dfbx2(QtGui.QWidget):
 
 def main():
 
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}

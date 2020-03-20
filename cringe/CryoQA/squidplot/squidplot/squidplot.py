@@ -14,7 +14,7 @@ import signal
 
 DESC_STRING = 'dumb little plotter'
 
-class SquidPlot(QtGui.QMainWindow):
+class SquidPlot(QMainWindow):
     '''
     example modulation file gui plotter
     '''
@@ -28,7 +28,7 @@ class SquidPlot(QtGui.QMainWindow):
         pyqtgraph.setConfigOption('background', 'w')
         pyqtgraph.setConfigOption('foreground', 'k')
         self.ui.setupUi(self)
-        self.statusLabel = QtGui.QLabel('File: None  Channel count: 0')
+        self.statusLabel = QLabel('File: None  Channel count: 0')
         self.basewindowtitle = self.windowTitle()
         self.ui.statusbar.insertWidget(0, self.statusLabel)
         self.uiconnect()
@@ -64,7 +64,7 @@ class SquidPlot(QtGui.QMainWindow):
 
     def openfile(self, filename):
         if filename == False:
-            dlg = QtGui.QFileDialog.getOpenFileNameAndFilter(parent=self, caption='Open modulation file')
+            dlg = QFileDialog.getOpenFileNameAndFilter(parent=self, caption='Open modulation file')
             filename = str(dlg[0])
             if filename == '':
                 return
@@ -72,7 +72,7 @@ class SquidPlot(QtGui.QMainWindow):
             self.squidfile = squidfile(filename)
         except IOError as e:
             print(e)
-            QtGui.QMessageBox.warning(self, 'File Error', 'File error - %s'%e)
+            QMessageBox.warning(self, 'File Error', 'File error - %s'%e)
             self.squidfile = None
 
 
@@ -162,7 +162,7 @@ class SquidPlot(QtGui.QMainWindow):
         
 def squidplotmain():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window=SquidPlot(app)
     window.show()
     window.process_args()

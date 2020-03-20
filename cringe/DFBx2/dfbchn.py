@@ -1,13 +1,13 @@
 import sys
 import time
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QToolButton, QPushButton, QSlider, QMenu
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 # import named_serial
 import struct
 
-class dfbChn(QtGui.QWidget):
+class dfbChn(QWidget):
     
     def __init__(self, parent=None, layout=None, state=0, chn=0, cardaddr=3, serialport=None, master=None):
 
@@ -55,19 +55,19 @@ class dfbChn(QtGui.QWidget):
         
         self.saveState = {}
                 
-#         self.layout_widget = QtGui.QHBox(self)
+#         self.layout_widget = QHBox(self)
 #         self.layout_widget.setStyleSheet("font-size: 14px")
 #         self.layout_widget.setStyleSheet("font-style: italic")
-        self.row_layout = QtGui.QGridLayout(self)
-#         self.row_layout = QtGui.QHBoxLayout(self)
+        self.row_layout = QGridLayout(self)
+#         self.row_layout = QHBoxLayout(self)
         self.row_layout.setMargin(0)
         self.row_layout.setSpacing(5)
         
-#         self.counter_label = QtGui.QLabel(str(self.chn))
+#         self.counter_label = QLabel(str(self.chn))
 #         self.counter_label.setFixedWidth(20)
 #         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
 
-        self.counter_label = QtGui.QLineEdit()
+        self.counter_label = QLineEdit()
         self.counter_label.setReadOnly(True)
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
@@ -162,7 +162,7 @@ class dfbChn(QtGui.QWidget):
         self.d2a_B_slider.setFocusPolicy(Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_B_slider,0,8)
         
-        self.data_packet = QtGui.QComboBox()
+        self.data_packet = QComboBox()
         self.data_packet.setFixedHeight(25)
         self.data_packet.addItem('FBA, ERR')
         self.data_packet.addItem('FBB, ERR')
@@ -212,7 +212,7 @@ class dfbChn(QtGui.QWidget):
         self.ARL_button.setStyleSheet("background-color: #" + self.red + ";")
         self.row_layout.addWidget(self.ARL_button,0,14)
         
-        self.chn_send = QtGui.QPushButton(self, text = "send channel")
+        self.chn_send = QPushButton(self, text = "send channel")
         self.chn_send.setFixedHeight(25)
 #         self.chn_send.setFixedWidth(160)
         self.row_layout.addWidget(self.chn_send,0,15)
@@ -227,7 +227,7 @@ class dfbChn(QtGui.QWidget):
         self.row_layout.addWidget(self.lock_button,0,16)
         
         if master != None:
-            self.chn_lbl = QtGui.QLabel("state")
+            self.chn_lbl = QLabel("state")
             self.chn_lbl.setToolTip("DAC channel number (corresponds to front panel)")
             self.chn_lbl.setFrameStyle(50)
             self.chn_lbl.setFrameStyle(50)
@@ -235,7 +235,7 @@ class dfbChn(QtGui.QWidget):
             self.chn_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.chn_lbl,1,0)
             
-            self.bool_lbl = QtGui.QLabel("triangle")
+            self.bool_lbl = QLabel("triangle")
             self.bool_lbl.setToolTip("select DC mode, HI/LO level for DC mode, and/or TRI output")
     #         self.bool_lbl.setFixedWidth(85)
             self.bool_lbl.setFrameStyle(50)
@@ -243,63 +243,63 @@ class dfbChn(QtGui.QWidget):
             self.bool_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.bool_lbl,1,1,1,2)
 
-            self.DAClo_lbl = QtGui.QLabel("ADC lock point")
+            self.DAClo_lbl = QLabel("ADC lock point")
             self.DAClo_lbl.setFixedHeight(25)
             self.DAClo_lbl.setFrameStyle(50)
             self.DAClo_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.DAClo_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.DAClo_lbl,1,3,1,2)
     
-            self.DAChi_lbl = QtGui.QLabel("DAC A offset")
+            self.DAChi_lbl = QLabel("DAC A offset")
             self.DAChi_lbl.setFixedHeight(25)
             self.DAChi_lbl.setFrameStyle(50)
             self.DAChi_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.DAChi_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.DAChi_lbl,1,5,1,2)
     
-            self.command_lbl = QtGui.QLabel("DAC B offset")
+            self.command_lbl = QLabel("DAC B offset")
             self.command_lbl.setFixedHeight(25)
             self.command_lbl.setFrameStyle(50)
             self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.command_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.command_lbl,1,7,1,2)
     
-            self.mode_lbl = QtGui.QLabel("send mode")
+            self.mode_lbl = QLabel("send mode")
             self.mode_lbl.setFixedHeight(25)
             self.mode_lbl.setFrameStyle(50)
             self.mode_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.mode_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.mode_lbl,1,9,1,1)
 
-            self.P_lbl = QtGui.QLabel("P")
+            self.P_lbl = QLabel("P")
             self.P_lbl.setFixedHeight(25)
             self.P_lbl.setFrameStyle(50)
             self.P_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.P_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.P_lbl,1,10,1,1)
 
-            self.I_lbl = QtGui.QLabel("I")
+            self.I_lbl = QLabel("I")
             self.I_lbl.setFixedHeight(25)
             self.I_lbl.setFrameStyle(50)
             self.I_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.I_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.I_lbl,1,11,1,1)
 
-            self.FB_lbl = QtGui.QLabel("feedback")
+            self.FB_lbl = QLabel("feedback")
             self.FB_lbl.setFixedHeight(25)
             self.FB_lbl.setFrameStyle(50)
             self.FB_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.FB_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.FB_lbl,1,12,1,3)
 
-            self.command_lbl = QtGui.QLabel("command")
+            self.command_lbl = QLabel("command")
             self.command_lbl.setFixedHeight(25)
             self.command_lbl.setFrameStyle(50)
             self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.command_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.command_lbl,1,15,1,1)
 
-            self.mode_lbl = QtGui.QLabel("track")
+            self.mode_lbl = QLabel("track")
             self.mode_lbl.setFixedHeight(25)
             self.mode_lbl.setFrameStyle(50)
             self.mode_lbl.setAlignment(QtCore.Qt.AlignCenter)
@@ -568,7 +568,7 @@ class dfbChn(QtGui.QWidget):
 
 def main():
      
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""    QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}""")

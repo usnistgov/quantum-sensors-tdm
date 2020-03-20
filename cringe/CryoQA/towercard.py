@@ -1,6 +1,6 @@
 import sys
 import time
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QToolButton, QPushButton, QSlider, QMenu
 
@@ -8,7 +8,7 @@ from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QTo
 import struct
 import towerchannel
 
-class TowerCard(QtGui.QWidget):
+class TowerCard(QWidget):
     
     def __init__(self, parent=None, cardaddr=3, serialport="tower", shockvalue=65535,name="default"):
 
@@ -29,16 +29,16 @@ class TowerCard(QtGui.QWidget):
         self.white = "FFFFFF"
         
         self.parent = parent
-        self.layout = QtGui.QGridLayout(self)
+        self.layout = QGridLayout(self)
         
         self.address = cardaddr
         self.serialport = serialport
         self.name=name
 
-        l=QtGui.QLabel(self.name)
+        l=QLabel(self.name)
         l.setFixedWidth(60)
         self.layout.addWidget(l,0,1,1,1)
-        l=QtGui.QLabel("%i"%self.address)
+        l=QLabel("%i"%self.address)
         l.setFixedWidth(60)
         self.layout.addWidget(l,0,0,1,1)
         
@@ -110,7 +110,7 @@ class TowerCard(QtGui.QWidget):
 
 def main():
      
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""    QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}""")

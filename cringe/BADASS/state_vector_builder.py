@@ -1,12 +1,13 @@
 import sys
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 # import named_serial
 import struct
 import time
 
-class state_vector_builder(QtGui.QWidget):
+class state_vector_builder(QWidget):
     
     def __init__(self, parent=None, layout=None, state=0, enb=1, vectors=[0], serialport=None, cardaddr=32):
 
@@ -34,10 +35,10 @@ class state_vector_builder(QtGui.QWidget):
         self.layout = layout
         self.state = state
         self.vectors = vectors
-        self.row_layout = QtGui.QHBoxLayout(self)
+        self.row_layout = QHBoxLayout(self)
         self.row_layout.setSpacing(5)
         
-        self.state_label = QtGui.QLineEdit()
+        self.state_label = QLineEdit()
         self.state_label.setReadOnly(True)
         self.state_label.setFixedWidth(36)
         self.state_label.setAlignment(QtCore.Qt.AlignRight)
@@ -49,7 +50,7 @@ class state_vector_builder(QtGui.QWidget):
         self.states = []
         
         for i in range(0, 16):
-            self.a = QtGui.QToolButton(self, text = str(i))
+            self.a = QToolButton(self, text = str(i))
             self.a.setFixedWidth(25)
             self.a.setFixedHeight(25)
             self.a.setCheckable(1)
@@ -59,7 +60,7 @@ class state_vector_builder(QtGui.QWidget):
             
             self.connect(self.buttons[i], SIGNAL("clicked()"), self.update_sv)
 
-        self.sv_send = QtGui.QPushButton(self, text = "send state")
+        self.sv_send = QPushButton(self, text = "send state")
         self.sv_send.setFixedHeight(25)
         self.row_layout.addWidget(self.sv_send)
         
@@ -133,7 +134,7 @@ class state_vector_builder(QtGui.QWidget):
                 
 def main():
      
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     ex = state_vector_builder()
     sys.exit(app.exec_())
  

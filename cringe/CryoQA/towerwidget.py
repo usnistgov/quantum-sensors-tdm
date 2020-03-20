@@ -1,6 +1,6 @@
 import sys
 import time
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QToolButton, QPushButton, QSlider, QMenu
 
@@ -8,12 +8,12 @@ from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QTo
 import struct
 import towercard
 
-class LabelWidget(QtGui.QWidget):
+class LabelWidget(QWidget):
     def __init__(self, parent=None):
         super(type(self), self).__init__(parent)
-        self.layout=QtGui.QGridLayout(self)
+        self.layout=QGridLayout(self)
 
-class TowerWidget(QtGui.QWidget):
+class TowerWidget(QWidget):
     
     def __init__(self, parent=None, nameaddrlist=["DB1", "13", "SAb", "4", "SQ1b", "12"], serialport="tower", shockvalue=65535):
 
@@ -34,7 +34,7 @@ class TowerWidget(QtGui.QWidget):
         self.white = "FFFFFF"
         
         self.parent = parent
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
 
         
         label = LabelWidget()
@@ -49,14 +49,14 @@ class TowerWidget(QtGui.QWidget):
 
 
         for i,s in enumerate(["addr","name","CX","CY","DX","DY","AX","AY","BX","BY","all chn", "shock"]):
-            l = QtGui.QLabel(s)
+            l = QLabel(s)
             label.layout.addWidget(l,0,i,1,1)
  
-        sendallbutton = QtGui.QPushButton("send all tower")
+        sendallbutton = QPushButton("send all tower")
         sendallbutton.clicked.connect(self.sendall)
         self.layout.addWidget(sendallbutton)
             
-        launchtowerpowersupplyguibutton = QtGui.QPushButton("Power Supply GUI")
+        launchtowerpowersupplyguibutton = QPushButton("Power Supply GUI")
         launchtowerpowersupplyguibutton.clicked.connect(self.launchtowerpowersupplygui)
         self.layout.addWidget(launchtowerpowersupplyguibutton)
         
@@ -96,7 +96,7 @@ class TowerWidget(QtGui.QWidget):
 
 def main():
      
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""    QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}""")

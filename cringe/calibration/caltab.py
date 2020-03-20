@@ -7,25 +7,22 @@ import pickle
 import os.path
 import os
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL, QTimer
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton, QVBoxLayout, QLabel, QFrame
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
-import easyClient
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import find
-from PyQt4.Qt import QSizePolicy
 
-class CalTab(QtGui.QWidget):
+class CalTab(QWidget):
     def __init__(self, parent):
         super(type(self),self).__init__(parent)
         self.mm = parent.tune_widget.mm
         self.c = parent.tune_widget.c
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
 
         self.layout.addWidget(self.c)
 
@@ -49,30 +46,30 @@ class CalTab(QtGui.QWidget):
         pass
 
 
-class CalDemo(QtGui.QWidget):
+class CalDemo(QWidget):
     def __init__(self, parent, mm, cringe, client):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QHBoxLayout(self)
+        self.layout = QHBoxLayout(self)
         self.mm=mm
         self.cringe=cringe
         self.c=client
 
         self.layout.addWidget(QLabel("calibration"))
 
-        layout = QtGui.QHBoxLayout()
-        self.button = QtGui.QPushButton(self,text="increment counter")
+        layout = QHBoxLayout()
+        self.button = QPushButton(self,text="increment counter")
         self.button.clicked.connect(self.increment_counter)
         layout.addWidget(self.button)
 
-        self.button_bittest = QtGui.QPushButton(self,text="print test pattern")
+        self.button_bittest = QPushButton(self,text="print test pattern")
         self.button_bittest.clicked.connect(self.printtestpattern)
         layout.addWidget(self.button_bittest)
 
-        self.button_correct = QtGui.QPushButton(self,text="number correct")
+        self.button_correct = QPushButton(self,text="number correct")
         self.button_correct.clicked.connect(self.get_correct_number)
         layout.addWidget(self.button_correct)
 
-        self.button_sweep = QtGui.QPushButton(self,text="sweep")
+        self.button_sweep = QPushButton(self,text="sweep")
         self.button_sweep.clicked.connect(self.sweepcounter)
         layout.addWidget(self.button_sweep)
 
@@ -144,7 +141,7 @@ class CalDemo(QtGui.QWidget):
         plots.show()
 
 
-class ColPlots(QtGui.QDialog):
+class ColPlots(QDialog):
     def __init__(self, parent,ncol,nrow):
         super(type(self), self).__init__(parent)
         self.ncol = ncol
@@ -153,9 +150,9 @@ class ColPlots(QtGui.QDialog):
         self.numYSubplots = 1+int(ncol>1)
         self.figure = plt.figure(figsize=(self.numXSubplots*6, self.numYSubplots*4))
         self.canvas = FigureCanvas(self.figure)
-        self.titlelabel = QtGui.QLabel("")
+        self.titlelabel = QLabel("")
         self.toolbar = NavigationToolbar(self.canvas, self)
-        layout = QtGui.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.addWidget(self.titlelabel)
         layout.addWidget(self.canvas)
         layout.addWidget(self.toolbar)

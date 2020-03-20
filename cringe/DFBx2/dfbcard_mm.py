@@ -1,12 +1,12 @@
 import sys
-import optparse
 import struct
 import time
 import named_serial
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
 
 class dfbcardMM(object):
 
@@ -409,24 +409,4 @@ class dfbcardMM(object):
         msg = struct.pack('BBBBB', b0, b1, b2, b3, b4)
         self.serialport.write(msg)
         
-# def main():
-#     
-#     app = QtGui.QApplication(sys.argv)
-#     app.setStyle("plastique")
-#     app.setStyleSheet("""    QPushbutton{font: 10px; padding: 6px}
-#                             QToolButton{font: 10px; padding: 6px}
-#                             QLineEdit {background-color: #FFFFCC;}""")
-# #     win = dfbcardMM(addr=addr)
-# #     win.show()
-#     sys.exit(app.exec_())
-# 
-# 
-# if __name__ == '__main__':
-#     p = optparse.OptionParser()
-#     p.add_option('-A','--card_address', action='store', dest='addr', type='int',
-#                  help='Hardware address of card (default=32).')
-#     p.set_defaults(addr=3)
-#     opt, args = p.parse_args()
-#     addr = opt.addr
-#     main()
 

@@ -6,28 +6,28 @@ import time
 import pickle
 import os.path
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL, QTimer
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton, QVBoxLayout, QLabel, QFrame, QMessageBox
-
-import easyClient
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import find
 from .tuneclient import TuneClient
 from .muxmaster import MuxMaster
 from . import analysis
 from . import vphistats
-from PyQt4.Qt import QSizePolicy
 
-class TuneTab(QtGui.QWidget):
+def find(condition):
+    res, = np.nonzero(np.ravel(condition))
+    return res
+
+class TuneTab(QWidget):
     def __init__(self, parent):
         super(type(self),self).__init__(parent)
         self.mm = MuxMaster(parent)
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
 
         self.c = TuneClient(self)
         self.layout.addWidget(self.c)
@@ -80,21 +80,21 @@ class TuneTab(QtGui.QWidget):
         self.vphidemo.lockSlopeSignFBBCheckBox.setChecked(loadState.get("lockSlopeSignFBBCheckBoxChecked",True))
 
 
-class VPhiDemo(QtGui.QWidget):
+class VPhiDemo(QWidget):
     def __init__(self, parent, mm, client):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
         self.mm=mm
         self.c=client
 
         self.layout.addWidget(QLabel("vphis and tuning"))
 
-        layout = QtGui.QHBoxLayout()
-        self.button = QtGui.QPushButton(self,text="vphis (changes mix to zero, may change send mode)")
+        layout = QHBoxLayout()
+        self.button = QPushButton(self,text="vphis (changes mix to zero, may change send mode)")
         self.button.clicked.connect(self.oneOffVphi)
         layout.addWidget(self.button)
 
-        self.vphi_type_combo = QtGui.QComboBox()
+        self.vphi_type_combo = QComboBox()
         self.vphi_type_combo.addItem('unlocked FBA')
         self.vphi_type_combo.addItem('unlocked FBB')
         self.vphi_type_combo.addItem('locked FBA')
@@ -103,77 +103,77 @@ class VPhiDemo(QtGui.QWidget):
         self.vphi_functions = [self.FBAvphi, self.FBBvphi, self.lockedFBAvphi]
 
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
 
 
-        self.fulltunebutton = QtGui.QPushButton(self,text="full tune")
+        self.fulltunebutton = QPushButton(self,text="full tune")
         self.fulltunebutton.clicked.connect(self.fullTune)
         layout.addWidget(self.fulltunebutton)
 
 
 
-        layout2 = QtGui.QHBoxLayout()
-        self.sendmixcheckbox = QtGui.QCheckBox(self)
-        self.sendmixcheckbox_label = QtGui.QLabel("check box to send mix after full tune")
+        layout2 = QHBoxLayout()
+        self.sendmixcheckbox = QCheckBox(self)
+        self.sendmixcheckbox_label = QLabel("check box to send mix after full tune")
         self.sendmixcheckbox.setChecked(True)
         layout2.addWidget(self.sendmixcheckbox)
         layout2.addWidget(self.sendmixcheckbox_label)
         layout.addLayout(layout2)
 
-        self.learn_columns_button = QtGui.QPushButton(self,text="learn columns")
+        self.learn_columns_button = QPushButton(self,text="learn columns")
         self.learn_columns_button.clicked.connect(self.learnColumns)
         layout.addWidget(self.learn_columns_button)
 
-        self.zero_mix_button = QtGui.QPushButton(self,text="set Mix=Zero")
+        self.zero_mix_button = QPushButton(self,text="set Mix=Zero")
         self.zero_mix_button.clicked.connect(self.c.client.setMixToZero)
         layout.addWidget(self.zero_mix_button)
 
-        self.prune_bad_button = QtGui.QPushButton(self,text="prune bad")
+        self.prune_bad_button = QPushButton(self,text="prune bad")
         self.prune_bad_button.clicked.connect(self.prune_bad_channels)
         layout.addWidget(self.prune_bad_button)
 
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.ISlopeProductSpin = QSpinBox()
         self.ISlopeProductSpin.setRange(-1000,1000)
         self.ISlopeProductSpin.setValue(-150)
-        layout.addWidget(QtGui.QLabel("I*Slope product"))
+        layout.addWidget(QLabel("I*Slope product"))
         layout.addWidget(self.ISlopeProductSpin)
-        self.lockSlopeSignCheckBox = QtGui.QCheckBox("Lock on + Slope", self)
+        self.lockSlopeSignCheckBox = QCheckBox("Lock on + Slope", self)
         layout.addWidget(self.lockSlopeSignCheckBox)
-        self.lockSlopeSignFBBCheckBox = QtGui.QCheckBox("Lock on + Slope FBB",self)
+        self.lockSlopeSignFBBCheckBox = QCheckBox("Lock on + Slope FBB",self)
         self.layout.addWidget(self.lockSlopeSignFBBCheckBox)
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.MixSlopeProductSpin = QSpinBox()
         self.MixSlopeProductSpin.setRange(-1000,1000)
         self.MixSlopeProductSpin.setValue(-400)
-        layout.addWidget(QtGui.QLabel("Mix*Slope product"))
+        layout.addWidget(QLabel("Mix*Slope product"))
         layout.addWidget(self.MixSlopeProductSpin)
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.PercentFromBottomSpin = QSpinBox()
         self.PercentFromBottomSpin.setRange(1,99)
         self.PercentFromBottomSpin.setValue(18)
-        layout.addWidget(QtGui.QLabel("Lockpoint % from bottom of vphi"))
+        layout.addWidget(QLabel("Lockpoint % from bottom of vphi"))
         layout.addWidget(self.PercentFromBottomSpin)
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.minimumD2AValueSpin = QSpinBox()
         self.minimumD2AValueSpin.setRange(0,16383)
         self.minimumD2AValueSpin.setValue(200)
-        layout.addWidget(QtGui.QLabel("Minimum D2A Setpoint"))
+        layout.addWidget(QLabel("Minimum D2A Setpoint"))
         layout.addWidget(self.minimumD2AValueSpin)
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
-        grabd2abutton = QtGui.QPushButton(self,text="grab d2aA values, assumes feedback is on")
+        layout = QHBoxLayout()
+        grabd2abutton = QPushButton(self,text="grab d2aA values, assumes feedback is on")
         grabd2abutton.clicked.connect(self.grab_and_set_d2aA_values)
-        plotnoisebutton = QtGui.QPushButton(self,text="plot noise (changes nothing)")
+        plotnoisebutton = QPushButton(self,text="plot noise (changes nothing)")
         plotnoisebutton.clicked.connect(self.plotnoise)
         layout.addWidget(grabd2abutton)
         layout.addWidget(plotnoisebutton)
@@ -406,7 +406,7 @@ class VPhiDemo(QtGui.QWidget):
         plt.legend()
         oneplot.show()
         # oneplot.figure.canvas.draw()
-        QtGui.QApplication.processEvents()  # process gui events
+        QApplication.processEvents()  # process gui events
 
 
 
@@ -640,37 +640,37 @@ class VPhiDemo(QtGui.QWidget):
         print(("median across all columns: %g arbs/sqrt(hz)"%np.median(medpsdcol)))
         print("saved files last_noise_freqs_hz and last_noise_psd_arbs_per_sqrt_hz, copy or rename if you want to keep them")
 
-class SettlingTimeSweeper(QtGui.QWidget):
+class SettlingTimeSweeper(QWidget):
     def __init__(self, parent, mm, client):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
         self.mm=mm
         self.c=client
 
         self.layout.addWidget(QLabel("Settling time sweeps. Run full tune first. Settings only apply to locked."))
 
 
-        settsweepbutton= QtGui.QPushButton(self,text="Sweep unlocked")
+        settsweepbutton= QPushButton(self,text="Sweep unlocked")
         settsweepbutton.clicked.connect(self.sweepUnlocked)
         self.layout.addWidget(settsweepbutton)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.adcLoSpin = QSpinBox()
         self.adcLoSpin.setRange(1,99)
         self.adcLoSpin.setValue(35)
-        layout.addWidget(QtGui.QLabel("% from bottom of FBB Vphi lo"))
+        layout.addWidget(QLabel("% from bottom of FBB Vphi lo"))
         layout.addWidget(self.adcLoSpin)
         self.layout.addLayout(layout)
 
-        layout = QtGui.QHBoxLayout()
+        layout = QHBoxLayout()
         self.adcHiSpin = QSpinBox()
         self.adcHiSpin.setRange(1,99)
         self.adcHiSpin.setValue(65)
-        layout.addWidget(QtGui.QLabel("% from bottom of FBB Vphi hi"))
+        layout.addWidget(QLabel("% from bottom of FBB Vphi hi"))
         layout.addWidget(self.adcHiSpin)
         self.layout.addLayout(layout)
 
-        lockedsweepbutton= QtGui.QPushButton(self,text="Sweep locked")
+        lockedsweepbutton= QPushButton(self,text="Sweep locked")
         lockedsweepbutton.clicked.connect(self.sweepLocked)
         self.layout.addWidget(lockedsweepbutton)
 
@@ -824,20 +824,20 @@ class SettlingTimeSweeper(QtGui.QWidget):
         self.mm.setSETT(oldSETT)
 
 
-class BitErrorDemo(QtGui.QWidget):
+class BitErrorDemo(QWidget):
     def __init__(self, parent, mm, client):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QHBoxLayout(self)
+        self.layout = QHBoxLayout(self)
         self.mm=mm
         self.c=client
 
-        self.layout.addWidget(QtGui.QLabel("Bit Error Test"))
+        self.layout.addWidget(QLabel("Bit Error Test"))
 
-        self.startbutton = QtGui.QPushButton(self,text="start")
+        self.startbutton = QPushButton(self,text="start")
         self.startbutton.clicked.connect(self.start)
         self.layout.addWidget(self.startbutton)
 
-        self.stopbutton = QtGui.QPushButton(self,text="stop")
+        self.stopbutton = QPushButton(self,text="stop")
         self.stopbutton.clicked.connect(self.stop)
         self.layout.addWidget(self.stopbutton)
 
@@ -935,24 +935,24 @@ class BitErrorDemo(QtGui.QWidget):
     def showplots(self):
         self.plots.show()
 
-class BiasSweeper(QtGui.QWidget):
+class BiasSweeper(QWidget):
     def __init__(self, parent, mm, client):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QHBoxLayout(self)
+        self.layout = QHBoxLayout(self)
         self.mm=mm
         self.c=client
 
         self.layout.addWidget(QLabel("Squid bias sweeper."))
 
-        sweepbutton= QtGui.QPushButton(self,text="Sweep BAD16 high, locked FBA vphis.")
+        sweepbutton= QPushButton(self,text="Sweep BAD16 high, locked FBA vphis.")
         sweepbutton.clicked.connect(self.sweepBAD16FBA)
         self.layout.addWidget(sweepbutton)
 
-        sweepbutton= QtGui.QPushButton(self,text="Sweep SAb bias, FBB vphis.")
+        sweepbutton= QPushButton(self,text="Sweep SAb bias, FBB vphis.")
         sweepbutton.clicked.connect(self.sweepSABFBB)
         self.layout.addWidget(sweepbutton)
 
-        sweepbutton= QtGui.QPushButton(self,text="Sweep SQ1b bias, locked FBA vphis.")
+        sweepbutton= QPushButton(self,text="Sweep SQ1b bias, locked FBA vphis.")
         sweepbutton.clicked.connect(self.sweepSQ1FBA)
         self.layout.addWidget(sweepbutton)
 
@@ -1105,20 +1105,20 @@ class BiasSweeper(QtGui.QWidget):
         for towerchannel in towercard.towerchannels:
             towerchannel.dacspin.setValue(val)
 
-class OnePlot(QtGui.QDialog):
+class OnePlot(QDialog):
     def __init__(self, parent):
         super(type(self), self).__init__(parent)
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas,self)
-        layout = QtGui.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.addWidget(self.canvas)
         layout.addWidget(self.toolbar)
         self.setLayout(layout)
         self.ax = plt.gca()
 
 
-class ColPlots(QtGui.QDialog):
+class ColPlots(QDialog):
     def __init__(self, parent,ncol,nrow):
         super(type(self), self).__init__(parent)
         self.ncol = ncol
@@ -1127,9 +1127,9 @@ class ColPlots(QtGui.QDialog):
         self.numYSubplots = 1+int(ncol>1)
         self.figure = plt.figure(figsize=(self.numXSubplots*6, self.numYSubplots*4))
         self.canvas = FigureCanvas(self.figure)
-        self.titlelabel = QtGui.QLabel("")
+        self.titlelabel = QLabel("")
         self.toolbar = NavigationToolbar(self.canvas, self)
-        layout = QtGui.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.addWidget(self.titlelabel)
         layout.addWidget(self.canvas)
         layout.addWidget(self.toolbar)
@@ -1227,7 +1227,7 @@ class ColPlots(QtGui.QDialog):
 
     def draw(self):
         self.canvas.draw()
-        QtGui.QApplication.processEvents()  # process gui events
+        QApplication.processEvents()  # process gui events
 
 
 def writeMixFile(fname, mix):

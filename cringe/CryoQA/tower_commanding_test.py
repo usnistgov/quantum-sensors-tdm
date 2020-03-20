@@ -1,7 +1,7 @@
 #cd ~/gitrepo/nist_lab_internals/viper/cringe/tower/
 import sys
 import time
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QToolButton, QPushButton, QSlider, QMenu
 
@@ -9,7 +9,7 @@ from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QTo
 import struct
 import towerwidget
 
-app = QtGui.QApplication(sys.argv)
+app = QApplication(sys.argv)
 app.setStyle("plastique")
 app.setStyleSheet("""    QPushbutton{font: 10px; padding: 6px}
                         QToolButton{font: 10px; padding: 6px}""")

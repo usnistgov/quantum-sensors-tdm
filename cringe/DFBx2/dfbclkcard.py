@@ -4,9 +4,9 @@ import optparse
 import struct
 import time
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import named_serial
 from . import dfbrap
@@ -14,7 +14,7 @@ from . import dprcal
 from . import clkrap
 # from dprcal import dprcal
 
-class dfbclkcard(QtGui.QWidget):
+class dfbclkcard(QWidget):
 
 	def __init__(self, parent=None, addr=1, slot=1, seqln=None, lsync=40):
 		
@@ -92,8 +92,8 @@ class dfbclkcard(QtGui.QWidget):
 		self.setGeometry(30,30,800,1000)
 		self.setContentsMargins(0,0,0,0)
 		
-		self.layout_widget = QtGui.QWidget(self)
-		self.layout = QtGui.QGridLayout(self)
+		self.layout_widget = QWidget(self)
+		self.layout = QGridLayout(self)
 		
 		print(self.INIT + "building DFBCLK card: slot", self.slot, "/ address", self.address, "(DFB) & 0 (CLK)", self.ENDC)
 		print()
@@ -101,9 +101,9 @@ class dfbclkcard(QtGui.QWidget):
 		'''
 		build widget for CARD GLOBAL VARIABLE control
 		'''
-		self.card_glb_widget = QtGui.QGroupBox(self)
+		self.card_glb_widget = QGroupBox(self)
 		self.card_glb_widget.setTitle("CARD GLOBAL VARIABLES")
-		self.card_glb_layout = QtGui.QGridLayout(self.card_glb_widget)
+		self.card_glb_layout = QGridLayout(self.card_glb_widget)
 		self.card_glb_layout.setContentsMargins(5,5,10,5)
 		self.card_glb_layout.setSpacing(5)
 
@@ -116,7 +116,7 @@ class dfbclkcard(QtGui.QWidget):
 		self.LED_button.toggled.connect(self.LED_changed)
 		self.LED_button.setEnabled(1)
 
-		self.led_lbl = QtGui.QLabel("LED control")
+		self.led_lbl = QLabel("LED control")
 		self.card_glb_layout.addWidget(self.led_lbl,0,1,1,1,QtCore.Qt.AlignLeft)
 
 		self.status_button = QToolButton(self, text = 'ST')
@@ -127,10 +127,10 @@ class dfbclkcard(QtGui.QWidget):
 		self.card_glb_layout.addWidget(self.status_button,0,2,1,1)
 		self.status_button.toggled.connect(self.status_changed)
 
-		self.status_lbl = QtGui.QLabel("status bit")
+		self.status_lbl = QLabel("status bit")
 		self.card_glb_layout.addWidget(self.status_lbl,0,3,1,1,QtCore.Qt.AlignLeft)
 			
-		self.card_glb_send = QtGui.QPushButton(self, text = "send CARD globals")
+		self.card_glb_send = QPushButton(self, text = "send CARD globals")
 		self.card_glb_send.setFixedHeight(25)
 		self.card_glb_send.setFixedWidth(200)
 		self.card_glb_layout.addWidget(self.card_glb_send,0,4,1,1,QtCore.Qt.AlignRight)
@@ -141,26 +141,26 @@ class dfbclkcard(QtGui.QWidget):
 		'''
 		build widget for CARD INTERFACE PARAMETERS header
 		'''
-		self.class_interface_widget = QtGui.QGroupBox(self)
+		self.class_interface_widget = QGroupBox(self)
 		self.class_interface_widget.setFixedWidth(1080)
 		self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
 		self.class_interface_widget.setTitle("CARD INTERFACE PARAMETERS")
 
-		self.controls_layout = QtGui.QGridLayout(self.class_interface_widget)
+		self.controls_layout = QGridLayout(self.class_interface_widget)
 		self.controls_layout.setContentsMargins(5,5,5,5)
 		self.controls_layout.setSpacing(5)
 		
-		self.addr_indicator = QtGui.QLineEdit()
+		self.addr_indicator = QLineEdit()
 		self.addr_indicator.setReadOnly(True)
 		self.addr_indicator.setText(str(addr))
 		self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
 		self.addr_indicator.setFocusPolicy(Qt.NoFocus)
 		self.controls_layout.addWidget(self.addr_indicator,0,2,1,1,QtCore.Qt.AlignRight)
 		
-		self.addr_label = QtGui.QLabel("card address")
+		self.addr_label = QLabel("card address")
 		self.controls_layout.addWidget(self.addr_label,0,3,1,1,QtCore.Qt.AlignLeft)
 
-		self.slot_indicator = QtGui.QLineEdit()
+		self.slot_indicator = QLineEdit()
 		self.slot_indicator.setReadOnly(True)
 # 		self.addr_indicator.setFixedWidth(40)
 		self.slot_indicator.setText('%2d'%slot)
@@ -168,7 +168,7 @@ class dfbclkcard(QtGui.QWidget):
 		self.slot_indicator.setFocusPolicy(Qt.NoFocus)
 		self.controls_layout.addWidget(self.slot_indicator,0,0,1,1,QtCore.Qt.AlignRight)
 
-		self.slot_label = QtGui.QLabel("card slot")
+		self.slot_label = QLabel("card slot")
 		self.controls_layout.addWidget(self.slot_label,0,1,1,1,QtCore.Qt.AlignLeft)
 
 		self.layout.addWidget(self.class_interface_widget,4,1,1,1,QtCore.Qt.AlignRight)
@@ -176,7 +176,7 @@ class dfbclkcard(QtGui.QWidget):
 		'''
 		create TAB widget for embedding DFBCLK functional widgets
 		'''
-		self.dfbclk_widget = QtGui.QTabWidget(self)
+		self.dfbclk_widget = QTabWidget(self)
 
 		self.dfbclk_widget1 = dfbrap.dfbrap(parent=self, addr=addr, slot=1, column=1, seqln=seqln, lsync=lsync)
 		self.dfbclk_widget.addTab(self.dfbclk_widget1, " CH1 ")
@@ -413,7 +413,7 @@ class dfbclkcard(QtGui.QWidget):
 		
 def main():
 	
-	app = QtGui.QApplication(sys.argv)
+	app = QApplication(sys.argv)
 	app.setStyle("plastique")
 	app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
 							QToolButton{font: 10px; padding: 6px}

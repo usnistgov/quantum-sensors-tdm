@@ -5,31 +5,31 @@ def quiet_set(myobject,value):
     '''
     myobject.blockSignals(True)
 
-    if isinstance(myobject, QtGui.QComboBox):
+    if isinstance(myobject, QComboBox):
         myobject.setCurrentIndex(value)
-    elif isinstance(myobject, QtGui.QSpinBox):
+    elif isinstance(myobject, QSpinBox):
         if value is None:
             myobject.clear()
         else:
             myobject.setValue(value)
-    elif isinstance(myobject, QtGui.QDoubleSpinBox):
+    elif isinstance(myobject, QDoubleSpinBox):
         if value is None:
             myobject.clear()
         else:
             myobject.setValue(value)
-    elif isinstance(myobject, QtGui.QLineEdit):
+    elif isinstance(myobject, QLineEdit):
         if value is None:
             myobject.clear()
         else:        
             myobject.setText(value)
-    elif isinstance(myobject, QtGui.QCheckBox):
+    elif isinstance(myobject, QCheckBox):
         myobject.setChecked(value)
-    elif isinstance(myobject, QtGui.QPlainTextEdit):
+    elif isinstance(myobject, QPlainTextEdit):
         if value is None:
             myobject.clear()
         else:
             myobject.appendPlainText(value)
-    elif isinstance(myobject, QtGui.QSlider):
+    elif isinstance(myobject, QSlider):
         if value is None:
             myobject.setValue(myobject.minimum())
         else:

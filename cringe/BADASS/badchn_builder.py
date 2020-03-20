@@ -1,12 +1,12 @@
 import sys
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL
-from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QToolButton, QPushButton, QSlider, QMenu
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 # import named_serial
 import struct
 
-class badChn(QtGui.QWidget):
+class badChn(QWidget):
     
     def __init__(self, parent=None, layout=None, chn=0, cardaddr=3, serialport=None, master=None):
 
@@ -42,19 +42,19 @@ class badChn(QtGui.QWidget):
         self.lohi = True
         self.tri = False
                 
-#         self.layout_widget = QtGui.QHBox(self)
+#         self.layout_widget = QHBox(self)
 #         self.layout_widget.setStyleSheet("font-size: 14px")
 #         self.layout_widget.setStyleSheet("font-style: italic")
-        self.row_layout = QtGui.QGridLayout(self)
-#         self.row_layout = QtGui.QHBoxLayout(self)
+        self.row_layout = QGridLayout(self)
+#         self.row_layout = QHBoxLayout(self)
         self.row_layout.setMargin(0)
         self.row_layout.setSpacing(5)
          
-#         self.counter_label = QtGui.QLabel(str(self.chn))
+#         self.counter_label = QLabel(str(self.chn))
 #         self.counter_label.setFixedWidth(20)
 #         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
 
-        self.counter_label = QtGui.QLineEdit()
+        self.counter_label = QLineEdit()
         self.counter_label.setReadOnly(True)
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
@@ -150,12 +150,12 @@ class badChn(QtGui.QWidget):
         self.d2a_hi_max_button.setFixedHeight(self.row_ht)        
         self.row_layout.addWidget(self.d2a_hi_max_button,0,11)
 
-        self.chn_send = QtGui.QPushButton(self, text = "send channel")
+        self.chn_send = QPushButton(self, text = "send channel")
         self.chn_send.setFixedHeight(self.row_ht)
         self.chn_send.setFixedWidth(160)
         self.row_layout.addWidget(self.chn_send,0,12)
         
-#         self.mode_menu = QtGui.QMenu(self)
+#         self.mode_menu = QMenu(self)
 #         self.mode_menu.addAction('static')
 #         self.mode_menu.addAction('track')
 #         self.mode_menu.addAction('lock')
@@ -170,7 +170,7 @@ class badChn(QtGui.QWidget):
         self.row_layout.addWidget(self.lock_button,0,13)
         
         if master != None:
-            self.chn_lbl = QtGui.QLabel("CHN")
+            self.chn_lbl = QLabel("CHN")
             self.chn_lbl.setToolTip("DAC channel number (corresponds to front panel)")
             self.chn_lbl.setFrameStyle(50)
             self.chn_lbl.setFrameStyle(50)
@@ -178,7 +178,7 @@ class badChn(QtGui.QWidget):
             self.chn_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #" + self.white)
             self.row_layout.addWidget(self.chn_lbl,1,0)
             
-            self.bool_lbl = QtGui.QLabel("booleans")
+            self.bool_lbl = QLabel("booleans")
             self.bool_lbl.setToolTip("select DC mode, HI/LO level for DC mode, and/or TRI output")
     #         self.bool_lbl.setFixedWidth(85)
             self.bool_lbl.setFrameStyle(50)
@@ -186,28 +186,28 @@ class badChn(QtGui.QWidget):
             self.bool_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
             self.row_layout.addWidget(self.bool_lbl,1,1,1,3)
 
-            self.DAClo_lbl = QtGui.QLabel("DAC low level")
+            self.DAClo_lbl = QLabel("DAC low level")
 #             self.DAClo_lbl.setFixedWidth(327)
             self.DAClo_lbl.setFrameStyle(50)
             self.DAClo_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.DAClo_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
             self.row_layout.addWidget(self.DAClo_lbl,1,4,1,4)
     
-            self.DAChi_lbl = QtGui.QLabel("DAC high level")
+            self.DAChi_lbl = QLabel("DAC high level")
 #             self.DAChi_lbl.setFixedWidth(327)
             self.DAChi_lbl.setFrameStyle(50)
             self.DAChi_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.DAChi_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
             self.row_layout.addWidget(self.DAChi_lbl,1,8,1,4)
     
-            self.command_lbl = QtGui.QLabel("command")
+            self.command_lbl = QLabel("command")
 #             self.command_lbl.setFixedWidth(150)
             self.command_lbl.setFrameStyle(50)
             self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
             self.command_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
             self.row_layout.addWidget(self.command_lbl,1,12,1,1)
     
-            self.mode_lbl = QtGui.QLabel("mode")
+            self.mode_lbl = QLabel("mode")
 #             self.mode_lbl.setFixedWidth(50)
             self.mode_lbl.setFrameStyle(50)
             self.mode_lbl.setAlignment(QtCore.Qt.AlignCenter)
@@ -378,7 +378,7 @@ class badChn(QtGui.QWidget):
 
 def main():
      
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     ex = badChn()
     sys.exit(app.exec_())
  

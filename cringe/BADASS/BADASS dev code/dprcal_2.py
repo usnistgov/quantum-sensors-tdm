@@ -2,7 +2,7 @@ import sys
 import optparse
 import struct
 
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette
 
@@ -10,7 +10,7 @@ from PyQt4.QtGui import QFileDialog, QPalette
 import named_serial
 from dpr_counter import dpr_counter
 
-class dprcal(QtGui.QWidget):
+class dprcal(QWidget):
 
 	def __init__(self, ctype=None, addr=None, slot=None):
 		super(dprcal, self).__init__()
@@ -42,48 +42,48 @@ class dprcal(QtGui.QWidget):
 		self.setWindowTitle("POW")	# Phase Offset Widget
 		self.setGeometry(50,50,660,800)
 		
-		self.layout_widget = QtGui.QWidget(self)
-		self.layout = QtGui.QVBoxLayout(self)
+		self.layout_widget = QWidget(self)
+		self.layout = QVBoxLayout(self)
 		
-		self.globals_widget = QtGui.QGroupBox(self.layout_widget)
-		self.globals_layout = QtGui.QGridLayout(self.globals_widget)
+		self.globals_widget = QGroupBox(self.layout_widget)
+		self.globals_layout = QGridLayout(self.globals_widget)
 		
-# 		self.slot_indicator = QtGui.QLineEdit()
+# 		self.slot_indicator = QLineEdit()
 # 		self.slot_indicator.setReadOnly(True)
 # 		self.slot_indicator.setFixedWidth(40)
 # 		self.slot_indicator.setText(str(slot))
 # 		self.slot_indicator.setAlignment(QtCore.Qt.AlignRight)
 # 		self.globals_layout.addWidget(self.slot_indicator,0,0,QtCore.Qt.AlignLeft)
 # 		
-# 		self.slot_label = QtGui.QLabel("card slot")
+# 		self.slot_label = QLabel("card slot")
 # 		self.globals_layout.addWidget(self.slot_label,0,1,1,4,QtCore.Qt.AlignLeft)
 		
-		self.loadcal = QtGui.QPushButton(self, text = "load calibration")
+		self.loadcal = QPushButton(self, text = "load calibration")
 		self.globals_layout.addWidget(self.loadcal,0,0,QtCore.Qt.AlignTop)
 
-		self.savecal = QtGui.QPushButton(self, text = "save calibration")
+		self.savecal = QPushButton(self, text = "save calibration")
 		self.globals_layout.addWidget(self.savecal,0,1,QtCore.Qt.AlignTop)
 
-		self.autocal = QtGui.QPushButton(self, text = "auto calibrate")
+		self.autocal = QPushButton(self, text = "auto calibrate")
 		self.globals_layout.addWidget(self.autocal,0,2,QtCore.Qt.AlignTop)
 
-		self.null_phase = QtGui.QPushButton(self, text = "null phase")
+		self.null_phase = QPushButton(self, text = "null phase")
 		self.null_phase.setEnabled(0)
 		self.globals_layout.addWidget(self.null_phase,0,4,QtCore.Qt.AlignTop)
 
-		self.init_slot = QtGui.QPushButton(self, text = "send slot")
+		self.init_slot = QPushButton(self, text = "send slot")
 		self.init_slot.setEnabled(0)
 		self.globals_layout.addWidget(self.init_slot,1,4,QtCore.Qt.AlignTop)
 		
-		self.filenameEdit = QtGui.QLineEdit()
+		self.filenameEdit = QLineEdit()
 		self.filenameEdit.setReadOnly(True)
 		self.globals_layout.addWidget(self.filenameEdit,1,0,1,3)
 		
-		self.filename_label = QtGui.QLabel("file")
+		self.filename_label = QLabel("file")
 		self.globals_layout.addWidget(self.filename_label,1,3,QtCore.Qt.AlignLeft)		
 
-		self.arrayframe = QtGui.QWidget(self.layout_widget)
-		self.array_layout = QtGui.QVBoxLayout(self.arrayframe)
+		self.arrayframe = QWidget(self.layout_widget)
+		self.array_layout = QVBoxLayout(self.arrayframe)
 		self.array_layout.setAlignment(QtCore.Qt.AlignHCenter)
 		self.array_layout.setSpacing(20)
 		self.array_layout.setMargin(10)
@@ -108,7 +108,7 @@ class dprcal(QtGui.QWidget):
 			pcs = val
 			self.phase_counters.append(dpr_counter(self, self.array_layout, pcs=pcs, idx=idx, slot=self.slot, coeffs=self.cal_coeffs, appTrim=self.appTrim, serialport=self.serialport, cardaddr=self.address))
 			
-		self.scrollarea = QtGui.QScrollArea(self.layout_widget)
+		self.scrollarea = QScrollArea(self.layout_widget)
 		self.scrollarea.setWidget(self.arrayframe)
 		self.layout.addWidget(self.globals_widget)
 		self.layout.addWidget(self.scrollarea)
@@ -205,7 +205,7 @@ class dprcal(QtGui.QWidget):
 
 def main():
 	
-	app = QtGui.QApplication(sys.argv)
+	app = QApplication(sys.argv)
 	win = dprcal(ctype=ctype, addr=addr, slot=slot)
 	win.show()
 	sys.exit(app.exec_())

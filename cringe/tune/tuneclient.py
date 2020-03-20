@@ -4,24 +4,26 @@ import optparse
 import struct
 import time
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt, SIGNAL,QTimer
-from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton, QVBoxLayout, QLabel
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
-import easyClient
+import nasa_client
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import find
+def find(condition):
+    res, = np.nonzero(np.ravel(condition))
+    return res
 
-class TuneClient(QtGui.QWidget):
+class TuneClient(QWidget):
     def __init__(self, parent):
         super(type(self), self).__init__(parent)
-        self.layout = QtGui.QHBoxLayout(self)
-        self.statustext = QtGui.QLabel("not connected to server")
-        self.startclientbutton = QtGui.QPushButton(self, text = "startclient")
+        self.layout = QHBoxLayout(self)
+        self.statustext = QLabel("not connected to server")
+        self.startclientbutton = QPushButton(self, text = "startclient")
 
         self.layout.addWidget(self.statustext)
         self.layout.addWidget(self.startclientbutton)
@@ -40,7 +42,7 @@ class TuneClient(QtGui.QWidget):
     def startclient(self):
         self.statustext.setText("connecting...")
         QtCore.QCoreApplication.processEvents() # allows text change to actually happen before blocking
-        self.client = easyClient.EasyClient(clockmhz=125)
+        self.client = nasa_client.EasyClient(clockmhz=125)
         self.getNewData = self.client.getNewData
         try: # blocks for 1 second if server isn't there
             self.client.setupAndChooseChannels()
