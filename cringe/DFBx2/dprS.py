@@ -122,9 +122,10 @@ class dprS(QWidget):
 		self.layout.addWidget(self.globals_widget)
 		self.layout.addWidget(self.scrollarea)
 				
-		self.connect(self.loadcal, SIGNAL("clicked()"), self.loadCalFile)
-		self.connect(self.savecal, SIGNAL("clicked()"), self.saveCalfile)
-		self.connect(self.autocal, SIGNAL("clicked()"), self.CalAllCounters)
+
+		self.loadcal.clicked.connect(self.loadCalFile)
+		self.savecal.clicked.connect(self.saveCalfile)
+		self.autocal.clicked.connect(self.CalAllCounters)
 		self.null_phase.clicked.connect(self.nullPhase)
 		self.init_slot.clicked.connect(self.sendSlot)
 		

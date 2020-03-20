@@ -57,14 +57,13 @@ class state_vector_builder(QWidget):
             self.a.setStyleSheet("background-color: #F08080;")
             self.buttons.append(self.a)
             self.row_layout.addWidget(self.buttons[i])
-            
-            self.connect(self.buttons[i], SIGNAL("clicked()"), self.update_sv)
+            self.buttons[i].clicked.connect(self.update_sv)
 
         self.sv_send = QPushButton(self, text = "send state")
         self.sv_send.setFixedHeight(25)
         self.row_layout.addWidget(self.sv_send)
         
-        self.connect(self.sv_send, SIGNAL("clicked()"), self.send_state)
+        self.sv_send.clicked.connect(self.send_state)
         
         self.setEnabled(enb)        
         

@@ -107,9 +107,9 @@ class SV_array(QWidget):
         self.layout.addWidget(self.scrollarea)
 # 		self.show()
 
-        self.connect(self.loadseq, SIGNAL("clicked()"), self.loadSVfile)
-        self.connect(self.saveseq, SIGNAL("clicked()"), self.saveSVfile)
-        self.connect(self.setseq, SIGNAL("clicked()"), self.SendAllStates)
+        self.loadseq.clicked.connect(self.loadSVfile)
+        self.saveseq.clicked.connect(self.saveSVfile)
+        self.setseq.clicked.connect(self.SendAllStates)
 
     def seqln_changed(self, seqln):
         for i in range(self.nstates):
