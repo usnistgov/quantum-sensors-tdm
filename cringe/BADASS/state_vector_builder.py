@@ -73,7 +73,7 @@ class state_vector_builder(QtGui.QWidget):
 #         self.show()
         
     def update_sv(self):
-        print self.FCTCALL + "update BAD16 internal state vector", self.state, self.ENDC
+        print(self.FCTCALL + "update BAD16 internal state vector", self.state, self.ENDC)
         sv_str = ""
         sv_dec = 0
         for i in range(0, 16):
@@ -87,28 +87,28 @@ class state_vector_builder(QtGui.QWidget):
                 sv_dec = sv_dec
                 
         self.vectors[self.state] = sv_dec
-        print "state vector binary", sv_str
-        print
+        print("state vector binary", sv_str)
+        print()
         
     def send_state(self):
         addr = 3
         wreg = addr << 25
-        print self.FCTCALL + "update BAD16 single state vector:", self.state, self.ENDC
-        print "BAD16:WREG3: update state index:", self.state
+        print(self.FCTCALL + "update BAD16 single state vector:", self.state, self.ENDC)
+        print("BAD16:WREG3: update state index:", self.state)
         wregval = wreg + self.state
         self.sendReg(wregval)
         wregval & 0x0000000                        # blank WREG
         addr = 7
         wregval = addr << 25 
-        print "BAD16:WREG7: send state vector:", hex(self.vectors[self.state]&0xffff)
+        print("BAD16:WREG7: send state vector:", hex(self.vectors[self.state]&0xffff))
         wregval = wregval + self.vectors[self.state] 
         self.sendReg(wregval)
         if self.vectors[self.state] != 0:
             self.parent.parent.initMem(0)
-        print
+        print()
 
     def sendReg(self, wregval): 
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

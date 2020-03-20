@@ -1,1 +1,1 @@
-from squidplot import squidplotmain
+from .squidplot import squidplotmain

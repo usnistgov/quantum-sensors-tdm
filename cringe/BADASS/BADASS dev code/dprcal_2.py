@@ -133,9 +133,9 @@ class dprcal(QtGui.QWidget):
 
 
 	def loadCalFile(self):
-		print self.FCTCALL + "load calibration file:", self.ENDC
+		print(self.FCTCALL + "load calibration file:", self.ENDC)
 		filename = str(QFileDialog.getOpenFileName())
-		print("filename = [%s]" % filename)
+		print(("filename = [%s]" % filename))
 		if len(filename) > 0:
 			print("loading file")
 # 			self.loadcal.setStyleSheet("color: #008000")
@@ -145,26 +145,26 @@ class dprcal(QtGui.QWidget):
 				self.cal_coeffs[idx] = int(val)
 			f.close()
 		if (idx + 1) != self.counters:
-			print self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC
+			print(self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC)
 			return
 		for i in range(self.counters):
 			self.phase_counters[i].loadCal()
 		self.filenameEdit.setText(filename)
-		print
+		print()
 			
 	def saveCalfile(self):
-		print self.FCTCALL + "save calibration file:", self.ENDC
+		print(self.FCTCALL + "save calibration file:", self.ENDC)
 		filename = str(QFileDialog.getSaveFileName())
 		self.filenameEdit.setText(filename)
-		print "saving calibration file:", filename
+		print("saving calibration file:", filename)
 		f = open(filename, 'w')
 		for idx in range(self.counters):
 			f.write(str(self.cal_coeffs[idx])+"\n")
 		f.close()
-		print
+		print()
 
 	def CalAllCounters(self):
-		print self.FCTCALL + "auto calibrate", self.ENDC
+		print(self.FCTCALL + "auto calibrate", self.ENDC)
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
 			self.phase_counters[i].calcounter()
@@ -174,25 +174,25 @@ class dprcal(QtGui.QWidget):
 		self.init_slot.setEnabled(mode)
 			
 	def nullPhase(self):
-		print self.FCTCALL + "null phase:", self.ENDC
+		print(self.FCTCALL + "null phase:", self.ENDC)
 		self.resetALLphase()
-		print "GPI1: reset slot & phase trim to 0:"
+		print("GPI1: reset slot & phase trim to 0:")
 		mask = 0xfffe000
 		wregval = self.GPI1 & mask
 		self.sendReg(wregval)
-		print
+		print()
 		
 	def sendSlot(self):
-		print self.FCTCALL + "send slot:", self.slot, self.ENDC
-		print "GPI1: send slot:"
+		print(self.FCTCALL + "send slot:", self.slot, self.ENDC)
+		print("GPI1: send slot:")
 		mask = 0xfffffe0
 		wregval = (mask & self.GPI1) | self.slot
 		self.sendReg(wregval)
-		print
+		print()
 
 				
 	def sendReg(self, wregval):
-		print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

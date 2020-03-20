@@ -6,7 +6,7 @@ from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QTo
 
 # import named_serial
 import struct
-import towercard
+from . import towercard
 
 class LabelWidget(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -68,14 +68,14 @@ class TowerWidget(QtGui.QWidget):
             #print self.width()
 
     def sendall(self):
-        for key,tc in self.towercards.iteritems():
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 value = tchn.dacspin.value()
                 tchn.sendvalue(value)
 
     def packState(self):
         dacvalues = []
-        for key,tc in self.towercards.iteritems():
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 dacvalues.append(tchn.dacspin.value())
         self.stateVector    =    {
@@ -84,13 +84,13 @@ class TowerWidget(QtGui.QWidget):
 
     def unpackState(self, loadState):
         dacvalues = loadState["dacvalues"][:]
-        print dacvalues
+        print(dacvalues)
         if len(dacvalues) != len(self.towercards)*8:
             # silentley ignore saved values if there are the wrong number
             # used to allow changiing the tower setup from the command line
             print("wrong number of dacvalues for towerwidget.unpackState")
             return
-        for key,tc in self.towercards.iteritems():
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 dacvalues.append(tchn.dacspin.setValue(dacvalues.pop(0)))
 

@@ -59,7 +59,7 @@ class TowerChannel(QtGui.QWidget):
         
         if parent == None:       
             self.show()
-            print self.width()
+            print(self.width())
         
             
     def dacspin_changed(self):
@@ -67,7 +67,7 @@ class TowerChannel(QtGui.QWidget):
         self.sendvalue(value)
 
     def sendvalue(self,dacvalue):
-        print("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn))
+        print(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
         self.bluebox.setVoltDACUnits(dacvalue)
 
 

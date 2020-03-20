@@ -79,10 +79,10 @@ class MUX09:
             self.badchan.change_channel(row-17)
 
         else:
-            print 'That is not a valid row number passed to row_decode'
+            print('That is not a valid row number passed to row_decode')
 
     def zero_everything(self):
-        print 'Zero all BAD16 DAC Hi values and setup for muxing QA'
+        print('Zero all BAD16 DAC Hi values and setup for muxing QA')
         for row in range(self.number_rows):
             self.row_decode(row)
             self.badchan.set_d2a_hi_value(0x0000)
@@ -91,14 +91,14 @@ class MUX09:
 
     def get_baselines(self):
         '''Makes an assumption that no rows are active and that the feed back loop is just noise'''
-        print 'Getting basline data to determine ic_min std deviation.'
+        print('Getting basline data to determine ic_min std deviation.')
         fb, err = self.daq.take_data()
         self.baselines = fb[:, :]  # There is no reason to save these
         self.baselines_std = np.std(fb, 1)
 
     def row_bias_sweeper(self):
         start_time = time.time()
-        print 'Starting the row sweep of :' + str(self.number_steps) + ' steps'
+        print('Starting the row sweep of :' + str(self.number_steps) + ' steps')
         for sweep_point in range(self.number_steps):
             sys.stdout.write('\rSweep point sweep_point %5.0f' % sweep_point)
             sys.stdout.flush()
@@ -114,9 +114,9 @@ class MUX09:
             # Find IC_min
 
         end_time = time.time()
-        print ''
-        print 'Delta Seconds'
-        print (end_time-start_time)
+        print('')
+        print('Delta Seconds')
+        print((end_time-start_time))
 
     def mux_sweep(self):
         start_time = time.time()
@@ -126,9 +126,9 @@ class MUX09:
         self.row_bias_sweeper()
 
         end_time = time.time()
-        print ''
-        print 'Delta Seconds for mux sweep'
-        print (end_time - start_time)
+        print('')
+        print('Delta Seconds for mux sweep')
+        print((end_time - start_time))
 
     def calculate_ics(self):
         for row in range(self.number_rows):
@@ -158,7 +158,7 @@ class MUX09:
             self.row_decode(row)
             self.badchan.set_lohi(True)
             self.badchan.set_d2a_hi_value(int(self.icmax[row]))
-            raw_input()
+            input()
             self.badchan.set_lohi(False)
 
         self.zero_everything()
@@ -186,20 +186,20 @@ class MUX09:
 
     def save_npz(self):
         if self.chip_id is None:
-            print 'You have not set the Chip ID'
+            print('You have not set the Chip ID')
             return
         if self.sq2_icmin is None:
-            print 'You have not set the SQUID 2 IC_min'
+            print('You have not set the SQUID 2 IC_min')
             return
         if self.sq2_icmax is None:
-            print 'You have not set the SQUID 2 IC_max'
+            print('You have not set the SQUID 2 IC_max')
             return
         if self.qa_name is None:
-            print 'Please set your name as the QA person'
+            print('Please set your name as the QA person')
             return
         if self.note is '':
-            print 'Please input any notes about this chip.'
-            print 'Such as what the spot check on the inputs told you'
+            print('Please input any notes about this chip.')
+            print('Such as what the spot check on the inputs told you')
             return
 
         today = time.localtime()

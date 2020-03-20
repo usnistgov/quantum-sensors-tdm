@@ -32,5 +32,5 @@ class TowerChannel:
                                        shared=True)
 
     def set_value(self, dac_value):
-        print("towerchannel sending %g to addr %g, chn %g"%(dac_value, self.address, self.column))
+        print(("towerchannel sending %g to addr %g, chn %g"%(dac_value, self.address, self.column)))
         self.bluebox.setVoltDACUnits(dac_value)

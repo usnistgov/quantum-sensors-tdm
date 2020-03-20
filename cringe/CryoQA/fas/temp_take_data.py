@@ -98,7 +98,7 @@ class Mux:
             self.badchan_rs.change_channel(row)
 
         else:
-            print 'That is not a valid row number passed to row_decode'
+            print('That is not a valid row number passed to row_decode')
 
     def row_decode_in(self, row):
         if row in range(0, 16):  # DS
@@ -106,14 +106,14 @@ class Mux:
             self.badchan_in.change_channel(row)
 
         else:
-            print 'That is not a valid row number passed to row_decode'
+            print('That is not a valid row number passed to row_decode')
 
     def tower_set_voltage(self, channel, dac_value):
         self.tower.bluebox.channel = channel
         self.tower.set_value(dac_value)
 
     def zero_everything(self):
-        print 'Zero all BAD16 DAC Hi values, Tower SQ1 bias and setup for muxing QA'
+        print('Zero all BAD16 DAC Hi values, Tower SQ1 bias and setup for muxing QA')
         for row in range(16):
             self.row_decode_rs(row)
             self.badchan_rs.set_d2a_hi_value(0x0000)
@@ -131,16 +131,16 @@ class Mux:
 
     def get_baselines(self):
         '''Makes an assumption that no rows are active and that the feed back loop is just noise'''
-        print 'Getting basline data to determine ic_min std deviation.'
+        print('Getting basline data to determine ic_min std deviation.')
         fb, err = self.daq.take_data()
         self.baselines_std = np.std(fb, 2)
         for row in range(len(self.baselines_std)):
             if self.baselines_std[0][row] > 20:
-                print 'The standard deviation for row:' + str(row) + ' is high: ' + str(self.baselines_std[row])
+                print('The standard deviation for row:' + str(row) + ' is high: ' + str(self.baselines_std[row]))
 
     def sq1_bias_sweeper(self):
         start_time = time.time()
-        print 'Starting the row sweep of :' + str(self.number_steps) + ' steps'
+        print('Starting the row sweep of :' + str(self.number_steps) + ' steps')
         for sweep_point in range(self.number_steps):
             sys.stdout.write('\rSweep point sweep_point %5.0f' % sweep_point)
             sys.stdout.flush()
@@ -157,9 +157,9 @@ class Mux:
             # Find IC_min
 
         end_time = time.time()
-        print ''
-        print 'Delta Seconds'
-        print (end_time-start_time)
+        print('')
+        print('Delta Seconds')
+        print((end_time-start_time))
 
     def calculate_ics(self):
         for col in range(self.number_columns):
@@ -209,15 +209,15 @@ class Mux:
     def save_npz(self):
         for col in range(self.number_columns):
             if self.chip_id[col] is None:
-                print 'You have not set the Chip ID for Column: ' + str(col)
+                print('You have not set the Chip ID for Column: ' + str(col))
                 return
 
             if self.qa_name is None:
-                print 'Please set your name as the QA person'
+                print('Please set your name as the QA person')
                 return
 
             if self.note[col] is '':
-                print 'Please input any notes about this Column: ' + str(col)
+                print('Please input any notes about this Column: ' + str(col))
                 return
 
             if self.save_all_data_flag:
@@ -485,7 +485,7 @@ class Mux:
                     temp = np.argmax(fb[col, row, zero_crossings[2]:zero_crossings[3]])
                     self.sq1_row_fb_m[col, row, 1] = fb[col, 11, temp]
                 else:
-                    print "Did not find enough phi_nots swept out on row: " + str(row)
+                    print("Did not find enough phi_nots swept out on row: " + str(row))
 
     def phase3_1(self):
         '''Phase3 part 1: Now take data to measure the input coupling to the squids.
@@ -550,4 +550,4 @@ class Mux:
                            zero_crossings[2]
                     self.sq1_row_input_m[col, row, 1] = fb[col, 11, temp]
                 else:
-                    print "Did not find enough phi_nots swept out on row: " + str(row)
+                    print("Did not find enough phi_nots swept out on row: " + str(row))

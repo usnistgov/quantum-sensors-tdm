@@ -9,7 +9,7 @@ from PyQt4.QtGui import QFileDialog, QPalette
 
 # import state_vector_builder
 import named_serial
-from dprS_counter import dprS_counter
+from .dprS_counter import dprS_counter
 
 class dprS(QtGui.QWidget):
 
@@ -136,20 +136,20 @@ class dprS(QtGui.QWidget):
 # 		self.sendSlot()
 
 	def resetALLphase(self):
-		print
+		print()
 		for i in range(self.counters):
 # 		if self.enb[i] == 1:
 			self.phase_counters[i].resetPhase()
 
 
 	def loadCalFile(self):
-		print self.FCTCALL + "load calibration file:", self.ENDC
-		print
+		print(self.FCTCALL + "load calibration file:", self.ENDC)
+		print()
 		filename = str(QFileDialog.getOpenFileName())
 # 		print("filename = [%s]" % filename)
 		if len(filename) > 0:
-			print "loading file:", filename
-			print
+			print("loading file:", filename)
+			print()
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
 # 				print idx, val
@@ -159,38 +159,38 @@ class dprS(QtGui.QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			print self.FAIL + "load file cancelled:", self.ENDC
-			print
+			print(self.FAIL + "load file cancelled:", self.ENDC)
+			print()
 			return
 		
 		if (idx + 1) != self.counters:
-			print self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC
-			print
+			print(self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC)
+			print()
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		print self.FCTCALL + "save calibration file:", self.ENDC
-		print
+		print(self.FCTCALL + "save calibration file:", self.ENDC)
+		print()
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
-			print "saving calibration file:", filename
-			print
+			print("saving calibration file:", filename)
+			print()
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			print self.FAIL + "save file cancelled:", self.ENDC
-			print
+			print(self.FAIL + "save file cancelled:", self.ENDC)
+			print()
 			return
 
 	def CalAllCounters(self):
-		print
-		print self.INIT + "auto calibrate: ", self.card_type, "card address", self.address, self.ENDC
+		print()
+		print(self.INIT + "auto calibrate: ", self.card_type, "card address", self.address, self.ENDC)
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
 			self.phase_counters[i].calcounter()
@@ -200,24 +200,24 @@ class dprS(QtGui.QWidget):
 		self.init_slot.setEnabled(mode)
 			
 	def nullPhase(self):
-		print self.INIT + "null phase:", self.ENDC
-		print
+		print(self.INIT + "null phase:", self.ENDC)
+		print()
 		self.resetALLphase()
-		print self.FCTCALL + "reset slot & phase trim to 0:", self.ENDC
-		print
-		print "GPI24: send slot:", 0
+		print(self.FCTCALL + "reset slot & phase trim to 0:", self.ENDC)
+		print()
+		print("GPI24: send slot:", 0)
 		self.send_cmd(24, 0)
-		print "GPI25: send phase trim coefficient:", 0
+		print("GPI25: send phase trim coefficient:", 0)
 		self.send_cmd(25, 0)
-		print
+		print()
 		
 	def sendSlot(self):
-		print self.FCTCALL + "GPI24: send slot:", self.slot, self.ENDC
-		print
+		print(self.FCTCALL + "GPI24: send slot:", self.slot, self.ENDC)
+		print()
 		self.send_cmd(24, self.slot)
 				
 	def sendReg(self, wregval):
-		print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
@@ -229,7 +229,7 @@ class dprS(QtGui.QWidget):
 		
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		print self.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", self.BOLD, wregval, "(", val, ")",self.ENDC
+		print(self.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", self.BOLD, wregval, "(", val, ")",self.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1

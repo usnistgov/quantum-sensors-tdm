@@ -5,9 +5,9 @@ import os.path
 from argparse import ArgumentParser
 import numpy as np
 from PyQt4 import QtCore, QtGui
-from squidplotUI import Ui_MainWindow
-from squid_data_files import squidfile
-from quietset import quiet_set
+from .squidplotUI import Ui_MainWindow
+from .squid_data_files import squidfile
+from .quietset import quiet_set
 import pyqtgraph
 import signal
 
@@ -71,7 +71,7 @@ class SquidPlot(QtGui.QMainWindow):
         try:
             self.squidfile = squidfile(filename)
         except IOError as e:
-            print e
+            print(e)
             QtGui.QMessageBox.warning(self, 'File Error', 'File error - %s'%e)
             self.squidfile = None
 
@@ -100,7 +100,7 @@ class SquidPlot(QtGui.QMainWindow):
         
         if self.squidfile.columns:
             self.ui.columnGroupBox.setEnabled(True)
-            self.ui.columnComboBox.addItems(map(str, range(self.squidfile.columns)))
+            self.ui.columnComboBox.addItems(list(map(str, list(range(self.squidfile.columns)))))
             quiet_set(self.ui.columnComboBox, 0)
             self.currentcolumn = 0
         else:
@@ -110,7 +110,7 @@ class SquidPlot(QtGui.QMainWindow):
         
         if self.squidfile.pages:
             self.ui.pageGroupBox.setEnabled(True)
-            self.ui.pageComboBox.addItems(map(str, range(self.squidfile.pages)))
+            self.ui.pageComboBox.addItems(list(map(str, list(range(self.squidfile.pages)))))
             quiet_set(self.ui.pageComboBox, 0)
             self.currentpage = 0
         else:

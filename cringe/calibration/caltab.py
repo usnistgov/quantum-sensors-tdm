@@ -3,7 +3,7 @@ import sys
 import optparse
 import struct
 import time
-import cPickle
+import pickle
 import os.path
 import os
 
@@ -102,12 +102,12 @@ class CalDemo(QtGui.QWidget):
 
 
     def printtestpattern(self):
-        print self.parent
+        print(self.parent)
         tp_mode = self.cringe.tp_mode
-        print(tp_mode.itemText(tp_mode.currentIndex()))
+        print((tp_mode.itemText(tp_mode.currentIndex())))
         TP = self.cringe.TP
         lobytes,hibytes=self.cringe.lohibytes()
-        print hex(lobytes),hex(hibytes)
+        print(hex(lobytes),hex(hibytes))
 
     def increment_counter(self):
         dfbcard = self.cringe.crate_widgets[1]
@@ -120,9 +120,9 @@ class CalDemo(QtGui.QWidget):
         lobytes,hibytes=self.cringe.lohibytes()
         data = self.c.getNewData(divideNsamp=False, sendMode="raw")
         ncorrect = (data[0,0,:,0]==lobytes).sum()+(data[0,0,:,0]==hibytes).sum()
-        print(map(hex, data[0,0,:20,0]))
-        print(map(hex, data[0,0,:20,1]))
-        print(ncorrect/float(data.size))
+        print((list(map(hex, data[0,0,:20,0]))))
+        print((list(map(hex, data[0,0,:20,1]))))
+        print((ncorrect/float(data.size)))
         return ncorrect
 
     def sweepcounter(self):
@@ -130,7 +130,7 @@ class CalDemo(QtGui.QWidget):
         counter = dfbcard.dfbx2_widget3.phase_counters[0]
         max = counter.phase_trim_spin.maximum()
         min = counter.phase_trim_spin.minimum()
-        values = range(min, max+1)
+        values = list(range(min, max+1))
         ncorrect = []
         for value in values:
             counter.phase_trim_spin.setValue(value)

@@ -23,11 +23,11 @@ for i in range(data.shape[0]):
         for k in range(data.shape[2]):
             sheet_data['A' + str(k+1)] = data[i, j, k, 1].tolist()
 
-print 'Size of Sheet'
-print sheet_data.dimensions
+print('Size of Sheet')
+print(sheet_data.dimensions)
 
-print 'Data present in cell A1'
-print sheet_data['A1'].value
+print('Data present in cell A1')
+print(sheet_data['A1'].value)
 
 wb.save("/home/pcuser/Documents/script_testing/yolo.xlsx")
 

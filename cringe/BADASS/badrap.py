@@ -7,7 +7,7 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-from badchn_builder import badChn
+from .badchn_builder import badChn
 
 class badrap(QtGui.QWidget):
 
@@ -516,10 +516,10 @@ class badrap(QtGui.QWidget):
         self.send_wreg0()
 
     def send_globals(self):
-        print self.FCTCALL + "send BAD16 globals:", self.ENDC
+        print(self.FCTCALL + "send BAD16 globals:", self.ENDC)
         self.send_wreg0()
 # 		self.send_wreg1()
-        print
+        print()
 
     def dwell_changed(self):
         self.dwell_val = self.dwell.value()
@@ -553,29 +553,29 @@ class badrap(QtGui.QWidget):
             self.send_wreg1()
 
     def amp_changed(self):
-        print "amp_changed"
+        print("amp_changed")
         self.ampDACunits = self.rangeDACunits * self.stepDACunits
-        print self.ampDACunits
+        print(self.ampDACunits)
         if self.ampDACunits > 16383:
             self.ampDACunits = 16383
         self.amp_indicator.setText('%5i'%self.ampDACunits)
         mV = 1000*self.ampDACunits/16383.0
-        print mV, str(mV)
+        print(mV, str(mV))
         self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
-        print
+        print()
 
     def period_changed(self):
-        print "period changed"
+        print("period changed")
         self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
         self.period_indicator.setText('%12i'%self.periodDACunits)
         uSecs = self.periodDACunits*self.lsync*0.008
-        print uSecs
+        print(uSecs)
         kHz = 1000/uSecs
-        print kHz
+        print(kHz)
         self.period_eng_indicator.setText('%8.4f'%uSecs)
         self.freq_eng_indicator.setText('%6.3f'%kHz)
-        print
+        print()
 
 
     def tri_idx_changed(self):
@@ -589,22 +589,22 @@ class badrap(QtGui.QWidget):
         self.send_wreg1()
 
     def send_wreg0(self):
-        print "BAD16: WREG0: legacy globals"
+        print("BAD16: WREG0: legacy globals")
         wreg = 0 << 25
         wregval = wreg | (self.status << 16) | (self.led << 14) | (self.delay << 10) | (self.init << 8)| self.seqln
 # 		wregval = wreg | (self.led << 24) | (self.status << 16) | (self.delay << 10) | (self.seqln << 1)
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg1(self):
-        print "BAD16:WREG1: triangle parameters"
+        print("BAD16:WREG1: triangle parameters")
         wreg = 1 << 25
         wregval = wreg + (self.tri_idx << 24) + (self.dwell_val << 20) + (self.range_val << 16) + self.step_val
         self.sendReg(wregval)
-        print
+        print()
 
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

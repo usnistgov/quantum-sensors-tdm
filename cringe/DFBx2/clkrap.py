@@ -9,7 +9,7 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton, QGroupBox
 
 import named_serial
-from dfbchn import dfbChn
+from .dfbchn import dfbChn
 # print "importing dfbrap"
 
 class clkrap(QtGui.QWidget):
@@ -125,7 +125,7 @@ class clkrap(QtGui.QWidget):
         self.frame_period_indicator.setFocusPolicy(Qt.NoFocus)
         self.layout.addWidget(self.frame_period_indicator,3,2,1,1,QtCore.Qt.AlignRight)
 
-        self.frame_period_lbl = QtGui.QLabel(u"\u00B5s")
+        self.frame_period_lbl = QtGui.QLabel("\u00B5s")
         self.layout.addWidget(self.frame_period_lbl,3,3,1,1,QtCore.Qt.AlignLeft)
 
         self.lp_title = QtGui.QLabel("frame rate")
@@ -169,7 +169,7 @@ class clkrap(QtGui.QWidget):
         self.lsync_minus1 = self.lsync - 1
         self.line_period_changed()
         self.frame_period_changed()
-        print self.FCTCALL + "send LSYNC-1 to (DFB)CLK:", self.ENDC
+        print(self.FCTCALL + "send LSYNC-1 to (DFB)CLK:", self.ENDC)
         self.send_wreg2()
 
     def seqln_changed(self, seqln):
@@ -185,12 +185,12 @@ class clkrap(QtGui.QWidget):
         self.CLKstate = self.CLKstate_button.isChecked()
         self.notCLKstate = not(self.CLKstate)
         if self.CLKstate == 1:
-            print self.FCTCALL + "line clock enabled:", self.ENDC
+            print(self.FCTCALL + "line clock enabled:", self.ENDC)
             self.CLKstate_button.setStyleSheet("background-color: #" + self.green + ";")
             self.CLKstate_button.setText('RUN')
             self.resync_button.setStyleSheet("background-color: #" + self.green + ";")
         else:
-            print self.FCTCALL + "line clock disabled:", self.ENDC
+            print(self.FCTCALL + "line clock disabled:", self.ENDC)
             self.CLKstate_button.setStyleSheet("background-color: #" + self.red + ";")
             self.CLKstate_button.setText('STOP')
             self.resync_button.setStyleSheet("background-color: #" + self.red + ";")
@@ -198,14 +198,14 @@ class clkrap(QtGui.QWidget):
 
     def resync(self):
         if self.CLKstate == 1:
-            print self.FCTCALL + "resynchronize system:", self.ENDC
-            print
+            print(self.FCTCALL + "resynchronize system:", self.ENDC)
+            print()
             self.CLKstate_button.click()
             time.sleep(1)
             self.CLKstate_button.click()
         else:
-            print self.FAIL + "line clock must be enabled for RESYNC:", self.ENDC
-            print
+            print(self.FAIL + "line clock must be enabled for RESYNC:", self.ENDC)
+            print()
 
     def line_period_changed(self):
         self.line_period_indicator.setText(str(8*(self.lsync)))
@@ -218,28 +218,28 @@ class clkrap(QtGui.QWidget):
 
 
     def send_wreg1(self):
-        print "CLK:WREG1: clock state:", self.CLKstate
+        print("CLK:WREG1: clock state:", self.CLKstate)
         wreg = 1 << 25
         wregval = wreg | (self.notCLKstate << 24) | (self.CLKstate << 23)
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg2(self):
-        print "CLK:WREG2: LSYNC-1:", self.lsync_minus1
+        print("CLK:WREG2: LSYNC-1:", self.lsync_minus1)
         wreg = 2 << 25
         wregval = wreg | self.lsync_minus1
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg7(self):
-        print "CLK:WREG7: sequence length:", self.seqln
+        print("CLK:WREG7: sequence length:", self.seqln)
         wreg = 7 << 25
         wregval = wreg | (self.seqln << 8)
         self.sendReg(wregval)
-        print
+        print()
 
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

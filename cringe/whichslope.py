@@ -1,7 +1,7 @@
 import numpy as np
 import pylab as plt
-from tune import analysis
-from tune import vphistats
+from .tune import analysis
+from .tune import vphistats
 
 fbb2_firstMinimumX = np.load("last_fbb2_firstMinimumX.npy")
 lfba_modDepth = np.load("last_lfba_modDepth.npy")

@@ -196,32 +196,32 @@ class dpr_counter(QtGui.QWidget):
 
         if self.counter == 0:         
             self.tot_steps.setText(str(self.cal_off+self.phase_trim_spin.value()))
-            print self.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), self.ENDC
+            print(self.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), self.ENDC)
         else:
             self.tot_steps.setText(str(self.phase_trim_spin.value()))
-            print self.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, self.ENDC
-        print
+            print(self.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, self.ENDC)
+        print()
 
         self.tot_degs.setText(str(int(self.tot_steps.text())*9))
         self.ptrim[self.counter] = int(self.tot_steps.text())
 
         self.enableDPR()
 
-        print "send GPI2: phase adjust counter (pll_counter)"
+        print("send GPI2: phase adjust counter (pll_counter)")
         self.sendReg(self.GPI2)
 
         if val > self.lastSpinVal:
-            print "increment "+ self.pcs_str
+            print("increment "+ self.pcs_str)
             self.sendReg(self.GPI2 + 0b01)
         else:
-            print "decrement "+ self.pcs_str
+            print("decrement "+ self.pcs_str)
             self.sendReg(self.GPI2 + 0b10)
             
-        print "reset phase step register (dyn_phase)"
+        print("reset phase step register (dyn_phase)")
         self.sendReg(self.GPI2)
         
         self.disableDPR()
-        print
+        print()
 
         self.lastSpinVal = val
         self.lastTotVal = int(self.tot_steps.text())
@@ -232,7 +232,7 @@ class dpr_counter(QtGui.QWidget):
             self.tot_steps.setStyleSheet("background-color: #F08080;")
             
     def commit_cal(self):
-        print self.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, self.ENDC
+        print(self.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, self.ENDC)
         self.commitFlag = True
         self.cal_offset.setStyleSheet("background-color: #90EE90;")
         self.tot_steps.setStyleSheet("background-color: #90EE90;")
@@ -247,16 +247,16 @@ class dpr_counter(QtGui.QWidget):
             self.tot_degs.setText(str(self.cal_off*9))
             mask = 0xfffe01f
             wregval = (self.GPI1 & mask) | ((self.cal_off & 0xff) << 5)
-            print "send phase trim coefficient & slot:", self.cal_off,"/", self.slot
+            print("send phase trim coefficient & slot:", self.cal_off,"/", self.slot)
             self.sendReg(wregval)
         self.ptrim[self.counter] = int(self.tot_degs.text())
         self.commitFlag = False
-        print
+        print()
         
 
     def calcounter(self):
-        print self.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, self.ENDC
-        print
+        print(self.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, self.ENDC)
+        print()
         if self.counter == 0:
             '''
              This case implements a firmware PLL reset & auto calibration.
@@ -266,35 +266,35 @@ class dpr_counter(QtGui.QWidget):
              But changing a spin value calls newvalue which automatically steps the phase.
              So we must use a flag, self.resetFlag, set in resetPhase, to branch out of NEWVALUE when called from there.
             '''
-            print self.FCTCALL + "firmware calibrate ALL counters:", self.ENDC
-            print "send GPI1: phase trim coefficient & slot:", self.cal_offset.text(),"/", self.slot
+            print(self.FCTCALL + "firmware calibrate ALL counters:", self.ENDC)
+            print("send GPI1: phase trim coefficient & slot:", self.cal_offset.text(),"/", self.slot)
             wregval = (self.GPI1 & self.phtr_mask) | ((int(self.cal_offset.text()) & 0xff) << 5)
             self.sendReg(wregval)
             
-            print "send GPI2: phase adjust counter (pll_counter)"
+            print("send GPI2: phase adjust counter (pll_counter)")
             self.sendReg(self.GPI2)
-            print
+            print()
 
             self.parent.resetALLphase()         # reset ALL phase
             self.tot_steps.setText(self.cal_offset.text())
             self.tot_degs.setText(str(int(self.tot_steps.text())*9))
 
-            print self.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", self.ENDC
-            print
+            print(self.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", self.ENDC)
+            print()
             self.enableDPR()
 
-            print "phase calibrate = True"
+            print("phase calibrate = True")
             self.sendReg(self.GPI3 + 0b1001)    # PC/SMenb => HI
 
-            print "phase calibrate = False"
+            print("phase calibrate = False")
             self.sendReg(self.GPI3 + 0b0001)    # PC => LO (SMenb => HI)    
 
             self.disableDPR()
-            print
+            print()
 
         else:
             steps = self.phase_trim_spin.value() - int(self.cal_offset.text())
-            print "software calibrate (for phase trim):", -steps, "phase steps applied"
+            print("software calibrate (for phase trim):", -steps, "phase steps applied")
             while steps != 0:
                 if steps > 0:
                     self.phase_trim_spin.setValue(self.phase_trim_spin.value() - 1)
@@ -302,14 +302,14 @@ class dpr_counter(QtGui.QWidget):
                 if steps < 0:
                     self.phase_trim_spin.setValue(self.phase_trim_spin.value() + 1)
                     steps = steps +1
-            print
+            print()
         
         self.cal_offset.setStyleSheet("background-color: #90EE90;")
         self.tot_steps.setStyleSheet("background-color: #90EE90;")
         self.ptrim[self.counter] = int(self.tot_steps.text())
         
     def loadCal(self, cal_val):
-        print self.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, self.ENDC
+        print(self.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, self.ENDC)
 #         self.cal_off = self.coeffs[self.counter]
 #         print self.counter, self.cal_off
         self.cal_off = cal_val
@@ -319,33 +319,33 @@ class dpr_counter(QtGui.QWidget):
             self.tot_steps.setStyleSheet("background-color: #90EE90;")
         else:
             self.tot_steps.setStyleSheet("background-color: #F08080;")            
-        print
+        print()
                
     def enableDPR(self):            # set True before sending GPI 2/3
-        print "enable DPR", self.ENDC
+        print("enable DPR", self.ENDC)
         self.sendReg(self.GPI3 + 0b1)
 
     def disableDPR(self):            # set False after sending GPI 2/3
-        print "disable DPR", self.ENDC
+        print("disable DPR", self.ENDC)
         self.sendReg(self.GPI3)
 
     def resetPhase(self):
-        print self.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, self.ENDC
-        print
+        print(self.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, self.ENDC)
+        print()
         self.resetFlag = True
         if self.counter == 0:                   # firmware PLL reset
             self.enableDPR()
             addr = 3
             wreg = addr << 17
             wregval = wreg + 5                  # PR/SMenb bit HI
-            print "phase reset = True"
+            print("phase reset = True")
             self.sendReg(wregval)
             wregval = wreg + 1                  # PR bit LO (SMenb HI)
-            print "phase reset = False"
+            print("phase reset = False")
             self.sendReg(wregval)
             self.allCountersReset = True
             self.disableDPR()
-            print
+            print()
             
         'reset spin & total values to 0'
         
@@ -369,7 +369,7 @@ class dpr_counter(QtGui.QWidget):
         self.resetFlag = False
             
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

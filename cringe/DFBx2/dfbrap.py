@@ -8,7 +8,7 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-from dfbchn import dfbChn
+from .dfbchn import dfbChn
 # print "importing dfbrap"
 
 class dfbrap(QtGui.QWidget):
@@ -907,7 +907,7 @@ class dfbrap(QtGui.QWidget):
 		self.send_wreg7()
 
 	def GR_changed(self):
-		print self.FCTCALL + "send global relock enable to DFB channel", self.col, self.ENDC
+		print(self.FCTCALL + "send global relock enable to DFB channel", self.col, self.ENDC)
 		self.GR = self.GR_button.isChecked()
 		if self.GR == 1:
 			self.GR_button.setStyleSheet("background-color: #" + self.green + ";")
@@ -918,12 +918,12 @@ class dfbrap(QtGui.QWidget):
 		self.send_channel_globals()
 # 		self.send_wreg0()
 # 		self.send_wreg4()
-		print
+		print()
 
 	def MSTR_TX_changed(self):
 		self.MVTX = self.MSTR_TX.isChecked()
-		print self.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), self.ENDC
-		print
+		print(self.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), self.ENDC)
+		print()
 		if self.MVTX == 1:
 			self.MSTR_TX.setStyleSheet("background-color: #" + self.green + ";")
 			self.MSTR_TX.setText('TX')
@@ -934,8 +934,8 @@ class dfbrap(QtGui.QWidget):
 
 	def MSTR_RX_changed(self):
 		self.MVRX = self.MSTR_RX.isChecked()
-		print self.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), self.ENDC
-		print
+		print(self.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), self.ENDC)
+		print()
 		if self.MVRX == 1:
 			self.MSTR_RX.setStyleSheet("background-color: #" + self.green + ";")
 			self.MSTR_RX.setText('RX')
@@ -945,19 +945,19 @@ class dfbrap(QtGui.QWidget):
 			self.MSTR_TX.setChecked(0)
 
 	def send_class_globals(self):
-		print self.FCTCALL + "send DFB class globals:", self.ENDC
+		print(self.FCTCALL + "send DFB class globals:", self.ENDC)
 		self.send_wreg0()
 		self.send_wreg4()
 		self.send_wreg6()
 		self.send_wreg7()
-		print
+		print()
 
 	def send_channel_globals(self):
-		print self.FCTCALL + "send DFB channel globals:", self.ENDC
+		print(self.FCTCALL + "send DFB channel globals:", self.ENDC)
 		self.send_wreg0()
 		self.send_wreg4(self.wreg4)
 # 		self.send_wreg7()
-		print
+		print()
 
 # 	def mode_changed(self):
 # 		self.mode = self.mode_button.isChecked()
@@ -1003,29 +1003,29 @@ class dfbrap(QtGui.QWidget):
 			self.send_wreg4()
 
 	def amp_changed(self):
-		print "amp_changed"
+		print("amp_changed")
 		self.ampDACunits = self.rangeDACunits * self.stepDACunits
-		print self.ampDACunits
+		print(self.ampDACunits)
 		if self.ampDACunits > 16383:
 			self.ampDACunits = 16383
 		self.amp_indicator.setText('%5i'%self.ampDACunits)
 		mV = 1000*self.ampDACunits/16383.0
-		print mV, str(mV)
+		print(mV, str(mV))
 		self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
-		print
+		print()
 
 	def period_changed(self):
-		print "period changed"
+		print("period changed")
 		self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
 		self.period_indicator.setText('%12i'%self.periodDACunits)
 		uSecs = self.periodDACunits*self.lsync*0.008
-		print uSecs
+		print(uSecs)
 		kHz = 1000/uSecs
-		print kHz
+		print(kHz)
 		self.period_eng_indicator.setText('%8.4f'%uSecs)
 		self.freq_eng_indicator.setText('%6.3f'%kHz)
-		print
+		print()
 
 
 	def tri_idx_changed(self):
@@ -1040,11 +1040,11 @@ class dfbrap(QtGui.QWidget):
 		self.send_wreg4()
 
 	def send_wreg0(self):
-		print "DFB:WREG0: page register: COL", self.col
+		print("DFB:WREG0: page register: COL", self.col)
 		wreg = 0 << 25
 		wregval = wreg + (self.col << 6)
 		self.sendReg(wregval)
-		print
+		print()
 
 	def send_wreg4(self, wreg4):
 		if self.parent != None:
@@ -1057,12 +1057,12 @@ class dfbrap(QtGui.QWidget):
 			dwell = int(cmd_reg[1:5], base=2)
 			steps = int(cmd_reg[5:9], base=2)
 			step = int(cmd_reg[11:], base=2)
-			print "DFB:WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")"
+			print("DFB:WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")")
 			self.sendReg((self.wreg4 & 0xFFF7FFF) | (self.GR << 15))
-			print
+			print()
 
 	def sendReg(self, wregval):
-		print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

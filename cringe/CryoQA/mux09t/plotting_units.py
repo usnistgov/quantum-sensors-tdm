@@ -31,12 +31,12 @@ if __name__ == '__main__':
     factor = DACref*scale/(DACfs*Rbias)
 
 
-    print 'args.list_of_files'
-    print args.list_of_files
+    print('args.list_of_files')
+    print(args.list_of_files)
     fnames = glob.glob(str(args.list_of_files))
     fnames.sort()
-    print 'fnames sorted'
-    print fnames
+    print('fnames sorted')
+    print(fnames)
 
     ic_maxs = np.zeros((len(fnames), 33), 'int')
     data_sets = [np.load(f) for f in fnames]

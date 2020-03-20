@@ -38,6 +38,6 @@ def MinMax(fb, a):
     return a
 
 fb, err = Averager()
-print fb.shape
+print(fb.shape)
 plt.plot(fb[0])
 plt.show()

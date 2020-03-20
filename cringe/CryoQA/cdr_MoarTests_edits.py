@@ -156,7 +156,7 @@ class CryoQA(object):
         for i, maxElement in enumerate(array[0, :, :, 2]):
             icMax = np.amax(maxElement)
             icMaxArray[i] = icMax
-            print icMax
+            print(icMax)
 
         for j, minElement in enumerate(array[0, :, :, 2]):
             base = np.amax(Baseline[j]) - np.amin(Baseline[j])
@@ -166,7 +166,7 @@ class CryoQA(object):
             #print sigma
             icMinIndex = np.where((minElement - base) >= 14*sigma)
             #print minElement - base
-            print icMinIndex
+            print(icMinIndex)
             icMinIndex = icMinIndex[0][0]
             icMinArray[j] = minElement[icMinIndex]
 
@@ -200,7 +200,7 @@ class CryoQA(object):
                 activeCell = activeBook.cell(row=(self.channel*self.rows)+i+2, column=4)
                 activeCell.value = icMax[i]
 
-            activeBook.title = raw_input("Input title name:")
+            activeBook.title = input("Input title name:")
             wb.save("/home/pcuser/Documents/script_testing/" + self.filename)
 
         else:

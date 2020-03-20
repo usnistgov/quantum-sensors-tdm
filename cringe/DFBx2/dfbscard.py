@@ -9,8 +9,8 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-import scream
-import dprS
+from . import scream
+from . import dprS
 # from dprcal import dprcal
 
 class dfbscard(QtGui.QWidget):
@@ -103,8 +103,8 @@ class dfbscard(QtGui.QWidget):
 		self.layout_widget = QtGui.QWidget(self)
 		self.layout = QtGui.QGridLayout(self)
 		
-		print self.INIT + "building DFBscream card: slot", self.slot, "/ address", self.address, self.ENDC
-		print
+		print(self.INIT + "building DFBscream card: slot", self.slot, "/ address", self.address, self.ENDC)
+		print()
 		
 		'''
 		build widget for CARD GLOBAL VARIABLE control
@@ -211,7 +211,7 @@ class dfbscard(QtGui.QWidget):
 		
 	def LED_changed(self):
 		self.LED = self.LED_button.isChecked()
-		print  "SCREAM LED boolean (True = OFF):", self.LED, self.ENDC
+		print("SCREAM LED boolean (True = OFF):", self.LED, self.ENDC)
 		if self.LED ==1:
 			self.LED_button.setStyleSheet("background-color: #" + self.red + ";")			
 			self.LED_button.setText('OFF')
@@ -223,7 +223,7 @@ class dfbscard(QtGui.QWidget):
 
 	def status_changed(self):
 		self.ST = self.status_button.isChecked()
-		print  "SCREAM ST boolean:", self.ST, self.ENDC
+		print("SCREAM ST boolean:", self.ST, self.ENDC)
 		if self.ST ==1:
 			self.status_button.setStyleSheet("background-color: #" + self.green + ";")
 		else:
@@ -234,8 +234,8 @@ class dfbscard(QtGui.QWidget):
 		self.dfbs_widget3.enbDiagnostic(self.ST)
 		
 	def send_card_globals(self):
-		print
-		print self.FCTCALL + "send card globals to SCREAM card:", self.ENDC
+		print()
+		print(self.FCTCALL + "send card globals to SCREAM card:", self.ENDC)
 		self.LED_changed()
 		self.status_changed()
 
@@ -279,76 +279,76 @@ class dfbscard(QtGui.QWidget):
 		if parameter == "PS":
 			self.PS = value
 			GPI = 8
-			print  "SCREAM PS:", value, self.ENDC
+			print("SCREAM PS:", value, self.ENDC)
 		if parameter == "XPT":
 			self.XPT = value
 			GPI = 9
-			print  "SCREAM XPT:", value, self.ENDC
+			print("SCREAM XPT:", value, self.ENDC)
 		if parameter == "TP":
 			self.TP = value
 			self.TPboolean = 0
 			if value != 0:
 				self.TPboolean = 1
 				self.decode_tp()
-				print  "SCREAM Test Pattern Hi Byte:", hex(self.hibytes), self.ENDC
+				print("SCREAM Test Pattern Hi Byte:", hex(self.hibytes), self.ENDC)
 				GPI = 12
 				self.send_cmd(GPI, self.hibytes)
-				print  "SCREAM Test Pattern Lo Byte:", hex(self.lobytes), self.ENDC
+				print("SCREAM Test Pattern Lo Byte:", hex(self.lobytes), self.ENDC)
 				GPI = 13
 				self.send_cmd(GPI, self.lobytes)
 			GPI = 11
 			value = self.TPboolean
-			print  "SCREAM Test Pattern Boolean:", self.TPboolean, self.ENDC
+			print("SCREAM Test Pattern Boolean:", self.TPboolean, self.ENDC)
 		if parameter == "NSAMP":
 			self.NSAMP = value
 			GPI = 40
-			print  "SCREAM NSAMP:", value, self.ENDC
+			print("SCREAM NSAMP:", value, self.ENDC)
 		if parameter == "SETT":
 			self.SETT = value
 			GPI = 41
-			print  "SCREAM SETT:", value, self.ENDC
+			print("SCREAM SETT:", value, self.ENDC)
 		if parameter == "CARD":
 			self.card_delay = value
 			GPI = 42
-			print  "SCREAM CARD_DELAY:", value, self.ENDC
+			print("SCREAM CARD_DELAY:", value, self.ENDC)
 		if parameter == "PROP":
 			self.prop_delay = value
 			GPI = 43
-			print  "SCREAM PROP_DELAY:", value, self.ENDC
+			print("SCREAM PROP_DELAY:", value, self.ENDC)
 		self.send_cmd(GPI, value)
 
 	def send_ARL(self, parameter, value):
 		if parameter == "ARLsense":
 			self.ARLsense = value
 			GPI = 16
-			print  "SCREAM ARLsense:", value, self.ENDC
+			print("SCREAM ARLsense:", value, self.ENDC)
 		if parameter == "RLDpos":
 			self.RLDpos = value
 			GPI = 17
-			print  "SCREAM RLDpos:", value, self.ENDC
+			print("SCREAM RLDpos:", value, self.ENDC)
 		if parameter == "RLDneg":
 			self.RLDneg = value
 			GPI = 18
-			print  "SCREAM RLDneg:", value, self.ENDC
+			print("SCREAM RLDneg:", value, self.ENDC)
 		self.send_cmd(GPI, value)
 
 	def send_triangle(self, parameter, value):
 		if parameter == "dwell":
 			self.TriDwell = value
-			print "SCREAM DWELL:", value
+			print("SCREAM DWELL:", value)
 			self.send_cmd(33, value)
 		if parameter == "range":
 			self.TriRange = value
-			print "SCREAM RANGE:", value
+			print("SCREAM RANGE:", value)
 			self.send_cmd(34, value)
 		if parameter == "step":
 			self.TriStep = value
-			print "SCREAM STEP:", value
+			print("SCREAM STEP:", value)
 			self.send_cmd(35, value)
 
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		print self.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", self.BOLD, wregval, "(", val, ")",self.ENDC
+		print(self.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", self.BOLD, wregval, "(", val, ")",self.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1

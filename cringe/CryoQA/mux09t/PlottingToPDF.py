@@ -29,8 +29,8 @@ if __name__ == '__main__':
 
     fnames = glob.glob(str(args.list_of_files))
     fnames.sort()
-    print 'fnames sorted'
-    print fnames
+    print('fnames sorted')
+    print(fnames)
 
     ic_maxs = np.zeros((len(fnames), 33), 'int')
     data_sets = [np.load(f) for f in fnames]
@@ -43,12 +43,12 @@ if __name__ == '__main__':
     now = str(today.tm_year) + '_' + str(today.tm_mon) + '_' + str(today.tm_mday) + '_' + str(today.tm_hour) + str(today.tm_min)
     basefilepath_default = str(args.list_of_files).rsplit('/',1)[0]
     querystr = "Please enter file path (return for default [",basefilepath_default,"]:"
-    basefilepath = raw_input(querystr)
+    basefilepath = input(querystr)
     if basefilepath == '':
         basefilepath = basefilepath_default
-    filename = raw_input("Please enter file identifier:")
+    filename = input("Please enter file identifier:")
     path = basefilepath + filename + '_' + now + '.pdf'
-    print path
+    print(path)
 
 
 with pp(path) as pdf:

@@ -50,15 +50,15 @@ class EMU_Card(object):
         
         self.address = address
         
-        print self.INIT + "building EMU card: slot 19-21 / address", self.address, self.ENDC
-        print
+        print(self.INIT + "building EMU card: slot 19-21 / address", self.address, self.ENDC)
+        print()
 
     ######################################################################################
 
     def powerOn(self):
         ''' Turn crate EMU/PCCC power card on. '''
-        print self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "ON", self.ENDC
-        print
+        print(self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "ON", self.ENDC)
+        print()
 
         wregval = 0b001 << 25
 
@@ -68,8 +68,8 @@ class EMU_Card(object):
 
     def powerOff(self):
         ''' Turn crate EMU/PCCC power card off. '''
-        print self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "OFF", self.ENDC
-        print
+        print(self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "OFF", self.ENDC)
+        print()
 
         wregval = 0b010 << 25
 
@@ -87,7 +87,7 @@ class EMU_Card(object):
         self.sendReg(wregval)
                 
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

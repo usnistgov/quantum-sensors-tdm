@@ -3,7 +3,7 @@ import sys
 import optparse
 import struct
 import time
-import cPickle
+import pickle
 import os.path
 
 from PyQt4 import QtGui, QtCore
@@ -17,10 +17,10 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as Navigatio
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import find
-from tuneclient import TuneClient
-from muxmaster import MuxMaster
-import analysis
-import vphistats
+from .tuneclient import TuneClient
+from .muxmaster import MuxMaster
+from . import analysis
+from . import vphistats
 from PyQt4.Qt import QSizePolicy
 
 class TuneTab(QtGui.QWidget):
@@ -195,13 +195,13 @@ class VPhiDemo(QtGui.QWidget):
         err = data[0,0,:,0] #error
         np.save("last_learn_columns_data",data)
         new_dfbraps = []
-        for col in xrange(data.shape[0]):
+        for col in range(data.shape[0]):
             vals = data[col,:,:,1]
             val=int(vals[0,0])
             assert (vals==val).all
             new_dfbrap = self.mm.dfbraps[val]
             new_dfbraps.append(new_dfbrap)
-            print("learned col %g reads %s"%(col,repr(new_dfbrap)))
+            print(("learned col %g reads %s"%(col,repr(new_dfbrap))))
 
         self.mm.dfbraps = new_dfbraps
 
@@ -343,8 +343,8 @@ class VPhiDemo(QtGui.QWidget):
 
         print("taking 2nd fbb vphi, fba set to first minimum from locked vphi")
         d2aA_forfbb2=lfbastats["firstMinimumX"]
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 self.mm.setdfbrow(col,row,trib=1,d2aA=d2aA_forfbb2[col,row],data_packet=1)
         tridwell,tristeps,tristepsize=2,9,20
         self.mm.settriangleparams(tridwell,tristeps,tristepsize)
@@ -377,8 +377,8 @@ class VPhiDemo(QtGui.QWidget):
                 d2aB = d2aBupwardSlope
         else:
                 d2aB = d2aBdownwardSlope
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 period = fbb2stats["periodXUnits"][col,row]
                 d2aBval = d2aB[col,row]
                 if period > 0 and d2aBval < 0:
@@ -411,7 +411,7 @@ class VPhiDemo(QtGui.QWidget):
 
 
 
-        print("added {} Phi0s".format(self.minimumD2AValueSpin.value()))
+        print(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
 
         np.save("last_fbb2_firstMinimumX", fbb2stats["firstMinimumX"])
         np.save("last_lfba_modDepth", lfbastats["modDepth"])
@@ -421,8 +421,8 @@ class VPhiDemo(QtGui.QWidget):
         # take fba vphis with correct d2aB values
         tridwell,tristeps,tristepsize=2,8,30
         self.mm.settriangleparams(tridwell,tristeps,tristepsize)
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 self.mm.setdfbrow(col,row,tria=1,d2aB=d2aB[col,row])
         data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
         fba = data[0,0,:,1] #triangle
@@ -434,7 +434,7 @@ class VPhiDemo(QtGui.QWidget):
         fbatriangle, fbasigsup, fbasigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
         fbastats = vphistats.vPhiStats(fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
         with open("last_fbastats","w") as f:
-            cPickle.dump(fbastats,f)
+            pickle.dump(fbastats,f)
 
 
 
@@ -446,19 +446,19 @@ class VPhiDemo(QtGui.QWidget):
             d2aA = fbastats["negativeCrossingFirstX"]
 
         minimum_d2aA = self.minimumD2AValueSpin.value()
-        print("using {} as minimum_d2aA".format(self.minimumD2AValueSpin.value()))
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        print(("using {} as minimum_d2aA".format(self.minimumD2AValueSpin.value())))
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 if d2aA[col,row] <= minimum_d2aA and period > 0:
                     nPeriodToAdd = int(np.ceil((minimum_d2aA-d2aA[col,row])/period))
                     d2aA[col,row]+=nPeriodToAdd*fbastats["periodXUnits"][col,row]
-                    print("col %g, row %g FBA lockpoint shift up %g phi because it was below %g"%(col, row, nPeriodToAdd, minimum_d2aA))
+                    print(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g"%(col, row, nPeriodToAdd, minimum_d2aA)))
         a2d = fbastats["crossingPoint"]
 
         fbatriangles = np.zeros((self.c.ncol, self.c.nrow, len(fbatriangle)),dtype="int64")
         fbasigsupShifted = fbasigsup[:]
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 fbatriangles[col,row,:]=fbatriangle-d2aA[col,row]
                 fbasigsupShifted[col,row,:]=fbasigsup[col,row,:]-a2d[col,row]
 
@@ -519,8 +519,8 @@ class VPhiDemo(QtGui.QWidget):
         # plots.ylabel("error")
         # plots.show()
 
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 if chanisgood[col,row]:
                     self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=d2aA[col,row],d2aB=d2aB[col,row],FBA=1, ARL=1)
                 else:
@@ -531,11 +531,11 @@ class VPhiDemo(QtGui.QWidget):
                     self.mm.setdfbrow(col,row,a2d=0,I=0,d2aA=minimum_d2aA+0.5*sq1periods[col],d2aB=0,FBA=0, ARL=0)
 
         sq1periodsstrs = ["col %g %g"%(i, int(round(sq1periods[i]))) for i in range(len(sq1periods))]
-        print("median sq1 periods by column (arbs):\n "+"\n".join(sq1periodsstrs))
-        print("median of all columns: %g arbs"%np.median(sq1periods))
+        print(("median sq1 periods by column (arbs):\n "+"\n".join(sq1periodsstrs)))
+        print(("median of all columns: %g arbs"%np.median(sq1periods)))
         goodfluxjumpthreshold=int(np.median(sq1periods)/2)
-        print("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good"%goodfluxjumpthreshold)
-        print("This value was set for you, your previous value was %g"%oldfluxjumpthreshold)
+        print(("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good"%goodfluxjumpthreshold))
+        print(("This value was set for you, your previous value was %g"%oldfluxjumpthreshold))
         self.mm.setFluxJumpThreshold(goodfluxjumpthreshold)
 
         if self.shouldSendMixAfterFullTune():
@@ -543,7 +543,7 @@ class VPhiDemo(QtGui.QWidget):
             print(Mix)
             Mix[np.isnan(Mix)]=0 # don't send NaN, its invalid for mix
             print(Mix)
-            print(Mix/100.0)
+            print((Mix/100.0))
             self.c.client.setMix(Mix/100.0)
 
     def prune_bad_channels(self):
@@ -551,12 +551,12 @@ class VPhiDemo(QtGui.QWidget):
         min_amplitude = 600
         max_noise_std = 1
         with open("last_fbastats","r") as f:
-            vphistats = cPickle.load(f)
+            vphistats = pickle.load(f)
         # print([k for k in vphistats.keys()])
-        print(vphistats["modDepth"])
+        print((vphistats["modDepth"]))
         assert(vphistats["modDepth"].shape == (self.c.ncol, self.c.nrow))
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 errorChan = col*2*self.c.nrow+row*2
                 fbChan = errorChan+1
                 if vphistats["modDepth"][col,row] < min_amplitude:
@@ -567,14 +567,14 @@ class VPhiDemo(QtGui.QWidget):
         time.sleep(1)
         # do the loop twice, so you can actually see this output despite all the
         # crap cringe prints
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 errorChan = col*2*self.c.nrow+row*2
                 fbChan = errorChan+1
                 if vphistats["modDepth"][col,row] < min_amplitude:
-                    print("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix"%(
+                    print(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix"%(
                         col,row, fbChan, vphistats["modDepth"][col,row], min_amplitude
-                    ))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
+                    )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
         # fba = data[0,0,:,1] #triangle
         # err = data[0,0,:,0] #signal
         # fba_std = np.std(data[:,:,:,1],axis=2)
@@ -593,8 +593,8 @@ class VPhiDemo(QtGui.QWidget):
 
         d2aA = np.median(data[:,:,:,1],axis=-1)
 
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 self.mm.changedfbrow(col,row, d2aA=d2aA[col,row])
 
     def plotnoise(self):
@@ -603,16 +603,16 @@ class VPhiDemo(QtGui.QWidget):
         navgs = 40
         sample_spacing_s = 1/float(self.c.sample_rate)
         print("taking noise psd, not changin any settings, so make sure you have FBA locked and the correct send mode, and the mix on")
-        print "sample time = %g s"%sample_spacing_s
+        print("sample time = %g s"%sample_spacing_s)
         freqs = np.fft.rfftfreq(num_points, sample_spacing_s)
         ffts = np.zeros((self.c.ncol, self.c.nrow, len(freqs)))
         df = float(freqs[1]-freqs[0])
-        print "frequency spacing of psd =  %0.2f hz"%df
+        print("frequency spacing of psd =  %0.2f hz"%df)
 
-        for i in xrange(navgs):
+        for i in range(navgs):
             data = self.c.getNewData(0.001,minimumNumPoints=num_points, exactNumPoints=True)
-            for col in xrange(self.c.ncol):
-                for row in xrange(self.c.nrow):
+            for col in range(self.c.ncol):
+                for row in range(self.c.nrow):
                     ffts[col,row,:] += np.abs(np.fft.rfft(data[col,row,:,1]))
         ffts/=float(navgs)
         psd = 2*ffts/np.sqrt(float(self.c.sample_rate)*num_points)
@@ -635,10 +635,10 @@ class VPhiDemo(QtGui.QWidget):
         ilo,ihi = np.searchsorted(freqs,[flo,fhi])
         medpsd = np.median(psd[:,:,ilo:ihi],axis=-1)
         medpsdcol = np.median(medpsd,axis=-1)
-        noisestr=["col %d %0.4f"%(i, medpsdcol[i]) for i in xrange(self.c.ncol)]
-        print "median noise arbs/sqrt(hz) from %0.2f-%0.2f hz:\n"%(freqs[ilo],freqs[ihi])+"\n".join(noisestr)
-        print("median across all columns: %g arbs/sqrt(hz)"%np.median(medpsdcol))
-        print "saved files last_noise_freqs_hz and last_noise_psd_arbs_per_sqrt_hz, copy or rename if you want to keep them"
+        noisestr=["col %d %0.4f"%(i, medpsdcol[i]) for i in range(self.c.ncol)]
+        print("median noise arbs/sqrt(hz) from %0.2f-%0.2f hz:\n"%(freqs[ilo],freqs[ihi])+"\n".join(noisestr))
+        print(("median across all columns: %g arbs/sqrt(hz)"%np.median(medpsdcol)))
+        print("saved files last_noise_freqs_hz and last_noise_psd_arbs_per_sqrt_hz, copy or rename if you want to keep them")
 
 class SettlingTimeSweeper(QtGui.QWidget):
     def __init__(self, parent, mm, client):
@@ -689,10 +689,10 @@ class SettlingTimeSweeper(QtGui.QWidget):
     def sweepUnlocked(self):
         """set nsamp to 1, sweep thru settling times, measure error and fb,
         plot them, change back nsamp and settinling time to original values"""
-        print "starting sweep Unlocked"
+        print("starting sweep Unlocked")
         self.c.client.setMixToZero()
 
-        print "taking FBB vphi to find good adc values"
+        print("taking FBB vphi to find good adc values")
         adc_lo_frac = self.adcLoSpin.value()*0.01
         adc_hi_frac = self.adcHiSpin.value()*0.01
         fbbtriangle, fbbsigsup, fbbsigsdown = self.FBBvphi_from_file()
@@ -700,23 +700,23 @@ class SettlingTimeSweeper(QtGui.QWidget):
 
         adc_lo = np.zeros(self.c.ncol,dtype="int64")
         adc_hi = np.zeros(self.c.ncol,dtype="int64")
-        for col in xrange(self.c.ncol):
+        for col in range(self.c.ncol):
             modDepth = np.median(fbbstats["modDepth"][col,:])
             midPoint = np.median(fbbstats["midPoint"][col,:])
             bottom = midPoint-modDepth*0.5
             adc_lo[col] = bottom+modDepth*adc_lo_frac
             adc_hi[col] = bottom+modDepth*adc_hi_frac
 
-        print "locking at adc values to find d2aA values"
+        print("locking at adc values to find d2aA values")
         # lock at desired a2d points
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 if row%2 == 0:
                     a2d = adc_lo[col]
                 else:
                     a2d = adc_hi[col]
                 self.mm.changedfbrow(col,row,a2d=a2d,d2aA=8000,tria=0,trib=0,FBA=1,FBB=0,ARL=0,data_packet=0,dynamic=1)
-        print "done locking at adc values to find d2aA values"
+        print("done locking at adc values to find d2aA values")
 
 
         # grab data to get d2aA values
@@ -724,14 +724,14 @@ class SettlingTimeSweeper(QtGui.QWidget):
         fba = data[0,0,:,1] # feedback signal, should be locked
         err = data[0,0,:,0] # signal, should be near zero
         d2aA = np.median(data[:,:,:,1],axis=-1)
-        print d2aA
+        print(d2aA)
 
 
-        print "setting d2aA values"
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        print("setting d2aA values")
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 self.mm.changedfbrow(col,row, a2d=0,d2aA=d2aA[col,row], FBA=0)
-        print "done setting d2aA values"
+        print("done setting d2aA values")
 
 
 
@@ -746,7 +746,7 @@ class SettlingTimeSweeper(QtGui.QWidget):
         errstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         fbstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         for i,SETT in enumerate(SETTs):
-            print("sweep SETT = %g"%SETT)
+            print(("sweep SETT = %g"%SETT))
             self.mm.setSETT(SETT)
 
             data = self.c.getNewData(0.01,minimumNumPoints=10000,divideNsamp=False)
@@ -792,7 +792,7 @@ class SettlingTimeSweeper(QtGui.QWidget):
         errstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         fbstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         for i,SETT in enumerate(SETTs):
-            print("sweep SETT = %g"%SETT)
+            print(("sweep SETT = %g"%SETT))
             self.mm.setSETT(SETT)
 
             data = self.c.getNewData(0.01,minimumNumPoints=10000,divideNsamp=False)
@@ -850,8 +850,8 @@ class BitErrorDemo(QtGui.QWidget):
     def timeouthandler(self):
         data = self.c.getNewData(0.001,minimumNumPoints=self.c.sample_rate*1.0)
 
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 fbdiff = np.abs(np.diff(data[col,row,:,1]))
                 #fb diff should contain only 0s and tristepsize and -tristepsize as values, any other value is an error
                 self.ntotal[col]+=len(fbdiff)
@@ -862,7 +862,7 @@ class BitErrorDemo(QtGui.QWidget):
         self.plots.cla()
         self.plots.xlabel("error - median(error)")
         self.plots.ylabel("number of occurences")
-        self.plots.plottitle([": %0.2g/%0.2g"%(self.nwrong[col],self.ntotal[col]) for col in xrange(self.c.ncol)])
+        self.plots.plottitle([": %0.2g/%0.2g"%(self.nwrong[col],self.ntotal[col]) for col in range(self.c.ncol)])
         self.plots.semilogy(np.arange(-self.ehhw,self.ehhw-1),self.hists)
         self.showplots()
 
@@ -884,8 +884,8 @@ class BitErrorDemo(QtGui.QWidget):
         self.nwrong = np.zeros(self.c.ncol,dtype="int64")
         self.ntotal = np.zeros(self.c.ncol,dtype="int64")
         self.hists = np.zeros((self.c.ncol,self.c.nrow,self.ehhw*2-1),dtype="int64")
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 self.errormedians[col,row] = np.median(data[col,row,:,0])
                 self.errorstds[col,row] = np.std(data[col,row,:,0])
         self.timer.start(250)
@@ -906,8 +906,8 @@ class BitErrorDemo(QtGui.QWidget):
         nwrongcol = np.zeros(self.c.ncol)
         hists = np.zeros((self.c.ncol,self.c.nrow,199))
         binsc = []
-        for col in xrange(self.c.ncol):
-            for row in xrange(self.c.nrow):
+        for col in range(self.c.ncol):
+            for row in range(self.c.nrow):
                 fbdiff = np.abs(np.diff(data[col,row,:,1]))
                 #fb diff should contain only 0s and tristepsize and -tristepsize as values, any other value is an error
                 nwrong[col,row]=len(fbdiff)-np.sum(np.logical_or(fbdiff == 0,fbdiff==tristepsize))
@@ -919,7 +919,7 @@ class BitErrorDemo(QtGui.QWidget):
                 hists[col,row,:] = np.log(c)
 
             nwrongcol[col] = np.sum(nwrong[col,:])
-            print("col %g, %g/%g fb values wrong"%(col, nwrongcol[col],nframes*self.c.nrow))
+            print(("col %g, %g/%g fb values wrong"%(col, nwrongcol[col],nframes*self.c.nrow)))
 
         self.makeplots()
         self.plots.plot(np.arange(-100,99),hists)
@@ -1003,7 +1003,7 @@ class BiasSweeper(QtGui.QWidget):
         modDepths = np.zeros((self.c.ncol, self.c.nrow, len(vals)))
 
 
-        for i in xrange(len(vals)):
+        for i in range(len(vals)):
             val = vals[i]
             self.mm.setbaddacHighsSame(val)
             lfbatriangle, lfbasigsup, lfbasigsdown = self.lockedFBAvphi_colsettings(d2aB, a2dlockpoints, I)
@@ -1037,7 +1037,7 @@ class BiasSweeper(QtGui.QWidget):
 
 
         modDepths = np.zeros((self.c.ncol, self.c.nrow, len(vals)))
-        for i in xrange(len(vals)):
+        for i in range(len(vals)):
             val = vals[i]
             self.setSAB(val)
             data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
@@ -1072,7 +1072,7 @@ class BiasSweeper(QtGui.QWidget):
         # this avoid settling time issues from the potentially large change
 
         modDepths = np.zeros((self.c.ncol, self.c.nrow, len(vals)))
-        for i in xrange(len(vals)):
+        for i in range(len(vals)):
             val = vals[i]
             self.setSQ1(val)
             data = self.c.getNewData(0.1,minimumNumPoints=4096*2)
@@ -1144,7 +1144,7 @@ class ColPlots(QtGui.QDialog):
         cid = self.canvas.mpl_connect('pick_event', self.onclick)
 
     def onclick(self, event):
-        print event.artist.get_label()+" was clicked"
+        print(event.artist.get_label()+" was clicked")
 
     def createaxes(self):
         self.axes = []
@@ -1231,7 +1231,7 @@ class ColPlots(QtGui.QDialog):
 
 
 def writeMixFile(fname, mix):
-    print('writing mix to %s'%fname)
+    print(('writing mix to %s'%fname))
     ncol, nrow = mix.shape
     f = open(fname, 'w')
     for col in range(ncol):

@@ -1,5 +1,5 @@
-import analysis
-import vphistats
+from . import analysis
+from . import vphistats
 import numpy as np
 
 

@@ -35,7 +35,7 @@ class CryoQA(object):
         for element in self.SQ1bStep():
             #self.biasStepper(element)
             fb, err = self.averager()
-            print "Toot!"
+            print("Toot!")
             for i, row in enumerate(fb):
                 min = np.amin(row)
                 max = np.amax(row)
@@ -63,4 +63,4 @@ class CryoQA(object):
 
 
 a = CryoQA(12, 1)
-print a.test()
+print(a.test())

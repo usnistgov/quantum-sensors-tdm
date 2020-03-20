@@ -7,8 +7,8 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-import badrap
-import sv_array
+from . import badrap
+from . import sv_array
 import dprcal
 # from ./DFBx2.dfbrap import dfbrap
 # from ./DFBx2.dprcal import dprcal

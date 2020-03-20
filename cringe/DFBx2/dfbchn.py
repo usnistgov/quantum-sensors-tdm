@@ -384,7 +384,7 @@ class dfbChn(QtGui.QWidget):
             self.send_wreg1()
 
     def a2d_lockpt_sense(self):
-        print "Double Click event"
+        print("Double Click event")
         
     def a2d_lockpt_slider_changed(self):
         self.a2d_lockpt_spin.setValue(self.a2d_lockpt_slider.value())
@@ -469,13 +469,13 @@ class dfbChn(QtGui.QWidget):
 #         self.d2a_A_slider.setValue(16383)
         
     def send_channel(self):
-        print self.FCTCALL + "send DFB STATE parameters", self.state, ": index & arrayed register values", self.ENDC
+        print(self.FCTCALL + "send DFB STATE parameters", self.state, ": index & arrayed register values", self.ENDC)
         self.send_wreg0()
         self.send_wreg1()
         self.send_wreg2()
         self.send_wreg3()
         self.send_wreg5()
-        print
+        print()
 
     def lock_channel(self):
         self.unlocked = self.lock_button.isChecked()
@@ -487,28 +487,28 @@ class dfbChn(QtGui.QWidget):
             self.lock_button.setText('static')
     
     def send_wreg0(self):
-        print "DFB:WREG0: page index (GPI/channel/state)"
+        print("DFB:WREG0: page index (GPI/channel/state)")
         wreg = 0 << 25
         wregval = wreg | (self.chn << 6) | self.state
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg1(self):
-        print "DFB:WREG1: arrayed state variables: ADC lock point"
+        print("DFB:WREG1: arrayed state variables: ADC lock point")
         wreg = 1 << 25
         wregval = wreg | self.a2d_lockpt
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg2(self):
-        print "DFB:WREG2: arrayed state variables: triangle booleans & DAC offset A"
+        print("DFB:WREG2: arrayed state variables: triangle booleans & DAC offset A")
         wreg = 2 << 25
         wregval = wreg | (self.triA << 16) | (self.triB << 17) | self.d2a_A
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg3(self):
-        print "DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I"
+        print("DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I")
         wreg = 3 << 25
         wreg = wreg | (int(self.FBA) << 24)
         wreg = wreg | (int(self.FBB) << 23)
@@ -516,18 +516,18 @@ class dfbChn(QtGui.QWidget):
         wreg = wreg | ((int(self.P)&0x3ff) << 10)
         wregval = wreg | (int(self.I)&0x3ff)
         self.sendReg(wregval)
-        print
+        print()
 
     def send_wreg5(self):
-        print
-        print "DFB:WREG5: DAC offset B & send mode"
+        print()
+        print("DFB:WREG5: DAC offset B & send mode")
         wreg = 5 << 25
         wregval = wreg | (self.d2a_B << 11) | self.SM
         self.sendReg(wregval)
-        print
+        print()
         
     def sendReg(self, wregval): 
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

@@ -6,7 +6,7 @@ from PyQt4.QtGui import QWidget, QDoubleSpinBox, QSpinBox, QFrame, QGroupBox,QTo
 
 # import named_serial
 import struct
-import towerchannel
+from . import towerchannel
 
 class TowerCard(QtGui.QWidget):
     
@@ -67,7 +67,7 @@ class TowerCard(QtGui.QWidget):
         
         if parent == None:       
             self.show()
-            print self.width()
+            print(self.width())
         
             
     def allcontrolchannel_dacspin_changed(self):
@@ -79,7 +79,7 @@ class TowerCard(QtGui.QWidget):
         oldvalues = [tc.dacspin.value() for tc in self.towerchannels]
         for tc in self.towerchannels:
             tc.dacspin.setValue(tc.shockvalue)
-        print("sleeping for %0.2f seconds"%self.shocksleepseconds)
+        print(("sleeping for %0.2f seconds"%self.shocksleepseconds))
         time.sleep(self.shocksleepseconds)
         for (tc, oldvalue) in zip(self.towerchannels, oldvalues):
             tc.dacspin.setValue(oldvalue)

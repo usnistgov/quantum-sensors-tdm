@@ -9,8 +9,8 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-import dfbrap
-import dprcal
+from . import dfbrap
+from . import dprcal
 # from dprcal import dprcal
 
 class dfbcard(QtGui.QWidget):
@@ -100,8 +100,8 @@ class dfbcard(QtGui.QWidget):
         self.layout_widget = QtGui.QWidget(self)
         self.layout = QtGui.QGridLayout(self)
 
-        print self.INIT + "building DFBx2 card: slot", self.slot, "/ address", self.address, self.ENDC
-        print
+        print(self.INIT + "building DFBx2 card: slot", self.slot, "/ address", self.address, self.ENDC)
+        print()
 
         '''
         build widget for CARD GLOBAL VARIABLE control
@@ -218,7 +218,7 @@ class dfbcard(QtGui.QWidget):
                 self.dfbx2_widget2.state_vectors[idx].setEnabled(0)
 
     def seqln_changed(self, seqln):
-        print self.FCTCALL + "send SEQLN to DFBx2 card:", self.ENDC
+        print(self.FCTCALL + "send SEQLN to DFBx2 card:", self.ENDC)
         self.seqln = seqln
 # 		self.wreg7 = ((self.wreg7 & 0xfffc0ff) | (self.seqln << 8))
         self.send_dfb_wreg7()
@@ -231,10 +231,10 @@ class dfbcard(QtGui.QWidget):
             else:
                 self.dfbx2_widget1.state_vectors[idx].setEnabled(0)
                 self.dfbx2_widget2.state_vectors[idx].setEnabled(0)
-        print
+        print()
 
     def LED_changed(self):
-        print self.FCTCALL + "send LED boolean (True = OFF) to DFBx2 card:" + self.ENDC
+        print(self.FCTCALL + "send LED boolean (True = OFF) to DFBx2 card:" + self.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
             self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
@@ -244,10 +244,10 @@ class dfbcard(QtGui.QWidget):
             self.LED_button.setText('ON')
 #		 if self.unlocked == 1:
         self.send_dfb_wreg7()
-        print
+        print()
 
     def status_changed(self):
-        print self.FCTCALL + "send ST boolean to DFBx2 card:" + self.ENDC
+        print(self.FCTCALL + "send ST boolean to DFBx2 card:" + self.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
             self.status_button.setStyleSheet("background-color: #" + self.green + ";")
@@ -255,19 +255,19 @@ class dfbcard(QtGui.QWidget):
             self.status_button.setStyleSheet("background-color: #" + self.red + ";")
         self.send_dfb_wreg7()
         self.dfbx2_widget3.enbDiagnostic(self.ST)
-        print
+        print()
 
     def send_triangle(self, wreg4):
-        print self.FCTCALL + "send triangle parameters to DFB CH1 on DFBx2 card:", self.ENDC
-        print "DFB:WREG0: page register: CH 1"
+        print(self.FCTCALL + "send triangle parameters to DFB CH1 on DFBx2 card:", self.ENDC)
+        print("DFB:WREG0: page register: CH 1")
         self.sendReg(1 << 6)
         self.dfbx2_widget1.send_wreg4(wreg4)
-        print
-        print self.FCTCALL + "send triangle parameters to DFB CH2 on DFBx2 card:", self.ENDC
-        print "DFB:WREG0: page register: CH 2"
+        print()
+        print(self.FCTCALL + "send triangle parameters to DFB CH2 on DFBx2 card:", self.ENDC)
+        print("DFB:WREG0: page register: CH 2")
         self.sendReg(2 << 6)
         self.dfbx2_widget2.send_wreg4(wreg4)
-        print
+        print()
 
 ###	child called methods
 
@@ -275,40 +275,40 @@ class dfbcard(QtGui.QWidget):
 # 		print "BROADCAST CHANNEL:", state
 
     def send_class_globals(self, wreg6, wreg7):
-        print self.FCTCALL + "send class globals to DFBx2 card:", self.ENDC
+        print(self.FCTCALL + "send class globals to DFBx2 card:", self.ENDC)
         self.wreg6 = wreg6
         self.wreg7 = wreg7
         self.send_global_regs()
-        print
+        print()
 
     def send_card_globals(self):
-        print self.FCTCALL + "send card globals to DFBx2 card:", self.ENDC
+        print(self.FCTCALL + "send card globals to DFBx2 card:", self.ENDC)
         self.send_dfbx2_wreg6()
         self.send_dfb_wreg7()
-        print
+        print()
 
     def send_global_regs(self):
         cmd_reg = bin(self.wreg6)[5:].zfill(25)
         PS = cmd_reg[0]
         XPT = int(cmd_reg[1:4], base=2)
         NSAMP = int(cmd_reg[17:], base=2)
-        print "DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", PS, XPT, NSAMP
+        print("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", PS, XPT, NSAMP)
         self.sendReg(self.wreg6)
         cmd_reg = bin(self.wreg7)[5:].zfill(25)
         PD = int(cmd_reg[3:7], base=2)
         CD = int(cmd_reg[7:11], base=2)
         SL = int(cmd_reg[11:17], base=2)
         SE = int(cmd_reg[17:], base=2)
-        print "DFB:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE
+        print("DFB:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE)
         self.sendReg((self.wreg7 & 0xF3FFFFF) | (self.LED << 23) | (self.ST << 22))
-        print
+        print()
 
     def send_dfbx2_wreg6(self):
         if self.parent != None:
             self.parent.send_dfbx2_wreg6(self.address)
         else:
-            print "DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", self.PS, self.dfbx2_XPT, self.NSAMP
-            print
+            print("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", self.PS, self.dfbx2_XPT, self.NSAMP)
+            print()
             self.wreg6 = (6 << 25) | (self.PS << 24) | (self.dfbx2_XPT << 21) | self.NSAMP
             self.sendReg(self.wreg6)
 
@@ -316,26 +316,26 @@ class dfbcard(QtGui.QWidget):
         if self.parent != None:
             self.parent.send_dfb_wreg7(self.LED, self.ST, self.address)
         else:
-            print "DFB:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
-                self.dfb_delay, self.seqln, self.SETT
+            print("DFB:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
+                self.dfb_delay, self.seqln, self.SETT)
             self.wreg7 = (7 << 25) | (self.LED << 23) | (self.ST << 22) | (self.prop_delay << 18) \
                 | (self.dfb_delay << 14) | (self.seqln << 8) | self.SETT
             self.sendReg(self.wreg7)
-            print
+            print()
 
 # 	def send_wreg7(self):
 # 		print "WREG7: global parameters: LED, ST, delays, sequence length, SETT"
 # 		self.sendReg(self.wreg7 | (self.LED << 23) | (self.ST << 22))
 
     def send_GPI4(self):
-        print "DFB:GPI4: test mode select"
+        print("DFB:GPI4: test mode select")
         wreg = 4 << 17
         wregval = wreg | self.TP
         self.sendReg(wregval)
-        print
+        print()
 
     def send_GPI5(self):
-        print "DFB:GPI5: test pattern hi-bytes [31..16]"
+        print("DFB:GPI5: test pattern hi-bytes [31..16]")
         if self.TP == 1:
             hibytes = 0x5555
         if self.TP ==2:
@@ -357,10 +357,10 @@ class dfbcard(QtGui.QWidget):
         wreg = 5 << 17
         wregval = wreg | hibytes
         self.sendReg(wregval)
-        print
+        print()
 
     def send_GPI6(self):
-        print "DFB:GPI6: test pattern lo-bytes [15..0]"
+        print("DFB:GPI6: test pattern lo-bytes [15..0]")
         if self.TP == 1:
             lobytes = 0x5555
         if self.TP ==2:
@@ -382,10 +382,10 @@ class dfbcard(QtGui.QWidget):
         wreg = 6 << 17
         wregval = wreg | lobytes
         self.sendReg(wregval)
-        print
+        print()
 
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

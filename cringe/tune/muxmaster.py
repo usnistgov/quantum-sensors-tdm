@@ -34,14 +34,14 @@ class MuxMaster():
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacAoffsets.append(dfbchn.d2a_A_spin.value())
-        print dacAoffsets
+        print(dacAoffsets)
 
     def getdacBoffsets(self):
         dacBoffsets = []
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacBoffsets.append(dfbchn.d2a_B_spin.value())
-        print dacBoffsets
+        print(dacBoffsets)
 
     def getadcLockpoints(self):
         adcLockpoints = []
@@ -51,9 +51,9 @@ class MuxMaster():
         return adcLockpoints
 
     def getbaddacHighs(self):
-        print(self.getbadroworder())
+        print((self.getbadroworder()))
         baddacHighs = []
-        print(len(self.badraps), len(self.badraps[0].chn_vectors))
+        print((len(self.badraps), len(self.badraps[0].chn_vectors)))
         for badrap in self.badraps:
             for chn in badrap.chn_vectors:
 
@@ -149,7 +149,7 @@ class MuxMaster():
 
     def setdfballrow(self,col=0,tria=0,trib=0,a2d=0,d2aA=0,d2aB=0,P=0,I=0,FBA=0,FBB=0,ARL=0,data_packet=0,dynamic=1):
         #rows = range(len(self.dfbraps[col].state_vectors))+["master"]
-        rows = range(self.seqln)
+        rows = list(range(self.seqln))
         for row in rows:
             self.setdfbrow(col,row,tria,trib,a2d,d2aA,d2aB,P,I,FBA,FBB,ARL,data_packet,dynamic)
 

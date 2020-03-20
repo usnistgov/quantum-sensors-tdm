@@ -95,7 +95,7 @@ class CryoQA(object):
         for element in self.SQ1bStep():
             #self.biasStepper(element)
             fb, err = self.averager()
-            print "Toot!"
+            print("Toot!")
             for i, row in enumerate(fb):
                 min = np.amin(row)
                 max = np.amax(row)
@@ -201,7 +201,7 @@ class CryoQA(object):
                 activeCell = activeBook.cell(row=(self.channel*self.rows)+i+2, column=4)
                 activeCell.value = icMax[i]
 
-            activeBook.title = raw_input("Input title name:")
+            activeBook.title = input("Input title name:")
             wb.save("/home/pcuser/Documents/Squid_Screening_Data/MUX15/" + self.filename)
 
         else:

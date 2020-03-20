@@ -103,7 +103,7 @@ if __name__ == '__main__':
             ws2.cell(row=j+2, column=i+2, value=float(ic_maxs[j])*bfactor)
             ws2.cell(row=j+2, column=i+2).number_format = '####.#'
 
-    filename = raw_input("Please enter file identifier:")
+    filename = input("Please enter file identifier:")
     path = basefilepath + filename + '_' + now + '.xls'
 
     wb.save(path)

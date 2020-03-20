@@ -8,8 +8,8 @@ from PyQt4.QtCore import Qt, SIGNAL
 from PyQt4.QtGui import QFileDialog, QPalette, QSpinBox, QToolButton
 
 import named_serial
-import badrap
-import sv_array
+from . import badrap
+from . import sv_array
 import dprcal
 
 # from ./DFBx2.dfbrap import dfbrap
@@ -72,8 +72,8 @@ class badcard(QtGui.QWidget):
         self.layout_widget = QtGui.QWidget(self)
         self.layout = QtGui.QGridLayout(self)
 
-        print self.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, self.ENDC
-        print
+        print(self.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, self.ENDC)
+        print()
 
         '''
         build widget for card INTERFACE PARAMETERS header
@@ -189,16 +189,16 @@ class badcard(QtGui.QWidget):
 
 
     def seqln_changed(self, seqln):
-        print self.FCTCALL + "send SEQLN to BAD16 card:", self.ENDC
+        print(self.FCTCALL + "send SEQLN to BAD16 card:", self.ENDC)
         self.seqln = seqln
         self.send_wreg0()
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
 # 		self.send_wreg0()
         self.badrap_widget2.seqln_changed(seqln)
-        print
+        print()
 
     def LED_changed(self):
-        print self.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + self.ENDC
+        print(self.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + self.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
             self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
@@ -207,10 +207,10 @@ class badcard(QtGui.QWidget):
             self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
             self.LED_button.setText('ON')
         self.send_wreg0()
-        print
+        print()
 
     def status_changed(self):
-        print self.FCTCALL + "send ST boolean to BAD16 card:" + self.ENDC
+        print(self.FCTCALL + "send ST boolean to BAD16 card:" + self.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
             self.status_button.setStyleSheet("background-color: #" + self.green + ";")
@@ -218,35 +218,35 @@ class badcard(QtGui.QWidget):
             self.status_button.setStyleSheet("background-color: #" + self.red + ";")
         self.send_wreg0()
         self.badrap_widget3.enbDiagnostic(self.ST)
-        print
+        print()
 
     def initMem(self, init):
         self.init_state = self.INT
         self.INT = init
         if self.INT != self.init_state:
             if self.INT == 1:
-                print self.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + self.ENDC
+                print(self.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + self.ENDC)
             else:
-                print self.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + self.ENDC
+                print(self.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + self.ENDC)
             self.send_wreg0()
-            print
+            print()
 
     def send_triangle(self, wreg1):
-        print self.FCTCALL + "send triangle parameters to BAD16 card:", self.ENDC
+        print(self.FCTCALL + "send triangle parameters to BAD16 card:", self.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
-        print
+        print()
 
     def send_class_globals(self, wreg0):
-        print self.FCTCALL + "send card globals to BAD16 card:", self.ENDC
+        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
-        print
+        print()
 
     def send_card_globals(self):
-        print self.FCTCALL + "send card globals to BAD16 card:", self.ENDC
+        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
         self.send_wreg0()
-        print
+        print()
 
 # 	def card_delay_changed(self):
 # 		'''
@@ -263,8 +263,8 @@ class badcard(QtGui.QWidget):
         if self.parent != None:
             self.parent.send_bad16_wreg0(self.ST, self.LED, self.INT, self.address)
         else:
-            print "BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln
-            print
+            print("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
+            print()
             self.wreg0 = (0 << 25) | (self.ST << 16) | (self.LED << 14) | (self.bad_delay << 10) | (self.INT << 8) | self.seqln
             self.sendReg(self.wreg0)
 
@@ -273,12 +273,12 @@ class badcard(QtGui.QWidget):
         dwell = int(cmd_reg[1:5], base=2)
         steps = int(cmd_reg[5:9], base=2)
         step = int(cmd_reg[11:], base=2)
-        print "BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step
+        print("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
         self.sendReg(self.wreg1)
-        print
+        print()
 
     def sendReg(self, wregval):
-        print self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC
+        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

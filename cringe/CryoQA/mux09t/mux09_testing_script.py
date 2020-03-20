@@ -73,7 +73,7 @@ class MUX09:
             self.badchan.cardaddr = self.bad16_card_addr[2]
             self.badchan.change_channel(row-32)
         else:
-            print 'That is not a valid row number passed to row_decode'
+            print('That is not a valid row number passed to row_decode')
 
     def zero_everything(self):
         for row in range(self.number_rows):
@@ -91,7 +91,7 @@ class MUX09:
 
     def row_bias_sweeper(self, row):
         start_time = time.time()
-        print 'Starting Sweep on Row: ', row
+        print('Starting Sweep on Row: ', row)
         self.row_decode(row)
         self.badchan.set_dc(True)
         self.badchan.set_lohi(True)
@@ -105,9 +105,9 @@ class MUX09:
 
             self.badchan.set_lohi(False)
         end_time = time.time()
-        print ''
-        print 'Delta Seconds'
-        print (end_time-start_time)
+        print('')
+        print('Delta Seconds')
+        print((end_time-start_time))
 
     def row_calculate_ics(self, row):
         have_icmin = False
@@ -148,20 +148,20 @@ class MUX09:
 
     def save_npz(self):
         if self.chip_id is None:
-            print 'You have not set the Chip ID'
+            print('You have not set the Chip ID')
             return
         if self.sq2_icmin is None:
-            print 'You have not set the SQUID 2 IC_min'
+            print('You have not set the SQUID 2 IC_min')
             return
         if self.sq2_icmax is None:
-            print 'You have not set the SQUID 2 IC_max'
+            print('You have not set the SQUID 2 IC_max')
             return
         if self.qa_name is None:
-            print 'Please set your name as the QA person'
+            print('Please set your name as the QA person')
             return
         if self.note is '':
-            print 'Please input any notes about this chip.'
-            print 'Such as what the spot check on the inputs told you'
+            print('Please input any notes about this chip.')
+            print('Such as what the spot check on the inputs told you')
             return
 
         today = time.localtime()

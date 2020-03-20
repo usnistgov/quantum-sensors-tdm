@@ -68,14 +68,14 @@ class TowerWidget(QtGui.QWidget):
             #print self.width()
         
     def sendall(self):
-        for key,tc in self.towercards.iteritems():
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 value = tchn.dacspin.value()
                 tchn.sendvalue(value)
 
     def packState(self):
         dacvalues = []
-        for key,tc in self.towercards.iteritems():
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 dacvalues.append(tchn.dacspin.value())
         self.stateVector    =    {
@@ -84,8 +84,8 @@ class TowerWidget(QtGui.QWidget):
         
     def unpackState(self, loadState):
         dacvalues = loadState["dacvalues"][:]
-        print dacvalues
-        for key,tc in self.towercards.iteritems():
+        print(dacvalues)
+        for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:
                 dacvalues.append(tchn.dacspin.setValue(dacvalues.pop(0)))
 
