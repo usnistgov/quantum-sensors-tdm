@@ -19,6 +19,7 @@ from nasa_client import JSONClient # for stopping dastard
 
 class MyLogger():
     def __init__(self):
+        logDirectory = os.path.join(os.path.dirname(__file__),"logs")
         XML_CONFIG_FILE = "/etc/adr_system_setup.xml"
         if os.path.isfile(XML_CONFIG_FILE):
             f = open(XML_CONFIG_FILE, 'r')
@@ -27,20 +28,13 @@ class MyLogger():
             if child is not None:
                 value = child.text
                 logDirectory = value
-            else:
-                logDirectory = 'logs'
-        else:
-            logDirectory = 'logs'
-        try:
-            if not os.path.isdir(logDirectory): os.mkdir(logDirectory)
-            print(("failed to create directory: ",logDirectory))
-            print("that directory is in /etc/adr_system_setup.xml but probably the parent directory doesn't exist")
-        except OSError:
-            logDirectory = 'logs'
-            if not os.path.isdir(logDirectory): os.mkdir(logDirectory)
-        print(("adr_gui log directory: ",logDirectory))
+        if not os.path.isdir(logDirectory): 
+            os.mkdir(logDirectory)
+
         self.filename = os.path.join(logDirectory,time.strftime("ADRLog_%Y%m%d_t%H%M%S.txt"))
         self.file = open(self.filename,"w")
+        print(f"adr_gui log directory: {logDirectory}")
+        print(f"adr_gui log filename: {self.filename}")
 
     def log(self,s):
 	    self.file.write(s+"\n")

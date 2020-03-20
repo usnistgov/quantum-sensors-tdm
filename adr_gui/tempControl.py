@@ -1,6 +1,6 @@
 import adr_system
 import time
-import zaber
+from instruments import zaber
 
 
 class TempControl():

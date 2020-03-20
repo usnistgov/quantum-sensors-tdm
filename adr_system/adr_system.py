@@ -11,10 +11,14 @@ from lxml import etree
 import platform
 
 
-import bluebox
-import crate
-import tower
-import zaber
+from instruments import bluebox
+from instruments import zaber
+
+# I dont think anybody actually uses crate and tower thru AdrSystem anymore
+# import crate
+# import tower
+
+
 
 class AdrSystem(object):
     '''

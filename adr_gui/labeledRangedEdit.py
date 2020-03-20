@@ -6,9 +6,9 @@ Created on Oct 27, 2010
 @author: schimaf
 '''
 
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 
-class labeledRangedEdit(QtGui.QWidget):
+class labeledRangedEdit(QtWidgets.QWidget):
     def __init__(self, label_text = "", allowed_range = (0,1), startval=0, settings=False, parent=None):
         super(labeledRangedEdit, self).__init__(parent)
         self.allowed_range = (float(min(allowed_range)), float(max(allowed_range)))

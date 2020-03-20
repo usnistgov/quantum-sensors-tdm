@@ -1,8 +1,10 @@
 def test_imports():
     import instruments
     from instruments import Lakeshore370
+    from instruments import bluebox
     from nasa_client import EasyClient
     from named_serial import Serial
     from nasa_client import JSONClient
-    import adr_gui.adr_gui.main as adr_gui_main
-    import cringe.cringe.main as cringe_main
+    from adr_gui.adr_gui import main
+    from cringe.cringe import main
+    from adr_system import AdrSystem
