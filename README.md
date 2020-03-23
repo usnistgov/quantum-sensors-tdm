@@ -23,10 +23,10 @@ Then you can copy and paste the entire next block hopefully.
 python3 -m venv ~/qsp
 source ~/qsp/bin/activate
 pip install --upgrade pip
-echo "source ~/qsp/bin/activate" >> ~/.profile
+echo "source ~/qsp/bin/activate" >> ~/.bashrc
 ```
 
-The echo line adds `source ~/qsp/bin/activate` to `~/.profile`, which activates this venv for each new terminal. You may exit this venv with `deactivate` to run code that requires another python environment.
+The echo line adds `source ~/qsp/bin/activate` to `~/.bashrc`, which activates this venv for each new terminal. You may exit this venv with `deactivate` to run code that requires a different python environment.
 
 # Installation
 You probably want to install all the stuff you need for tdm, not just this repo, so
