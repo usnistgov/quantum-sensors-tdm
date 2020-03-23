@@ -88,7 +88,7 @@ class badass(QWidget):
         self.file_mgmt_widget = QGroupBox(self)
 # 		self.file_mgmt_widget.setFlat(1)
         self.file_mgmt_widget.setFixedWidth(1080)
-        self.file_mgmt_widget.setFocusPolicy(Qt.NoFocus)
+        self.file_mgmt_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.file_mgmt_widget.setTitle("FILE MANAGEMENT INTERFACE")
 
         self.file_mgmt_layout = QGridLayout(self.file_mgmt_widget)
@@ -121,7 +121,7 @@ class badass(QWidget):
         '''
         self.sys_glob_hdr_widget = QGroupBox(self)
         self.sys_glob_hdr_widget.setFixedWidth(1080)
-        self.sys_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+        self.sys_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_glob_hdr_widget.setTitle("SYSTEM GLOBALS")
 
         self.sys_glob_layout = QGridLayout(self.sys_glob_hdr_widget)
@@ -133,7 +133,7 @@ class badass(QWidget):
         self.seqln_indicator.setText('%3d'%seqln)
         self.seqln_indicator.setAlignment(QtCore.Qt.AlignRight)
         self.seqln_indicator.setFixedSize(self.seqln_indicator.sizeHint())
-        self.seqln_indicator.setFocusPolicy(Qt.NoFocus)
+        self.seqln_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_glob_layout.addWidget(self.seqln_indicator,0,0,1,1)
 
         self.seqln_lbl = QLabel("sequence length")
@@ -145,7 +145,7 @@ class badass(QWidget):
         self.lsync_indicator.setText('%4d'%lsync)
         self.lsync_indicator.setAlignment(QtCore.Qt.AlignRight)
         self.lsync_indicator.setFixedSize(self.seqln_indicator.sizeHint())
-        self.lsync_indicator.setFocusPolicy(Qt.NoFocus)
+        self.lsync_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_glob_layout.addWidget(self.lsync_indicator,0,2,1,1)
 
         self.seqln_lbl = QLabel("line period")
@@ -158,7 +158,7 @@ class badass(QWidget):
         '''
         self.class_glob_hdr_widget = QGroupBox(self)
         self.class_glob_hdr_widget.setFixedWidth(1080)
-        self.class_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+        self.class_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.class_glob_hdr_widget.setTitle("CLASS GLOBALS")
 
         self.class_glob_layout = QGridLayout(self.class_glob_hdr_widget)
@@ -170,7 +170,7 @@ class badass(QWidget):
 # 		self.card_delay.setFixedWidth(45)
         self.card_delay.setSingleStep(1)
         self.card_delay.setKeyboardTracking(0)
-        self.card_delay.setFocusPolicy(Qt.StrongFocus)
+        self.card_delay.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.class_glob_layout.addWidget(self.card_delay,0,0,1,1)
         self.card_delay.valueChanged.connect(self.card_delay_changed)
 
@@ -184,7 +184,7 @@ class badass(QWidget):
         '''
         self.class_interface_widget = QGroupBox(self)
         self.class_interface_widget.setFixedWidth(1080)
-        self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
+        self.class_interface_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.class_interface_widget.setTitle("CARD INTERFACE PARAMETERS")
 
         self.controls_layout = QGridLayout(self.class_interface_widget)
@@ -199,7 +199,7 @@ class badass(QWidget):
         self.addr_indicator.setReadOnly(True)
         self.addr_indicator.setText(str(addr))
         self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.addr_indicator.setFocusPolicy(Qt.NoFocus)
+        self.addr_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.controls_layout.addWidget(self.addr_indicator,0,0,1,1,QtCore.Qt.AlignRight)
 
         self.addr_label = QLabel("card address")
@@ -210,7 +210,7 @@ class badass(QWidget):
 # 		self.addr_indicator.setFixedWidth(40)
         self.slot_indicator.setText('%2d'%slot)
         self.slot_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.slot_indicator.setFocusPolicy(Qt.NoFocus)
+        self.slot_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.controls_layout.addWidget(self.slot_indicator,0,2,1,1,QtCore.Qt.AlignRight)
 
         self.slot_label = QLabel("card slot")

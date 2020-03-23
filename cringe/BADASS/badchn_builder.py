@@ -59,7 +59,7 @@ class badChn(QWidget):
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
         self.counter_label.setStyleSheet("background-color: #" + self.yellow + ";")
-        self.counter_label.setFocusPolicy(Qt.NoFocus)
+        self.counter_label.setFocusPolicy(QtCore.Qt.NoFocus)
         self.counter_label.setText(str(self.chn))
         self.row_layout.addWidget(self.counter_label,0,0)
         
@@ -92,7 +92,7 @@ class badChn(QWidget):
         self.d2a_lo_spin.setFixedHeight(self.row_ht)
         self.d2a_lo_spin.setSingleStep(1)
         self.d2a_lo_spin.setKeyboardTracking(0)
-        self.d2a_lo_spin.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_lo_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_lo_spin,0,4)
 
         self.d2a_lo_min_button = QPushButton("<")
@@ -110,7 +110,7 @@ class badChn(QWidget):
         self.d2a_lo_slider.setPageStep(512)
         self.d2a_lo_slider.setValue(0)
         self.d2a_lo_slider.setTracking(1)
-        self.d2a_lo_slider.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_lo_slider.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_lo_slider,0,6)
 
         self.d2a_lo_max_button = QPushButton(">")
@@ -124,7 +124,7 @@ class badChn(QWidget):
         self.d2a_hi_spin.setFixedHeight(self.row_ht)        
         self.d2a_hi_spin.setSingleStep(1)
         self.d2a_hi_spin.setKeyboardTracking(0)
-        self.d2a_hi_spin.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_hi_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_hi_spin,0,8)
 
         self.d2a_hi_min_button = QPushButton("<")
@@ -142,7 +142,7 @@ class badChn(QWidget):
         self.d2a_hi_slider.setPageStep(512)
         self.d2a_hi_slider.setValue(0)
         self.d2a_hi_slider.setTracking(1)
-        self.d2a_hi_slider.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_hi_slider.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_hi_slider,0,10)
 
         self.d2a_hi_max_button = QPushButton(">")

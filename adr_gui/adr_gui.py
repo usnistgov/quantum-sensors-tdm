@@ -80,7 +80,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def __init__(self, min_mag_time=20):
         super(ADR_Gui, self).__init__()
-        PyQt5.uic.loadUi("adr_gui.ui", self)
+        PyQt5.uic.loadUi(os.path.join(os.path.dirname(__file__),"adr_gui.ui"), self)
         self.setWindowIcon(QIcon("adr_gui.png"))
 
         # give variabiles initial values

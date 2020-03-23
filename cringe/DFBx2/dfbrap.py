@@ -116,7 +116,7 @@ class dfbrap(QWidget):
 			self.file_mgmt_widget = QGroupBox(self)
 	# 		self.file_mgmt_widget.setFlat(1)
 			self.file_mgmt_widget.setFixedWidth(1080)
-			self.file_mgmt_widget.setFocusPolicy(Qt.NoFocus)
+			self.file_mgmt_widget.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.file_mgmt_widget.setTitle("FILE MANAGEMENT INTERFACE")
 
 			self.file_mgmt_layout = QGridLayout(self.file_mgmt_widget)
@@ -149,7 +149,7 @@ class dfbrap(QWidget):
 			'''
 			self.sys_glob_hdr_widget = QGroupBox(self)
 			self.sys_glob_hdr_widget.setFixedWidth(1080)
-			self.sys_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+			self.sys_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.sys_glob_hdr_widget.setTitle("SYSTEM GLOBALS")
 
 			self.sys_glob_layout = QGridLayout(self.sys_glob_hdr_widget)
@@ -161,7 +161,7 @@ class dfbrap(QWidget):
 			self.seqln_indicator.setText('%3d'%seqln)
 			self.seqln_indicator.setAlignment(QtCore.Qt.AlignRight)
 			self.seqln_indicator.setFixedSize(self.seqln_indicator.sizeHint())
-			self.seqln_indicator.setFocusPolicy(Qt.NoFocus)
+			self.seqln_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.sys_glob_layout.addWidget(self.seqln_indicator,0,0,1,1)
 
 			self.seqln_lbl = QLabel("sequence length")
@@ -173,7 +173,7 @@ class dfbrap(QWidget):
 			self.lsync_indicator.setText('%4d'%lsync)
 			self.lsync_indicator.setAlignment(QtCore.Qt.AlignRight)
 			self.lsync_indicator.setFixedSize(self.seqln_indicator.sizeHint())
-			self.lsync_indicator.setFocusPolicy(Qt.NoFocus)
+			self.lsync_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.sys_glob_layout.addWidget(self.lsync_indicator,0,2,1,1)
 
 			self.seqln_lbl = QLabel("line period")
@@ -186,7 +186,7 @@ class dfbrap(QWidget):
 			'''
 			self.class_glob_hdr_widget = QGroupBox(self)
 			self.class_glob_hdr_widget.setFixedWidth(1080)
-			self.class_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+			self.class_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.class_glob_hdr_widget.setTitle("CLASS GLOBALS")
 
 			self.class_glob_layout = QGridLayout(self.class_glob_hdr_widget)
@@ -198,7 +198,7 @@ class dfbrap(QWidget):
 	# 		self.card_delay_spin.setFixedWidth(45)
 			self.card_delay_spin.setSingleStep(1)
 			self.card_delay_spin.setKeyboardTracking(0)
-			self.card_delay_spin.setFocusPolicy(Qt.StrongFocus)
+			self.card_delay_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.card_delay_spin.setValue(self.card_delay)
 			self.card_delay_spin.setAlignment(QtCore.Qt.AlignRight)
 			self.class_glob_layout.addWidget(self.card_delay_spin,0,0,1,1)
@@ -211,7 +211,7 @@ class dfbrap(QWidget):
 			self.prop_delay_spin.setRange(0,15)
 			self.prop_delay_spin.setSingleStep(1)
 			self.prop_delay_spin.setKeyboardTracking(0)
-			self.prop_delay_spin.setFocusPolicy(Qt.StrongFocus)
+			self.prop_delay_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.prop_delay_spin.setValue(self.prop_delay)
 			self.prop_delay_spin.setAlignment(QtCore.Qt.AlignRight)
 			self.class_glob_layout.addWidget(self.prop_delay_spin,0,2,1,1)
@@ -247,7 +247,7 @@ class dfbrap(QWidget):
 	# 		self.NSAMP_spin.setFixedWidth(45)
 			self.NSAMP_spin.setSingleStep(1)
 			self.NSAMP_spin.setKeyboardTracking(0)
-			self.NSAMP_spin.setFocusPolicy(Qt.StrongFocus)
+			self.NSAMP_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.NSAMP_spin.setAlignment(QtCore.Qt.AlignRight)
 			self.NSAMP_spin.setValue(self.NSAMP)
 			self.class_glob_layout.addWidget(self.NSAMP_spin,1,0,1,1)
@@ -260,7 +260,7 @@ class dfbrap(QWidget):
 			self.SETT_spin.setRange(0,255)
 			self.SETT_spin.setSingleStep(1)
 			self.SETT_spin.setKeyboardTracking(0)
-			self.SETT_spin.setFocusPolicy(Qt.StrongFocus)
+			self.SETT_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.SETT_spin.setValue(self.SETT)
 			self.SETT_spin.setAlignment(QtCore.Qt.AlignRight)
 			self.class_glob_layout.addWidget(self.SETT_spin,1,2,1,1)
@@ -297,7 +297,7 @@ class dfbrap(QWidget):
 			self.ARLsense_spin.setFixedHeight(25)
 			self.ARLsense_spin.setSingleStep(1)
 			self.ARLsense_spin.setKeyboardTracking(0)
-			self.ARLsense_spin.setFocusPolicy(Qt.StrongFocus)
+			self.ARLsense_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.arl_layout.addWidget(self.ARLsense_spin,0,0,1,1,QtCore.Qt.AlignRight)
 			self.ARLsense_spin.valueChanged.connect(self.ARLsense_changed)
 
@@ -309,7 +309,7 @@ class dfbrap(QWidget):
 			self.ARLsense_indicator.setFixedHeight(25)
 			self.ARLsense_indicator.setText('%5i'%2**(self.ARLsense))
 			self.ARLsense_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.ARLsense_indicator.setFocusPolicy(Qt.NoFocus)
+			self.ARLsense_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.ARLsense_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
 
 			self.ARLsense_indicator_lbl = QLabel("flux sensitivity [DAC units]")
@@ -320,7 +320,7 @@ class dfbrap(QWidget):
 			self.ARLsense_eng_indicator.setFixedHeight(25)
 			self.ARLsense_eng_indicator.setText(str(2**(self.ARLsense)/16.383)[:6])
 			self.ARLsense_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.ARLsense_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.ARLsense_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.ARLsense_eng_indicator, 2,0,1,1,QtCore.Qt.AlignRight)
 
 			self.ARLsense_eng_indicator_lbl = QLabel("flux sensitivity [mV]")
@@ -331,7 +331,7 @@ class dfbrap(QWidget):
 			self.RLDpos_spin.setFixedHeight(25)
 			self.RLDpos_spin.setSingleStep(1)
 			self.RLDpos_spin.setKeyboardTracking(0)
-			self.RLDpos_spin.setFocusPolicy(Qt.StrongFocus)
+			self.RLDpos_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.arl_layout.addWidget(self.RLDpos_spin,0,2,1,1,QtCore.Qt.AlignRight)
 			self.RLDpos_spin.valueChanged.connect(self.RLDpos_changed)
 
@@ -343,7 +343,7 @@ class dfbrap(QWidget):
 	# 		self.range_indicator.setFixedWidth(60)
 			self.RLDpos_indicator.setText(str(2**(self.RLDpos)))
 			self.RLDpos_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.RLDpos_indicator.setFocusPolicy(Qt.NoFocus)
+			self.RLDpos_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.RLDpos_indicator,1,2,1,1,QtCore.Qt.AlignRight)
 
 			self.RLDpos_indicator_lbl = QLabel("(+) relock delay")
@@ -354,7 +354,7 @@ class dfbrap(QWidget):
 			self.RLDpos_eng_indicator.setFixedHeight(25)
 			self.RLDpos_eng_indicator.setText(str(2**(self.RLDpos)*self.frame_period)[:6])
 			self.RLDpos_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.RLDpos_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.RLDpos_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.RLDpos_eng_indicator, 2,2,1,1,QtCore.Qt.AlignRight)
 
 			self.RLDpos_eng_indicator_lbl = QLabel("positive relock delay [us]")
@@ -365,7 +365,7 @@ class dfbrap(QWidget):
 			self.RLDneg_spin.setFixedHeight(25)
 			self.RLDneg_spin.setSingleStep(1)
 			self.RLDneg_spin.setKeyboardTracking(0)
-			self.RLDneg_spin.setFocusPolicy(Qt.StrongFocus)
+			self.RLDneg_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.arl_layout.addWidget(self.RLDneg_spin,0,4,1,1,QtCore.Qt.AlignRight)
 			self.RLDneg_spin.valueChanged.connect(self.RLDneg_changed)
 
@@ -377,7 +377,7 @@ class dfbrap(QWidget):
 	# 		self.range_indicator.setFixedWidth(60)
 			self.RLDneg_indicator.setText(str(2**(self.RLDneg)))
 			self.RLDneg_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.RLDneg_indicator.setFocusPolicy(Qt.NoFocus)
+			self.RLDneg_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.RLDneg_indicator,1,4,1,1,QtCore.Qt.AlignRight)
 
 			self.RLDneg_indicator_lbl = QLabel("(-) relock delay")
@@ -388,7 +388,7 @@ class dfbrap(QWidget):
 			self.RLDneg_eng_indicator.setFixedHeight(25)
 			self.RLDneg_eng_indicator.setText(str(2**(self.RLDneg)*self.frame_period)[:6])
 			self.RLDneg_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.RLDneg_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.RLDneg_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.arl_layout.addWidget(self.RLDneg_eng_indicator, 2,4,1,1,QtCore.Qt.AlignRight)
 
 			self.RLDneg_eng_indicator_lbl = QLabel("negative relock delay [us]")
@@ -411,7 +411,7 @@ class dfbrap(QWidget):
 			self.dwell.setFixedHeight(25)
 			self.dwell.setSingleStep(1)
 			self.dwell.setKeyboardTracking(0)
-			self.dwell.setFocusPolicy(Qt.StrongFocus)
+			self.dwell.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.tri_wvfm_layout.addWidget(self.dwell,0,0,1,1,QtCore.Qt.AlignRight)
 			self.dwell.valueChanged.connect(self.dwell_changed)
 
@@ -423,7 +423,7 @@ class dfbrap(QWidget):
 			self.dwell_indicator.setFixedHeight(25)
 			self.dwell_indicator.setText('%5i'%2**(self.dwell_val))
 			self.dwell_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.dwell_indicator.setFocusPolicy(Qt.NoFocus)
+			self.dwell_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.dwell_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
 
 			self.range_indicator_lbl = QLabel("dwell")
@@ -434,7 +434,7 @@ class dfbrap(QWidget):
 			self.range.setFixedHeight(25)
 			self.range.setSingleStep(1)
 			self.range.setKeyboardTracking(0)
-			self.range.setFocusPolicy(Qt.StrongFocus)
+			self.range.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.tri_wvfm_layout.addWidget(self.range,0,2,1,1,QtCore.Qt.AlignRight)
 			self.range.valueChanged.connect(self.range_changed)
 
@@ -446,7 +446,7 @@ class dfbrap(QWidget):
 	# 		self.range_indicator.setFixedWidth(60)
 			self.range_indicator.setText(str(2**(self.range_val)))
 			self.range_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.range_indicator.setFocusPolicy(Qt.NoFocus)
+			self.range_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.range_indicator,1,2,1,1,QtCore.Qt.AlignRight)
 
 			self.range_indicator_lbl = QLabel("steps")
@@ -457,7 +457,7 @@ class dfbrap(QWidget):
 			self.step.setFixedHeight(25)
 			self.step.setSingleStep(1)
 			self.step.setKeyboardTracking(0)
-			self.step.setFocusPolicy(Qt.StrongFocus)
+			self.step.setFocusPolicy(QtCore.Qt.StrongFocus)
 			self.tri_wvfm_layout.addWidget(self.step,0,4,1,1,QtCore.Qt.AlignRight)
 			self.step.valueChanged.connect(self.step_changed)
 
@@ -469,7 +469,7 @@ class dfbrap(QWidget):
 	# 		self.period_indicator.setFixedWidth(120)
 			self.period_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
 			self.period_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.period_indicator.setFocusPolicy(Qt.NoFocus)
+			self.period_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.period_indicator,0,6,1,1,QtCore.Qt.AlignRight)
 
 			self.period_indicator_lbl = QLabel("period")
@@ -481,7 +481,7 @@ class dfbrap(QWidget):
 	# 		self.period_eng_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
 			self.period_eng_indicator.setText(str(int(self.period_indicator.text())*self.lsync*0.008))
 			self.period_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.period_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.period_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.period_eng_indicator,1,6,1,1,QtCore.Qt.AlignRight)
 
 			self.period_eng_indicator_lbl = QLabel("period [us]")
@@ -492,7 +492,7 @@ class dfbrap(QWidget):
 	# 		self.amp_indicator.setFixedWidth(80)
 			self.amp_indicator.setText(str((2**self.range_val)*self.step_val))
 			self.amp_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.amp_indicator.setFocusPolicy(Qt.NoFocus)
+			self.amp_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.amp_indicator,0,8,1,1,QtCore.Qt.AlignRight)
 
 			self.amp_indicator_lbl = QLabel("amplitude")
@@ -503,7 +503,7 @@ class dfbrap(QWidget):
 	# 		self.amp_eng_indicator.setFixedWidth(80)
 			self.amp_eng_indicator.setText(str(int(self.amp_indicator.text())/16.383)[:6])
 			self.amp_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.amp_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.amp_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.amp_eng_indicator,1,8,1,1,QtCore.Qt.AlignRight)
 
 			self.amp_eng_indicator_lbl = QLabel("amplitude [mV]")
@@ -531,7 +531,7 @@ class dfbrap(QWidget):
 	# 		self.freq_eng_indicator.setFixedWidth(80)
 			self.freq_eng_indicator.setText(str(1000/float(self.period_eng_indicator.text()))[:6])
 			self.freq_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.freq_eng_indicator.setFocusPolicy(Qt.NoFocus)
+			self.freq_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.tri_wvfm_layout.addWidget(self.freq_eng_indicator,1,10,1,1,QtCore.Qt.AlignRight)
 
 			self.amp_eng_indicator_lbl = QLabel("freq [kHz]")
@@ -544,7 +544,7 @@ class dfbrap(QWidget):
 			'''
 			self.class_interface_widget = QGroupBox(self)
 			self.class_interface_widget.setFixedWidth(1080)
-			self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
+			self.class_interface_widget.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.class_interface_widget.setTitle("CARD INTERFACE PARAMETERS")
 
 			self.controls_layout = QGridLayout(self.class_interface_widget)
@@ -555,7 +555,7 @@ class dfbrap(QWidget):
 			self.addr_indicator.setReadOnly(True)
 			self.addr_indicator.setText(str(addr))
 			self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.addr_indicator.setFocusPolicy(Qt.NoFocus)
+			self.addr_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.controls_layout.addWidget(self.addr_indicator,0,0,1,1,QtCore.Qt.AlignRight)
 
 			self.addr_label = QLabel("card address")
@@ -566,7 +566,7 @@ class dfbrap(QWidget):
 	# 		self.addr_indicator.setFixedWidth(40)
 			self.slot_indicator.setText('%2d'%slot)
 			self.slot_indicator.setAlignment(QtCore.Qt.AlignRight)
-			self.slot_indicator.setFocusPolicy(Qt.NoFocus)
+			self.slot_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
 			self.controls_layout.addWidget(self.slot_indicator,0,2,1,1,QtCore.Qt.AlignRight)
 
 			self.slot_label = QLabel("card slot")

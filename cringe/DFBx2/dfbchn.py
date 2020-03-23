@@ -72,7 +72,7 @@ class dfbChn(QWidget):
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
         self.counter_label.setStyleSheet("background-color: #" + self.yellow + ";")
-        self.counter_label.setFocusPolicy(Qt.NoFocus)
+        self.counter_label.setFocusPolicy(QtCore.Qt.NoFocus)
         self.counter_label.setText(str(self.state))
         self.row_layout.addWidget(self.counter_label,0,0)
 
@@ -96,7 +96,7 @@ class dfbChn(QWidget):
         self.a2d_lockpt_spin.setFixedHeight(25)
         self.a2d_lockpt_spin.setSingleStep(1)
         self.a2d_lockpt_spin.setKeyboardTracking(0)
-        self.a2d_lockpt_spin.setFocusPolicy(Qt.StrongFocus)
+        self.a2d_lockpt_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.a2d_lockpt_spin,0,3)
 
 #         self.d2a_lo_min_button = QPushButton("<")
@@ -112,7 +112,7 @@ class dfbChn(QWidget):
         self.a2d_lockpt_slider.setPageStep(128)
         self.a2d_lockpt_slider.setValue(0)
         self.a2d_lockpt_slider.setTracking(1)
-        self.a2d_lockpt_slider.setFocusPolicy(Qt.StrongFocus)
+        self.a2d_lockpt_slider.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.a2d_lockpt_slider,0,4)
 
 #         self.d2a_lo_max_button = QPushButton(">")
@@ -124,7 +124,7 @@ class dfbChn(QWidget):
         self.d2a_A_spin.setFixedHeight(25)
         self.d2a_A_spin.setSingleStep(1)
         self.d2a_A_spin.setKeyboardTracking(0)
-        self.d2a_A_spin.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_A_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_A_spin,0,5)
         
         self.d2a_A_slider = QSlider(Qt.Horizontal)
@@ -137,7 +137,7 @@ class dfbChn(QWidget):
         self.d2a_A_slider.setPageStep(512)
         self.d2a_A_slider.setValue(0)
         self.d2a_A_slider.setTracking(1)
-        self.d2a_A_slider.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_A_slider.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_A_slider,0,6)
 
         self.d2a_B_spin = QSpinBox()
@@ -146,7 +146,7 @@ class dfbChn(QWidget):
         self.d2a_B_spin.setFixedHeight(25)
         self.d2a_B_spin.setSingleStep(1)
         self.d2a_B_spin.setKeyboardTracking(0)
-        self.d2a_B_spin.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_B_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_B_spin,0,7)
         
         self.d2a_B_slider = QSlider(Qt.Horizontal)
@@ -159,7 +159,7 @@ class dfbChn(QWidget):
         self.d2a_B_slider.setPageStep(512)
         self.d2a_B_slider.setValue(0)
         self.d2a_B_slider.setTracking(1)
-        self.d2a_B_slider.setFocusPolicy(Qt.StrongFocus)
+        self.d2a_B_slider.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_B_slider,0,8)
         
         self.data_packet = QComboBox()
@@ -176,7 +176,7 @@ class dfbChn(QWidget):
         self.P_spin.setFixedHeight(25)
         self.P_spin.setSingleStep(8)
         self.P_spin.setKeyboardTracking(0)
-        self.P_spin.setFocusPolicy(Qt.StrongFocus)
+        self.P_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.P_spin,0,10)
 
         self.I_spin = QSpinBox()
@@ -185,7 +185,7 @@ class dfbChn(QWidget):
         self.I_spin.setFixedHeight(25)
         self.I_spin.setSingleStep(8)
         self.I_spin.setKeyboardTracking(0)
-        self.I_spin.setFocusPolicy(Qt.StrongFocus)
+        self.I_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.I_spin,0,11)
 
         self.FBA_button = QToolButton(self, text = 'FB[A]')

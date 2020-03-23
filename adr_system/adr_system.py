@@ -85,12 +85,12 @@ class AdrSystem(object):
         elif platform.system() == 'Darwin':
             self.config_file_path = '/etc/'
 
-        self.crate = crate.Crate(lsync=self.lsync, number_mux_rows=self.number_mux_rows, dfb_settling_time=self.dfb_settling_time, dfb_number_of_samples=self.dfb_number_of_samples, doinit=self.doinit)
-        self.crate.readConfigFile()
-        self.tower = tower.Tower()
-        tower_status = self.tower.readConfigFile()
-        if tower_status == False:
-            self.tower = None
+        #self.crate = crate.Crate(lsync=self.lsync, number_mux_rows=self.number_mux_rows, dfb_settling_time=self.dfb_settling_time, dfb_number_of_samples=self.dfb_number_of_samples, doinit=self.doinit)
+        #self.crate.readConfigFile()
+        #self.tower = tower.Tower()
+        #tower_status = self.tower.readConfigFile()
+        #if tower_status == False:
+        #    self.tower = None
 
         status = self.readConfigFile()
 
@@ -161,14 +161,14 @@ class AdrSystem(object):
                             temperature_controller_gpib_address = int(child_temp_controller.get("gpib_pad"))
                             print(("Adding lakeshore 370 temperature controller (%i)." % temperature_controller_gpib_address))
                             # Only import the lakeshore class when needed because Mac OS X does not have the gpib class
-                            import lakeshore370
+                            from instruments import lakeshore370
                             ls370 = lakeshore370.Lakeshore370(pad=temperature_controller_gpib_address)
                             self.temperature_controller = ls370
                             self.temperature_controllers.append(ls370)
                         if temperature_controller_type == 'lakeshore370_serial':
                             port = child_temp_controller.get("port",default="lakeshore")
                             print(("Adding lakeshore 370 SERIAL temperature controller port = %s."%port))
-                            import lakeshore370_serial
+                            from instruments import lakeshore370_serial
                             ls370 = lakeshore370_serial.Lakeshore370(port)
                             self.temperature_controller=ls370
                             self.temperature_controllers.append(ls370)
@@ -191,7 +191,7 @@ class AdrSystem(object):
 #                        elif heat_switch_type == "hpdLabjack":
                         elif heat_switch_type == 'hpdLabjack':
                             print(("Adding %s heat switch." % (heat_switch_type)))
-                            import heatswitchLabjack
+                            from instruments import heatswitchLabjack
                             self.heat_switch = heatswitchLabjack.HeatswitchLabjack()
                             self.heat_switches.append(self.heat_switch)
                         else:
@@ -208,7 +208,7 @@ class AdrSystem(object):
                         relay_type = child_relay.get("type")
                         print(relay_type)
                         if relay_type == "labjackU3_dougstyle":
-                            import labjack
+                            from instruments import labjack
                             self.magnet_control_relay = labjack.Labjack()
                             print(("Adding %s as magnet_control_relay"%relay_type))
                         else:

@@ -68,7 +68,7 @@ class clkrap(QWidget):
 # 		self.lsync_spin.setRange(20,256)
 # 		self.lsync_spin.setSingleStep(1)
 # 		self.lsync_spin.setKeyboardTracking(0)
-# 		self.lsync_spin.setFocusPolicy(Qt.StrongFocus)
+# 		self.lsync_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
 # 		self.lsync_spin.setValue(self.lsync)
 # 		self.lsync_spin.setAlignment(QtCore.Qt.AlignRight)
 # 		self.layout.addWidget(self.lsync_spin,1,0,1,1)
@@ -79,7 +79,7 @@ class clkrap(QWidget):
         self.lsync_indicator.setFixedHeight(25)
         self.lsync_indicator.setText(str(self.lsync))
         self.lsync_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.lsync_indicator.setFocusPolicy(Qt.NoFocus)
+        self.lsync_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.layout.addWidget(self.lsync_indicator, 1,0,1,1,QtCore.Qt.AlignRight)
         self.lsync_indicator.textChanged.connect(self.lsync_changed)
 
@@ -94,7 +94,7 @@ class clkrap(QWidget):
         self.line_period_indicator.setFixedHeight(25)
         self.line_period_indicator.setText(str(8*(self.lsync)))
         self.line_period_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.line_period_indicator.setFocusPolicy(Qt.NoFocus)
+        self.line_period_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.layout.addWidget(self.line_period_indicator, 3,0,1,1,QtCore.Qt.AlignRight)
 
         self.line_period_lbl = QLabel("ns")
@@ -108,7 +108,7 @@ class clkrap(QWidget):
         self.line_freq_indicator.setFixedHeight(25)
         self.line_freq_indicator.setText(str(125/(self.lsync))[:6])
         self.line_freq_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.line_freq_indicator.setFocusPolicy(Qt.NoFocus)
+        self.line_freq_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.layout.addWidget(self.line_freq_indicator, 5,0,1,1,QtCore.Qt.AlignRight)
 
         self.line_freq_lbl = QLabel("MHz")
@@ -122,7 +122,7 @@ class clkrap(QWidget):
         self.frame_period_indicator.setFixedHeight(25)
         self.frame_period_indicator.setText(str(self.seqln*0.008*self.lsync)[:6])
         self.frame_period_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.frame_period_indicator.setFocusPolicy(Qt.NoFocus)
+        self.frame_period_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.layout.addWidget(self.frame_period_indicator,3,2,1,1,QtCore.Qt.AlignRight)
 
         self.frame_period_lbl = QLabel("\u00B5s")
@@ -136,7 +136,7 @@ class clkrap(QWidget):
         self.frame_freq_indicator.setFixedHeight(25)
         self.frame_freq_indicator.setText(str(125000/(self.lsync*self.seqln))[:6])
         self.frame_freq_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.frame_freq_indicator.setFocusPolicy(Qt.NoFocus)
+        self.frame_freq_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.layout.addWidget(self.frame_freq_indicator, 5,2,1,1,QtCore.Qt.AlignRight)
 
         self.frame_freq_lbl = QLabel("kHz")

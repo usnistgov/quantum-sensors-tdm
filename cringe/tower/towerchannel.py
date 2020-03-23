@@ -47,7 +47,7 @@ class TowerChannel(QWidget):
         self.dacspin.setFixedHeight(25)
         self.dacspin.setSingleStep(250)
         self.dacspin.setKeyboardTracking(0)
-        self.dacspin.setFocusPolicy(Qt.StrongFocus)
+        self.dacspin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.layout.addWidget(self.dacspin)
         
         self.dummy=dummy

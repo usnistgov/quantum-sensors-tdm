@@ -167,7 +167,7 @@ class Cringe(QWidget):
         self.file_mgmt_widget = QGroupBox(self)
         # 		self.file_mgmt_widget.setFlat(1)
         self.file_mgmt_widget.setFixedWidth(1080)
-        self.file_mgmt_widget.setFocusPolicy(Qt.NoFocus)
+        self.file_mgmt_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.file_mgmt_widget.setTitle("FILE MANAGEMENT INTERFACE")
 
         self.file_mgmt_layout = QGridLayout(self.file_mgmt_widget)
@@ -206,7 +206,7 @@ class Cringe(QWidget):
         '''
         self.sys_glob_hdr_widget = QGroupBox(self)
         self.sys_glob_hdr_widget.setFixedWidth(1080)
-        self.sys_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+        self.sys_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_glob_hdr_widget.setTitle("SYSTEM GLOBALS")
 
         self.sys_glob_layout = QGridLayout(self.sys_glob_hdr_widget)
@@ -218,7 +218,7 @@ class Cringe(QWidget):
         # 		self.seqln_spin.setFixedWidth(45)
         self.seqln_spin.setSingleStep(1)
         self.seqln_spin.setKeyboardTracking(0)
-        self.seqln_spin.setFocusPolicy(Qt.StrongFocus)
+        self.seqln_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.seqln_spin.setValue(self.seqln)
         self.seqln_spin.setAlignment(QtCore.Qt.AlignRight)
         self.sys_glob_layout.addWidget(self.seqln_spin,0,0,1,1)
@@ -233,7 +233,7 @@ class Cringe(QWidget):
         # 		self.lsync_spin.setFixedWidth(45)
         self.lsync_spin.setSingleStep(1)
         self.lsync_spin.setKeyboardTracking(0)
-        self.lsync_spin.setFocusPolicy(Qt.StrongFocus)
+        self.lsync_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.lsync_spin.setValue(self.lsync)
         self.lsync_spin.setAlignment(QtCore.Qt.AlignRight)
         self.sys_glob_layout.addWidget(self.lsync_spin,0,2,1,1)
@@ -255,7 +255,7 @@ class Cringe(QWidget):
         '''
         self.sys_control_hdr_widget = QGroupBox(self)
         self.sys_control_hdr_widget.setFixedWidth(1080)
-        self.sys_control_hdr_widget.setFocusPolicy(Qt.NoFocus)
+        self.sys_control_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_control_hdr_widget.setTitle("SYSTEM CONTROL")
 
         self.sys_glob_layout = QGridLayout(self.sys_control_hdr_widget)
@@ -313,7 +313,7 @@ class Cringe(QWidget):
         '''
         self.class_glob_hdr_widget = QGroupBox(self)
         self.class_glob_hdr_widget.setFixedWidth(1080)
-        self.class_glob_hdr_widget.setFocusPolicy(Qt.NoFocus)
+        self.class_glob_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.class_glob_hdr_widget.setTitle("DFB/BAD CLASS GLOBALS")
 
         self.class_glob_layout = QGridLayout(self.class_glob_hdr_widget)
@@ -324,7 +324,7 @@ class Cringe(QWidget):
         self.SETT_spin.setRange(0,255)
         self.SETT_spin.setSingleStep(1)
         self.SETT_spin.setKeyboardTracking(0)
-        self.SETT_spin.setFocusPolicy(Qt.StrongFocus)
+        self.SETT_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.SETT_spin.setValue(self.SETT)
         self.SETT_spin.setAlignment(QtCore.Qt.AlignRight)
         self.class_glob_layout.addWidget(self.SETT_spin,0,0,1,1)
@@ -337,7 +337,7 @@ class Cringe(QWidget):
         self.NSAMP_spin.setRange(0, 255)
         self.NSAMP_spin.setSingleStep(1)
         self.NSAMP_spin.setKeyboardTracking(0)
-        self.NSAMP_spin.setFocusPolicy(Qt.StrongFocus)
+        self.NSAMP_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.NSAMP_spin.setAlignment(QtCore.Qt.AlignRight)
         self.NSAMP_spin.setValue(self.NSAMP)
         self.class_glob_layout.addWidget(self.NSAMP_spin,1,0,1,1)
@@ -350,7 +350,7 @@ class Cringe(QWidget):
         self.prop_delay_spin.setRange(0,15)
         self.prop_delay_spin.setSingleStep(1)
         self.prop_delay_spin.setKeyboardTracking(0)
-        self.prop_delay_spin.setFocusPolicy(Qt.StrongFocus)
+        self.prop_delay_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.prop_delay_spin.setValue(self.prop_delay)
         self.prop_delay_spin.setAlignment(QtCore.Qt.AlignRight)
         self.class_glob_layout.addWidget(self.prop_delay_spin,0,2,1,1)
@@ -363,7 +363,7 @@ class Cringe(QWidget):
         self.dfb_delay_spin.setRange(0, 15)
         self.dfb_delay_spin.setSingleStep(1)
         self.dfb_delay_spin.setKeyboardTracking(0)
-        self.dfb_delay_spin.setFocusPolicy(Qt.StrongFocus)
+        self.dfb_delay_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.dfb_delay_spin.setValue(self.dfb_delay)
         self.dfb_delay_spin.setAlignment(QtCore.Qt.AlignRight)
         self.class_glob_layout.addWidget(self.dfb_delay_spin,0,4,1,1)
@@ -376,7 +376,7 @@ class Cringe(QWidget):
         self.bad_delay_spin.setRange(0, 15)
         self.bad_delay_spin.setSingleStep(1)
         self.bad_delay_spin.setKeyboardTracking(0)
-        self.bad_delay_spin.setFocusPolicy(Qt.StrongFocus)
+        self.bad_delay_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.bad_delay_spin.setValue(self.bad_delay)
         self.bad_delay_spin.setAlignment(QtCore.Qt.AlignRight)
         self.class_glob_layout.addWidget(self.bad_delay_spin,1,4,1,1)
@@ -482,7 +482,7 @@ class Cringe(QWidget):
         self.ARLsense_spin.setFixedHeight(25)
         self.ARLsense_spin.setSingleStep(256)
         self.ARLsense_spin.setKeyboardTracking(0)
-        self.ARLsense_spin.setFocusPolicy(Qt.StrongFocus)
+        self.ARLsense_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.ARLsense_spin.setValue(self.ARLsense)
         self.arl_layout.addWidget(self.ARLsense_spin,1,0,1,1,QtCore.Qt.AlignRight)
         self.ARLsense_spin.valueChanged.connect(self.ARLsense_changed)
@@ -495,7 +495,7 @@ class Cringe(QWidget):
         # 		self.ARLsense_indicator.setFixedHeight(25)
         # 		self.ARLsense_indicator.setText('%5i'%(self.ARLsense))
         # 		self.ARLsense_indicator.setAlignment(QtCore.Qt.AlignRight)
-        # 		self.ARLsense_indicator.setFocusPolicy(Qt.NoFocus)
+        # 		self.ARLsense_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         # 		self.arl_layout.addWidget(self.ARLsense_indicator, 2,0,1,2,QtCore.Qt.AlignRight)
 
         self.ARLsense_indicator_lbl = QLabel("DAC units")
@@ -506,7 +506,7 @@ class Cringe(QWidget):
         self.ARLsense_eng_indicator.setFixedHeight(25)
         self.ARLsense_eng_indicator.setText(str((self.ARLsense)/16.383)[:6])
         self.ARLsense_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.ARLsense_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.ARLsense_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.arl_layout.addWidget(self.ARLsense_eng_indicator, 2,0,1,1,QtCore.Qt.AlignRight)
 
         self.ARLsense_eng_indicator_lbl = QLabel("mV")
@@ -522,7 +522,7 @@ class Cringe(QWidget):
         self.RLDpos_spin.setFixedHeight(25)
         self.RLDpos_spin.setSingleStep(16)
         self.RLDpos_spin.setKeyboardTracking(0)
-        self.RLDpos_spin.setFocusPolicy(Qt.StrongFocus)
+        self.RLDpos_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.RLDpos_spin.setValue(self.RLDpos)
         self.arl_layout.addWidget(self.RLDpos_spin,1,2,1,1,QtCore.Qt.AlignRight)
         self.RLDpos_spin.valueChanged.connect(self.RLDpos_changed)
@@ -535,7 +535,7 @@ class Cringe(QWidget):
         self.RLDpos_eng_indicator.setFixedHeight(25)
         self.RLDpos_eng_indicator.setText(str((self.RLDpos)*self.frame_period)[:6])
         self.RLDpos_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.RLDpos_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.RLDpos_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDpos_eng_indicator, 2,2,1,1,QtCore.Qt.AlignRight)
         # 		self.RLDpos_eng_indicator.textChanged.connect(self.RLDwarning)
 
@@ -552,7 +552,7 @@ class Cringe(QWidget):
         self.RLDneg_spin.setFixedHeight(25)
         self.RLDneg_spin.setSingleStep(16)
         self.RLDneg_spin.setKeyboardTracking(0)
-        self.RLDneg_spin.setFocusPolicy(Qt.StrongFocus)
+        self.RLDneg_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.RLDneg_spin.setValue(self.RLDneg)
         self.arl_layout.addWidget(self.RLDneg_spin,1,4,1,1,QtCore.Qt.AlignRight)
         self.RLDneg_spin.valueChanged.connect(self.RLDneg_changed)
@@ -565,7 +565,7 @@ class Cringe(QWidget):
         self.RLDneg_eng_indicator.setFixedHeight(25)
         self.RLDneg_eng_indicator.setText(str(self.RLDneg*self.frame_period)[:6])
         self.RLDneg_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.RLDneg_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.RLDneg_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.arl_layout.addWidget(self.RLDneg_eng_indicator, 2,4,1,1, QtCore.Qt.AlignRight)
         # 		self.RLDneg_eng_indicator.textChanged.connect(self.RLDwarning)
 
@@ -605,7 +605,7 @@ class Cringe(QWidget):
         self.dwell.setFixedHeight(25)
         self.dwell.setSingleStep(1)
         self.dwell.setKeyboardTracking(0)
-        self.dwell.setFocusPolicy(Qt.StrongFocus)
+        self.dwell.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.dwell.setValue(self.dwell_val)
         self.tri_wvfm_layout.addWidget(self.dwell,0,0,1,1,QtCore.Qt.AlignRight)
         self.dwell.valueChanged.connect(self.dwell_changed)
@@ -618,7 +618,7 @@ class Cringe(QWidget):
         self.range.setFixedHeight(25)
         self.range.setSingleStep(1)
         self.range.setKeyboardTracking(0)
-        self.range.setFocusPolicy(Qt.StrongFocus)
+        self.range.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.range.setValue(self.range_val)
         self.tri_wvfm_layout.addWidget(self.range,0,2,1,1,QtCore.Qt.AlignRight)
         self.range.valueChanged.connect(self.range_changed)
@@ -631,7 +631,7 @@ class Cringe(QWidget):
         self.step.setFixedHeight(25)
         self.step.setSingleStep(1)
         self.step.setKeyboardTracking(0)
-        self.step.setFocusPolicy(Qt.StrongFocus)
+        self.step.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.step.setValue(self.step_val)
         self.tri_wvfm_layout.addWidget(self.step,0,4,1,1,QtCore.Qt.AlignRight)
         self.step.valueChanged.connect(self.step_changed)
@@ -644,7 +644,7 @@ class Cringe(QWidget):
         # 		self.period_indicator.setFixedWidth(120)
         self.period_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
         self.period_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.period_indicator.setFocusPolicy(Qt.NoFocus)
+        self.period_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.period_indicator,2,0,1,1,QtCore.Qt.AlignRight)
 
         self.period_indicator_lbl = QLabel("period")
@@ -656,7 +656,7 @@ class Cringe(QWidget):
         # 		self.period_eng_indicator.setText(str(2*(2**self.dwell_val)*(2**self.range_val)))
         self.period_eng_indicator.setText(str(int(self.period_indicator.text())*self.lsync*0.008))
         self.period_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.period_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.period_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.period_eng_indicator,3,0,1,1,QtCore.Qt.AlignRight)
 
         self.period_eng_indicator_lbl = QLabel("period [""\u00B5s]")
@@ -667,7 +667,7 @@ class Cringe(QWidget):
         # 		self.amp_indicator.setFixedWidth(80)
         self.amp_indicator.setText(str((2**self.range_val)*self.step_val))
         self.amp_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.amp_indicator.setFocusPolicy(Qt.NoFocus)
+        self.amp_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.amp_indicator,2,2,1,1,QtCore.Qt.AlignRight)
 
         self.amp_indicator_lbl = QLabel("amplitude")
@@ -678,7 +678,7 @@ class Cringe(QWidget):
         # 		self.amp_eng_indicator.setFixedWidth(80)
         self.amp_eng_indicator.setText(str(int(self.amp_indicator.text())/16.383)[:6])
         self.amp_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.amp_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.amp_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.amp_eng_indicator,3,2,1,1,QtCore.Qt.AlignRight)
 
         self.amp_eng_indicator_lbl = QLabel("amplitude [mV]")
@@ -706,7 +706,7 @@ class Cringe(QWidget):
         # 		self.freq_eng_indicator.setFixedWidth(80)
         self.freq_eng_indicator.setText(str(1000/float(self.period_eng_indicator.text()))[:6])
         self.freq_eng_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.freq_eng_indicator.setFocusPolicy(Qt.NoFocus)
+        self.freq_eng_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.tri_wvfm_layout.addWidget(self.freq_eng_indicator,3,4,1,1,QtCore.Qt.AlignRight)
 
         self.amp_eng_indicator_lbl = QLabel("freq [kHz]")
@@ -2113,7 +2113,7 @@ def main():
                    help='List of card types, example: DFBCLK DFBx2 DFBx2 DFBx2 DFBx2 BAD16 BAD16')
     p.add_argument('-T','--tower',action="store", dest="tower_vector",type=str,nargs='+',
                    help="for tower provide a list of names and addresses, example: -T DB1 13 SAb 4 SQ1b 12")
-    p.add_argument('-F','--file', action='store', dest='setup_file', type=file, nargs='+',
+    p.add_argument('-F','--file', action='store', dest='setup_filename', type=str, nargs=1, default="",
                    help='Setup file from which to extract CRATE configuration, example: -F cringe_save.pkl')
     p.add_argument('-L','--load', action='store_true',
                    help='Use file dialog to load file from which to extract CRATE configuration')
@@ -2137,25 +2137,24 @@ def main():
 
     # -F gives setup_file which takes a filename from the command line
     # -L gets a filename from a open file dialog
-    if args.setup_file or args.load:
+    if args.setup_filename != "" or args.load:
         print('\033[93m')
         load_file = None
         if args.load:
-            load_filename = str(QFileDialog.getOpenFileName(filter="(*.pkl)"))
-            load_file = open(load_filename)
+            load_filename = str(QFileDialog.getOpenFileName(caption="choose cringe file",
+            directory = os.path.expanduser("~/cringe_config"), filter="(*.pkl)")[0])
         else:
-            load_file=args.setup_file[0]
-            load_filename=str(load_file.name)
+            load_filename=args.setup_filename
+        load_file = open(load_filename,"rb")
         print("build GUI from file:")
-        print(load_filename)
+        print(f"load filename: {load_filename}")
+        print(f"load file: {load_file}")
         print()
 
-        try:
-            load_sys_config = pickle.load(load_file)
-            load_file.close()
-            load_on_launch = True
-        except:
-            print("failed to interpret file %s" % load_filename)
+        load_sys_config = pickle.load(load_file)
+        load_file.close()
+        load_on_launch = True
+        print("failed to interpret file %s" % load_filename)
         # these are global variables accessed later
         tower_vector = load_sys_config['Tower']['TowerVector']
         loadCrateConfig = load_sys_config['CrateConfig']

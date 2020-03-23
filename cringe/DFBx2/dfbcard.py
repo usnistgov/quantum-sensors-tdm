@@ -148,7 +148,7 @@ class dfbcard(QWidget):
         '''
         self.class_interface_widget = QGroupBox(self)
         self.class_interface_widget.setFixedWidth(1080)
-        self.class_interface_widget.setFocusPolicy(Qt.NoFocus)
+        self.class_interface_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.class_interface_widget.setTitle("CARD INTERFACE PARAMETERS")
 
         self.controls_layout = QGridLayout(self.class_interface_widget)
@@ -159,7 +159,7 @@ class dfbcard(QWidget):
         self.addr_indicator.setReadOnly(True)
         self.addr_indicator.setText(str(addr))
         self.addr_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.addr_indicator.setFocusPolicy(Qt.NoFocus)
+        self.addr_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.controls_layout.addWidget(self.addr_indicator,0,2,1,1,QtCore.Qt.AlignRight)
 
         self.addr_label = QLabel("card address")
@@ -170,7 +170,7 @@ class dfbcard(QWidget):
 # 		self.addr_indicator.setFixedWidth(40)
         self.slot_indicator.setText('%2d'%slot)
         self.slot_indicator.setAlignment(QtCore.Qt.AlignRight)
-        self.slot_indicator.setFocusPolicy(Qt.NoFocus)
+        self.slot_indicator.setFocusPolicy(QtCore.Qt.NoFocus)
         self.controls_layout.addWidget(self.slot_indicator,0,0,1,1,QtCore.Qt.AlignRight)
 
         self.slot_label = QLabel("card slot")
