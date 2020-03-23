@@ -12,11 +12,23 @@ GUI for homebuilt cryo systems runs automags and a secondary feedback loop that 
 The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
 
 
+# Before Install setup venv
+```
+sudo apt install python3-venv
+python3 -m venv ~/qsp_venv
+source ~/qsp_venv/bin/activate
+pip install --upgrade pip
+cd ~/qsp_venv
+```
+
+By switching to the `~/qsp_venv` folder we will cause all our code to be installed to `~/qsp_venv/src/pkg_name`.
+
 # Installation
 You probably want to install all the stuff you need for tdm, not just this repo, so
 ```  
-pip install -e git+https://oneilg@bitbucket.org/nist_microcal/qsptdm.git#egg=qsptdm git+https://oneilg@bitbucket.org/joe_fowler/mass.git#egg=mass git+https://github.com/usnistgov/dastardcommander#egg=dastardcommander
+pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm git+ssh://git@bitbucket.org/joe_fowler/mass.git@develop#egg=mass git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander git+ssh://git@bitbucket.org/nist_microcal/realtime_gui.git#egg=realtime_gui
 ```
+You may need to enter your bitbucket and or github login info. It may go smoother if you set up an ssh key with bitbucket and github so you don't need to enter loging info. If you have a a public ssh key setup, you may be required to add it. If you get an error like `Permission denied (public key)` you probably have to add your key to github or bitbucket (I've only seen this on github).
 
 The code will be in `src` relative to where you run the install command. See the `dastardcommander` README for more info on pip installs. https://github.com/usnistgov/dastardcommander
 
