@@ -102,7 +102,7 @@ class dfbChn(QWidget):
 #         self.d2a_lo_min_button = QPushButton("<")
 #         self.row_layout.addWidget(self.d2a_lo_min_button,0,5)
         
-        self.a2d_lockpt_slider = QSlider(Qt.Horizontal)
+        self.a2d_lockpt_slider = QSlider(QtCore.Qt.Horizontal)
         self.a2d_lockpt_slider.setTickPosition(QSlider.TicksBelow)
         self.a2d_lockpt_slider.setRange(0,4095)
         self.a2d_lockpt_slider.setFixedWidth(120)
@@ -127,7 +127,7 @@ class dfbChn(QWidget):
         self.d2a_A_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_A_spin,0,5)
         
-        self.d2a_A_slider = QSlider(Qt.Horizontal)
+        self.d2a_A_slider = QSlider(QtCore.Qt.Horizontal)
         self.d2a_A_slider.setTickPosition(QSlider.TicksBelow)
         self.d2a_A_slider.setRange(0,16383)
         self.d2a_A_slider.setFixedWidth(120)
@@ -149,7 +149,7 @@ class dfbChn(QWidget):
         self.d2a_B_spin.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.row_layout.addWidget(self.d2a_B_spin,0,7)
         
-        self.d2a_B_slider = QSlider(Qt.Horizontal)
+        self.d2a_B_slider = QSlider(QtCore.Qt.Horizontal)
         self.d2a_B_slider.setTickPosition(QSlider.TicksBelow)
         self.d2a_B_slider.setRange(0,16383)
         self.d2a_B_slider.setFixedWidth(120)

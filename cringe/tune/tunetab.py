@@ -841,7 +841,7 @@ class BitErrorDemo(QWidget):
         self.stopbutton.clicked.connect(self.stop)
         self.layout.addWidget(self.stopbutton)
 
-        self.timer = QTimer(self)
+        self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.timeouthandler)
 
         self.ehhw = 25 # error histogram halfwidth

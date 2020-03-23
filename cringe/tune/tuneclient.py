@@ -32,7 +32,7 @@ class TuneClient(QWidget):
 
         self.client = None
 
-        timer = QTimer()
+        timer = QtCore.QTimer()
         timer.setSingleShot(False)
         timer.timeout.connect(self.startclient)
         timer.start(4000)

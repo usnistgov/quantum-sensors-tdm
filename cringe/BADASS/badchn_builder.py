@@ -47,7 +47,7 @@ class badChn(QWidget):
 #         self.layout_widget.setStyleSheet("font-style: italic")
         self.row_layout = QGridLayout(self)
 #         self.row_layout = QHBoxLayout(self)
-        self.row_layout.setContentsMargins(0)
+        self.row_layout.setContentsMargins(0,0,0,0)
         self.row_layout.setSpacing(5)
          
 #         self.counter_label = QLabel(str(self.chn))
@@ -100,7 +100,7 @@ class badChn(QWidget):
         self.d2a_lo_min_button.setFixedHeight(self.row_ht)        
         self.row_layout.addWidget(self.d2a_lo_min_button,0,5)
         
-        self.d2a_lo_slider = QSlider(Qt.Horizontal)
+        self.d2a_lo_slider = QSlider(QtCore.Qt.Horizontal)
         self.d2a_lo_slider.setTickPosition(QSlider.TicksBelow)
         self.d2a_lo_slider.setRange(0,16383)
         self.d2a_lo_slider.setFixedWidth(150)
@@ -132,7 +132,7 @@ class badChn(QWidget):
         self.d2a_hi_min_button.setFixedHeight(self.row_ht)        
         self.row_layout.addWidget(self.d2a_hi_min_button,0,9)
         
-        self.d2a_hi_slider = QSlider(Qt.Horizontal)
+        self.d2a_hi_slider = QSlider(QtCore.Qt.Horizontal)
         self.d2a_hi_slider.setTickPosition(QSlider.TicksBelow)
         self.d2a_hi_slider.setRange(0,16383)
         self.d2a_hi_slider.setFixedWidth(150)

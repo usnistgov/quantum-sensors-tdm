@@ -40,7 +40,7 @@ class TowerWidget(QWidget):
         label = LabelWidget()
         self.layout.addWidget(label)
         self.towercards = {}
-        for i in range(len(nameaddrlist)/2):
+        for i in range(len(nameaddrlist)//2):
             name = nameaddrlist[2*i]
             addr = int(nameaddrlist[2*i+1])
             tc=towercard.TowerCard(parent=self, name=name,cardaddr=addr, serialport=serialport, shockvalue=shockvalue)
@@ -96,7 +96,7 @@ class TowerWidget(QWidget):
 
     def launchtowerpowersupplygui(self):
         from subprocess import Popen
-        Popen(["python","/home/pcuser/nist_qsp_readout/instruments/tower_power_supply_gui.py"])
+        Popen(["tower_power_gui"])
 
 
 def main():

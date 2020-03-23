@@ -150,7 +150,7 @@ class SV_array(QWidget):
     def saveSVfile(self):
         print(self.FCTCALL + "Save current state sequence to file: BAD16 /", self.addr, self.ENDC)
         print()
-        filename = str(QFileDialog.getSaveFileName())
+        filename = str(QFileDialog.getSaveFileName()[0])
         self.filenameEdit.setText(filename)
         f = open(filename, 'w')
         for idx in range(self.nstates):

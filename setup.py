@@ -23,6 +23,7 @@ setup(
     package_data={'': ['*.png', '*.ui']},
     entry_points = {
         'console_scripts': ['adr_gui=adr_gui.adr_gui:main',
-        "cringe=cringe.cringe:main"],
+        "cringe=cringe.cringe:main",
+        "tower_power_gui=instruments.tower_power_supply_gui:main"],
     },
 )

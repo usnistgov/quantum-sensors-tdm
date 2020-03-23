@@ -72,6 +72,7 @@ class Cringe(QWidget):
         self.last_lsync = lsync
         self.frame_period = self.lsync * self.seqln * 0.008
         self.locked = False
+        self.scale_factor = 1400 # will be redefined later, hopefully this value doesnt matter
 
         self.saveGlobals = {}
         self.saveClassParameters = {}
@@ -719,8 +720,6 @@ class Cringe(QWidget):
         '''
         self.crate_widget = QTabWidget(self)
         self.crate_widget.setTabShape(1)
-        self.crate_widget.setStyleSheet("""		QTabBar::tab {background-color: #6A6A6A; color: #EFEFEF; border: 1px solid #EFEFEF; padding: 4px;}
-                                                QTabBar::tab:selected {background-color: #EFEFEF; color: #6A6A6A; border: 1px solid #6A6A6A; padding: 6px;}""")
 
         for idx, val in enumerate(self.class_vector):
             if val == "DFBCLK":
@@ -753,7 +752,7 @@ class Cringe(QWidget):
             self.tower_widget = towerwidget.TowerWidget(parent=self, nameaddrlist=self.tower_vector)
             self.scroll = QScrollArea(self)
             self.scroll.setWidgetResizable(True)
-            self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+            self.scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
             self.scroll.setWidget(self.tower_widget)
             self.crate_widget.addTab(self.scroll,"Tower")            
         else:
@@ -1919,7 +1918,7 @@ class Cringe(QWidget):
 
     def saveSettings(self):
         print(self.FCTCALL + "saving settings in pickle file:", self.ENDC)
-        filename = str(QFileDialog.getSaveFileName())
+        filename = str(QFileDialog.getSaveFileName()[0])
         if len(filename) > 0:
             # 		if (filename != []):
             if filename[-4:] == '.pkl':
@@ -1945,7 +1944,7 @@ class Cringe(QWidget):
         currentState = {'CrateConfig':self.saveCrateConfig, 'globals':self.saveGlobals, 'classParameters':self.saveClassParameters,
                         "Tower":self.saveTower, "Tune":self.saveTune}
 
-        f = open(savename, "w")
+        f = open(savename, "wb")
 
         print(self.FCTCALL + ("Saving current settings in pickle format to %s" % savename), self.ENDC)
         print()
@@ -1963,15 +1962,10 @@ class Cringe(QWidget):
         self.filenameEdit.setText(self.load_filename)
         print("loading file: [%s]" % self.load_filename)
         print()
-        f = None
-        try:
-            f = open(self.load_filename)
-            load_sys_config = pickle.load(f)
-            f.close()
-        except:
-            print(self.FCTCALL + ("failed to load %s" % self.load_filename), self.ENDC)
-            print()
-            return
+        f = open(self.load_filename,"rb")
+        load_sys_config = pickle.load(f)
+        f.close()
+
 
 
         '''test here for matching crate dimensions

@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from . import badrap
 from . import sv_array
-import cringe.DFBx2.dprcal
+import cringe.DFBx2.dprcal as dprcal
 
 
 class badcard(QWidget):
