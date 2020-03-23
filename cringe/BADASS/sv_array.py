@@ -92,7 +92,7 @@ class SV_array(QWidget):
         self.arrayframe = QWidget(self.layout_widget)
         self.array_layout = QVBoxLayout(self.arrayframe)
         self.array_layout.setSpacing(0)
-        self.array_layout.setMargin(0)
+        self.array_layout.setContentsMargins(0,0,0,0)
 
         for i in range(self.nstates):
             if i < seqln:

@@ -89,7 +89,7 @@ class dprcal(QWidget):
 		self.array_layout = QVBoxLayout(self.arrayframe)
 		self.array_layout.setAlignment(QtCore.Qt.AlignHCenter)
 		self.array_layout.setSpacing(20)
-		self.array_layout.setMargin(10)
+		self.array_layout.setContentsMargins(10,10,10,10)
 		
 		if ctype == 'BAD16':
 			self.enabled = (0,2,3)

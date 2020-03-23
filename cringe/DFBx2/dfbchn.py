@@ -60,7 +60,7 @@ class dfbChn(QWidget):
 #         self.layout_widget.setStyleSheet("font-style: italic")
         self.row_layout = QGridLayout(self)
 #         self.row_layout = QHBoxLayout(self)
-        self.row_layout.setMargin(0)
+        self.row_layout.setContentsMargins(0,0,0,0)
         self.row_layout.setSpacing(5)
         
 #         self.counter_label = QLabel(str(self.chn))

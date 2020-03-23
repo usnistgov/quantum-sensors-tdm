@@ -643,7 +643,7 @@ class dfbrap(QWidget):
 		self.arrayframe = QWidget(self.layout_widget)
 		self.array_layout = QVBoxLayout(self.arrayframe)
 		self.array_layout.setSpacing(5)
-		self.array_layout.setMargin(10)
+		self.array_layout.setContentsMargins(10,10,10,10)
 
 		for idx in range(self.states):
 			self.state_vectors.append(dfbChn(self, self.array_layout, state=idx, chn=column, cardaddr=self.address, serialport=self.serialport))

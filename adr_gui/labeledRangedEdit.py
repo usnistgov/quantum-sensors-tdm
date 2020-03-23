@@ -19,7 +19,7 @@ class labeledRangedEdit(QtWidgets.QWidget):
         
         layout = QtGui.QHBoxLayout()
         layout.setAlignment(QtCore.Qt.AlignRight)
-        layout.setMargin(0)
+        layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(5)
         layout.setSizeConstraint(QtGui.QLayout.SetFixedSize)
         layout.addWidget(self.label)

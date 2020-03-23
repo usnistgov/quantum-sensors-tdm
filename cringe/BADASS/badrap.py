@@ -385,7 +385,7 @@ class badrap(QWidget):
         self.arrayframe = QWidget(self.layout_widget)
         self.array_layout = QVBoxLayout(self.arrayframe)
         self.array_layout.setSpacing(5)
-        self.array_layout.setMargin(10)
+        self.array_layout.setContentsMargins(10,10,10,10)
 
         for idx in range(self.chns):
             self.chn_vectors.append(badChn(self, self.array_layout, chn=idx, cardaddr=self.address, serialport=self.serialport))
