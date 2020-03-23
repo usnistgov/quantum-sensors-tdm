@@ -1,0 +1,11 @@
+# add the actual device names of your serial ports, and some logical name you 
+# would like to use
+/dev/ttyUSB0 rs482
+/dev/ttyUSB1 extra
+/dev/ttyUSB2 rack
+/dev/ttyUSB3 tower
+/dev/ttyUSB4 extra
+/dev/ttyUSB5 lakeshore370
+/dev/ttyUSB6 towerps1
+/dev/ttyUSB7 zaber
+/dev/ttyUSB8 towerps2

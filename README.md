@@ -37,7 +37,7 @@ You may need to enter your bitbucket and or github login info. It may go smoothe
 
 Here we install with the `-e` "editable" flag. On Ubuntu 18 in the venv this causes the code to be installed to `qsp/src`. On a Mac without a venv I found the code to be installed to `src` relative to where the command was executed.
 
-You also need to copy `sudo cp namedserial/namedserialrc /etc` and `sudo cp adr_system/adr_system_setup.sample.xml /etc/adr_system_setup.xml` and update the entries therein to match your system.
+You also need to copy `sudo cp namedserial/namedserialrc /etc` and `sudo cp adr_system/adr_system_setup.sample.xml /etc/adr_system_setup.xml` and update the entries therein to match your system. There are additonal example files in `doc/etcfiles`.
 
 You can figure out which of those to remove if you only need some.
 
@@ -46,12 +46,14 @@ Also install dastard and microscope:
   * https://github.com/usnistgov/dastard
 
 You also need to install the `exodriver` (I'm pretty sure) for labjack, see instructions here: https://labjack.com/support/software/installers/exodriver
-Or try the following (not it will create an exodriver directory, so do it somewhere out of the way or clean up)
+Or try the following:
 ```
 sudo apt-get install build-essential libusb-1.0-0-dev install git-core
 git clone git://github.com/labjack/exodriver.git
 cd exodriver/
 sudo ./install.sh
+cd ..
+rm -r exodriver
 ```
 
 # Documentation

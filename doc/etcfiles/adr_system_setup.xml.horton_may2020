@@ -1,0 +1,17 @@
+<adr_config settings_version="1.0">
+  <name>Horton</name>
+  <max_voltage>0.000000</max_voltage>
+  <max_resistance>21.000000</max_resistance>
+  <tc_check_folder>/home/pcuser/data/</tc_check_folder>
+  <temperature_controllers>
+    <temperature_controller type="lakeshore370_serial" port="lakeshore370"/>
+  </temperature_controllers>
+  <heat_switches>
+    <heat_switch type="zaber" port="zaber"/>
+  </heat_switches>
+  <blueboxes>
+  </blueboxes>
+  <magnet_relays>
+    <relay type="labjackU3_dougstyle"  />
+  </magnet_relays>
+</adr_config>
