@@ -26,4 +26,5 @@ setup(
         "cringe=cringe.cringe:main",
         "tower_power_gui=instruments.tower_power_supply_gui:main"],
     },
+    scripts = ["doc/tdm_term"],
 )

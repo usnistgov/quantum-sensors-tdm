@@ -10,13 +10,16 @@ GUI for homebuilt cryo systems runs automags and a secondary feedback loop that 
 ## tower_power_gui
 GUI for turning on/off the tower power supplies in the right order so it doesn't blow up the power card. Run as `tower_power_gui`.
 
+## tdm_term
+Run `tdm_term` to launch a terminal with named tabs and running dastard, cringe and dastard commander. Requires dastard and dastard commander to be installed.
+
 ## Why bother with Python 3?
 The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
 
 
 # Before Install setup venv
 ```
-sudo apt install python3-venv
+sudo apt install python3-venv roxterm
 ```
 Then you can copy and paste the entire next block hopefully.
 ```
@@ -31,7 +34,7 @@ The echo line adds `source ~/qsp/bin/activate` to `~/.bashrc`, which activates t
 # Installation
 You probably want to install all the stuff you need for tdm, not just this repo, so
 ```  
-pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm -e git+ssh://git@bitbucket.org/joe_fowler/mass.git@develop#egg=mass -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander -e git+ssh://git@bitbucket.org/nist_microcal/realtime_gui.git#egg=realtime_gui
+pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm -e git+ssh://git@bitbucket.org/joe_fowler/mass.git@#egg=mass -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander -e git+ssh://git@bitbucket.org/nist_microcal/realtime_gui.git#egg=realtime_gui
 ```
 You may need to enter your bitbucket and or github login info. It may go smoother if you set up an ssh key with bitbucket and github so you don't need to enter loging info. If you have a a public ssh key setup, you may be required to add it. If you get an error like `Permission denied (public key)` you probably have to add your key to github or bitbucket (I've only seen this on github).
 
@@ -48,6 +51,7 @@ Also install dastard and microscope:
 You also need to install the `exodriver` (I'm pretty sure) for labjack, see instructions here: https://labjack.com/support/software/installers/exodriver
 Or try the following:
 ```
+cd ~/Downloads
 sudo apt-get install build-essential libusb-1.0-0-dev install git-core
 git clone git://github.com/labjack/exodriver.git
 cd exodriver/
