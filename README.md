@@ -11,7 +11,7 @@ GUI for homebuilt cryo systems runs automags and a secondary feedback loop that 
 GUI for turning on/off the tower power supplies in the right order so it doesn't blow up the power card. Run as `tower_power_gui`.
 
 ## tdm_term
-Run `tdm_term` to launch a terminal with named tabs and running dastard, cringe and dastard commander. Requires dastard and dastard commander to be installed.
+Run `tdm_term` to launch a terminal with named tabs and running dastard, cringe and dastard commander. Requires dastard and dastard commander to be installed. The first time you open roxterm (via `tdm_term`) go to Preferenes->Edit Current Profile->General and change "When command exists:" to "Restart Command". This seems to cause it to leave the terminal open for new commands.
 
 ## Why bother with Python 3?
 The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
