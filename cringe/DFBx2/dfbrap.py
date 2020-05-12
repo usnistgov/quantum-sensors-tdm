@@ -9,7 +9,8 @@ from PyQt5.QtWidgets import *
 
 import named_serial
 from .dfbchn import dfbChn
-# print "importing dfbrap"
+from cringe.shared import terminal_colors as tc
+
 
 class dfbrap(QWidget):
 
@@ -18,22 +19,6 @@ class dfbrap(QWidget):
 	def __init__(self, parent=None, addr=None, slot=None, column=1, seqln=None, lsync=32):
 
 		super(dfbrap, self).__init__()
-
-
-		self.COMMAND = '\033[95m'
-		self.FCTCALL = '\033[94m'
-		self.INIT = '\033[92m'
-		self.WARNING = '\033[93m'
-		self.FAIL = '\033[91m'
-		self.ENDC = '\033[0m'
-		self.BOLD = "\033[1m"
-
-		self.green = "90EE90"
-		self.red ="F08080"
-		self.yellow = "FFFFCC"
-		self.grey = "808080"
-		self.white = "FFFFFF"
-		self.grey = "808080"
 
 		self.parent = parent
 		self.address = addr
@@ -273,7 +258,7 @@ class dfbrap(QWidget):
 			self.PS_button.setFixedHeight(25)
 			self.PS_button.setCheckable(1)
 			self.PS_button.setChecked(self.PS)
-			self.PS_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
 			self.class_glob_layout.addWidget(self.PS_button,1,4,1,1,QtCore.Qt.AlignRight)
 			self.PS_button.toggled.connect(self.PS_changed)
 
@@ -513,7 +498,7 @@ class dfbrap(QWidget):
 			self.tri_idx_button.setFixedHeight(25)
 			self.tri_idx_button.setCheckable(1)
 			self.tri_idx_button.setChecked(self.tri_idx)
-			self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
 			self.tri_wvfm_layout.addWidget(self.tri_idx_button,1,4,1,1,QtCore.Qt.AlignRight)
 			self.tri_idx_button.toggled.connect(self.tri_idx_changed)
 
@@ -587,7 +572,7 @@ class dfbrap(QWidget):
 		self.MSTR_TX.setFixedHeight(25)
 		self.MSTR_TX.setCheckable(1)
 		self.MSTR_TX.setChecked(self.MVTX)
-		self.MSTR_TX.setStyleSheet("background-color: #" + self.red + ";")
+		self.MSTR_TX.setStyleSheet("background-color: #" + tc.red + ";")
 		self.glb_var_layout.addWidget(self.MSTR_TX,0,0,1,1)
 		self.MSTR_TX.toggled.connect(self.MSTR_TX_changed)
 
@@ -598,7 +583,7 @@ class dfbrap(QWidget):
 		self.MSTR_RX.setFixedHeight(25)
 		self.MSTR_RX.setCheckable(1)
 		self.MSTR_RX.setChecked(self.MVRX)
-		self.MSTR_RX.setStyleSheet("background-color: #" + self.green + ";")
+		self.MSTR_RX.setStyleSheet("background-color: #" + tc.green + ";")
 		self.glb_var_layout.addWidget(self.MSTR_RX,0,2,1,1)
 		self.MSTR_RX.toggled.connect(self.MSTR_RX_changed)
 
@@ -609,7 +594,7 @@ class dfbrap(QWidget):
 		self.GR_button.setFixedHeight(25)
 		self.GR_button.setCheckable(1)
 		self.GR_button.setChecked(self.GR)
-		self.GR_button.setStyleSheet("background-color: #" + self.green + ";")
+		self.GR_button.setStyleSheet("background-color: #" + tc.green + ";")
 		self.glb_var_layout.addWidget(self.GR_button,0,8,1,1)
 		self.GR_button.toggled.connect(self.GR_changed)
 
@@ -675,9 +660,9 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].TriA_button.setChecked(state)
 				if state == 1:
-					self.master_vector.TriA_button.setStyleSheet("background-color: #" + self.green + ";")
+					self.master_vector.TriA_button.setStyleSheet("background-color: #" + tc.green + ";")
 				else:
-					self.master_vector.TriA_button.setStyleSheet("background-color: #" + self.red + ";")
+					self.master_vector.TriA_button.setStyleSheet("background-color: #" + tc.red + ";")
 
 	def triB_changed(self, state, *bc):
 		var = "triB"
@@ -687,9 +672,9 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].TriB_button.setChecked(state)
 			if state == 1:
-				self.master_vector.TriB_button.setStyleSheet("background-color: #" + self.green + ";")
+				self.master_vector.TriB_button.setStyleSheet("background-color: #" + tc.green + ";")
 			else:
-				self.master_vector.TriB_button.setStyleSheet("background-color: #" + self.red + ";")
+				self.master_vector.TriB_button.setStyleSheet("background-color: #" + tc.red + ";")
 
 	def a2d_lockpt_spin_changed(self, level, *bc):
 		var = "a2d_lp_spin"
@@ -780,10 +765,10 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].FBA_button.setChecked(state)
 			if state == 1:
-				self.master_vector.FBA_button.setStyleSheet("background-color: #" + self.green + ";")
+				self.master_vector.FBA_button.setStyleSheet("background-color: #" + tc.green + ";")
 				self.master_vector.FBB_button.setChecked(0)
 			else:
-				self.master_vector.FBA_button.setStyleSheet("background-color: #" + self.red + ";")
+				self.master_vector.FBA_button.setStyleSheet("background-color: #" + tc.red + ";")
 
 	def FBB_changed(self, state, *bc):
 		var = "FBb"
@@ -793,10 +778,10 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].FBB_button.setChecked(state)
 			if state == 1:
-				self.master_vector.FBB_button.setStyleSheet("background-color: #" + self.green + ";")
+				self.master_vector.FBB_button.setStyleSheet("background-color: #" + tc.green + ";")
 				self.master_vector.FBA_button.setChecked(0)
 			else:
-				self.master_vector.FBB_button.setStyleSheet("background-color: #" + self.red + ";")
+				self.master_vector.FBB_button.setStyleSheet("background-color: #" + tc.red + ";")
 
 	def ARL_changed(self, state, *bc):
 		var = "ARL"
@@ -806,9 +791,9 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].ARL_button.setChecked(state)
 			if state == 1:
-				self.master_vector.ARL_button.setStyleSheet("background-color: #" + self.green + ";")
+				self.master_vector.ARL_button.setStyleSheet("background-color: #" + tc.green + ";")
 			else:
-				self.master_vector.ARL_button.setStyleSheet("background-color: #" + self.red + ";")
+				self.master_vector.ARL_button.setStyleSheet("background-color: #" + tc.red + ";")
 
 	def send_channel(self, *bc):
 		var = "send"
@@ -826,10 +811,10 @@ class dfbrap(QWidget):
 			for idx in range(self.states):
 				self.state_vectors[idx].lock_button.setChecked(state)
 			if state == 1:
-				self.master_vector.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+				self.master_vector.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
 				self.master_vector.lock_button.setText('dynamic')
 			else:
-				self.master_vector.lock_button.setStyleSheet("background-color: #" + self.red + ";")
+				self.master_vector.lock_button.setStyleSheet("background-color: #" + tc.red + ";")
 				self.master_vector.lock_button.setText('static')
 
 	'''
@@ -864,9 +849,9 @@ class dfbrap(QWidget):
 	def PS_changed(self):
 		self.PS = self.PS_button.isChecked()
 		if self.PS ==1:
-			self.PS_button.setStyleSheet("background-color: #" + self.green + ";")
+			self.PS_button.setStyleSheet("background-color: #" + tc.green + ";")
 		else:
-			self.PS_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
 		self.send_wreg6()
 
 	def ARLsense_changed(self):
@@ -890,10 +875,10 @@ class dfbrap(QWidget):
 	def LED_changed(self):
 		self.LED = self.LED_button.isChecked()
 		if self.LED ==1:
-			self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
 			self.LED_button.setText('OFF')
 		else:
-			self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+			self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
 			self.LED_button.setText('ON')
 #		 if self.unlocked == 1:
 		self.send_wreg7()
@@ -901,19 +886,19 @@ class dfbrap(QWidget):
 	def status_changed(self):
 		self.ST = self.status_button.isChecked()
 		if self.ST ==1:
-			self.status_button.setStyleSheet("background-color: #" + self.green + ";")
+			self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
 		else:
-			self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
 		self.send_wreg7()
 
 	def GR_changed(self):
-		print(self.FCTCALL + "send global relock enable to DFB channel", self.col, self.ENDC)
+		print(tc.FCTCALL + "send global relock enable to DFB channel", self.col, tc.ENDC)
 		self.GR = self.GR_button.isChecked()
 		if self.GR == 1:
-			self.GR_button.setStyleSheet("background-color: #" + self.green + ";")
+			self.GR_button.setStyleSheet("background-color: #" + tc.green + ";")
 			self.GR_button.setText('ENB')
 		else:
-			self.GR_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.GR_button.setStyleSheet("background-color: #" + tc.red + ";")
 			self.GR_button.setText('OFF')
 		self.send_channel_globals()
 # 		self.send_wreg0()
@@ -922,30 +907,30 @@ class dfbrap(QWidget):
 
 	def MSTR_TX_changed(self):
 		self.MVTX = self.MSTR_TX.isChecked()
-		print(self.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), self.ENDC)
+		print(tc.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), tc.ENDC)
 		print()
 		if self.MVTX == 1:
-			self.MSTR_TX.setStyleSheet("background-color: #" + self.green + ";")
+			self.MSTR_TX.setStyleSheet("background-color: #" + tc.green + ";")
 			self.MSTR_TX.setText('TX')
 			self.MSTR_RX.setChecked(1)
 		else:
-			self.MSTR_TX.setStyleSheet("background-color: #" + self.red + ";")
+			self.MSTR_TX.setStyleSheet("background-color: #" + tc.red + ";")
 			self.MSTR_TX.setText('OFF')
 
 	def MSTR_RX_changed(self):
 		self.MVRX = self.MSTR_RX.isChecked()
-		print(self.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), self.ENDC)
+		print(tc.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), tc.ENDC)
 		print()
 		if self.MVRX == 1:
-			self.MSTR_RX.setStyleSheet("background-color: #" + self.green + ";")
+			self.MSTR_RX.setStyleSheet("background-color: #" + tc.green + ";")
 			self.MSTR_RX.setText('RX')
 		else:
-			self.MSTR_RX.setStyleSheet("background-color: #" + self.red + ";")
+			self.MSTR_RX.setStyleSheet("background-color: #" + tc.red + ";")
 			self.MSTR_RX.setText('OFF')
 			self.MSTR_TX.setChecked(0)
 
 	def send_class_globals(self):
-		print(self.FCTCALL + "send DFB class globals:", self.ENDC)
+		print(tc.FCTCALL + "send DFB class globals:", tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4()
 		self.send_wreg6()
@@ -953,7 +938,7 @@ class dfbrap(QWidget):
 		print()
 
 	def send_channel_globals(self):
-		print(self.FCTCALL + "send DFB channel globals:", self.ENDC)
+		print(tc.FCTCALL + "send DFB channel globals:", tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4(self.wreg4)
 # 		self.send_wreg7()
@@ -962,10 +947,10 @@ class dfbrap(QWidget):
 # 	def mode_changed(self):
 # 		self.mode = self.mode_button.isChecked()
 # 		if self.mode ==1:
-# 			self.mode_button.setStyleSheet("background-color: #" + self.green + ";")
+# 			self.mode_button.setStyleSheet("background-color: #" + tc.green + ";")
 # 			self.mode_button.setText('dynamic')
 # 		else:
-# 			self.mode_button.setStyleSheet("background-color: #" + self.red + ";")
+# 			self.mode_button.setStyleSheet("background-color: #" + tc.red + ";")
 # 			self.mode_button.setText('static')
 
 	def dwell_changed(self):
@@ -1031,10 +1016,10 @@ class dfbrap(QWidget):
 	def tri_idx_changed(self):
 		self.tri_idx = self.tri_idx_button.isChecked()
 		if self.tri_idx ==1:
-			self.tri_idx_button.setStyleSheet("background-color: #" + self.green + ";")
+			self.tri_idx_button.setStyleSheet("background-color: #" + tc.green + ";")
 			self.tri_idx_button.setText('FRAME')
 		else:
-			self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+			self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
 			self.tri_idx_button.setText('LSYNC')
 		self.send_wreg0()
 		self.send_wreg4()
@@ -1062,7 +1047,7 @@ class dfbrap(QWidget):
 			print()
 
 	def sendReg(self, wregval):
-		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+		print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

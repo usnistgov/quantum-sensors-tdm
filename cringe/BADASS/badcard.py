@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from . import badrap
 from . import sv_array
+from cringe.shared import terminal_colors as tc
 import cringe.DFBx2.dprcal as dprcal
 
 
@@ -18,22 +19,6 @@ class badcard(QWidget):
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
         super(badcard, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
 
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
@@ -69,7 +54,7 @@ class badcard(QWidget):
         self.layout_widget = QWidget(self)
         self.layout = QGridLayout(self)
 
-        print(self.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, self.ENDC)
+        print(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
         print()
 
         '''
@@ -124,7 +109,7 @@ class badcard(QWidget):
         self.LED_button.setFixedHeight(25)
         self.LED_button.setCheckable(1)
         self.LED_button.setChecked(self.LED)
-        self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.card_glb_layout.addWidget(self.LED_button,0,0,1,1)
         self.LED_button.toggled.connect(self.LED_changed)
         self.LED_button.setEnabled(1)
@@ -136,7 +121,7 @@ class badcard(QWidget):
         self.status_button.setFixedHeight(25)
         self.status_button.setCheckable(1)
         self.status_button.setChecked(self.ST)
-        self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.card_glb_layout.addWidget(self.status_button,0,2,1,1)
         self.status_button.toggled.connect(self.status_changed)
 
@@ -186,7 +171,7 @@ class badcard(QWidget):
 
 
     def seqln_changed(self, seqln):
-        print(self.FCTCALL + "send SEQLN to BAD16 card:", self.ENDC)
+        print(tc.FCTCALL + "send SEQLN to BAD16 card:", tc.ENDC)
         self.seqln = seqln
         self.send_wreg0()
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
@@ -195,53 +180,53 @@ class badcard(QWidget):
         print()
 
     def LED_changed(self):
-        print(self.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + self.ENDC)
+        print(tc.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + tc.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
-            self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.LED_button.setText('OFF')
         else:
-            self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LED_button.setText('ON')
         self.send_wreg0()
         print()
 
     def status_changed(self):
-        print(self.FCTCALL + "send ST boolean to BAD16 card:" + self.ENDC)
+        print(tc.FCTCALL + "send ST boolean to BAD16 card:" + tc.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
-            self.status_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg0()
         self.badrap_widget3.enbDiagnostic(self.ST)
         print()
 
     def initMem(self, init):
-        self.init_state = self.INT
+        tc.INIT_state = self.INT
         self.INT = init
-        if self.INT != self.init_state:
+        if self.INT != tc.INIT_state:
             if self.INT == 1:
-                print(self.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + self.ENDC)
+                print(tc.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + tc.ENDC)
             else:
-                print(self.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + self.ENDC)
+                print(tc.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + tc.ENDC)
             self.send_wreg0()
             print()
 
     def send_triangle(self, wreg1):
-        print(self.FCTCALL + "send triangle parameters to BAD16 card:", self.ENDC)
+        print(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
         print()
 
     def send_class_globals(self, wreg0):
-        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
+        print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
         print()
 
     def send_card_globals(self):
-        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
+        print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.send_wreg0()
         print()
 
@@ -275,7 +260,7 @@ class badcard(QWidget):
         print()
 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

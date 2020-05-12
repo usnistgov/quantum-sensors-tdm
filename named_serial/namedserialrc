@@ -3,3 +3,6 @@
 /dev/ttyUSB0 rack
 /dev/ttyUSB1 tower
 /dev/ttyUSB2 vbox
+dummy        name
+# you can use any any device name with "dummy" into it to create a write only port that does nothing except allow you to write
+# useful for testing cringe on computers without serial ports

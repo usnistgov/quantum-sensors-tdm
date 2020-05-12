@@ -11,38 +11,14 @@ from PyQt5.QtWidgets import *
 import named_serial
 from . import dfbrap
 from . import dprcal
-# from dprcal import dprcal
+from cringe.shared import terminal_colors as tc
+
 
 class dfbx2(QWidget):
 
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
         super(dfbx2, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
-
-# 		print QApplication.palette()	
-# 		self.color_list = QColor.colorNames()
-# 		print self.color_list
-# 		self.tt_palette = QPalette(self)
-# 		self.tt_palette.setColor(2, 18, Qt.white)
-# 		self.tt_palette.setColor(2, 19, Qt.black)
-# 		self.tt_palette.setColor(2,10,Qt.yellow)
-# 		self.tt_palette.setColor(2,6,Qt.black)
 
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
@@ -327,7 +303,7 @@ class dfbx2(QWidget):
         self.PS_button.setFixedHeight(25)
         self.PS_button.setCheckable(1)
         self.PS_button.setChecked(self.PS)
-        self.PS_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.class_glob_layout.addWidget(self.PS_button,1,4,1,1,QtCore.Qt.AlignRight)
         self.PS_button.toggled.connect(self.PS_changed)
 
@@ -581,7 +557,7 @@ class dfbx2(QWidget):
         self.tri_idx_button.setFixedHeight(25)
         self.tri_idx_button.setCheckable(1)
         self.tri_idx_button.setChecked(self.tri_idx)
-        self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.tri_wvfm_layout.addWidget(self.tri_idx_button,0,6,1,1,QtCore.Qt.AlignRight)
         self.tri_idx_button.toggled.connect(self.tri_idx_changed)
 
@@ -620,7 +596,7 @@ class dfbx2(QWidget):
         self.LED_button.setFixedHeight(25)
         self.LED_button.setCheckable(1)
         self.LED_button.setChecked(self.LED)
-        self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.card_glb_layout.addWidget(self.LED_button,0,0,1,1)
         self.LED_button.toggled.connect(self.LED_changed)
         self.LED_button.setEnabled(1)
@@ -632,7 +608,7 @@ class dfbx2(QWidget):
         self.status_button.setFixedHeight(25)
         self.status_button.setCheckable(1)
         self.status_button.setChecked(self.ST)
-        self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.card_glb_layout.addWidget(self.status_button,0,2,1,1)
         self.status_button.toggled.connect(self.status_changed)
 
@@ -787,20 +763,20 @@ class dfbx2(QWidget):
         self.DFBx2class_glb_chg_msg()
         self.PS = self.PS_button.isChecked()
         if self.PS ==1:
-            self.PS_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.PS_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.PS_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg6()
         print()
 
     def DFBx2class_glb_chg_msg(self):
         print()
-        print(self.FCTCALL + "DFBx2 CLASS global changed:", self.ENDC)
+        print(tc.FCTCALL + "DFBx2 CLASS global changed:", tc.ENDC)
 
 
     def ARLsense_changed(self):
         print()
-        print(self.FCTCALL + "ARL parameter changed:", self.ENDC)
+        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.ARLsense = self.ARLsense_spin.value()
         self.ARLsense_indicator.setText("%5i"%(2**self.ARLsense))
         self.ARLsense_eng_indicator.setText(str((2**self.ARLsense)/16.383)[:6])
@@ -809,7 +785,7 @@ class dfbx2(QWidget):
 
     def RLDpos_changed(self):
         print()
-        print(self.FCTCALL + "ARL parameter changed:", self.ENDC)
+        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDpos = self.RLDpos_spin.value()
         self.RLDpos_indicator.setText("%5i"%(2**self.RLDpos))
         self.RLDpos_eng_indicator.setText(str((2**self.RLDpos)*self.frame_period)[:6])
@@ -818,7 +794,7 @@ class dfbx2(QWidget):
 
     def RLDneg_changed(self):
         print()
-        print(self.FCTCALL + "ARL parameter changed:", self.ENDC)
+        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDneg = self.RLDneg_spin.value()
         self.RLDneg_indicator.setText("%5i"%(2**self.RLDneg))
         self.RLDneg_eng_indicator.setText(str((2**self.RLDneg)*self.frame_period)[:6])
@@ -827,7 +803,7 @@ class dfbx2(QWidget):
 
     def dwell_changed(self):
         print()
-        print(self.FCTCALL + "triangle step dwell changed:", self.ENDC)
+        print(tc.FCTCALL + "triangle step dwell changed:", tc.ENDC)
         self.dwell_val = self.dwell.value()
         self.dwellDACunits = 2**(self.dwell_val)
 # 		self.dwell_indicator.setText('%5i'%self.dwellDACunits)
@@ -841,7 +817,7 @@ class dfbx2(QWidget):
 
     def range_changed(self):
         print()
-        print(self.FCTCALL + "triangle number of steps changed:", self.ENDC)
+        print(tc.FCTCALL + "triangle number of steps changed:", tc.ENDC)
         self.range_val = self.range.value()
         self.rangeDACunits = 2**(self.range_val)
 # 		self.range_indicator.setText('%5i'%self.rangeDACunits)
@@ -860,7 +836,7 @@ class dfbx2(QWidget):
 
     def step_changed(self):
         print()
-        print(self.FCTCALL + "triangle step size changed:", self.ENDC)
+        print(tc.FCTCALL + "triangle step size changed:", tc.ENDC)
         self.step_val = self.step.value()
         self.stepDACunits = self.step_val
         self.amp_changed()
@@ -902,14 +878,14 @@ class dfbx2(QWidget):
 
     def tri_idx_changed(self):
         print()
-        print(self.FCTCALL + "triangle timebase changed:", self.ENDC)
+        print(tc.FCTCALL + "triangle timebase changed:", tc.ENDC)
         self.tri_idx = self.tri_idx_button.isChecked()
         self.period_changed()
         if self.tri_idx ==1:
-            self.tri_idx_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.tri_idx_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.tri_idx_button.setText('FRAME')
         else:
-            self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.tri_idx_button.setText('LSYNC')
         self.send_wreg0(1)
         self.send_wreg4()
@@ -920,10 +896,10 @@ class dfbx2(QWidget):
     def LED_changed(self):
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
-            self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.LED_button.setText('OFF')
         else:
-            self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LED_button.setText('ON')
 #		 if self.unlocked == 1:
         self.send_wreg7()
@@ -931,14 +907,14 @@ class dfbx2(QWidget):
     def status_changed(self):
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
-            self.status_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg7()
 
     def send_class_globals(self):
         print()
-        print(self.FCTCALL + "send class globals:", self.ENDC)
+        print(tc.FCTCALL + "send class globals:", tc.ENDC)
 # 		self.send_wreg0()
 # 		self.send_wreg4()
         self.send_wreg6()
@@ -947,7 +923,7 @@ class dfbx2(QWidget):
 
     def send_triangle(self):
         print()
-        print(self.FCTCALL + "send triangle parameters to both channels:", self.ENDC)
+        print(tc.FCTCALL + "send triangle parameters to both channels:", tc.ENDC)
         self.send_wreg0(1)
         self.send_wreg4()
         self.send_wreg0(2)
@@ -956,7 +932,7 @@ class dfbx2(QWidget):
 
     def send_card_globals(self):
         print()
-        print(self.FCTCALL + "send card globals:", self.ENDC)
+        print(tc.FCTCALL + "send card globals:", tc.ENDC)
         self.send_wreg7()
         print()
 
@@ -1040,7 +1016,7 @@ class dfbx2(QWidget):
         self.sendReg(wregval)
 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send", self.BOLD, wregval, self.ENDC)
+        print(tc.COMMAND + "send", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

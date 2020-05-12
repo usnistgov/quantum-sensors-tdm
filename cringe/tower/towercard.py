@@ -4,29 +4,16 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
 from . import towerchannel
+from cringe.shared import terminal_colors as tc
+
 
 class TowerCard(QWidget):
     
     def __init__(self, parent=None, cardaddr=3, serialport="tower", shockvalue=65535,name="default"):
 
         super(type(self), self).__init__(parent)
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
         
         self.parent = parent
         self.layout = QGridLayout(self)
@@ -86,14 +73,14 @@ class TowerCard(QWidget):
 
 
     def gored(self):
-        self.shockbutton.setStyleSheet("background-color: #" + self.red + ";")
+        self.shockbutton.setStyleSheet("background-color: #" + tc.red + ";")
         for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + self.red + ";")
+            tc.dacspin.setStyleSheet("background-color: #" + tc.red + ";")
 
     def gowhite(self):
-        self.shockbutton.setStyleSheet("background-color: #" + self.white + ";")
+        self.shockbutton.setStyleSheet("background-color: #" + tc.white + ";")
         for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + self.white + ";")
+            tc.dacspin.setStyleSheet("background-color: #" + tc.white + ";")
 
     def packState(self):
         self.stateVector    =    {

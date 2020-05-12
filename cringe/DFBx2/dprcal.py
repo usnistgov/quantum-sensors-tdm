@@ -7,23 +7,16 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import state_vector_builder
 import named_serial
 from .dpr_counter import dpr_counter
+from cringe.shared import terminal_colors as tc
+
 
 class dprcal(QWidget):
 
 	def __init__(self, ctype=None, addr=None, slot=None):
 		super(dprcal, self).__init__()
 		
-		self.COMMAND = '\033[95m'
-		self.FCTCALL = '\033[94m'
-		self.INIT = '\033[92m'
-		self.WARNING = '\033[93m'
-		self.FAIL = '\033[91m'
-		self.ENDC = '\033[0m'
-		self.BOLD = "\033[1m"
-
 		self.serialport = named_serial.Serial(port='rack', shared = True)
 		
 		self.card_type = ctype
@@ -74,9 +67,9 @@ class dprcal(QWidget):
 		self.null_phase.setEnabled(0)
 		self.globals_layout.addWidget(self.null_phase,0,4,QtCore.Qt.AlignTop)
 
-		self.init_slot = QPushButton(self, text = "send slot")
-		self.init_slot.setEnabled(0)
-		self.globals_layout.addWidget(self.init_slot,1,4,QtCore.Qt.AlignTop)
+		tc.INIT_slot = QPushButton(self, text = "send slot")
+		tc.INIT_slot.setEnabled(0)
+		self.globals_layout.addWidget(tc.INIT_slot,1,4,QtCore.Qt.AlignTop)
 		
 		self.filenameEdit = QLineEdit()
 		self.filenameEdit.setReadOnly(True)
@@ -123,13 +116,13 @@ class dprcal(QWidget):
 		self.savecal.clicked.connect(self.saveCalfile)
 		self.autocal.clicked.connect(self.CalAllCounters)
 		self.null_phase.clicked.connect(self.nullPhase)
-		self.init_slot.clicked.connect(self.sendSlot)
+		tc.INIT_slot.clicked.connect(self.sendSlot)
 		
 		self.scale_factor = self.phase_counters[0].width()
 		self.globals_widget.setFixedWidth(self.scale_factor*1.1)
 		
 		'''initialization'''
-# 		print self.INIT + "Initialize:", self.ENDC
+# 		print tc.INIT + "Initialize:", tc.ENDC
 # 		self.sendSlot()
 		self.phase_counters[1].phase_trim_spin.setEnabled(0)			# initialize to C0 counter spin disabled 8mar16
 
@@ -140,7 +133,7 @@ class dprcal(QWidget):
 
 
 	def loadCalFile(self):
-		print(self.FCTCALL + "load phase calibration file:", self.ENDC)
+		print(tc.FCTCALL + "load phase calibration file:", tc.ENDC)
 		filename = str(QFileDialog.getOpenFileName())
 # 		print("filename = [%s]" % filename)
 		if len(filename) > 0:
@@ -156,20 +149,20 @@ class dprcal(QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			print(self.FAIL + "load file cancelled:", self.ENDC)
+			print(tc.FAIL + "load file cancelled:", tc.ENDC)
 			print()
 			return
 		
 # 		if idx != self.counters:
 		if (idx + 1) != self.counters:
-			print(self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC)
+			print(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
 			print()
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		print(self.FCTCALL + "save phase calibration file:", self.ENDC)
+		print(tc.FCTCALL + "save phase calibration file:", tc.ENDC)
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
@@ -181,13 +174,13 @@ class dprcal(QWidget):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			print(self.FAIL + "save file cancelled:", self.ENDC)
+			print(tc.FAIL + "save file cancelled:", tc.ENDC)
 			print()
 			return
 
 	def CalAllCounters(self):
 		print()
-		print(self.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, self.ENDC)
+		print(tc.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		print()
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
@@ -196,22 +189,22 @@ class dprcal(QWidget):
 			
 	def enbDiagnostic(self, mode):
 		self.null_phase.setEnabled(mode)
-		self.init_slot.setEnabled(mode)
+		tc.INIT_slot.setEnabled(mode)
 		self.phase_counters[1].phase_trim_spin.setEnabled(mode)		#	tie C0 spin to enable bit 8mar16
 			
 	def nullPhase(self):
 		print()
-		print(self.INIT + "null phase:", self.ENDC)
+		print(tc.INIT + "null phase:", tc.ENDC)
 		print()
 		self.resetALLphase()
-		print(self.FCTCALL + "GPI1: reset slot & phase trim to 0:", self.ENDC)
+		print(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:", tc.ENDC)
 		print()
 		mask = 0xfffe000
 		wregval = self.GPI1 & mask
 		self.sendReg(wregval)
 		
 	def sendSlot(self):
-		print(self.FCTCALL + "send slot:", self.slot, self.ENDC)
+		print(tc.FCTCALL + "send slot:", self.slot, tc.ENDC)
 		print("GPI1: send slot:")
 		print()
 		mask = 0xfffffe0
@@ -219,7 +212,7 @@ class dprcal(QWidget):
 		self.sendReg(wregval)
 				
 	def sendReg(self, wregval):
-		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+		print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

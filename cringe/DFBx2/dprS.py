@@ -10,19 +10,13 @@ from PyQt5.QtWidgets import *
 # import state_vector_builder
 import named_serial
 from .dprS_counter import dprS_counter
+from cringe.shared import terminal_colors as tc
+
 
 class dprS(QWidget):
 
 	def __init__(self, ctype=None, addr=None, slot=None):
 		super(dprS, self).__init__()
-		
-		self.COMMAND = '\033[95m'
-		self.FCTCALL = '\033[94m'
-		self.INIT = '\033[92m'
-		self.WARNING = '\033[93m'
-		self.FAIL = '\033[91m'
-		self.ENDC = '\033[0m'
-		self.BOLD = "\033[1m"
 
 		self.serialport = named_serial.Serial(port='rack', shared = True)
 		
@@ -74,9 +68,9 @@ class dprS(QWidget):
 		self.null_phase.setEnabled(0)
 		self.globals_layout.addWidget(self.null_phase,0,4,QtCore.Qt.AlignTop)
 
-		self.init_slot = QPushButton(self, text = "send slot")
-		self.init_slot.setEnabled(0)
-		self.globals_layout.addWidget(self.init_slot,1,4,QtCore.Qt.AlignTop)
+		tc.INIT_slot = QPushButton(self, text = "send slot")
+		tc.INIT_slot.setEnabled(0)
+		self.globals_layout.addWidget(tc.INIT_slot,1,4,QtCore.Qt.AlignTop)
 		
 		self.filenameEdit = QLineEdit()
 		self.filenameEdit.setReadOnly(True)
@@ -127,13 +121,13 @@ class dprS(QWidget):
 		self.savecal.clicked.connect(self.saveCalfile)
 		self.autocal.clicked.connect(self.CalAllCounters)
 		self.null_phase.clicked.connect(self.nullPhase)
-		self.init_slot.clicked.connect(self.sendSlot)
+		tc.INIT_slot.clicked.connect(self.sendSlot)
 		
 		self.scale_factor = self.phase_counters[0].width()
 		self.globals_widget.setFixedWidth(self.scale_factor*1.1)
 		
 		'''initialization'''
-# 		print self.INIT + "Initialize:", self.ENDC
+# 		print tc.INIT + "Initialize:", tc.ENDC
 # 		self.sendSlot()
 
 	def resetALLphase(self):
@@ -144,7 +138,7 @@ class dprS(QWidget):
 
 
 	def loadCalFile(self):
-		print(self.FCTCALL + "load calibration file:", self.ENDC)
+		print(tc.FCTCALL + "load calibration file:", tc.ENDC)
 		print()
 		filename = str(QFileDialog.getOpenFileName())
 # 		print("filename = [%s]" % filename)
@@ -160,19 +154,19 @@ class dprS(QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			print(self.FAIL + "load file cancelled:", self.ENDC)
+			print(tc.FAIL + "load file cancelled:", tc.ENDC)
 			print()
 			return
 		
 		if (idx + 1) != self.counters:
-			print(self.FAIL + "WARNING: calibration file does not meet card class format" + self.ENDC)
+			print(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
 			print()
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		print(self.FCTCALL + "save calibration file:", self.ENDC)
+		print(tc.FCTCALL + "save calibration file:", tc.ENDC)
 		print()
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
@@ -185,26 +179,26 @@ class dprS(QWidget):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			print(self.FAIL + "save file cancelled:", self.ENDC)
+			print(tc.FAIL + "save file cancelled:", tc.ENDC)
 			print()
 			return
 
 	def CalAllCounters(self):
 		print()
-		print(self.INIT + "auto calibrate: ", self.card_type, "card address", self.address, self.ENDC)
+		print(tc.INIT + "auto calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
 			self.phase_counters[i].calcounter()
 			
 	def enbDiagnostic(self, mode):
 		self.null_phase.setEnabled(mode)
-		self.init_slot.setEnabled(mode)
+		tc.INIT_slot.setEnabled(mode)
 			
 	def nullPhase(self):
-		print(self.INIT + "null phase:", self.ENDC)
+		print(tc.INIT + "null phase:", tc.ENDC)
 		print()
 		self.resetALLphase()
-		print(self.FCTCALL + "reset slot & phase trim to 0:", self.ENDC)
+		print(tc.FCTCALL + "reset slot & phase trim to 0:", tc.ENDC)
 		print()
 		print("GPI24: send slot:", 0)
 		self.send_cmd(24, 0)
@@ -213,12 +207,12 @@ class dprS(QWidget):
 		print()
 		
 	def sendSlot(self):
-		print(self.FCTCALL + "GPI24: send slot:", self.slot, self.ENDC)
+		print(tc.FCTCALL + "GPI24: send slot:", self.slot, tc.ENDC)
 		print()
 		self.send_cmd(24, self.slot)
 				
 	def sendReg(self, wregval):
-		print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+		print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
@@ -230,7 +224,7 @@ class dprS(QWidget):
 		
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		print(self.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", self.BOLD, wregval, "(", val, ")",self.ENDC)
+		print(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1

@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import *
 
 import named_serial
 from .badchn_builder import badChn
+from cringe.shared import terminal_colors as tc
+
 
 class badrap(QWidget):
 
@@ -16,31 +18,6 @@ class badrap(QWidget):
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
         super(badrap, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
-
-# 		print QApplication.palette()	
-# 		self.color_list = QColor.colorNames()
-# 		print self.color_list
-# 		self.tt_palette = QPalette(self)
-# 		self.tt_palette.setColor(2, 18, Qt.white)
-# 		self.tt_palette.setColor(2, 19, Qt.black)
-# 		self.tt_palette.setColor(2,10,Qt.yellow)
-# 		self.tt_palette.setColor(2,6,Qt.black)
 
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
@@ -191,7 +168,7 @@ class badrap(QWidget):
             self.LED_button.setFixedHeight(25)
             self.LED_button.setCheckable(1)
             self.LED_button.setChecked(self.led)
-            self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.glb_var_layout.addWidget(self.LED_button,0,2,1,1)
             self.LED_button.toggled.connect(self.LED_changed)
 
@@ -202,7 +179,7 @@ class badrap(QWidget):
             self.status_button.setFixedHeight(25)
             self.status_button.setCheckable(1)
             self.status_button.setChecked(self.status)
-            self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.glb_var_layout.addWidget(self.status_button,0,4,1,1)
             self.status_button.toggled.connect(self.status_changed)
 
@@ -338,7 +315,7 @@ class badrap(QWidget):
             self.tri_idx_button.setFixedHeight(25)
             self.tri_idx_button.setCheckable(1)
             self.tri_idx_button.setChecked(self.tri_idx)
-            self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.tri_wvfm_layout.addWidget(self.tri_idx_button,1,4,1,1,QtCore.Qt.AlignLeft)
             self.tri_idx_button.toggled.connect(self.tri_idx_changed)
 
@@ -411,27 +388,27 @@ class badrap(QWidget):
         for idx in range(self.chns):
             self.chn_vectors[idx].dc_button.setChecked(state)
         if state == 1:
-            self.master_vector.dc_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.master_vector.dc_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.master_vector.dc_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.master_vector.dc_button.setStyleSheet("background-color: #" + tc.red + ";")
 
     def LoHi_changed(self, state):
         for idx in range(self.chns):
             self.chn_vectors[idx].LoHi_button.setChecked(state)
         if state == 1:
-            self.master_vector.LoHi_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.master_vector.LoHi_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.master_vector.LoHi_button.setText('HI')
         else:
-            self.master_vector.LoHi_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.master_vector.LoHi_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.master_vector.LoHi_button.setText('LO')
 
     def tri_changed(self, state):
         for idx in range(self.chns):
             self.chn_vectors[idx].Tri_button.setChecked(state)
         if state == 1:
-            self.master_vector.Tri_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.master_vector.Tri_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.master_vector.Tri_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.master_vector.Tri_button.setStyleSheet("background-color: #" + tc.red + ";")
 
     def d2a_lo_spin_changed(self, level):
         for idx in range(self.chns):
@@ -485,10 +462,10 @@ class badrap(QWidget):
         for idx in range(self.chns):
             self.chn_vectors[idx].lock_button.setChecked(state)
         if state == 1:
-            self.master_vector.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.master_vector.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.master_vector.lock_button.setText('dynamic')
         else:
-            self.master_vector.lock_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.master_vector.lock_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.master_vector.lock_button.setText('static')
 
     def card_delay_changed(self, newDelay):
@@ -499,10 +476,10 @@ class badrap(QWidget):
     def LED_changed(self):
         self.led = self.LED_button.isChecked()
         if self.led ==1:
-            self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.LED_button.setText('OFF')
         else:
-            self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LED_button.setText('ON')
 #		 if self.unlocked == 1:
         self.send_wreg0()
@@ -510,13 +487,13 @@ class badrap(QWidget):
     def status_changed(self):
         self.status = self.status_button.isChecked()
         if self.status ==1:
-            self.status_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg0()
 
     def send_globals(self):
-        print(self.FCTCALL + "send BAD16 globals:", self.ENDC)
+        print(tc.FCTCALL + "send BAD16 globals:", tc.ENDC)
         self.send_wreg0()
 # 		self.send_wreg1()
         print()
@@ -581,10 +558,10 @@ class badrap(QWidget):
     def tri_idx_changed(self):
         self.tri_idx = self.tri_idx_button.isChecked()
         if self.tri_idx ==1:
-            self.tri_idx_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.tri_idx_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.tri_idx_button.setText('FRAME')
         else:
-            self.tri_idx_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.tri_idx_button.setText('LSYNC')
         self.send_wreg1()
 
@@ -604,7 +581,7 @@ class badrap(QWidget):
         print()
 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

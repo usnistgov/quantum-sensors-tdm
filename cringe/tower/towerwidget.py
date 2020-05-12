@@ -4,34 +4,22 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
 from . import towercard
+from cringe.shared import terminal_colors as tc
+
 
 class LabelWidget(QWidget):
     def __init__(self, parent=None):
         super(type(self), self).__init__(parent)
         self.layout=QGridLayout(self)
 
+
 class TowerWidget(QWidget):
 
     def __init__(self, parent=None, nameaddrlist=["DB1", "13", "SAb", "4", "SQ1b", "12"], serialport="tower", shockvalue=65535):
 
         super(type(self), self).__init__()
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
 
         self.parent = parent
         self.layout = QVBoxLayout(self)

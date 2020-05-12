@@ -76,6 +76,9 @@ class Serial(serial.Serial):
             # This is probably better.
             raise ValueError("Named port '%s' not in configuration file" % port)
         myport = namedports()[port]
+        if "dummy" in myport:
+            self._set_as_fake(port, myport)
+            return
         try:
             # serial.Serial.__init__(self, myport, baud)
             super(Serial, self).__init__(port=myport, baudrate=baud, **kwargs) #better?
@@ -91,6 +94,9 @@ class Serial(serial.Serial):
         if shared and os.name != 'posix':
             raise ValueError('No shared ports on non-posix systems')
 
+    def _set_as_fake(self, port, myport):
+        print("namedserial: _set_as_fake: port={}, myport={}".format(port, myport))
+        self.write = lambda v: None
 #    def write(self, value):
 #        print "writing [%s]=%s" % (self.the_port, value)
 #        super(Serial, self).write(value)

@@ -3,28 +3,15 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
+from cringe.shared import terminal_colors as tc
+
 
 class badChn(QWidget):
     
     def __init__(self, parent=None, layout=None, chn=0, cardaddr=3, serialport=None, master=None):
 
         super(badChn, self).__init__()
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
         
         self.parent = parent
         self.layout = layout
@@ -33,8 +20,8 @@ class badChn(QWidget):
         self.address = cardaddr
         self.serialport = serialport
 
-        self.green = "90EE90"
-        self.red ="F08080"
+        tc.green = "90EE90"
+        tc.red ="F08080"
         
         self.unlocked = 1
         
@@ -58,7 +45,7 @@ class badChn(QWidget):
         self.counter_label.setReadOnly(True)
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
-        self.counter_label.setStyleSheet("background-color: #" + self.yellow + ";")
+        self.counter_label.setStyleSheet("background-color: #" + tc.yellow + ";")
         self.counter_label.setFocusPolicy(QtCore.Qt.NoFocus)
         self.counter_label.setText(str(self.chn))
         self.row_layout.addWidget(self.counter_label,0,0)
@@ -69,21 +56,21 @@ class badChn(QWidget):
         self.dc_button.setFixedHeight(self.row_ht)
         self.dc_button.setCheckable(1)
         self.dc_button.setChecked(self.dc)
-        self.dc_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.dc_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.dc_button,0,1)
 
         self.LoHi_button = QToolButton(self, text = 'HI')
         self.LoHi_button.setFixedHeight(self.row_ht)
         self.LoHi_button.setCheckable(1)
         self.LoHi_button.setChecked(self.lohi)
-        self.LoHi_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.LoHi_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.row_layout.addWidget(self.LoHi_button,0,2)
 
         self.Tri_button = QToolButton(self, text = 'tri')
         self.Tri_button.setFixedHeight(self.row_ht)
         self.Tri_button.setCheckable(1)
         self.Tri_button.setChecked(self.tri)
-        self.Tri_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.Tri_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.Tri_button,0,3)
 
         self.d2a_lo_spin = QSpinBox()
@@ -166,7 +153,7 @@ class badChn(QWidget):
         self.lock_button.setFixedHeight(self.row_ht)
         self.lock_button.setCheckable(1)
         self.lock_button.setChecked(1)
-        self.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.row_layout.addWidget(self.lock_button,0,13)
         
         if master != None:
@@ -175,7 +162,7 @@ class badChn(QWidget):
             self.chn_lbl.setFrameStyle(50)
             self.chn_lbl.setFrameStyle(50)
             self.chn_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.chn_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #" + self.white)
+            self.chn_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #" + tc.white)
             self.row_layout.addWidget(self.chn_lbl,1,0)
             
             self.bool_lbl = QLabel("booleans")
@@ -183,35 +170,35 @@ class badChn(QWidget):
     #         self.bool_lbl.setFixedWidth(85)
             self.bool_lbl.setFrameStyle(50)
             self.bool_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.bool_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
+            self.bool_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #"+tc.white)
             self.row_layout.addWidget(self.bool_lbl,1,1,1,3)
 
             self.DAClo_lbl = QLabel("DAC low level")
 #             self.DAClo_lbl.setFixedWidth(327)
             self.DAClo_lbl.setFrameStyle(50)
             self.DAClo_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.DAClo_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
+            self.DAClo_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #"+tc.white)
             self.row_layout.addWidget(self.DAClo_lbl,1,4,1,4)
     
             self.DAChi_lbl = QLabel("DAC high level")
 #             self.DAChi_lbl.setFixedWidth(327)
             self.DAChi_lbl.setFrameStyle(50)
             self.DAChi_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.DAChi_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
+            self.DAChi_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #"+tc.white)
             self.row_layout.addWidget(self.DAChi_lbl,1,8,1,4)
     
-            self.command_lbl = QLabel("command")
-#             self.command_lbl.setFixedWidth(150)
-            self.command_lbl.setFrameStyle(50)
-            self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.command_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
-            self.row_layout.addWidget(self.command_lbl,1,12,1,1)
+            tc.COMMAND_lbl = QLabel("command")
+#             tc.COMMAND_lbl.setFixedWidth(150)
+            tc.COMMAND_lbl.setFrameStyle(50)
+            tc.COMMAND_lbl.setAlignment(QtCore.Qt.AlignCenter)
+            tc.COMMAND_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #"+tc.white)
+            self.row_layout.addWidget(tc.COMMAND_lbl,1,12,1,1)
     
             self.mode_lbl = QLabel("mode")
 #             self.mode_lbl.setFixedWidth(50)
             self.mode_lbl.setFrameStyle(50)
             self.mode_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.mode_lbl.setStyleSheet("background-color: #" + self.grey + ";color : #"+self.white)
+            self.mode_lbl.setStyleSheet("background-color: #" + tc.grey + ";color : #"+tc.white)
             self.row_layout.addWidget(self.mode_lbl,1,13,1,1)
 
         if master == None:
@@ -245,7 +232,7 @@ class badChn(QWidget):
             self.chn_send.clicked.connect(parent.send_channel)
             self.lock_button.toggled.connect(parent.lock_channel, self.lock_button.isChecked())
         
-#         self.setStyleSheet("background-color: #" + self.grey + ";")
+#         self.setStyleSheet("background-color: #" + tc.grey + ";")
         
         if self.parent != None:
             self.layout.addWidget(self) 
@@ -255,19 +242,19 @@ class badChn(QWidget):
     def dc_changed(self):
         self.dc = self.dc_button.isChecked()
         if self.dc ==1:
-            self.dc_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.dc_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.dc_button.setStyleSheet("background-color: #" + self.red + ";")            
+            self.dc_button.setStyleSheet("background-color: #" + tc.red + ";")            
 #         if self.unlocked == 1:
         self.send_channel()
         
     def LoHi_changed(self):
         self.lohi = self.LoHi_button.isChecked()
         if self.lohi ==1:
-            self.LoHi_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LoHi_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LoHi_button.setText('HI')
         else:
-            self.LoHi_button.setStyleSheet("background-color: #" + self.red + ";")            
+            self.LoHi_button.setStyleSheet("background-color: #" + tc.red + ";")            
             self.LoHi_button.setText('LO')
 #         if self.unlocked == 1:
         self.send_channel()
@@ -275,9 +262,9 @@ class badChn(QWidget):
     def tri_changed(self):
         self.tri = self.Tri_button.isChecked()
         if self.tri ==1:
-            self.Tri_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.Tri_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.Tri_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.Tri_button.setStyleSheet("background-color: #" + tc.red + ";")  
 #         if self.unlocked == 1:
         self.send_channel()
             
@@ -310,7 +297,7 @@ class badChn(QWidget):
         self.d2a_hi_slider.setValue(16383)
         
     def send_channel(self):
-        print(self.FCTCALL + "send BAD16 CHN", self.chn, ": index & arrayed register values", self.ENDC)
+        print(tc.FCTCALL + "send BAD16 CHN", self.chn, ": index & arrayed register values", tc.ENDC)
         self.send_wreg2()
         self.send_wreg4()
         self.send_wreg5()
@@ -319,10 +306,10 @@ class badChn(QWidget):
     def lock_channel(self):
         self.unlocked = self.lock_button.isChecked()
         if self.unlocked ==1:
-            self.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.lock_button.setText('dynamic')
         else:
-            self.lock_button.setStyleSheet("background-color: #" + self.red + ";")            
+            self.lock_button.setStyleSheet("background-color: #" + tc.red + ";")            
             self.lock_button.setText('static')
     
     def send_wreg2(self):
@@ -350,7 +337,7 @@ class badChn(QWidget):
         print()
         
     def sendReg(self, wregval): 
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1
