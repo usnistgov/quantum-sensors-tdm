@@ -187,8 +187,8 @@ class dfbcard(QWidget):
 # 		self.class_glob_hdr_widget.setFixedWidth(self.dfbx2_widget1.width()+rm)
 # 		self.arl_widget.setFixedWidth(self.dfbx2_widget1.width()/2+10)
 # 		self.tri_wvfm_widget.setFixedWidth(self.dfbx2_widget1.width()/2+10)
-        self.card_glb_widget.setFixedWidth(self.dfbx2_widget1.width()/2+10)
-        self.class_interface_widget.setFixedWidth(self.dfbx2_widget1.width()/2+10)
+        self.card_glb_widget.setFixedWidth(int(self.dfbx2_widget1.width()/2+10))
+        self.class_interface_widget.setFixedWidth(int(self.dfbx2_widget1.width()/2+10))
 
         '''
         initialization

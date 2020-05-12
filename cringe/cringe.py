@@ -28,7 +28,8 @@ from cringe.shared import terminal_colors as tc
 
 class Cringe(QWidget):
     '''CRate Interface for NextGen Electronics'''
-    def __init__(self, parent=None, addr_vector=None, slot_vector=None, class_vector= None, seqln=30, lsync=40, tower_vector=None, argfilename=None, calibrationtab=False):
+    def __init__(self, parent=None, addr_vector=None, slot_vector=None, class_vector= None, 
+    seqln=30, lsync=40, tower_vector=None, argfilename=None, calibrationtab=False):
 
         super(Cringe, self).__init__()
         self.setWindowIcon(QIcon("cringe_img.jpg"))
@@ -779,15 +780,15 @@ class Cringe(QWidget):
         # 		self.scale_factor = self.dfbcard_widget1.dfbx2_widget1.width()
         # 		print self.scale_factor
         rm = 90
-        self.file_mgmt_widget.setFixedWidth(self.scale_factor + rm)
-        self.sys_glob_hdr_widget.setFixedWidth(self.scale_factor/2 + rm/3)
-        self.sys_control_hdr_widget.setFixedWidth(self.scale_factor/2 + rm/3)
-        self.class_glob_hdr_widget.setFixedWidth(self.scale_factor + rm)
-        self.arl_widget.setFixedWidth(self.scale_factor/2+rm/3)
-        self.tri_wvfm_widget.setFixedWidth(self.scale_factor/2+rm/3)
+        self.file_mgmt_widget.setFixedWidth(int(self.scale_factor + rm))
+        self.sys_glob_hdr_widget.setFixedWidth(int(self.scale_factor/2 + rm/3))
+        self.sys_control_hdr_widget.setFixedWidth(int(self.scale_factor/2 + rm/3))
+        self.class_glob_hdr_widget.setFixedWidth(int(self.scale_factor + rm))
+        self.arl_widget.setFixedWidth(int(self.scale_factor/2+rm/3))
+        self.tri_wvfm_widget.setFixedWidth(int(self.scale_factor/2+rm/3))
         # 		self.card_glb_widget.setFixedWidth(self.dfbx2card_widget1.width()/2+10)
         # 		self.class_interface_widget.setFixedWidth(self.dfbx2card_widget1.width()/2+10)
-        self.setFixedWidth(self.scale_factor + rm + 20)
+        self.setFixedWidth(int(self.scale_factor + rm + 20))
         self.setFixedHeight(1000)
 
         self.emu = EMU_Card()
@@ -798,7 +799,6 @@ class Cringe(QWidget):
             self.loadSettings(argfilename)
 
         print("after loadSettings")
-
 
         # 	def card_delay_changed(self):
         '''
@@ -2065,8 +2065,11 @@ class Cringe(QWidget):
         self.tune_widget.unpackState(self.loadTune["TuneParameters"])
 
 
-def main():
-    app = QApplication(sys.argv)
+def main(args=sys.argv, app=None):
+    print("cringe.main with args={}".format(args))
+
+    if app is None:
+        app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}
@@ -2096,12 +2099,11 @@ def main():
     p.add_argument('-i', '--interactive', action='store_true', dest='interactive',
                    help='Drop into an interactive IPython window')   #  ADDED JG
     p.add_argument('-r', '--raw', action="store_true", dest="raw", help="add the Calibration tab (experimental)")
+    p.add_argument('-Q', '--quit', action="store_true", dest="quit", help="for testing, quit immediatley after building GUI")
 
-    args = p.parse_args()
-    BOLD = '\033[1m'
-    END = '\033[0m'
+    args = p.parse_args(args[1:])
     if not any(vars(args).values()):
-        p.error(BOLD+"No arguments provided. You probably want -L or -F."+END) # this exits
+        p.error(tc.BOLD+"No arguments provided. You probably want -L or -F."+tc.END) # this exits
 
     def noneLen(x):
         if x is None:
@@ -2170,17 +2172,13 @@ def main():
         argfilename=None
 
     win = Cringe(addr_vector=addr_vector, slot_vector=slot_vector, class_vector=class_vector, tower_vector=tower_vector,
-                 argfilename=argfilename, calibrationtab=args.raw)
+                 argfilename=argfilename, calibrationtab=args.raw, quit=args.quit)
 
     win.show()
-    if args.interactive:  #  ADDED JG
-        IPython.embed()     #  ADDED JG
+    if args.interactive:
+        IPython.embed()    
 
-
-    #splash.finish(win)
-    # 	app.exec_()
-
-    sys.exit(app.exec_())
+    app.exec_()
 
 
 

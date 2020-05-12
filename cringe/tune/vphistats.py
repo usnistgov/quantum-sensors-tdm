@@ -2,7 +2,7 @@
 import numpy as np
 import pylab as plt
 import scipy.signal
-from .analysis import conditionvphis, conditionvphi
+from cringe.tune.analysis import conditionvphis, conditionvphi
 
 
 def vPhiStatsSingle(triangle, signal, fracFromBottom=0.5):
@@ -19,7 +19,7 @@ def vPhiStatsSingle(triangle, signal, fracFromBottom=0.5):
     triangleStepSize = triangle[1] - triangle[0]
     slopes = []
     interpolatedCrossingInds = []
-    for i in plt.find(crossingArray):
+    for i in np.where(crossingArray)[0]:
         if signal[i] - crossingPoint > 0:
             pastCrossingIndex = i + 1
         else:

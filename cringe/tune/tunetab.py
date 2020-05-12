@@ -59,6 +59,7 @@ class TuneTab(QWidget):
 
         self.biasSweeper = BiasSweeper(self, self.mm, self.c)
         self.layout.addWidget(self.biasSweeper)
+        self._test_check_true = True
 
     def packState(self):
         stateVector = {}
@@ -497,27 +498,6 @@ class VPhiDemo(QWidget):
         writeMixFile(os.path.expanduser("~/nasa_daq/matter/autotune_mix.mixing_config"), Mix/100.0)
         # cringe should have created this directory earlier
         np.save(os.path.expanduser("~/.cringe/mix_fractions"), Mix/100.0)
-
-
-
-        # # set all values
-        # for col in xrange(self.c.ncol):
-        #     for row in xrange(self.c.nrow):
-        #         self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=0,d2aB=d2aB[col,row],FBA=0, ARL=0,tria=1)
-        #
-        #
-        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
-        # fba = data[0,0,:,1] #triangle
-        # err = data[0,0,:,0] #signal
-        # np.save("last_last_fba_vphi",data)
-        # lastfbatriangle, lastfbasigsup, lastfbasigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
-        # lastfbastats = vphistats.vPhiStats(fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
-        # plots = ColPlots(self,self.c.ncol,self.c.nrow)
-        # plots.plot(lastfbatriangle,lastfbasigsup)
-        # plots.title("current fba vphis")
-        # plots.xlabel("fba triangle")
-        # plots.ylabel("error")
-        # plots.show()
 
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):

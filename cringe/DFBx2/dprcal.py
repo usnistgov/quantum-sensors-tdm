@@ -119,7 +119,7 @@ class dprcal(QWidget):
 		tc.INIT_slot.clicked.connect(self.sendSlot)
 		
 		self.scale_factor = self.phase_counters[0].width()
-		self.globals_widget.setFixedWidth(self.scale_factor*1.1)
+		self.globals_widget.setFixedWidth(int(self.scale_factor*1.1))
 		
 		'''initialization'''
 # 		print tc.INIT + "Initialize:", tc.ENDC

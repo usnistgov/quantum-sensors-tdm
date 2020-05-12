@@ -180,8 +180,8 @@ class dfbclkcard(QWidget):
 		resize widgets for relative, platform dependent variability
 		'''
 		rm = 45
-		self.card_glb_widget.setFixedWidth(self.dfbclk_widget1.width()/2+10)
-		self.class_interface_widget.setFixedWidth(self.dfbclk_widget1.width()/2+10)
+		self.card_glb_widget.setFixedWidth(int(self.dfbclk_widget1.width()/2+10))
+		self.class_interface_widget.setFixedWidth(int(self.dfbclk_widget1.width()/2+10))
 		
 		'''
 		initialization 

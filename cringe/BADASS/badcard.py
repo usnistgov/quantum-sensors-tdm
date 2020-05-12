@@ -161,9 +161,9 @@ class badcard(QWidget):
 
 
         rm = 10
-        self.bad16_widget.setFixedWidth(self.scale_factor*1.05)
-        self.class_interface_widget.setFixedWidth((self.scale_factor*1.05)/2 - rm/2)
-        self.card_glb_widget.setFixedWidth((self.scale_factor*1.05)/2 - rm/2)
+        self.bad16_widget.setFixedWidth(int(self.scale_factor*1.05))
+        self.class_interface_widget.setFixedWidth(int((self.scale_factor*1.05)/2 - rm/2))
+        self.card_glb_widget.setFixedWidth(int((self.scale_factor*1.05)/2 - rm/2))
 # 		self.file_mgmt_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
 # 		self.sys_glob_hdr_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
 # 		self.class_glob_hdr_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
