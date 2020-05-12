@@ -2065,11 +2065,10 @@ class Cringe(QWidget):
         self.tune_widget.unpackState(self.loadTune["TuneParameters"])
 
 
-def main(args=sys.argv, app=None):
+def main():
     print("cringe.main with args={}".format(args))
 
-    if app is None:
-        app = QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setStyle("plastique")
     app.setStyleSheet("""	QPushbutton{font: 10px; padding: 6px}
                             QToolButton{font: 10px; padding: 6px}
@@ -2099,9 +2098,8 @@ def main(args=sys.argv, app=None):
     p.add_argument('-i', '--interactive', action='store_true', dest='interactive',
                    help='Drop into an interactive IPython window')   #  ADDED JG
     p.add_argument('-r', '--raw', action="store_true", dest="raw", help="add the Calibration tab (experimental)")
-    p.add_argument('-Q', '--quit', action="store_true", dest="quit", help="for testing, quit immediatley after building GUI")
 
-    args = p.parse_args(args[1:])
+    args = p.parse_args()
     if not any(vars(args).values()):
         p.error(tc.BOLD+"No arguments provided. You probably want -L or -F."+tc.END) # this exits
 
@@ -2172,7 +2170,7 @@ def main(args=sys.argv, app=None):
         argfilename=None
 
     win = Cringe(addr_vector=addr_vector, slot_vector=slot_vector, class_vector=class_vector, tower_vector=tower_vector,
-                 argfilename=argfilename, calibrationtab=args.raw, quit=args.quit)
+                 argfilename=argfilename, calibrationtab=args.raw)
 
     win.show()
     if args.interactive:
