@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from .dfbchn import dfbChn
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class scream(QWidget):
@@ -619,7 +620,7 @@ class scream(QWidget):
 	'''						
 	def triA_changed(self, state):
 		
-		print(tc.FCTCALL + "SCREAM CH", self.ch, "triangle A enable:", state, tc.ENDC)
+		logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "triangle A enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 50
 		self.send_cmd(GPI, state)
 		if state == 1:
@@ -629,7 +630,7 @@ class scream(QWidget):
 			
 	def triB_changed(self, state):
 		
-		print(tc.FCTCALL + "SCREAM CH", self.ch, "triangle B enable:", state, tc.ENDC)
+		logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "triangle B enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 51
 		self.send_cmd(GPI, state)
 		if state == 1:
@@ -640,7 +641,7 @@ class scream(QWidget):
 	def a2d_lockpt_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "ADC lock point:", level, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "ADC lock point:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 56
 			self.send_cmd(GPI, level)
 		self.master_vector.a2d_lockpt_slider.setValue(level)
@@ -651,7 +652,7 @@ class scream(QWidget):
 	def d2a_A_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "DAC A offset:", level, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "DAC A offset:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 57
 			self.send_cmd(GPI, level)
 		self.master_vector.d2a_A_slider.setValue(level)
@@ -662,7 +663,7 @@ class scream(QWidget):
 	def d2a_B_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "DAC B offset:", level, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "DAC B offset:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 58
 			self.send_cmd(GPI, level)
 		self.master_vector.d2a_B_slider.setValue(level)
@@ -673,14 +674,14 @@ class scream(QWidget):
 	def data_packet_changed(self, index):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "SEND MODE:", index, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "SEND MODE:", index, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 64
 			self.send_cmd(GPI, index)
 
 	def P_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "P:", level, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "P:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 59
 			level = level & 0b1111111111
 			self.send_cmd(GPI, level)
@@ -688,14 +689,14 @@ class scream(QWidget):
 	def I_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
 			
-			print(tc.FCTCALL + "SCREAM CH", self.ch, "I:", level, tc.ENDC)
+			logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "I:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 60
 			level = level & 0b1111111111
 			self.send_cmd(GPI, level)
 			
 	def FBA_changed(self, state):
 		
-		print(tc.FCTCALL + "SCREAM CH", self.ch, "FB A enable:", state, tc.ENDC)
+		logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "FB A enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 48
 		self.send_cmd(GPI, state)
 		if state == 1:
@@ -706,7 +707,7 @@ class scream(QWidget):
 			
 	def FBB_changed(self, state):
 		
-		print(tc.FCTCALL + "SCREAM CH", self.ch, "FB B enable:", state, tc.ENDC)
+		logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "FB B enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 49
 		self.send_cmd(GPI, state)
 		if state == 1:
@@ -717,7 +718,7 @@ class scream(QWidget):
 			
 	def ARL_changed(self, state):
 		
-		print(tc.FCTCALL + "SCREAM CH", self.ch, "ARL enable:", state, tc.ENDC)
+		logging.debug(tc.FCTCALL + "SCREAM CH", self.ch, "ARL enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 52
 		self.send_cmd(GPI, state)
 		if state == 1:
@@ -732,12 +733,12 @@ class scream(QWidget):
 
 	def send_channel_globals(self):
 		
-		print(tc.FCTCALL + "send channel globals to SCREAM channel", self.ch, tc.ENDC)
+		logging.debug(tc.FCTCALL + "send channel globals to SCREAM channel", self.ch, tc.ENDC)
 		self.GR_changed()
 
 	def GR_changed(self):
 		self.GR = self.GR_button.isChecked()
-		print("SCREAM channel", self.ch, "global relock enable:", self.GR, tc.ENDC)
+		logging.debug("SCREAM channel", self.ch, "global relock enable:", self.GR, tc.ENDC)
 		if self.GR == 1:
 			self.GR_button.setStyleSheet("background-color: #" + tc.green + ";")
 			self.GR_button.setText('ENB')
@@ -749,7 +750,7 @@ class scream(QWidget):
 
 	def ENC_changed(self):
 		self.ENC = self.ENC_button.isChecked()
-		print("SCREAM channel", self.ch, "encode data enable:", self.ENC, tc.ENDC)
+		logging.debug("SCREAM channel", self.ch, "encode data enable:", self.ENC, tc.ENDC)
 		if self.ENC == 1:
 			self.ENC_button.setStyleSheet("background-color: #" + tc.green + ";")
 			self.ENC_button.setText('8b10b')
@@ -764,7 +765,7 @@ class scream(QWidget):
 	
 	def send_channel(self):
 		
-		print(tc.FCTCALL + "send SCREAM CH", self.ch, "control parameters:", tc.ENDC)
+		logging.debug(tc.FCTCALL + "send SCREAM CH", self.ch, "control parameters:", tc.ENDC)
 		self.force_cmd = 1
 		self.triA_changed(self.master_vector.TriA_button.isChecked())
 		self.triB_changed(self.master_vector.TriB_button.isChecked())
@@ -781,7 +782,7 @@ class scream(QWidget):
 
 	def send_card_globals(self):
 		
-		print(tc.FCTCALL + "send class globals:", tc.ENDC)
+		logging.debug(tc.FCTCALL + "send class globals:", tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4()
 		self.send_wreg6()
@@ -912,25 +913,25 @@ class scream(QWidget):
 			self.send_wreg4()
 			
 	def amp_changed(self):
-		print("amp_changed")
+		logging.debug("amp_changed")
 		self.ampDACunits = self.rangeDACunits * self.stepDACunits
-		print(self.ampDACunits)
+		logging.debug(self.ampDACunits)
 		if self.ampDACunits > 16383:
 			self.ampDACunits = 16383
 		self.amp_indicator.setText('%5i'%self.ampDACunits)
 		mV = 1000*self.ampDACunits/16383.0
-		print(mV, str(mV))
+		logging.debug(mV, str(mV))
 		self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
 		
 	def period_changed(self):
-		print("period changed")
+		logging.debug("period changed")
 		self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
 		self.period_indicator.setText('%12i'%self.periodDACunits)
 		uSecs = self.periodDACunits*self.lsync*0.008
-		print(uSecs)
+		logging.debug(uSecs)
 		kHz = 1000/uSecs
-		print(kHz)
+		logging.debug(kHz)
 		self.period_eng_indicator.setText('%8.4f'%uSecs)
 		self.freq_eng_indicator.setText('%6.3f'%kHz)
 
@@ -947,7 +948,7 @@ class scream(QWidget):
 		self.send_wreg4()
 
 	def send_wreg0(self):
-		print("WREG0: page register: COL", self.col)
+		logging.debug("WREG0: page register: COL", self.col)
 		wreg = 0 << 25
 		wregval = wreg + (self.col << 6)
 		self.sendReg(wregval)
@@ -963,11 +964,11 @@ class scream(QWidget):
 			dwell = int(cmd_reg[1:5], base=2)
 			steps = int(cmd_reg[5:9], base=2)
 			step = int(cmd_reg[11:], base=2)
-			print("WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")")	
+			logging.debug("WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")")	
 			self.sendReg((self.wreg4 & 0xFFF7FFF) | (self.GR << 15))
 
 	def sendReg(self, wregval): 
-		print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
@@ -979,7 +980,7 @@ class scream(QWidget):
 		
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		print(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
+		logging.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1

@@ -1,6 +1,7 @@
 import struct
 import named_serial
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 #########################################################################
@@ -44,14 +45,14 @@ class EMU_Card(object):
         
         self.address = address
         
-        print(tc.INIT + "building EMU card: slot 19-21 / address", self.address, tc.ENDC)
+        logging.debug(tc.INIT + "building EMU card: slot 19-21 / address", self.address, tc.ENDC)
         
 
     ######################################################################################
 
     def powerOn(self):
         ''' Turn crate EMU/PCCC power card on. '''
-        print(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "ON", tc.ENDC)
+        logging.debug(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "ON", tc.ENDC)
         
 
         wregval = 0b001 << 25
@@ -62,7 +63,7 @@ class EMU_Card(object):
 
     def powerOff(self):
         ''' Turn crate EMU/PCCC power card off. '''
-        print(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "OFF", tc.ENDC)
+        logging.debug(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "OFF", tc.ENDC)
         
 
         wregval = 0b010 << 25
@@ -81,7 +82,7 @@ class EMU_Card(object):
         self.sendReg(wregval)
                 
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

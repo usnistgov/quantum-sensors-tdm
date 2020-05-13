@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import *
 import struct
 from instruments import bluebox
 from cringe.shared import terminal_colors as tc
+import logging
 
 class TowerChannel(QWidget):
     
@@ -45,7 +46,7 @@ class TowerChannel(QWidget):
         
         if parent == None:       
             self.show()
-            print(self.width())
+            logging.debug(self.width())
         
             
     def dacspin_changed(self):
@@ -53,7 +54,7 @@ class TowerChannel(QWidget):
         self.sendvalue(value)
 
     def sendvalue(self,dacvalue):
-        print(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
+        logging.debug(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
         self.bluebox.setVoltDACUnits(dacvalue)
 
 

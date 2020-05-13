@@ -76,7 +76,7 @@ class CalDemo(QWidget):
         self.layout.addLayout(layout)
 
     def calDemoCard1Channel1(self):
-        print("starting demo")
+        logging.debug("starting demo")
 
 
 #     def fibertomask(self, fibernum):
@@ -99,12 +99,12 @@ class CalDemo(QWidget):
 
 
     def printtestpattern(self):
-        print(self.parent)
+        logging.debug(self.parent)
         tp_mode = self.cringe.tp_mode
-        print((tp_mode.itemText(tp_mode.currentIndex())))
+        logging.debug((tp_mode.itemText(tp_mode.currentIndex())))
         TP = self.cringe.TP
         lobytes,hibytes=self.cringe.lohibytes()
-        print(hex(lobytes),hex(hibytes))
+        logging.debug(hex(lobytes),hex(hibytes))
 
     def increment_counter(self):
         dfbcard = self.cringe.crate_widgets[1]
@@ -117,9 +117,9 @@ class CalDemo(QWidget):
         lobytes,hibytes=self.cringe.lohibytes()
         data = self.c.getNewData(divideNsamp=False, sendMode="raw")
         ncorrect = (data[0,0,:,0]==lobytes).sum()+(data[0,0,:,0]==hibytes).sum()
-        print((list(map(hex, data[0,0,:20,0]))))
-        print((list(map(hex, data[0,0,:20,1]))))
-        print((ncorrect/float(data.size)))
+        logging.debug((list(map(hex, data[0,0,:20,0]))))
+        logging.debug((list(map(hex, data[0,0,:20,1]))))
+        logging.debug((ncorrect/float(data.size)))
         return ncorrect
 
     def sweepcounter(self):

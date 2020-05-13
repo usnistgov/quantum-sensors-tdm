@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import *
 
 import struct
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class badChn(QWidget):
@@ -297,7 +298,7 @@ class badChn(QWidget):
         self.d2a_hi_slider.setValue(16383)
         
     def send_channel(self):
-        print(tc.FCTCALL + "send BAD16 CHN", self.chn, ": index & arrayed register values", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send BAD16 CHN", self.chn, ": index & arrayed register values", tc.ENDC)
         self.send_wreg2()
         self.send_wreg4()
         self.send_wreg5()
@@ -313,14 +314,14 @@ class badChn(QWidget):
             self.lock_button.setText('static')
     
     def send_wreg2(self):
-        print("BAD16:WREG2: channel index")
+        logging.debug("BAD16:WREG2: channel index")
         wreg = 2 << 25
         wregval = wreg | self.chn
         self.sendReg(wregval)
         
 
     def send_wreg4(self):
-        print("BAD16:WREG4: channel booleans & DAC high value")
+        logging.debug("BAD16:WREG4: channel booleans & DAC high value")
         wreg = 4 << 25
         wreg = wreg | (int(self.dc) << 21)
         wreg = wreg | (int(self.lohi) << 20)
@@ -330,14 +331,14 @@ class badChn(QWidget):
         
 
     def send_wreg5(self):
-        print("BAD16:WREG5: channel DAC low value")
+        logging.debug("BAD16:WREG5: channel DAC low value")
         wreg = 5 << 25
         wregval = wreg | (self.d2a_lo_slider.value() << 8)
         self.sendReg(wregval)
         
         
     def sendReg(self, wregval): 
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

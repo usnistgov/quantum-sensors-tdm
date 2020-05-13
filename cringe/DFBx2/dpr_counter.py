@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 
 import struct
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class dpr_counter(QWidget):
@@ -185,10 +186,10 @@ class dpr_counter(QWidget):
 
         if self.counter == 0:         
             self.tot_steps.setText(str(self.cal_off+self.phase_trim_spin.value()))
-            print(tc.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), tc.ENDC)
+            logging.debug(tc.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), tc.ENDC)
         else:
             self.tot_steps.setText(str(self.phase_trim_spin.value()))
-            print(tc.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, tc.ENDC)
+            logging.debug(tc.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, tc.ENDC)
         
 
         self.tot_degs.setText(str(int(self.tot_steps.text())*9))
@@ -196,17 +197,17 @@ class dpr_counter(QWidget):
 
         self.enableDPR()
 
-        print("send GPI2: phase adjust counter (pll_counter)")
+        logging.debug("send GPI2: phase adjust counter (pll_counter)")
         self.sendReg(self.GPI2)
 
         if val > self.lastSpinVal:
-            print("increment "+ self.pcs_str)
+            logging.debug("increment "+ self.pcs_str)
             self.sendReg(self.GPI2 + 0b01)
         else:
-            print("decrement "+ self.pcs_str)
+            logging.debug("decrement "+ self.pcs_str)
             self.sendReg(self.GPI2 + 0b10)
             
-        print("reset phase step register (dyn_phase)")
+        logging.debug("reset phase step register (dyn_phase)")
         self.sendReg(self.GPI2)
         
         self.disableDPR()
@@ -221,7 +222,7 @@ class dpr_counter(QWidget):
             self.tot_steps.setStyleSheet("background-color: #F08080;")
             
     def commit_cal(self):
-        print(tc.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, tc.ENDC)
+        logging.debug(tc.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, tc.ENDC)
         self.commitFlag = True
         self.cal_offset.setStyleSheet("background-color: #90EE90;")
         self.tot_steps.setStyleSheet("background-color: #90EE90;")
@@ -236,7 +237,7 @@ class dpr_counter(QWidget):
             self.tot_degs.setText(str(self.cal_off*9))
             mask = 0xfffe01f
             wregval = (self.GPI1 & mask) | ((self.cal_off & 0xff) << 5)
-            print("send phase trim coefficient & slot:", self.cal_off,"/", self.slot)
+            logging.debug("send phase trim coefficient & slot:", self.cal_off,"/", self.slot)
             self.sendReg(wregval)
         self.ptrim[self.counter] = int(self.tot_degs.text())
         self.commitFlag = False
@@ -244,7 +245,7 @@ class dpr_counter(QWidget):
         
 
     def calcounter(self):
-        print(tc.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, tc.ENDC)
+        logging.debug(tc.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, tc.ENDC)
         
         if self.counter == 0:
             '''
@@ -255,12 +256,12 @@ class dpr_counter(QWidget):
              But changing a spin value calls newvalue which automatically steps the phase.
              So we must use a flag, self.resetFlag, set in resetPhase, to branch out of NEWVALUE when called from there.
             '''
-            print(tc.FCTCALL + "firmware calibrate ALL counters:", tc.ENDC)
-            print("send GPI1: phase trim coefficient & slot:", self.cal_offset.text(),"/", self.slot)
+            logging.debug(tc.FCTCALL + "firmware calibrate ALL counters:", tc.ENDC)
+            logging.debug("send GPI1: phase trim coefficient & slot:", self.cal_offset.text(),"/", self.slot)
             wregval = (self.GPI1 & self.phtr_mask) | ((int(self.cal_offset.text()) & 0xff) << 5)
             self.sendReg(wregval)
             
-            print("send GPI2: phase adjust counter (pll_counter)")
+            logging.debug("send GPI2: phase adjust counter (pll_counter)")
             self.sendReg(self.GPI2)
             
 
@@ -268,14 +269,14 @@ class dpr_counter(QWidget):
             self.tot_steps.setText(self.cal_offset.text())
             self.tot_degs.setText(str(int(self.tot_steps.text())*9))
 
-            print(tc.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", tc.ENDC)
+            logging.debug(tc.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", tc.ENDC)
             
             self.enableDPR()
 
-            print("phase calibrate = True")
+            logging.debug("phase calibrate = True")
             self.sendReg(self.GPI3 + 0b1001)    # PC/SMenb => HI
 
-            print("phase calibrate = False")
+            logging.debug("phase calibrate = False")
             self.sendReg(self.GPI3 + 0b0001)    # PC => LO (SMenb => HI)    
 
             self.disableDPR()
@@ -283,7 +284,7 @@ class dpr_counter(QWidget):
 
         else:
             steps = self.phase_trim_spin.value() - int(self.cal_offset.text())
-            print("software calibrate (for phase trim):", -steps, "phase steps applied")
+            logging.debug("software calibrate (for phase trim):", -steps, "phase steps applied")
             while steps != 0:
                 if steps > 0:
                     self.phase_trim_spin.setValue(self.phase_trim_spin.value() - 1)
@@ -298,7 +299,7 @@ class dpr_counter(QWidget):
         self.ptrim[self.counter] = int(self.tot_steps.text())
         
     def loadCal(self, cal_val):
-        print(tc.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, tc.ENDC)
+        logging.debug(tc.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, tc.ENDC)
 #         self.cal_off = self.coeffs[self.counter]
 #         print self.counter, self.cal_off
         self.cal_off = cal_val
@@ -311,15 +312,15 @@ class dpr_counter(QWidget):
         
                
     def enableDPR(self):            # set True before sending GPI 2/3
-        print("enable DPR", tc.ENDC)
+        logging.debug("enable DPR", tc.ENDC)
         self.sendReg(self.GPI3 + 0b1)
 
     def disableDPR(self):            # set False after sending GPI 2/3
-        print("disable DPR", tc.ENDC)
+        logging.debug("disable DPR", tc.ENDC)
         self.sendReg(self.GPI3)
 
     def resetPhase(self):
-        print(tc.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, tc.ENDC)
+        logging.debug(tc.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, tc.ENDC)
         
         self.resetFlag = True
         if self.counter == 0:                   # firmware PLL reset
@@ -327,10 +328,10 @@ class dpr_counter(QWidget):
             addr = 3
             wreg = addr << 17
             wregval = wreg + 5                  # PR/SMenb bit HI
-            print("phase reset = True")
+            logging.debug("phase reset = True")
             self.sendReg(wregval)
             wregval = wreg + 1                  # PR bit LO (SMenb HI)
-            print("phase reset = False")
+            logging.debug("phase reset = False")
             self.sendReg(wregval)
             self.allCountersReset = True
             self.disableDPR()
@@ -358,7 +359,7 @@ class dpr_counter(QWidget):
         self.resetFlag = False
             
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 import struct
 from . import towerchannel
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class TowerCard(QWidget):
@@ -54,7 +55,7 @@ class TowerCard(QWidget):
         
         if parent == None:       
             self.show()
-            print(self.width())
+            logging.debug(self.width())
         
             
     def allcontrolchannel_dacspin_changed(self):
@@ -66,7 +67,7 @@ class TowerCard(QWidget):
         oldvalues = [tc.dacspin.value() for tc in self.towerchannels]
         for tc in self.towerchannels:
             tc.dacspin.setValue(tc.shockvalue)
-        print(("sleeping for %0.2f seconds"%self.shocksleepseconds))
+        logging.debug(("sleeping for %0.2f seconds"%self.shocksleepseconds))
         time.sleep(self.shocksleepseconds)
         for (tc, oldvalue) in zip(self.towerchannels, oldvalues):
             tc.dacspin.setValue(oldvalue)

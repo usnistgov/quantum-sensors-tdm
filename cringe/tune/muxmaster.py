@@ -13,18 +13,18 @@ class MuxMaster():
         badstates = []
         for idx, val in enumerate(self.cringe.class_vector):
             #if val == "DFBCLK":
-                #print("DFBCLK, dont care")
+                #logging.debug("DFBCLK, dont care")
             if val == "DFBx2":
-                #print(idx, val)
+                #logging.debug(idx, val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget2)
             if val == "BAD16":
-                #print(idx,val)
+                #logging.debug(idx,val)
                 badraps.append(self.cringe.crate_widgets[idx].badrap_widget1)
                 badstates.append(self.cringe.crate_widgets[idx].badrap_widget2)
-        #print(dfbraps)
-        #print(badraps)
-        #print(badstates)
+        #logging.debug(dfbraps)
+        #logging.debug(badraps)
+        #logging.debug(badstates)
         self.dfbraps = dfbraps
         self.badraps = badraps
         self.badstates = badstates
@@ -34,14 +34,14 @@ class MuxMaster():
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacAoffsets.append(dfbchn.d2a_A_spin.value())
-        print(dacAoffsets)
+        logging.debug(dacAoffsets)
 
     def getdacBoffsets(self):
         dacBoffsets = []
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacBoffsets.append(dfbchn.d2a_B_spin.value())
-        print(dacBoffsets)
+        logging.debug(dacBoffsets)
 
     def getadcLockpoints(self):
         adcLockpoints = []
@@ -51,9 +51,9 @@ class MuxMaster():
         return adcLockpoints
 
     def getbaddacHighs(self):
-        print((self.getbadroworder()))
+        logging.debug((self.getbadroworder()))
         baddacHighs = []
-        print((len(self.badraps), len(self.badraps[0].chn_vectors)))
+        logging.debug((len(self.badraps), len(self.badraps[0].chn_vectors)))
         for badrap in self.badraps:
             for chn in badrap.chn_vectors:
 
@@ -69,12 +69,12 @@ class MuxMaster():
     def getbadroworder(self):
         roworder = []
         for i,sv_array in enumerate(self.badstates):
-            print("a")
+            logging.debug("a")
             for sv in sv_array.state_vectors[:self.seqln]:
                 checked = [button.isChecked() for button in sv.buttons]
                 assert(np.sum(checked)==1)
                 roworder.append(i*self.seqln+find(checked)[0])
-                print(checked)
+                logging.debug(checked)
         return roworder
 
     def changedfbrow(self,col=None,row=None,tria=None,trib=None,a2d=None,d2aA=None,d2aB=None,P=None,I=None,FBA=None,FBB=None,ARL=None,data_packet=None,dynamic=None):

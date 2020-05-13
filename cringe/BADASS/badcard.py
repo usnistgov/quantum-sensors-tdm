@@ -11,6 +11,7 @@ import named_serial
 from . import badrap
 from . import sv_array
 from cringe.shared import terminal_colors as tc
+import logging
 import cringe.DFBx2.dprcal as dprcal
 
 
@@ -54,7 +55,7 @@ class badcard(QWidget):
         self.layout_widget = QWidget(self)
         self.layout = QGridLayout(self)
 
-        print(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
+        logging.debug(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
         
 
         '''
@@ -171,7 +172,7 @@ class badcard(QWidget):
 
 
     def seqln_changed(self, seqln):
-        print(tc.FCTCALL + "send SEQLN to BAD16 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send SEQLN to BAD16 card:", tc.ENDC)
         self.seqln = seqln
         self.send_wreg0()
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
@@ -180,7 +181,7 @@ class badcard(QWidget):
         
 
     def LED_changed(self):
-        print(tc.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + tc.ENDC)
+        logging.debug(tc.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + tc.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
             self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
@@ -192,7 +193,7 @@ class badcard(QWidget):
         
 
     def status_changed(self):
-        print(tc.FCTCALL + "send ST boolean to BAD16 card:" + tc.ENDC)
+        logging.debug(tc.FCTCALL + "send ST boolean to BAD16 card:" + tc.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
             self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
@@ -207,26 +208,26 @@ class badcard(QWidget):
         self.INT = init
         if self.INT != tc.INIT_state:
             if self.INT == 1:
-                print(tc.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + tc.ENDC)
+                logging.debug(tc.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + tc.ENDC)
             else:
-                print(tc.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + tc.ENDC)
+                logging.debug(tc.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + tc.ENDC)
             self.send_wreg0()
             
 
     def send_triangle(self, wreg1):
-        print(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
         
 
     def send_class_globals(self, wreg0):
-        print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
         
 
     def send_card_globals(self):
-        print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.send_wreg0()
         
 
@@ -245,7 +246,7 @@ class badcard(QWidget):
         if self.parent != None:
             self.parent.send_bad16_wreg0(self.ST, self.LED, self.INT, self.address)
         else:
-            print("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
+            logging.debug("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
             
             self.wreg0 = (0 << 25) | (self.ST << 16) | (self.LED << 14) | (self.bad_delay << 10) | (self.INT << 8) | self.seqln
             self.sendReg(self.wreg0)
@@ -255,12 +256,12 @@ class badcard(QWidget):
         dwell = int(cmd_reg[1:5], base=2)
         steps = int(cmd_reg[5:9], base=2)
         step = int(cmd_reg[11:], base=2)
-        print("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
+        logging.debug("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
         self.sendReg(self.wreg1)
         
 
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

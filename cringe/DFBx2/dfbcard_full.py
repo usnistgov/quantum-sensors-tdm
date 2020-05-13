@@ -12,6 +12,7 @@ import named_serial
 from . import dfbrap
 from . import dprcal
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class dfbx2(QWidget):
@@ -771,12 +772,12 @@ class dfbx2(QWidget):
 
     def DFBx2class_glb_chg_msg(self):
         
-        print(tc.FCTCALL + "DFBx2 CLASS global changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "DFBx2 CLASS global changed:", tc.ENDC)
 
 
     def ARLsense_changed(self):
         
-        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.ARLsense = self.ARLsense_spin.value()
         self.ARLsense_indicator.setText("%5i"%(2**self.ARLsense))
         self.ARLsense_eng_indicator.setText(str((2**self.ARLsense)/16.383)[:6])
@@ -785,7 +786,7 @@ class dfbx2(QWidget):
 
     def RLDpos_changed(self):
         
-        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDpos = self.RLDpos_spin.value()
         self.RLDpos_indicator.setText("%5i"%(2**self.RLDpos))
         self.RLDpos_eng_indicator.setText(str((2**self.RLDpos)*self.frame_period)[:6])
@@ -794,7 +795,7 @@ class dfbx2(QWidget):
 
     def RLDneg_changed(self):
         
-        print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDneg = self.RLDneg_spin.value()
         self.RLDneg_indicator.setText("%5i"%(2**self.RLDneg))
         self.RLDneg_eng_indicator.setText(str((2**self.RLDneg)*self.frame_period)[:6])
@@ -803,7 +804,7 @@ class dfbx2(QWidget):
 
     def dwell_changed(self):
         
-        print(tc.FCTCALL + "triangle step dwell changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "triangle step dwell changed:", tc.ENDC)
         self.dwell_val = self.dwell.value()
         self.dwellDACunits = 2**(self.dwell_val)
 # 		self.dwell_indicator.setText('%5i'%self.dwellDACunits)
@@ -817,7 +818,7 @@ class dfbx2(QWidget):
 
     def range_changed(self):
         
-        print(tc.FCTCALL + "triangle number of steps changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "triangle number of steps changed:", tc.ENDC)
         self.range_val = self.range.value()
         self.rangeDACunits = 2**(self.range_val)
 # 		self.range_indicator.setText('%5i'%self.rangeDACunits)
@@ -836,7 +837,7 @@ class dfbx2(QWidget):
 
     def step_changed(self):
         
-        print(tc.FCTCALL + "triangle step size changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "triangle step size changed:", tc.ENDC)
         self.step_val = self.step.value()
         self.stepDACunits = self.step_val
         self.amp_changed()
@@ -851,7 +852,7 @@ class dfbx2(QWidget):
         
 
     def amp_changed(self):
-        print("amplitude changed")
+        logging.debug("amplitude changed")
         self.ampDACunits = self.rangeDACunits * self.stepDACunits
 # 		print self.ampDACunits
         if self.ampDACunits > 16383:
@@ -863,7 +864,7 @@ class dfbx2(QWidget):
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
 
     def period_changed(self):
-        print("period changed")
+        logging.debug("period changed")
         self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
         self.period_indicator.setText('%12i'%self.periodDACunits)
         if self.tri_idx == 0:
@@ -878,7 +879,7 @@ class dfbx2(QWidget):
 
     def tri_idx_changed(self):
         
-        print(tc.FCTCALL + "triangle timebase changed:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "triangle timebase changed:", tc.ENDC)
         self.tri_idx = self.tri_idx_button.isChecked()
         self.period_changed()
         if self.tri_idx ==1:
@@ -914,7 +915,7 @@ class dfbx2(QWidget):
 
     def send_class_globals(self):
         
-        print(tc.FCTCALL + "send class globals:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send class globals:", tc.ENDC)
 # 		self.send_wreg0()
 # 		self.send_wreg4()
         self.send_wreg6()
@@ -923,7 +924,7 @@ class dfbx2(QWidget):
 
     def send_triangle(self):
         
-        print(tc.FCTCALL + "send triangle parameters to both channels:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send triangle parameters to both channels:", tc.ENDC)
         self.send_wreg0(1)
         self.send_wreg4()
         self.send_wreg0(2)
@@ -932,43 +933,43 @@ class dfbx2(QWidget):
 
     def send_card_globals(self):
         
-        print(tc.FCTCALL + "send card globals:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals:", tc.ENDC)
         self.send_wreg7()
         
 
     def send_wreg0(self, col):
-        print("WREG0: page register")
+        logging.debug("WREG0: page register")
         wreg = 0 << 25
         wregval = wreg + (col << 6)
         self.sendReg(wregval)
 
     def send_wreg4(self):
-        print("WREG4: triangle parameters & GR")
+        logging.debug("WREG4: triangle parameters & GR")
         wreg = 4 << 25
         wregval = wreg + (self.tri_idx << 24) + (self.dwell_val << 20) + (self.range_val << 16) + self.GR + self.step_val
         self.sendReg(wregval)
 
     def send_wreg6(self):
-        print("WREG6: global parameters: PS, XPT, ARL, NSAMP")
+        logging.debug("WREG6: global parameters: PS, XPT, ARL, NSAMP")
         wreg = 6 << 25
         wregval = wreg + (self.PS << 24) + (self.XPT << 21) + (self.RLDpos << 16) + (self.ARLsense << 12) +(self.RLDneg << 8) + self.NSAMP
         self.sendReg(wregval)
 
     def send_wreg7(self):
-        print("WREG7: global parameters: LED, ST, delays, sequence length, SETT")
+        logging.debug("WREG7: global parameters: LED, ST, delays, sequence length, SETT")
         wreg = 7 << 25
         wreg = wreg + (self.LED << 23) + (self.ST << 22) + (self.prop_delay << 18) + (self.card_delay << 14)
         wregval = wreg + (self.seqln << 8) + self.SETT
         self.sendReg(wregval)
 
     def send_GPI4(self):
-        print("GPI4: test mode select")
+        logging.debug("GPI4: test mode select")
         wreg = 4 << 17
         wregval = wreg + self.TP
         self.sendReg(wregval)
 
     def send_GPI5(self):
-        print("GPI5: test pattern hi-bytes [31..16]")
+        logging.debug("GPI5: test pattern hi-bytes [31..16]")
         if self.TP == 1:
             hibytes = 0x5555
         if self.TP ==2:
@@ -992,7 +993,7 @@ class dfbx2(QWidget):
         self.sendReg(wregval)
 
     def send_GPI6(self):
-        print("GPI6: test pattern lo-bytes [15..0]")
+        logging.debug("GPI6: test pattern lo-bytes [15..0]")
         if self.TP == 1:
             lobytes = 0x5555
         if self.TP ==2:
@@ -1016,7 +1017,7 @@ class dfbx2(QWidget):
         self.sendReg(wregval)
 
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

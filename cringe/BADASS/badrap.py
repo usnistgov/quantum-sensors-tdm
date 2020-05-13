@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from .badchn_builder import badChn
 from cringe.shared import terminal_colors as tc
+import logging
 
 
 class badrap(QWidget):
@@ -493,7 +494,7 @@ class badrap(QWidget):
         self.send_wreg0()
 
     def send_globals(self):
-        print(tc.FCTCALL + "send BAD16 globals:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send BAD16 globals:", tc.ENDC)
         self.send_wreg0()
 # 		self.send_wreg1()
         
@@ -530,26 +531,26 @@ class badrap(QWidget):
             self.send_wreg1()
 
     def amp_changed(self):
-        print("amp_changed")
+        logging.debug("amp_changed")
         self.ampDACunits = self.rangeDACunits * self.stepDACunits
-        print(self.ampDACunits)
+        logging.debug(self.ampDACunits)
         if self.ampDACunits > 16383:
             self.ampDACunits = 16383
         self.amp_indicator.setText('%5i'%self.ampDACunits)
         mV = 1000*self.ampDACunits/16383.0
-        print(mV, str(mV))
+        logging.debug(mV, str(mV))
         self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
         
 
     def period_changed(self):
-        print("period changed")
+        logging.debug("period changed")
         self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
         self.period_indicator.setText('%12i'%self.periodDACunits)
         uSecs = self.periodDACunits*self.lsync*0.008
-        print(uSecs)
+        logging.debug(uSecs)
         kHz = 1000/uSecs
-        print(kHz)
+        logging.debug(kHz)
         self.period_eng_indicator.setText('%8.4f'%uSecs)
         self.freq_eng_indicator.setText('%6.3f'%kHz)
         
@@ -566,7 +567,7 @@ class badrap(QWidget):
         self.send_wreg1()
 
     def send_wreg0(self):
-        print("BAD16: WREG0: legacy globals")
+        logging.debug("BAD16: WREG0: legacy globals")
         wreg = 0 << 25
         wregval = wreg | (self.status << 16) | (self.led << 14) | (self.delay << 10) | (self.init << 8)| self.seqln
 # 		wregval = wreg | (self.led << 24) | (self.status << 16) | (self.delay << 10) | (self.seqln << 1)
@@ -574,14 +575,14 @@ class badrap(QWidget):
         
 
     def send_wreg1(self):
-        print("BAD16:WREG1: triangle parameters")
+        logging.debug("BAD16:WREG1: triangle parameters")
         wreg = 1 << 25
         wregval = wreg + (self.tri_idx << 24) + (self.dwell_val << 20) + (self.range_val << 16) + self.step_val
         self.sendReg(wregval)
         
 
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

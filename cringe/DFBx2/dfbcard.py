@@ -12,6 +12,7 @@ import named_serial
 from . import dfbrap
 from . import dprcal
 from cringe.shared import terminal_colors as tc
+import logging
 
 class dfbcard(QWidget):
 
@@ -84,7 +85,7 @@ class dfbcard(QWidget):
         self.layout_widget = QWidget(self)
         self.layout = QGridLayout(self)
 
-        print(tc.INIT + "building DFBx2 card: slot", self.slot, "/ address", self.address, tc.ENDC)
+        logging.debug(tc.INIT + "building DFBx2 card: slot", self.slot, "/ address", self.address, tc.ENDC)
         
 
         '''
@@ -202,7 +203,7 @@ class dfbcard(QWidget):
                 self.dfbx2_widget2.state_vectors[idx].setEnabled(0)
 
     def seqln_changed(self, seqln):
-        print(tc.FCTCALL + "send SEQLN to DFBx2 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send SEQLN to DFBx2 card:", tc.ENDC)
         self.seqln = seqln
 # 		self.wreg7 = ((self.wreg7 & 0xfffc0ff) | (self.seqln << 8))
         self.send_dfb_wreg7()
@@ -218,7 +219,7 @@ class dfbcard(QWidget):
         
 
     def LED_changed(self):
-        print(tc.FCTCALL + "send LED boolean (True = OFF) to DFBx2 card:" + tc.ENDC)
+        logging.debug(tc.FCTCALL + "send LED boolean (True = OFF) to DFBx2 card:" + tc.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
             self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
@@ -231,7 +232,7 @@ class dfbcard(QWidget):
         
 
     def status_changed(self):
-        print(tc.FCTCALL + "send ST boolean to DFBx2 card:" + tc.ENDC)
+        logging.debug(tc.FCTCALL + "send ST boolean to DFBx2 card:" + tc.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
             self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
@@ -242,13 +243,13 @@ class dfbcard(QWidget):
         
 
     def send_triangle(self, wreg4):
-        print(tc.FCTCALL + "send triangle parameters to DFB CH1 on DFBx2 card:", tc.ENDC)
-        print("DFB:WREG0: page register: CH 1")
+        logging.debug(tc.FCTCALL + "send triangle parameters to DFB CH1 on DFBx2 card:", tc.ENDC)
+        logging.debug("DFB:WREG0: page register: CH 1")
         self.sendReg(1 << 6)
         self.dfbx2_widget1.send_wreg4(wreg4)
         
-        print(tc.FCTCALL + "send triangle parameters to DFB CH2 on DFBx2 card:", tc.ENDC)
-        print("DFB:WREG0: page register: CH 2")
+        logging.debug(tc.FCTCALL + "send triangle parameters to DFB CH2 on DFBx2 card:", tc.ENDC)
+        logging.debug("DFB:WREG0: page register: CH 2")
         self.sendReg(2 << 6)
         self.dfbx2_widget2.send_wreg4(wreg4)
         
@@ -259,14 +260,14 @@ class dfbcard(QWidget):
 # 		print "BROADCAST CHANNEL:", state
 
     def send_class_globals(self, wreg6, wreg7):
-        print(tc.FCTCALL + "send class globals to DFBx2 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send class globals to DFBx2 card:", tc.ENDC)
         self.wreg6 = wreg6
         self.wreg7 = wreg7
         self.send_global_regs()
         
 
     def send_card_globals(self):
-        print(tc.FCTCALL + "send card globals to DFBx2 card:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals to DFBx2 card:", tc.ENDC)
         self.send_dfbx2_wreg6()
         self.send_dfb_wreg7()
         
@@ -276,14 +277,14 @@ class dfbcard(QWidget):
         PS = cmd_reg[0]
         XPT = int(cmd_reg[1:4], base=2)
         NSAMP = int(cmd_reg[17:], base=2)
-        print("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", PS, XPT, NSAMP)
+        logging.debug("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", PS, XPT, NSAMP)
         self.sendReg(self.wreg6)
         cmd_reg = bin(self.wreg7)[5:].zfill(25)
         PD = int(cmd_reg[3:7], base=2)
         CD = int(cmd_reg[7:11], base=2)
         SL = int(cmd_reg[11:17], base=2)
         SE = int(cmd_reg[17:], base=2)
-        print("DFB:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE)
+        logging.debug("DFB:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE)
         self.sendReg((self.wreg7 & 0xF3FFFFF) | (self.LED << 23) | (self.ST << 22))
         
 
@@ -291,7 +292,7 @@ class dfbcard(QWidget):
         if self.parent != None:
             self.parent.send_dfbx2_wreg6(self.address)
         else:
-            print("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", self.PS, self.dfbx2_XPT, self.NSAMP)
+            logging.debug("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", self.PS, self.dfbx2_XPT, self.NSAMP)
             
             self.wreg6 = (6 << 25) | (self.PS << 24) | (self.dfbx2_XPT << 21) | self.NSAMP
             self.sendReg(self.wreg6)
@@ -300,7 +301,7 @@ class dfbcard(QWidget):
         if self.parent != None:
             self.parent.send_dfb_wreg7(self.LED, self.ST, self.address)
         else:
-            print("DFB:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
+            logging.debug("DFB:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
                 self.dfb_delay, self.seqln, self.SETT)
             self.wreg7 = (7 << 25) | (self.LED << 23) | (self.ST << 22) | (self.prop_delay << 18) \
                 | (self.dfb_delay << 14) | (self.seqln << 8) | self.SETT
@@ -312,14 +313,14 @@ class dfbcard(QWidget):
 # 		self.sendReg(self.wreg7 | (self.LED << 23) | (self.ST << 22))
 
     def send_GPI4(self):
-        print("DFB:GPI4: test mode select")
+        logging.debug("DFB:GPI4: test mode select")
         wreg = 4 << 17
         wregval = wreg | self.TP
         self.sendReg(wregval)
         
 
     def send_GPI5(self):
-        print("DFB:GPI5: test pattern hi-bytes [31..16]")
+        logging.debug("DFB:GPI5: test pattern hi-bytes [31..16]")
         if self.TP == 1:
             hibytes = 0x5555
         if self.TP ==2:
@@ -344,7 +345,7 @@ class dfbcard(QWidget):
         
 
     def send_GPI6(self):
-        print("DFB:GPI6: test pattern lo-bytes [15..0]")
+        logging.debug("DFB:GPI6: test pattern lo-bytes [15..0]")
         if self.TP == 1:
             lobytes = 0x5555
         if self.TP ==2:
@@ -369,7 +370,7 @@ class dfbcard(QWidget):
         
 
     def sendReg(self, wregval):
-        print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
