@@ -45,14 +45,14 @@ class EMU_Card(object):
         self.address = address
         
         print(tc.INIT + "building EMU card: slot 19-21 / address", self.address, tc.ENDC)
-        print()
+        
 
     ######################################################################################
 
     def powerOn(self):
         ''' Turn crate EMU/PCCC power card on. '''
         print(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "ON", tc.ENDC)
-        print()
+        
 
         wregval = 0b001 << 25
 
@@ -63,7 +63,7 @@ class EMU_Card(object):
     def powerOff(self):
         ''' Turn crate EMU/PCCC power card off. '''
         print(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "OFF", tc.ENDC)
-        print()
+        
 
         wregval = 0b010 << 25
 

@@ -184,13 +184,13 @@ class clkrap(QWidget):
     def resync(self):
         if self.CLKstate == 1:
             print(tc.FCTCALL + "resynchronize system:", tc.ENDC)
-            print()
+            
             self.CLKstate_button.click()
             time.sleep(1)
             self.CLKstate_button.click()
         else:
             print(tc.FAIL + "line clock must be enabled for RESYNC:", tc.ENDC)
-            print()
+            
 
     def line_period_changed(self):
         self.line_period_indicator.setText(str(8*(self.lsync)))
@@ -207,21 +207,21 @@ class clkrap(QWidget):
         wreg = 1 << 25
         wregval = wreg | (self.notCLKstate << 24) | (self.CLKstate << 23)
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg2(self):
         print("CLK:WREG2: LSYNC-1:", self.lsync_minus1)
         wreg = 2 << 25
         wregval = wreg | self.lsync_minus1
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg7(self):
         print("CLK:WREG7: sequence length:", self.seqln)
         wreg = 7 << 25
         wregval = wreg | (self.seqln << 8)
         self.sendReg(wregval)
-        print()
+        
 
     def sendReg(self, wregval):
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

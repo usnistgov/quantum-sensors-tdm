@@ -88,7 +88,7 @@ class dfbscard(QWidget):
 		self.layout = QGridLayout(self)
 		
 		print(tc.INIT + "building DFBscream card: slot", self.slot, "/ address", self.address, tc.ENDC)
-		print()
+		
 		
 		'''
 		build widget for CARD GLOBAL VARIABLE control
@@ -218,7 +218,7 @@ class dfbscard(QWidget):
 		self.dfbs_widget3.enbDiagnostic(self.ST)
 		
 	def send_card_globals(self):
-		print()
+		
 		print(tc.FCTCALL + "send card globals to SCREAM card:", tc.ENDC)
 		self.LED_changed()
 		self.status_changed()

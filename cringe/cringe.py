@@ -143,7 +143,7 @@ class Cringe(QWidget):
         self.layout = QGridLayout(self)
 
         print(tc.INIT + tc.BOLD + "building GUI" + tc.ENDC)
-        print()
+        
 
         '''
         build widget for file management controls
@@ -822,7 +822,7 @@ class Cringe(QWidget):
 
     def change_seqln(self):
         print(tc.WARNING + "SEQLN changed:", tc.ENDC)
-        print()
+        
         print(tc.FCTCALL + "send SEQLN parameter to all cards:", tc.ENDC)
         self.seqln = self.seqln_spin.value()
         for idx, val in enumerate(self.class_vector):
@@ -854,7 +854,7 @@ class Cringe(QWidget):
         if self.lsync == self.last_lsync:
             return
         print(tc.WARNING + "Line period changed:", self.lsync *8, "ns", tc.ENDC)
-        print()
+        
         self.crate_widgets[0].dfbclk_widget2.lsync_indicator.setText(str(self.lsync)) # when the clock widget sends wreg2 it actually sends lsync to the clock card
         if self.lsync < 40:
             # 			print tc.FCTCALL + "parallel stream engaged" + tc.ENDC
@@ -867,7 +867,7 @@ class Cringe(QWidget):
     def frame_period_changed(self):
         self.frame_period = self.lsync * self.seqln * 0.008
         print(tc.WARNING + "frame period changed:", self.frame_period, "\u00B5s", tc.ENDC)
-        print()
+        
         if self.RLD_frame.isChecked() == True:
             self.RLDwarning()
             self.RLDpos_eng_indicator.setText(str((self.RLDpos)*self.frame_period)[:6])
@@ -884,7 +884,7 @@ class Cringe(QWidget):
 
     def change_dfb_delay(self):
         print(tc.FCTCALL + "send card delay to all DFB cards:" + tc.ENDC)
-        print()
+        
         self.dfb_delay = self.dfb_delay_spin.value()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -898,7 +898,7 @@ class Cringe(QWidget):
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send CARD_DELAY parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("CARD", self.dfb_delay)
         if self.locked == 0:
             self.system_resync()
@@ -927,7 +927,7 @@ class Cringe(QWidget):
             self.system_resync()
         self.bad_delay_timer.stop()
         self.bad_delay_timer = None
-        print()
+        
 
     def prop_delay_changed(self):
         if self.prop_delay_timer == None:
@@ -937,7 +937,7 @@ class Cringe(QWidget):
 
     def change_prop_delay(self):
         print(tc.FCTCALL + "send propagation delay to all DFB cards:" + tc.ENDC)
-        print()
+        
         self.prop_delay = self.prop_delay_spin.value()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -951,7 +951,7 @@ class Cringe(QWidget):
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send PROP_DELAY parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("PROP", self.prop_delay)
         if self.locked == 0:
             self.system_resync()
@@ -965,11 +965,11 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
                 self.send_dfbclk_wreg6(self.card_addr)
-        print()
+        
 
     def dfbx2_XPT_changed(self):
         print(tc.FCTCALL + "send crosspoint switch setting to all DFBx2 cards:" + tc.ENDC)
-        print()
+        
         self.dfbx2_XPT = self.dfbx2_xpt_mode.currentIndex()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -977,12 +977,12 @@ class Cringe(QWidget):
                 self.send_dfbx2_wreg6(self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send XPT parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("XPT", self.dfbx2_XPT)
 
     def TP_changed(self):
         print(tc.FCTCALL + "send test pattern parameters to all DFB cards:" + tc.ENDC)
-        print()
+        
         self.TP = self.tp_mode.currentIndex()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -999,7 +999,7 @@ class Cringe(QWidget):
                 self.send_GPI4()
             if val == "DFBs":
                 print(tc.FCTCALL + "send Test Pattern Mode parameters to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("TP", self.TP)
 
     def NSAMP_changed(self):
@@ -1010,7 +1010,7 @@ class Cringe(QWidget):
 
     def change_NSAMP(self):
         print(tc.FCTCALL + "send NSAMP to all DFB cards:" + tc.ENDC)
-        print()
+        
         self.NSAMP = self.NSAMP_spin.value()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -1020,7 +1020,7 @@ class Cringe(QWidget):
                 self.send_dfbx2_wreg6(self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send NSAMP parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("NSAMP", self.NSAMP)
             # 		self.system_resync()
         self.NSAMP_delay_timer.stop()
@@ -1034,7 +1034,7 @@ class Cringe(QWidget):
 
     def change_SETT(self):
         print(tc.FCTCALL + "send SETT to all DFB cards:" + tc.ENDC)
-        print()
+        
         self.SETT = self.SETT_spin.value()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -1048,7 +1048,7 @@ class Cringe(QWidget):
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send SETTLE parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("SETT", self.SETT)
 
             # 		self.system_resync()
@@ -1060,11 +1060,11 @@ class Cringe(QWidget):
         if self.PS ==1:
             self.PS_button.setStyleSheet("background-color: #" + tc.green + ";")
             print(tc.FCTCALL + "send parallel stream to all DFB cards: parallel stream engaged" + tc.ENDC)
-            print()
+            
         else:
             self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
             print(tc.FCTCALL + "send parallel stream to all DFB cards: parallel stream disengaged" + tc.ENDC)
-            print()
+            
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
@@ -1073,12 +1073,12 @@ class Cringe(QWidget):
                 self.send_dfbx2_wreg6(self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send Parallel Stream Boolean to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("PS", self.PS)
 
     def DFBx2class_glb_chg_msg(self):
         print(tc.FCTCALL + "DFBx2 CLASS global changed:", tc.ENDC)
-        print()
+        
 
     def ARLsense_changed(self):
         if self.ARLsense_timer == None:
@@ -1088,7 +1088,7 @@ class Cringe(QWidget):
 
     def change_ARLsense(self):
         print(tc.FCTCALL + "send ARL sensitivity parameter to all DFB cards:", tc.ENDC)
-        print()
+        
         self.ARLsense = self.ARLsense_spin.value()
         # 		self.ARLsense_indicator.setText("%5i"%(self.ARLsense))
         self.ARLsense_eng_indicator.setText(str((self.ARLsense)/16.383)[:6])
@@ -1096,11 +1096,11 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK" or val == "DFBx2":
                 print(tc.FCTCALL + "send ARL sensitivity parameter to", val,"card:", tc.ENDC)
-                print()
+                
                 self.send_dfb_GPI16()
             if val == "DFBs":
                 print(tc.FCTCALL + "send ARL sensitivity parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_ARL("ARLsense", self.ARLsense)
         self.ARLsense_timer.stop()
         self.ARLsense_timer = None
@@ -1113,7 +1113,7 @@ class Cringe(QWidget):
 
     def change_RLDpos(self):
         print(tc.FCTCALL + "send ARL positive relock delay parameter to all DFB cards:", tc.ENDC)
-        print()
+        
         self.RLDpos = self.RLDpos_spin.value()
         self.RLDpos_delay = self.frame_period * self.RLDpos
         # 		self.RLDpos_indicator.setText("%5i"%(self.RLDpos))
@@ -1122,11 +1122,11 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if (val == "DFBCLK" or val == "DFBx2"):
                 print(tc.FCTCALL + "send RLD positive delay parameter to", val,"card:", tc.ENDC)
-                print()
+                
                 self.send_dfb_GPI17()
             if val == "DFBs":
                 print(tc.FCTCALL + "send RLD positive delay parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_ARL("RLDpos", self.RLDpos)
         self.RLDpos_timer.stop()
         self.RLDpos_timer = None
@@ -1140,7 +1140,7 @@ class Cringe(QWidget):
 
     def change_RLDneg(self):
         print(tc.FCTCALL + "send ARL negative relock delay parameter to all DFB cards:", tc.ENDC)
-        print()
+        
         self.RLDneg = self.RLDneg_spin.value()
         self.RLDneg_delay = self.frame_period * self.RLDneg
         # 		self.RLDneg_indicator.setText("%5i"%(self.RLDneg))
@@ -1149,11 +1149,11 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if (val == "DFBCLK" or val == "DFBx2"):
                 print(tc.FCTCALL + "send RLD negative delay parameter to", val,"card:", tc.ENDC)
-                print()
+                
                 self.send_dfb_GPI18()
             if val == "DFBs":
                 print(tc.FCTCALL + "send RLD negative delay parameter to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_ARL("RLDneg", self.RLDneg)
         self.RLDneg_timer.stop()
         self.RLDneg_timer = None
@@ -1163,7 +1163,7 @@ class Cringe(QWidget):
 
     def RLDwarning(self):
         print(tc.WARNING + "ARL physical relock delay changed: this may impact relocking", tc.ENDC)
-        print()
+        
 
 
     '''triangle methods'''
@@ -1174,7 +1174,7 @@ class Cringe(QWidget):
         self.dwellDACunits = 2**(self.dwell_val)
         self.tri_period_changed()
         self.send_triangle()
-        print()
+        
 
     def range_changed(self):
         print(tc.FCTCALL + "triangle number of steps changed:", tc.ENDC)
@@ -1183,7 +1183,7 @@ class Cringe(QWidget):
         self.tri_amp_changed()
         self.tri_period_changed()
         self.send_triangle()
-        print()
+        
 
     def step_changed(self):
         print(tc.FCTCALL + "triangle step size changed:", tc.ENDC)
@@ -1191,7 +1191,7 @@ class Cringe(QWidget):
         self.stepDACunits = self.step_val
         self.tri_amp_changed()
         self.send_triangle()
-        print()
+        
 
     def tri_amp_changed(self):
         self.ampDACunits = self.rangeDACunits * self.stepDACunits
@@ -1201,7 +1201,7 @@ class Cringe(QWidget):
         mV = 1000*self.ampDACunits/16383.0
         print(tc.WARNING + "triangle amplitude changed:", mV, "mV", tc.ENDC)
         self.amp_eng_indicator.setText('%4.3f'%mV)
-        print()
+        
 
     def tri_period_changed(self):
         self.periodDACunits = float(2*self.dwellDACunits*self.rangeDACunits)
@@ -1214,7 +1214,7 @@ class Cringe(QWidget):
         self.period_eng_indicator.setText('%7.3f'%uSecs)
         self.freq_eng_indicator.setText('%6.3f'%kHz)
         print(tc.WARNING + "triangle period changed:", '%7.3f'%uSecs, "\u00B5s", tc.ENDC)
-        print()
+        
 
     def tri_idx_changed(self):
         print(tc.FCTCALL + "triangle time base changed:", tc.ENDC)
@@ -1227,7 +1227,7 @@ class Cringe(QWidget):
         else:
             self.tri_idx_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.tri_idx_button.setText('LSYNC')
-        print()
+        
 
     '''system global methods'''
 
@@ -1238,87 +1238,87 @@ class Cringe(QWidget):
         self.cal_system.setEnabled(self.power_state)
         self.resync_system.setEnabled(self.power_state)
         if self.power_state == 1:
-            print()
+            
             print(tc.INIT + "cycle power to crate through EMU: power ON", tc.ENDC)
-            print()
+            
             self.crate_power.setStyleSheet("background-color: #" + tc.green + ";")
             self.crate_power.setText('crate power ON')
             self.emu.powerOn()
             print(tc.FAIL + "calibration has been lost as result of power cycle:", tc.ENDC)
-            print()
+            
             print(tc.INIT + "reset ALL phase offsets for DFB/BAD cards:", tc.ENDC)
-            print()
+            
             for idx, val in enumerate(self.class_vector):
                 self.card_addr = self.addr_vector[idx]
                 if val == "DFBCLK":
                     print(tc.FCTCALL + "reset phase offsets for DFBCLK card address", self.addr_vector[idx], tc.ENDC)
-                    print()
+                    
                     self.crate_widgets[idx].dfbclk_widget3.resetALLphase()
                 if val == "DFBx2":
                     print(tc.FCTCALL + "reset phase offsets for DFBx2 card address", self.addr_vector[idx], tc.ENDC)
-                    print()
+                    
                     self.crate_widgets[idx].dfbx2_widget3.resetALLphase()
                 if val == "BAD16":
                     print(tc.FCTCALL + "reset phase offsets for BAD16 card address", self.addr_vector[idx], tc.ENDC)
-                    print()
+                    
                     self.crate_widgets[idx].badrap_widget3.resetALLphase()
         else:
-            print()
+            
             print(tc.INIT + "cycle power to crate through EMU: power OFF", tc.ENDC)
-            print()
+            
             self.crate_power.setStyleSheet("background-color: #" + tc.red + ";")
             self.crate_power.setText('crate power OFF')
             self.emu.powerOff()
 
     def send_ALL_globals(self):
-        print()
+        
         print(tc.INIT + tc.BOLD + "send ALL globals to ALL cards:", tc.ENDC)
-        print()
+        
         self.send_all_sys_globals()
         self.send_all_class_globals()
-        print()
+        
 
     def send_ALL_states_chns(self):
-        print()
+        
         print(tc.INIT + tc.BOLD + "send ALL states & channels to DFB/BAD cards:", tc.ENDC)
-        print()
+        
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
-                print()
+                
                 print(tc.INIT + "send ALL states to DFBCLK card address",self.addr_vector[idx],":", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].dfbclk_widget1.master_vector.chn_send.click()
             if val == "DFBx2":
-                print()
+                
                 print(tc.INIT + "send ALL states to DFBx2 card address",self.addr_vector[idx],", channel 1:", tc.ENDC)
                 self.crate_widgets[idx].dfbx2_widget1.master_vector.chn_send.click()
-                print()
+                
                 print(tc.INIT + "send ALL states to DFBx2 card address",self.addr_vector[idx],", channel 2:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].dfbx2_widget2.master_vector.chn_send.click()
             if val == "DFBs":
-                print()
+                
                 print(tc.INIT + "send ALL states to SCREAM card address",self.addr_vector[idx],", channel 1:", tc.ENDC)
                 self.crate_widgets[idx].dfbs_widget1.master_vector.chn_send.click()
-                print()
+                
                 print(tc.INIT + "send ALL states to SCREAM card address",self.addr_vector[idx],", channel 2:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].dfbs_widget2.master_vector.chn_send.click()
             if val == "BAD16":
-                print()
+                
                 print(tc.INIT + "send channels to BAD16 card address",self.addr_vector[idx],":", tc.ENDC)
                 self.crate_widgets[idx].badrap_widget1.master_vector.chn_send.click()
-                print()
+                
                 print(tc.INIT + "send ALL states to BAD16 card address",self.addr_vector[idx],":", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].badrap_widget2.SendAllStates()
         self.system_resync()
 
     def phcal_system(self):
-        print()
+        
         print(tc.INIT + tc.BOLD + "auto phase calibrate all DFB/BAD cards:", tc.ENDC)
-        print()
+        
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
@@ -1338,12 +1338,12 @@ class Cringe(QWidget):
                 # 				print tc.INIT + "auto calibrate BAD16 card address",self.addr_vector[idx],":", tc.ENDC
                 self.crate_widgets[idx].badrap_widget3.autocal.click()
         self.system_resync()
-        print()
+        
 
     def system_resync(self):
-        print()
+        
         print(tc.INIT + "resynchronize ALL cards AND SENDING LSYNC:", tc.ENDC)
-        print()
+        
         self.send_CLK_globals()
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
@@ -1357,22 +1357,22 @@ class Cringe(QWidget):
             message = "restore"
             self.server_lock.setStyleSheet("background-color: #" + tc.green + ";")
             self.server_lock.setText('server LOCK OFF')
-            print()
+            
             print(tc.INIT + "critical parameter lock out disengaged:")
-            print()
+            
             print(tc.WARNING + "auto re-sync engaged for delay parameter changes:", tc.ENDC)
-            print()
+            
             print(tc.FAIL + "changing SYSTEM globals, re-sync, or send mode may crash SERVER (if running):", tc.ENDC)
-            print()
+            
         else:
             message = "limit"
             self.server_lock.setStyleSheet("background-color: #" + tc.red + ";")
             self.server_lock.setText('server LOCK ON')
-            print()
+            
             print(tc.INIT + "critical parameter lock out engaged for SERVER keep alive:", tc.ENDC)
-            print()
+            
             print(tc.WARNING + "auto re-sync disengaged for delay parameter changes:", tc.ENDC)
-            print()
+            
         self.sys_glob_hdr_widget.setEnabled(not(self.locked))
         self.sendsetup.setEnabled(not(self.locked))
         self.NSAMP_spin.setEnabled(not(self.locked))
@@ -1382,7 +1382,7 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
                 print(tc.FCTCALL + message, "SEND MODE on", val,"card:", self.slot_vector[idx], "/", self.card_addr, tc.ENDC)
-                print()
+                
                 # 				self.crate_widgets[idx].dfbclk_widget1.master_vector.data_packet.setEnabled(not(self.locked))
                 if self.locked == 1:
                     self.crate_widgets[idx].dfbclk_widget1.master_vector.data_packet.setCurrentIndex(0)
@@ -1400,7 +1400,7 @@ class Cringe(QWidget):
                     # 						self.crate_widgets[idx].dfbclk_widget1.state_vectors[i].data_packet.setEnabled(not(self.locked))
             if val == "DFBx2":
                 print(tc.FCTCALL + message, "SEND MODE on both channels of", val,"card:", self.slot_vector[idx], "/", self.card_addr, tc.ENDC)
-                print()
+                
                 if self.locked == 1:
                     self.crate_widgets[idx].dfbx2_widget1.master_vector.data_packet.setCurrentIndex(0)
                     self.crate_widgets[idx].dfbx2_widget1.master_vector.data_packet.removeItem(3)
@@ -1425,7 +1425,7 @@ class Cringe(QWidget):
                         self.crate_widgets[idx].dfbx2_widget2.state_vectors[i].data_packet.addItem('test pattern')
             if val == "DFBs":
                 print(tc.FCTCALL + message, "SEND MODE on both channels of", val,"card:", self.slot_vector[idx], "/", self.card_addr, tc.ENDC)
-                print()
+                
                 if self.locked == 1:
                     self.crate_widgets[idx].dfbs_widget1.master_vector.data_packet.setCurrentIndex(0)
                     self.crate_widgets[idx].dfbs_widget1.master_vector.data_packet.removeItem(3)
@@ -1440,29 +1440,29 @@ class Cringe(QWidget):
                     self.crate_widgets[idx].dfbs_widget2.master_vector.data_packet.addItem('test pattern')
 
     def send_all_sys_globals(self):
-        print()
+        
         print(tc.INIT + tc.BOLD + "send system globals to all cards:", tc.ENDC)
-        print()
+        
         self.send_CLK_globals()
         print(tc.INIT + "send system globals to DFBCLK (DFB CH 1), DFB, and BAD16 cards:", tc.ENDC)
-        print()
+        
         for idx, val in enumerate(self.class_vector):
             self.card_addr = self.addr_vector[idx]
             if (val == "DFBCLK"):
                 print(tc.FCTCALL + "send SEQLN parameter to DFB CH1 on", val,"card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if (val == "DFBx2"):
                 print(tc.FCTCALL + "send SEQLN parameter to", val,"card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == ("BAD16"):
                 print(tc.FCTCALL + "send SEQLN parameter to", val,"card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 INT = self.crate_widgets[idx].INT
@@ -1470,9 +1470,9 @@ class Cringe(QWidget):
             # 				self.crate_widgets[idx].send_class_globals(self.bad_wreg0)
 
     def send_CLK_globals(self):
-        print()
+        
         print(tc.INIT + "send system globals to DFBCLK card (clock controller):", tc.ENDC)
-        print()
+        
         print(tc.FCTCALL + "send LSYNC parameter to CLK:", tc.ENDC)
         self.crate_widgets[0].dfbclk_widget2.send_wreg2()
         print(tc.FCTCALL + "send SEQLN parameter to CLK:", tc.ENDC)
@@ -1503,9 +1503,9 @@ class Cringe(QWidget):
     '''class global methods'''
 
     def send_all_class_globals(self):
-        print()
+        
         print(tc.INIT + tc.BOLD + "send class globals to all cards:", tc.ENDC)
-        print()
+        
         self.send_dfb_class_globals()
         self.send_bad_class_globals()
         self.send_triangle()
@@ -1524,21 +1524,21 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == "DFBCLK":
                 print(tc.FCTCALL + "send DFB class globals to DFBCLK card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 self.send_dfbclk_wreg6(self.card_addr)
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == "DFBx2":
                 print(tc.FCTCALL + "send DFB class globals to DFBx2 card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 self.send_dfbx2_wreg6(self.card_addr)
                 self.send_dfb_wreg7(LED, ST, self.card_addr)
             if val == "DFBs":
                 print(tc.FCTCALL + "send DFB class globals to DFBscream card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("XPT", self.dfbx2_XPT)
                 self.crate_widgets[idx].send_global("TP", self.TP)
                 self.crate_widgets[idx].send_global("NSAMP", self.NSAMP)
@@ -1555,7 +1555,7 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == "BAD16":
                 print(tc.FCTCALL + "send BAD class globals to BAD16 card:", tc.ENDC)
-                print()
+                
                 LED = self.crate_widgets[idx].LED
                 ST = self.crate_widgets[idx].ST
                 INT = self.crate_widgets[idx].INT
@@ -1568,7 +1568,7 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if val == ("DFBCLK"):
                 print(tc.FCTCALL + "send triangle parameters to DFB CH1 on DFBCLK card:", tc.ENDC)
-                print()
+                
                 self.send_wreg0(1)
                 GR = self.crate_widgets[idx].dfbclk_widget1.GR
                 self.send_dfb_wreg4(GR, self.card_addr)
@@ -1578,19 +1578,19 @@ class Cringe(QWidget):
                 GR = self.crate_widgets[idx].dfbx2_widget1.GR
                 self.send_dfb_wreg4(GR, self.card_addr)
                 print(tc.FCTCALL + "send triangle parameters to DFB CH2 on DFBx2 card:", tc.ENDC)
-                print()
+                
                 self.send_wreg0(2)
                 GR = self.crate_widgets[idx].dfbx2_widget2.GR
                 self.send_dfb_wreg4(GR, self.card_addr)
             if val == ("DFBs"):
                 print(tc.FCTCALL + "send triangle parameters to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_triangle("dwell", self.dwell_val)
                 self.crate_widgets[idx].send_triangle("range", self.range_val)
                 self.crate_widgets[idx].send_triangle("step", self.step_val)
             if val == ("BAD16"):
                 print(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
-                print()
+                
                 self.send_bad16_wreg1()
 
     def send_ARL(self):
@@ -1600,13 +1600,13 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if (val == "DFBCLK" or val == "DFBx2"):
                 print(tc.FCTCALL + "send ARL parameters to", val,"card:", tc.ENDC)
-                print()
+                
                 self.send_dfb_GPI16()
                 self.send_dfb_GPI17()
                 self.send_dfb_GPI18()
             if val == "DFBs":
                 print(tc.FCTCALL + "send ARL parameters to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_ARL("ARLsense", self.ARLsense)
                 self.crate_widgets[idx].send_ARL("RLDpos", self.RLDpos)
                 self.crate_widgets[idx].send_ARL("RLDneg", self.RLDneg)
@@ -1618,13 +1618,13 @@ class Cringe(QWidget):
             self.card_addr = self.addr_vector[idx]
             if (val == "DFBCLK" or val == "DFBx2"):
                 print(tc.FCTCALL + "send test pattern parameters to", val,"card:", tc.ENDC)
-                print()
+                
                 self.send_GPI5()
                 self.send_GPI6()
                 self.send_GPI4()
             if val == "DFBs":
                 print(tc.FCTCALL + "send test pattern parameters to SCREAM card:", tc.ENDC)
-                print()
+                
                 self.crate_widgets[idx].send_global("TP", self.TP)
 
     '''	child called methods '''
@@ -1642,7 +1642,7 @@ class Cringe(QWidget):
             if val == "DFBCLK":
                 if self.crate_widgets[idx].dfbclk_widget1.MVRX:
                     print(tc.FCTCALL + "broadcast to", val,"card", slot + "/" + addr + "/1", "(slot/addr/ch):", var, tc.ENDC)
-                    print()
+                    
                     if var == "triA":
                         self.crate_widgets[idx].dfbclk_widget1.triA_changed(state, True)
                     if var == "triB":
@@ -1678,7 +1678,7 @@ class Cringe(QWidget):
             if val == "DFBx2":
                 if self.crate_widgets[idx].dfbx2_widget1.MVRX:
                     print(tc.FCTCALL + "broadcast to", val,"card", slot + "/" + addr + "/1", "(slot/addr/ch):", var, tc.ENDC)
-                    print()
+                    
                     if var == "triA":
                         self.crate_widgets[idx].dfbx2_widget1.triA_changed(state, True)
                     if var == "triB":
@@ -1713,7 +1713,7 @@ class Cringe(QWidget):
                         self.crate_widgets[idx].dfbx2_widget1.lock_channel(state, True)
                 if self.crate_widgets[idx].dfbx2_widget2.MVRX:
                     print(tc.FCTCALL + "broadcast to", val,"card", slot + "/" + addr + "/2", "(slot/addr/ch):", var, tc.ENDC)
-                    print()
+                    
                     if var == "triA":
                         self.crate_widgets[idx].dfbx2_widget2.triA_changed(state, True)
                     if var == "triB":
@@ -1755,7 +1755,7 @@ class Cringe(QWidget):
         wreg = 0 << 25
         wregval = wreg | (col << 6)
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def send_dfb_wreg4(self, GR, addr):
         print("DFB:WREG4: triangle parameters; time base, dwell, range, step: global relock boolean:", self.tri_idx, self.dwell_val, self.range_val, self.step_val, GR)
@@ -1763,19 +1763,19 @@ class Cringe(QWidget):
         # 		wregval = (4 << 25) | (self.tri_idx << 24) | (self.dwell_val << 20) \
         # 			| (self.range_val << 16) | self.GR | self.step_val
         self.sendReg(self.dfb_wreg4, addr)
-        print()
+        
 
     def send_dfbclk_wreg6(self, addr):
         print("DFB:WREG6: global parameters: PS, DFBCLK_XPT, CLK, NSAMP:", self.PS, self.dfbclk_XPT, self.CLK, self.NSAMP)
         wregval = (6 << 25) | (self.PS << 24) | (self.dfbclk_XPT << 21) | (self.CLK << 20) | self.NSAMP
         self.sendReg(wregval, addr)
-        print()
+        
 
     def send_dfbx2_wreg6(self, addr):
         print("DFB:WREG6: global parameters: PS, DFBx2_XPT, NSAMP:", self.PS, self.dfbx2_XPT, self.NSAMP)
         wregval = (6 << 25) | (self.PS << 24) | (self.dfbx2_XPT << 21) | self.NSAMP
         self.sendReg(wregval, addr)
-        print()
+        
 
     def send_dfb_wreg7(self, LED, ST, addr):
         print("DFB:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", LED, ST, self.prop_delay, \
@@ -1783,20 +1783,20 @@ class Cringe(QWidget):
         wregval = (7 << 25) | (LED << 23) | (ST << 22) | (self.prop_delay << 18) \
                   | (self.dfb_delay << 14) | (self.seqln << 8) | self.SETT
         self.sendReg(wregval, addr)
-        print()
+        
 
     def send_bad16_wreg0(self, ST, LED, INT, addr):
         print("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", ST, LED, self.bad_delay, INT, self.seqln)
         # 		mask = 0xffebeff
         wregval = (0 << 25) | (ST << 16) | (LED << 14) | (self.bad_delay << 10) | (INT << 8) | self.seqln
         self.sendReg(wregval, addr)
-        print()
+        
 
     def send_bad16_wreg1(self):
         print("BAD16:WREG1: triangle parameters time base, dwell, range, step:", self.tri_idx, self.dwell_val, self.range_val, self.step_val)
         self.bad_wreg1 = (1 << 25) | (self.tri_idx << 24) | (self.dwell_val << 20) | (self.range_val << 16) | self.step_val
         self.sendReg(self.bad_wreg1, self.card_addr)
-        print()
+        
 
     def send_GPI4(self):
         print("DFB:GPI4: test mode select:", self.TP)
@@ -1806,7 +1806,7 @@ class Cringe(QWidget):
         else:
             wregval = wreg | 0
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def send_GPI5(self):
         lobytes,hibytes=self.lohibytes()
@@ -1814,7 +1814,7 @@ class Cringe(QWidget):
         wreg = 5 << 17
         wregval = wreg | hibytes
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def lohibytes(self):
         if self.TP == 0:
@@ -1864,28 +1864,28 @@ class Cringe(QWidget):
         wreg = 6 << 17
         wregval = wreg | lobytes
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def send_dfb_GPI16(self):
         print("DFB:GPI16: ARL sensitivity level:", self.ARLsense)
         wreg = 16 << 17
         wregval = wreg | self.ARLsense
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def send_dfb_GPI17(self):
         print("DFB:GPI17: ARL positive relock delay:", self.RLDpos)
         wreg = 17 << 17
         wregval = wreg | self.RLDpos
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def send_dfb_GPI18(self):
         print("DFB:GPI18: ARL negative relock delay:", self.RLDneg)
         wreg = 18 << 17
         wregval = wreg | self.RLDneg
         self.sendReg(wregval, self.card_addr)
-        print()
+        
 
     def sendReg(self, wregval, addr):
         print(tc.COMMAND + "send to address", addr, ":", tc.BOLD, wregval, tc.ENDC)
@@ -1908,10 +1908,10 @@ class Cringe(QWidget):
             else:
                 savename = filename + '.pkl'
             print("saving settings file:", filename)
-            print()
+            
         else:
             print(tc.FAIL + "save file cancelled:", tc.ENDC)
-            print()
+            
             return
         self.filenameEdit.setText(savename)
         self.packCrateConfig()
@@ -1929,21 +1929,21 @@ class Cringe(QWidget):
         f = open(savename, "wb")
 
         print(tc.FCTCALL + ("Saving current settings in pickle format to %s" % savename), tc.ENDC)
-        print()
+        
         pickle.dump(currentState, f, protocol=0)
         f.close()
 
 
     def loadSettings(self,filename=None):
         print(tc.FCTCALL + "load pickle settings:", tc.ENDC)
-        print()
+        
         if filename is None or filename == False:
             self.load_filename = str(QFileDialog.getOpenFileName())
         else:
             self.load_filename = filename
         self.filenameEdit.setText(self.load_filename)
         print("loading file: [%s]" % self.load_filename)
-        print()
+        
         f = open(self.load_filename,"rb")
         load_sys_config = pickle.load(f)
         f.close()
@@ -1960,7 +1960,7 @@ class Cringe(QWidget):
         LoadClassVector = self.loadCrateConfig['ClassVector']
 
         print(tc.INIT + "crate configuration settings (from file):")
-        print()
+        
         print("number of cards in crate: %i"%len(LoadAddressVector))
         print("Type	Address	Slot")
         for idx, val in enumerate(LoadClassVector):
@@ -1969,7 +1969,7 @@ class Cringe(QWidget):
         if LoadSlotVector != self.slot_vector or LoadAddressVector != self.addr_vector or LoadClassVector != self.class_vector:
             print(tc.FAIL + "load crate configuration does NOT match instantiated crate configuration")
             print("load configuration aborted" + tc.ENDC)
-            print()
+            
             return
 
         self.loadGlobals = load_sys_config['globals']
@@ -1981,7 +1981,7 @@ class Cringe(QWidget):
 
     def assertSettings(self):
         print(tc.FCTCALL + ("asserting loaded or last saved settings"), tc.ENDC)
-        print()
+        
         self.unpackGlobals()
         self.unpackClassParameters()
         self.unpackTower()
@@ -2125,7 +2125,7 @@ def main():
         print("build GUI from file:")
         print(f"load filename: {load_filename}")
         print(f"load file: {load_file}")
-        print()
+        
 
         load_sys_config = pickle.load(load_file)
         load_file.close()
@@ -2139,13 +2139,13 @@ def main():
         class_vector = loadCrateConfig['ClassVector']
         print("slot vector from file:")
         print(slot_vector)
-        print()
+        
         print("address vector from file:")
         print(addr_vector)
-        print()
+        
         print("class vector from file:")
         print(class_vector)
-        print()
+        
     else:
         load_on_launch = False
 

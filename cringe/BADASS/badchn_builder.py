@@ -301,7 +301,7 @@ class badChn(QWidget):
         self.send_wreg2()
         self.send_wreg4()
         self.send_wreg5()
-        print()
+        
 
     def lock_channel(self):
         self.unlocked = self.lock_button.isChecked()
@@ -317,7 +317,7 @@ class badChn(QWidget):
         wreg = 2 << 25
         wregval = wreg | self.chn
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg4(self):
         print("BAD16:WREG4: channel booleans & DAC high value")
@@ -327,14 +327,14 @@ class badChn(QWidget):
         wreg = wreg | (int(self.tri) << 19)
         wregval = wreg | self.d2a_hi_spin.value()
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg5(self):
         print("BAD16:WREG5: channel DAC low value")
         wreg = 5 << 25
         wregval = wreg | (self.d2a_lo_slider.value() << 8)
         self.sendReg(wregval)
-        print()
+        
         
     def sendReg(self, wregval): 
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

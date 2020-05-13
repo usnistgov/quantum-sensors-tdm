@@ -116,12 +116,12 @@ class SV_array(QWidget):
             self.fillSV()
         else:
             print(tc.FAIL + "invalid file" + tc.ENDC)
-        print()
+        
 
     def fillSV(self):
         if self.load_filename == None:
             print(tc.FAIL + "No file to load/restore states from" + tc.ENDC)
-            print()
+            
             return
         f = open(self.load_filename, 'r')
         for idx, val in enumerate(f):
@@ -137,7 +137,7 @@ class SV_array(QWidget):
 
     def saveSVfile(self):
         print(tc.FCTCALL + "Save current state sequence to file: BAD16 /", self.addr, tc.ENDC)
-        print()
+        
         filename = str(QFileDialog.getSaveFileName()[0])
         self.filenameEdit.setText(filename)
         f = open(filename, 'w')
@@ -148,7 +148,7 @@ class SV_array(QWidget):
 
     def initSeq(self):
         print(tc.FCTCALL + "Clear BAD16 state sequence memory: Initialize", self.nstates, "state vectors to 0x0000: BAD16 /", self.addr, tc.ENDC)
-        print()
+        
         for i in range(self.nstates):
             for j in range(0, 16):
                 self.state_vectors[i].buttons[j].setChecked(False)
@@ -158,7 +158,7 @@ class SV_array(QWidget):
 
     def SendAllStates(self):
         print(tc.FCTCALL + "Send all", self.nstates, "states: BAD16/", self.addr, tc.ENDC)
-        print()
+        
         for i in range(self.nstates):
             self.state_vectors[i].send_state()
         self.parent.initMem(self.init_flag)

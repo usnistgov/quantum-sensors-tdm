@@ -138,7 +138,7 @@ class dprcal(QWidget):
 # 		print("filename = [%s]" % filename)
 		if len(filename) > 0:
 			print("loading file:", filename)
-			print()
+			
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
 # 				print idx, val
@@ -150,13 +150,13 @@ class dprcal(QWidget):
 			self.filenameEdit.setText(filename)
 		else:
 			print(tc.FAIL + "load file cancelled:", tc.ENDC)
-			print()
+			
 			return
 		
 # 		if idx != self.counters:
 		if (idx + 1) != self.counters:
 			print(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
-			print()
+			
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
@@ -168,24 +168,24 @@ class dprcal(QWidget):
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
 			print("saving calibration file:", filename)
-			print()
+			
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
 			print(tc.FAIL + "save file cancelled:", tc.ENDC)
-			print()
+			
 			return
 
 	def CalAllCounters(self):
-		print()
+		
 		print(tc.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
-		print()
+		
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
 			self.phase_counters[i].calcounter()
-		print()
+		
 			
 	def enbDiagnostic(self, mode):
 		self.null_phase.setEnabled(mode)
@@ -193,12 +193,12 @@ class dprcal(QWidget):
 		self.phase_counters[1].phase_trim_spin.setEnabled(mode)		#	tie C0 spin to enable bit 8mar16
 			
 	def nullPhase(self):
-		print()
+		
 		print(tc.INIT + "null phase:", tc.ENDC)
-		print()
+		
 		self.resetALLphase()
 		print(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:", tc.ENDC)
-		print()
+		
 		mask = 0xfffe000
 		wregval = self.GPI1 & mask
 		self.sendReg(wregval)
@@ -206,7 +206,7 @@ class dprcal(QWidget):
 	def sendSlot(self):
 		print(tc.FCTCALL + "send slot:", self.slot, tc.ENDC)
 		print("GPI1: send slot:")
-		print()
+		
 		mask = 0xfffffe0
 		wregval = (mask & self.GPI1) | self.slot
 		self.sendReg(wregval)

@@ -131,7 +131,7 @@ class dprS(QWidget):
 # 		self.sendSlot()
 
 	def resetALLphase(self):
-		print()
+		
 		for i in range(self.counters):
 # 		if self.enb[i] == 1:
 			self.phase_counters[i].resetPhase()
@@ -139,12 +139,12 @@ class dprS(QWidget):
 
 	def loadCalFile(self):
 		print(tc.FCTCALL + "load calibration file:", tc.ENDC)
-		print()
+		
 		filename = str(QFileDialog.getOpenFileName())
 # 		print("filename = [%s]" % filename)
 		if len(filename) > 0:
 			print("loading file:", filename)
-			print()
+			
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
 # 				print idx, val
@@ -155,36 +155,36 @@ class dprS(QWidget):
 			self.filenameEdit.setText(filename)
 		else:
 			print(tc.FAIL + "load file cancelled:", tc.ENDC)
-			print()
+			
 			return
 		
 		if (idx + 1) != self.counters:
 			print(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
-			print()
+			
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
 		print(tc.FCTCALL + "save calibration file:", tc.ENDC)
-		print()
+		
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
 			print("saving calibration file:", filename)
-			print()
+			
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
 			print(tc.FAIL + "save file cancelled:", tc.ENDC)
-			print()
+			
 			return
 
 	def CalAllCounters(self):
-		print()
+		
 		print(tc.INIT + "auto calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
@@ -196,19 +196,19 @@ class dprS(QWidget):
 			
 	def nullPhase(self):
 		print(tc.INIT + "null phase:", tc.ENDC)
-		print()
+		
 		self.resetALLphase()
 		print(tc.FCTCALL + "reset slot & phase trim to 0:", tc.ENDC)
-		print()
+		
 		print("GPI24: send slot:", 0)
 		self.send_cmd(24, 0)
 		print("GPI25: send phase trim coefficient:", 0)
 		self.send_cmd(25, 0)
-		print()
+		
 		
 	def sendSlot(self):
 		print(tc.FCTCALL + "GPI24: send slot:", self.slot, tc.ENDC)
-		print()
+		
 		self.send_cmd(24, self.slot)
 				
 	def sendReg(self, wregval):

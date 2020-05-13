@@ -179,7 +179,7 @@ class dprS_counter(QWidget):
         else:
             self.tot_steps.setText(str(self.phase_trim_spin.value()))
             print(tc.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, tc.ENDC)
-        print()
+        
 
         self.tot_degs.setText(str(int(self.tot_steps.text())*9))
         self.ptrim[self.counter] = int(self.tot_steps.text())
@@ -200,7 +200,7 @@ class dprS_counter(QWidget):
         self.send_cmd(30, 0)
 
         self.disableDPR()
-        print()
+        
 
         self.lastSpinVal = val
         self.lastTotVal = int(self.tot_steps.text())
@@ -230,12 +230,12 @@ class dprS_counter(QWidget):
             self.send_cmd(25, self.cal_off & 0x000ff)
         self.ptrim[self.counter] = int(self.tot_degs.text())
         self.commitFlag = False
-        print()
+        
         
 
     def calcounter(self):
         print(tc.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, tc.ENDC)
-        print()
+        
         if self.counter == 0:
             '''
              This case implements a firmware PLL reset & auto calibration.
@@ -259,15 +259,15 @@ class dprS_counter(QWidget):
             self.tot_degs.setText(str(int(self.tot_steps.text())*9))
 
             print(tc.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", tc.ENDC)
-            print()
+            
             self.enableDPR()
 
             print("phase calibrate = True")
-            print()
+            
             self.send_cmd(28, 1)                # PC => HI
             
             print("phase calibrate = False")
-            print()
+            
             self.send_cmd(28, 0)                # PC => LO
              
             self.disableDPR()
@@ -275,7 +275,7 @@ class dprS_counter(QWidget):
         else:
             steps = self.phase_trim_spin.value() - int(self.cal_offset.text())
             print("software calibrate (for phase trim):", -steps, "phase steps applied")
-            print()
+            
             while steps != 0:
                 if steps > 0:
                     self.phase_trim_spin.setValue(self.phase_trim_spin.value() - 1)
@@ -298,7 +298,7 @@ class dprS_counter(QWidget):
             self.tot_steps.setStyleSheet("background-color: #90EE90;")
         else:
             self.tot_steps.setStyleSheet("background-color: #F08080;")            
-        print()
+        
                
     def enableDPR(self):            # set True before sending DPR commands
         print("enable DPR", tc.ENDC)
@@ -310,7 +310,7 @@ class dprS_counter(QWidget):
 
     def resetPhase(self):
         print(tc.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, tc.ENDC)
-        print()
+        
         self.resetFlag = True
         if self.counter == 0:                   # firmware PLL reset
             self.enableDPR()
@@ -356,7 +356,7 @@ class dprS_counter(QWidget):
             
     def sendReg(self, wregval):
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
-        print()
+        
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

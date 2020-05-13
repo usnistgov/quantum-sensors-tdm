@@ -55,7 +55,7 @@ class badcard(QWidget):
         self.layout = QGridLayout(self)
 
         print(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
-        print()
+        
 
         '''
         build widget for card INTERFACE PARAMETERS header
@@ -177,7 +177,7 @@ class badcard(QWidget):
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
 # 		self.send_wreg0()
         self.badrap_widget2.seqln_changed(seqln)
-        print()
+        
 
     def LED_changed(self):
         print(tc.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + tc.ENDC)
@@ -189,7 +189,7 @@ class badcard(QWidget):
             self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LED_button.setText('ON')
         self.send_wreg0()
-        print()
+        
 
     def status_changed(self):
         print(tc.FCTCALL + "send ST boolean to BAD16 card:" + tc.ENDC)
@@ -200,7 +200,7 @@ class badcard(QWidget):
             self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg0()
         self.badrap_widget3.enbDiagnostic(self.ST)
-        print()
+        
 
     def initMem(self, init):
         tc.INIT_state = self.INT
@@ -211,24 +211,24 @@ class badcard(QWidget):
             else:
                 print(tc.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + tc.ENDC)
             self.send_wreg0()
-            print()
+            
 
     def send_triangle(self, wreg1):
         print(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
-        print()
+        
 
     def send_class_globals(self, wreg0):
         print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
-        print()
+        
 
     def send_card_globals(self):
         print(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.send_wreg0()
-        print()
+        
 
 # 	def card_delay_changed(self):
 # 		'''
@@ -246,7 +246,7 @@ class badcard(QWidget):
             self.parent.send_bad16_wreg0(self.ST, self.LED, self.INT, self.address)
         else:
             print("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
-            print()
+            
             self.wreg0 = (0 << 25) | (self.ST << 16) | (self.LED << 14) | (self.bad_delay << 10) | (self.INT << 8) | self.seqln
             self.sendReg(self.wreg0)
 
@@ -257,7 +257,7 @@ class badcard(QWidget):
         step = int(cmd_reg[11:], base=2)
         print("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
         self.sendReg(self.wreg1)
-        print()
+        
 
     def sendReg(self, wregval):
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

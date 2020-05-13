@@ -74,7 +74,7 @@ class state_vector_builder(QWidget):
                 
         self.vectors[self.state] = sv_dec
         print("state vector binary", sv_str)
-        print()
+        
         
     def send_state(self):
         addr = 3
@@ -91,7 +91,7 @@ class state_vector_builder(QWidget):
         self.sendReg(wregval)
         if self.vectors[self.state] != 0:
             self.parent.parent.initMem(0)
-        print()
+        
 
     def sendReg(self, wregval): 
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

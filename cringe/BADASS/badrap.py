@@ -496,7 +496,7 @@ class badrap(QWidget):
         print(tc.FCTCALL + "send BAD16 globals:", tc.ENDC)
         self.send_wreg0()
 # 		self.send_wreg1()
-        print()
+        
 
     def dwell_changed(self):
         self.dwell_val = self.dwell.value()
@@ -540,7 +540,7 @@ class badrap(QWidget):
         print(mV, str(mV))
         self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
-        print()
+        
 
     def period_changed(self):
         print("period changed")
@@ -552,7 +552,7 @@ class badrap(QWidget):
         print(kHz)
         self.period_eng_indicator.setText('%8.4f'%uSecs)
         self.freq_eng_indicator.setText('%6.3f'%kHz)
-        print()
+        
 
 
     def tri_idx_changed(self):
@@ -571,14 +571,14 @@ class badrap(QWidget):
         wregval = wreg | (self.status << 16) | (self.led << 14) | (self.delay << 10) | (self.init << 8)| self.seqln
 # 		wregval = wreg | (self.led << 24) | (self.status << 16) | (self.delay << 10) | (self.seqln << 1)
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg1(self):
         print("BAD16:WREG1: triangle parameters")
         wreg = 1 << 25
         wregval = wreg + (self.tri_idx << 24) + (self.dwell_val << 20) + (self.range_val << 16) + self.step_val
         self.sendReg(wregval)
-        print()
+        
 
     def sendReg(self, wregval):
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

@@ -618,7 +618,7 @@ class scream(QWidget):
 	child called methods
 	'''						
 	def triA_changed(self, state):
-		print()
+		
 		print(tc.FCTCALL + "SCREAM CH", self.ch, "triangle A enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 50
 		self.send_cmd(GPI, state)
@@ -628,7 +628,7 @@ class scream(QWidget):
 			self.master_vector.TriA_button.setStyleSheet("background-color: #" + tc.red + ";")
 			
 	def triB_changed(self, state):
-		print()
+		
 		print(tc.FCTCALL + "SCREAM CH", self.ch, "triangle B enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 51
 		self.send_cmd(GPI, state)
@@ -639,7 +639,7 @@ class scream(QWidget):
 			
 	def a2d_lockpt_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "ADC lock point:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 56
 			self.send_cmd(GPI, level)
@@ -650,7 +650,7 @@ class scream(QWidget):
 	
 	def d2a_A_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "DAC A offset:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 57
 			self.send_cmd(GPI, level)
@@ -661,7 +661,7 @@ class scream(QWidget):
 		
 	def d2a_B_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "DAC B offset:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 58
 			self.send_cmd(GPI, level)
@@ -672,14 +672,14 @@ class scream(QWidget):
 		
 	def data_packet_changed(self, index):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "SEND MODE:", index, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 64
 			self.send_cmd(GPI, index)
 
 	def P_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "P:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 59
 			level = level & 0b1111111111
@@ -687,14 +687,14 @@ class scream(QWidget):
 
 	def I_spin_changed(self, level):
 		if self.master_vector.lock_button.isChecked() or self.force_cmd == 1:
-			print()
+			
 			print(tc.FCTCALL + "SCREAM CH", self.ch, "I:", level, tc.ENDC)
 			GPI = (self.ch - 1) * 24 + 60
 			level = level & 0b1111111111
 			self.send_cmd(GPI, level)
 			
 	def FBA_changed(self, state):
-		print()
+		
 		print(tc.FCTCALL + "SCREAM CH", self.ch, "FB A enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 48
 		self.send_cmd(GPI, state)
@@ -705,7 +705,7 @@ class scream(QWidget):
 			self.master_vector.FBA_button.setStyleSheet("background-color: #" + tc.red + ";")
 			
 	def FBB_changed(self, state):
-		print()
+		
 		print(tc.FCTCALL + "SCREAM CH", self.ch, "FB B enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 49
 		self.send_cmd(GPI, state)
@@ -716,7 +716,7 @@ class scream(QWidget):
 			self.master_vector.FBB_button.setStyleSheet("background-color: #" + tc.red + ";")
 			
 	def ARL_changed(self, state):
-		print()
+		
 		print(tc.FCTCALL + "SCREAM CH", self.ch, "ARL enable:", state, tc.ENDC)
 		GPI = (self.ch - 1) * 24 + 52
 		self.send_cmd(GPI, state)
@@ -731,7 +731,7 @@ class scream(QWidget):
 	'''
 
 	def send_channel_globals(self):
-		print()
+		
 		print(tc.FCTCALL + "send channel globals to SCREAM channel", self.ch, tc.ENDC)
 		self.GR_changed()
 
@@ -763,7 +763,7 @@ class scream(QWidget):
 		self.ENC_button.setEnabled(mode)
 	
 	def send_channel(self):
-		print()
+		
 		print(tc.FCTCALL + "send SCREAM CH", self.ch, "control parameters:", tc.ENDC)
 		self.force_cmd = 1
 		self.triA_changed(self.master_vector.TriA_button.isChecked())
@@ -780,13 +780,13 @@ class scream(QWidget):
 		self.force_cmd = 0
 
 	def send_card_globals(self):
-		print()
+		
 		print(tc.FCTCALL + "send class globals:", tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4()
 		self.send_wreg6()
 		self.send_wreg7()
-		print()
+		
 		
 	def lock_channel(self, state):
 		self.master_vector.lock_button.setChecked(state)

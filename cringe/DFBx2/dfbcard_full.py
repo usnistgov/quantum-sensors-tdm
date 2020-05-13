@@ -720,21 +720,21 @@ class dfbx2(QWidget):
         self.card_delay = self.card_delay_spin.value()
         if self.mode == 1:
             self.send_wreg7()
-        print()
+        
 
     def prop_delay_changed(self):
         self.DFBx2class_glb_chg_msg()
         self.prop_delay = self.prop_delay_spin.value()
         if self.mode == 1:
             self.send_wreg7()
-        print()
+        
 
     def XPT_changed(self):
         self.DFBx2class_glb_chg_msg()
         self.XPT = self.xpt_mode.currentIndex()
         if self.mode == 1:
             self.send_wreg6()
-        print()
+        
 
     def TP_changed(self):
         self.DFBx2class_glb_chg_msg()
@@ -744,20 +744,20 @@ class dfbx2(QWidget):
                 self.send_GPI5()
                 self.send_GPI6()
             self.send_GPI4()
-        print()
+        
     def NSAMP_changed(self):
         self.DFBx2class_glb_chg_msg()
         self.NSAMP = self.NSAMP_spin.value()
         if self.mode == 1:
             self.send_wreg6()
-        print()
+        
 
     def SETT_changed(self):
         self.DFBx2class_glb_chg_msg()
         self.SETT = self.SETT_spin.value()
         if self.mode == 1:
             self.send_wreg7()
-        print()
+        
 
     def PS_changed(self):
         self.DFBx2class_glb_chg_msg()
@@ -767,42 +767,42 @@ class dfbx2(QWidget):
         else:
             self.PS_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg6()
-        print()
+        
 
     def DFBx2class_glb_chg_msg(self):
-        print()
+        
         print(tc.FCTCALL + "DFBx2 CLASS global changed:", tc.ENDC)
 
 
     def ARLsense_changed(self):
-        print()
+        
         print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.ARLsense = self.ARLsense_spin.value()
         self.ARLsense_indicator.setText("%5i"%(2**self.ARLsense))
         self.ARLsense_eng_indicator.setText(str((2**self.ARLsense)/16.383)[:6])
         self.send_wreg6()
-        print()
+        
 
     def RLDpos_changed(self):
-        print()
+        
         print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDpos = self.RLDpos_spin.value()
         self.RLDpos_indicator.setText("%5i"%(2**self.RLDpos))
         self.RLDpos_eng_indicator.setText(str((2**self.RLDpos)*self.frame_period)[:6])
         self.send_wreg6()
-        print()
+        
 
     def RLDneg_changed(self):
-        print()
+        
         print(tc.FCTCALL + "ARL parameter changed:", tc.ENDC)
         self.RLDneg = self.RLDneg_spin.value()
         self.RLDneg_indicator.setText("%5i"%(2**self.RLDneg))
         self.RLDneg_eng_indicator.setText(str((2**self.RLDneg)*self.frame_period)[:6])
         self.send_wreg6()
-        print()
+        
 
     def dwell_changed(self):
-        print()
+        
         print(tc.FCTCALL + "triangle step dwell changed:", tc.ENDC)
         self.dwell_val = self.dwell.value()
         self.dwellDACunits = 2**(self.dwell_val)
@@ -813,10 +813,10 @@ class dfbx2(QWidget):
             self.send_wreg4()
             self.send_wreg0(2)
             self.send_wreg4()
-        print()
+        
 
     def range_changed(self):
-        print()
+        
         print(tc.FCTCALL + "triangle number of steps changed:", tc.ENDC)
         self.range_val = self.range.value()
         self.rangeDACunits = 2**(self.range_val)
@@ -832,10 +832,10 @@ class dfbx2(QWidget):
             self.send_wreg4()
             self.send_wreg0(2)
             self.send_wreg4()
-        print()
+        
 
     def step_changed(self):
-        print()
+        
         print(tc.FCTCALL + "triangle step size changed:", tc.ENDC)
         self.step_val = self.step.value()
         self.stepDACunits = self.step_val
@@ -848,7 +848,7 @@ class dfbx2(QWidget):
             self.send_wreg4()
             self.send_wreg0(2)
             self.send_wreg4()
-        print()
+        
 
     def amp_changed(self):
         print("amplitude changed")
@@ -877,7 +877,7 @@ class dfbx2(QWidget):
         self.freq_eng_indicator.setText('%6.3f'%kHz)
 
     def tri_idx_changed(self):
-        print()
+        
         print(tc.FCTCALL + "triangle timebase changed:", tc.ENDC)
         self.tri_idx = self.tri_idx_button.isChecked()
         self.period_changed()
@@ -891,7 +891,7 @@ class dfbx2(QWidget):
         self.send_wreg4()
         self.send_wreg0(2)
         self.send_wreg4()
-        print()
+        
 
     def LED_changed(self):
         self.LED = self.LED_button.isChecked()
@@ -913,28 +913,28 @@ class dfbx2(QWidget):
         self.send_wreg7()
 
     def send_class_globals(self):
-        print()
+        
         print(tc.FCTCALL + "send class globals:", tc.ENDC)
 # 		self.send_wreg0()
 # 		self.send_wreg4()
         self.send_wreg6()
         self.send_wreg7()
-        print()
+        
 
     def send_triangle(self):
-        print()
+        
         print(tc.FCTCALL + "send triangle parameters to both channels:", tc.ENDC)
         self.send_wreg0(1)
         self.send_wreg4()
         self.send_wreg0(2)
         self.send_wreg4()
-        print()
+        
 
     def send_card_globals(self):
-        print()
+        
         print(tc.FCTCALL + "send card globals:", tc.ENDC)
         self.send_wreg7()
-        print()
+        
 
     def send_wreg0(self, col):
         print("WREG0: page register")

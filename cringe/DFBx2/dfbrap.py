@@ -903,12 +903,12 @@ class dfbrap(QWidget):
 		self.send_channel_globals()
 # 		self.send_wreg0()
 # 		self.send_wreg4()
-		print()
+		
 
 	def MSTR_TX_changed(self):
 		self.MVTX = self.MSTR_TX.isChecked()
 		print(tc.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), tc.ENDC)
-		print()
+		
 		if self.MVTX == 1:
 			self.MSTR_TX.setStyleSheet("background-color: #" + tc.green + ";")
 			self.MSTR_TX.setText('TX')
@@ -920,7 +920,7 @@ class dfbrap(QWidget):
 	def MSTR_RX_changed(self):
 		self.MVRX = self.MSTR_RX.isChecked()
 		print(tc.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), tc.ENDC)
-		print()
+		
 		if self.MVRX == 1:
 			self.MSTR_RX.setStyleSheet("background-color: #" + tc.green + ";")
 			self.MSTR_RX.setText('RX')
@@ -935,14 +935,14 @@ class dfbrap(QWidget):
 		self.send_wreg4()
 		self.send_wreg6()
 		self.send_wreg7()
-		print()
+		
 
 	def send_channel_globals(self):
 		print(tc.FCTCALL + "send DFB channel globals:", tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4(self.wreg4)
 # 		self.send_wreg7()
-		print()
+		
 
 # 	def mode_changed(self):
 # 		self.mode = self.mode_button.isChecked()
@@ -998,7 +998,7 @@ class dfbrap(QWidget):
 		print(mV, str(mV))
 		self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
-		print()
+		
 
 	def period_changed(self):
 		print("period changed")
@@ -1010,7 +1010,7 @@ class dfbrap(QWidget):
 		print(kHz)
 		self.period_eng_indicator.setText('%8.4f'%uSecs)
 		self.freq_eng_indicator.setText('%6.3f'%kHz)
-		print()
+		
 
 
 	def tri_idx_changed(self):
@@ -1029,7 +1029,7 @@ class dfbrap(QWidget):
 		wreg = 0 << 25
 		wregval = wreg + (self.col << 6)
 		self.sendReg(wregval)
-		print()
+		
 
 	def send_wreg4(self, wreg4):
 		if self.parent != None:
@@ -1044,7 +1044,7 @@ class dfbrap(QWidget):
 			step = int(cmd_reg[11:], base=2)
 			print("DFB:WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")")
 			self.sendReg((self.wreg4 & 0xFFF7FFF) | (self.GR << 15))
-			print()
+			
 
 	def sendReg(self, wregval):
 		print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)

@@ -462,7 +462,7 @@ class dfbChn(QWidget):
         self.send_wreg2()
         self.send_wreg3()
         self.send_wreg5()
-        print()
+        
 
     def lock_channel(self):
         self.unlocked = self.lock_button.isChecked()
@@ -478,21 +478,21 @@ class dfbChn(QWidget):
         wreg = 0 << 25
         wregval = wreg | (self.chn << 6) | self.state
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg1(self):
         print("DFB:WREG1: arrayed state variables: ADC lock point")
         wreg = 1 << 25
         wregval = wreg | self.a2d_lockpt
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg2(self):
         print("DFB:WREG2: arrayed state variables: triangle booleans & DAC offset A")
         wreg = 2 << 25
         wregval = wreg | (self.triA << 16) | (self.triB << 17) | self.d2a_A
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg3(self):
         print("DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I")
@@ -503,15 +503,15 @@ class dfbChn(QWidget):
         wreg = wreg | ((int(self.P)&0x3ff) << 10)
         wregval = wreg | (int(self.I)&0x3ff)
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg5(self):
-        print()
+        
         print("DFB:WREG5: DAC offset B & send mode")
         wreg = 5 << 25
         wregval = wreg | (self.d2a_B << 11) | self.SM
         self.sendReg(wregval)
-        print()
+        
         
     def sendReg(self, wregval): 
         print(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
