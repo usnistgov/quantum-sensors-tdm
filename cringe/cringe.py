@@ -2108,7 +2108,7 @@ def main():
     logging.info("cringe.main with args={}".format(args))
 
     if not any(vars(args).values()):
-        p.error(tc.BOLD+"No arguments provided. You probably want -L or -F."+tc.END) # this exits
+        p.error(tc.BOLD+"No arguments provided. You probably want -L or -F."+tc.ENDC) # this exits
 
     def noneLen(x):
         if x is None:
@@ -2116,7 +2116,7 @@ def main():
         return len(x)
 
     if not noneLen(args.addr_vector) == noneLen(args.slot_vector) == noneLen(args.class_vector):
-        p.error(BOLD+"-A, -S and -C must all have the same number of arguments"+END)
+        p.error(tc.BOLD+"-A, -S and -C must all have the same number of arguments"+tc.ENDC)
 
     # -F gives setup_file which takes a filename from the command line
     # -L gets a filename from a open file dialog
