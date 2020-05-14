@@ -108,7 +108,7 @@ class SV_array(QWidget):
                 self.state_vectors[i].setEnabled(0)
 
     def loadSVfile(self):
-        logging.debug(tc.FCTCALL + "Load state sequence from file: BAD16 /"+str(self.addr)+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "Load state sequence from file: BAD16 /", self.addr, tc.ENDC)
         self.load_filename = str(QFileDialog.getOpenFileName())
         self.filenameEdit.setText(self.load_filename)
         logging.debug(("filename = [%s]" % self.load_filename))
@@ -137,7 +137,7 @@ class SV_array(QWidget):
 
 
     def saveSVfile(self):
-        logging.debug(tc.FCTCALL + "Save current state sequence to file: BAD16 /"+str(self.addr)+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "Save current state sequence to file: BAD16 /", self.addr, tc.ENDC)
         
         filename = str(QFileDialog.getSaveFileName()[0])
         self.filenameEdit.setText(filename)
@@ -148,7 +148,7 @@ class SV_array(QWidget):
         self.filenameEdit.setText(filename)
 
     def initSeq(self):
-        logging.debug(tc.FCTCALL + "Clear BAD16 state sequence memory: Initialize"+ self.nstates+ "state vectors to 0x0000: BAD16 /"+str(self.addr)+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "Clear BAD16 state sequence memory: Initialize", self.nstates, "state vectors to 0x0000: BAD16 /", self.addr, tc.ENDC)
         
         for i in range(self.nstates):
             for j in range(0, 16):
@@ -158,7 +158,7 @@ class SV_array(QWidget):
         self.init_flag = 1
 
     def SendAllStates(self):
-        logging.debug(tc.FCTCALL + "Send all"+ self.nstates+ "states: BAD16/"+str(self.addr)+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "Send all", self.nstates, "states: BAD16/", self.addr, tc.ENDC)
         
         for i in range(self.nstates):
             self.state_vectors[i].send_state()

@@ -134,11 +134,11 @@ class dprcal(QWidget):
 
 
 	def loadCalFile(self):
-		logging.debug(tc.FCTCALL + "load phase calibration file:"+ tc.ENDC)
+		logging.debug(tc.FCTCALL + "load phase calibration file:", tc.ENDC)
 		filename = str(QFileDialog.getOpenFileName())
 # 		logging.debug("filename = [%s]" % filename)
 		if len(filename) > 0:
-			logging.debug("loading file:"+ filename)
+			logging.debug("loading file:", filename)
 			
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
@@ -150,7 +150,7 @@ class dprcal(QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			logging.debug(tc.FAIL + "load file cancelled:"+ tc.ENDC)
+			logging.debug(tc.FAIL + "load file cancelled:", tc.ENDC)
 			
 			return
 		
@@ -163,25 +163,25 @@ class dprcal(QWidget):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		logging.debug(tc.FCTCALL + "save phase calibration file:"+ tc.ENDC)
+		logging.debug(tc.FCTCALL + "save phase calibration file:", tc.ENDC)
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
-			logging.debug("saving calibration file:"+ filename)
+			logging.debug("saving calibration file:", filename)
 			
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			logging.debug(tc.FAIL + "save file cancelled:"+ tc.ENDC)
+			logging.debug(tc.FAIL + "save file cancelled:", tc.ENDC)
 			
 			return
 
 	def CalAllCounters(self):
 		
-		logging.debug(tc.INIT + "auto phase calibrate: "+ self.card_type+ "card address"+ self.address+ tc.ENDC)
+		logging.debug(tc.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
@@ -195,17 +195,17 @@ class dprcal(QWidget):
 			
 	def nullPhase(self):
 		
-		logging.debug(tc.INIT + "null phase:"+ tc.ENDC)
+		logging.debug(tc.INIT + "null phase:", tc.ENDC)
 		
 		self.resetALLphase()
-		logging.debug(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:"+ tc.ENDC)
+		logging.debug(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:", tc.ENDC)
 		
 		mask = 0xfffe000
 		wregval = self.GPI1 & mask
 		self.sendReg(wregval)
 		
 	def sendSlot(self):
-		logging.debug(tc.FCTCALL + "send slot:"+ self.slot+ tc.ENDC)
+		logging.debug(tc.FCTCALL + "send slot:", self.slot, tc.ENDC)
 		logging.debug("GPI1: send slot:")
 		
 		mask = 0xfffffe0
@@ -213,7 +213,7 @@ class dprcal(QWidget):
 		self.sendReg(wregval)
 				
 	def sendReg(self, wregval):
-		logging.debug(tc.COMMAND + "send to address"+ self.address+ ":"+ tc.BOLD+ wregval+ tc.ENDC)
+		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

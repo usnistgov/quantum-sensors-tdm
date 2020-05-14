@@ -55,7 +55,7 @@ class badcard(QWidget):
         self.layout_widget = QWidget(self)
         self.layout = QGridLayout(self)
 
-        logging.debug(tc.INIT + "building BAD16 card: slot"+ self.slot+ "/ address"+str(self.address)+ tc.ENDC)
+        logging.debug(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
         
 
         '''
@@ -172,7 +172,7 @@ class badcard(QWidget):
 
 
     def seqln_changed(self, seqln):
-        logging.debug(tc.FCTCALL + "send SEQLN to BAD16 card:"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send SEQLN to BAD16 card:", tc.ENDC)
         self.seqln = seqln
         self.send_wreg0()
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
@@ -215,19 +215,19 @@ class badcard(QWidget):
             
 
     def send_triangle(self, wreg1):
-        logging.debug(tc.FCTCALL + "send triangle parameters to BAD16 card:"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
         
 
     def send_class_globals(self, wreg0):
-        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
         
 
     def send_card_globals(self):
-        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.send_wreg0()
         
 
@@ -246,7 +246,7 @@ class badcard(QWidget):
         if self.parent != None:
             self.parent.send_bad16_wreg0(self.ST, self.LED, self.INT, self.address)
         else:
-            logging.debug("BAD16:WREG0: ST+ LED+ card delay+ INIT+ sequence length:"+ str(self.ST)+ str(self.LED)+ str(self.bad_delay)+ str(self.INT)+ str(self.seqln))
+            logging.debug("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
             
             self.wreg0 = (0 << 25) | (self.ST << 16) | (self.LED << 14) | (self.bad_delay << 10) | (self.INT << 8) | self.seqln
             self.sendReg(self.wreg0)
@@ -256,12 +256,12 @@ class badcard(QWidget):
         dwell = int(cmd_reg[1:5], base=2)
         steps = int(cmd_reg[5:9], base=2)
         step = int(cmd_reg[11:], base=2)
-        logging.debug("BAD16:WREG1: triangle parameters DWELL+ STEPS+ STEP SIZE:"+ str(dwell)+ str(steps)+ str(step))
+        logging.debug("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
         self.sendReg(self.wreg1)
         
 
     def sendReg(self, wregval):
-        logging.debug(tc.COMMAND + "send to address"+str(self.address)+ ":"+ tc.BOLD+str(wregval)+ tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

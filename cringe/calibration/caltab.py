@@ -104,7 +104,7 @@ class CalDemo(QWidget):
         logging.debug((tp_mode.itemText(tp_mode.currentIndex())))
         TP = self.cringe.TP
         lobytes,hibytes=self.cringe.lohibytes()
-        logging.debug(hex(lobytes)+hex(hibytes))
+        logging.debug(hex(lobytes),hex(hibytes))
 
     def increment_counter(self):
         dfbcard = self.cringe.crate_widgets[1]
@@ -117,8 +117,8 @@ class CalDemo(QWidget):
         lobytes,hibytes=self.cringe.lohibytes()
         data = self.c.getNewData(divideNsamp=False, sendMode="raw")
         ncorrect = (data[0,0,:,0]==lobytes).sum()+(data[0,0,:,0]==hibytes).sum()
-        logging.debug((list(map(hex+ data[0+0+str(:20)+0]))))
-        logging.debug((list(map(hex+ data[0+0+:20+1]))))
+        logging.debug((list(map(hex, data[0,0,:20,0]))))
+        logging.debug((list(map(hex, data[0,0,:20,1]))))
         logging.debug((ncorrect/float(data.size)))
         return ncorrect
 

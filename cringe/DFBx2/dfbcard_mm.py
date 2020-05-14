@@ -185,28 +185,28 @@ class dfbcardMM(object):
         if regIdx == 6:
             for idx,val in enumerate(self.wreg6_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG6: update"+self.wreg6_parameter[idx])
+                    logging.debug("WREG6: update",self.wreg6_parameter[idx])
                     if value > 2**self.wreg6_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg6_width[idx]-1) << bitIdx)
                     self.wreg6 = (self.wreg6 & mask) | (value << bitIdx)
-                    logging.debug(self.wreg6+ hex(self.wreg6))
+                    logging.debug(self.wreg6, hex(self.wreg6))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG6 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG6 invalid", tc.ENDC)
         if regIdx == 7:
             for idx,val in enumerate(self.wreg6_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG7: update"+self.wreg7_parameter[idx])
+                    logging.debug("WREG7: update",self.wreg7_parameter[idx])
                     if value > 2**self.wreg7_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg7_width[idx]-1) << bitIdx)
                     self.wreg7 = (self.wreg7 & mask) | (value << bitIdx)
-                    logging.debug(self.wreg7+ hex(self.wreg7))
+                    logging.debug(self.wreg7, hex(self.wreg7))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG6 invalid"+ tc.ENDC)
-        logging.debug(tc.FAIL + "register index for"+str(self.card)+"card function call invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG6 invalid", tc.ENDC)
+        logging.debug(tc.FAIL + "register index for", self.card,"card function call invalid", tc.ENDC)
             
 
 #             if bitIdx == 0:
@@ -258,143 +258,143 @@ class dfbcardMM(object):
     def updateGlbReg(self, regIdx=None, value=0):
         if regIdx == 6:
             self.wreg6 = (self.wreg6 & 0xe000000) | value
-            logging.debug("update WREG6:"+ self.wreg6)
+            logging.debug("update WREG6:", self.wreg6)
             return
         if regIdx == 7:
             self.wreg7 = (self.wreg7 & 0xe000000) | value
-            logging.debug("update WREG7:"+ self.wreg7)
+            logging.debug("update WREG7:", self.wreg7)
             return
-        logging.debug(tc.FAIL + "register index for"+str(self.card)+"card GLOBAL invalid"+ tc.ENDC)
+        logging.debug(tc.FAIL + "register index for", self.card,"card GLOBAL invalid", tc.ENDC)
                 
     def updateGPIReg(self, regIdx=None, value=0):
         if regIdx == 8:
             if (value < 0) or (value > 0x3f):
-                logging.debug(tc.FAIL + "parameter value out of range"+ tc.ENDC)
+                logging.debug(tc.FAIL + "parameter value out of range", tc.ENDC)
             else:
                 self.GPI8 = (self.GPI8 & 0xffe0000) | value
-                logging.debug("update GPI8:"+ self.GPI8_parameter+ ":"+self.GPI8)
+                logging.debug("update GPI8:", self.GPI8_parameter, ":",self.GPI8)
             return
         if regIdx == 12:
             if (value < 0) or (value > 0x3):
-                logging.debug(tc.FAIL + "parameter value out of range"+ tc.ENDC)
+                logging.debug(tc.FAIL + "parameter value out of range", tc.ENDC)
             else:
                 self.GPI12 = (self.GPI12 & 0xffe0000) | value
-                logging.debug("update GPI12:"+ self.GPI12_parameter+ ":"+ self.GPI12)
+                logging.debug("update GPI12:", self.GPI12_parameter, ":", self.GPI12)
             return
         if regIdx == 13:
             if (value < 0) or (value > 0x3):
-                logging.debug(tc.FAIL + "parameter value out of range"+ tc.ENDC)
+                logging.debug(tc.FAIL + "parameter value out of range", tc.ENDC)
             else:
                 self.GPI13 = (self.GPI13 & 0xffe0000) | value
-                logging.debug("update GPI13:"+ self.GPI13_parameter+ ":"+ self.GPI13)
+                logging.debug("update GPI13:", self.GPI13_parameter, ":", self.GPI13)
             return
         if regIdx == 14:
             if (value < 0) or (value > 0x3):
-                logging.debug(tc.FAIL + "parameter value out of range"+ tc.ENDC)
+                logging.debug(tc.FAIL + "parameter value out of range", tc.ENDC)
             else:
                 self.GPI14 = (self.GPI14 & 0xffe0000) | value
-                logging.debug("update GPI14:"+ self.GPI14_parameter+ ":"+ self.GPI14)
+                logging.debug("update GPI14:", self.GPI14_parameter, ":", self.GPI14)
             return
         if regIdx == 15:
             if (value < 0) or (value > 0x3):
-                logging.debug(tc.FAIL + "parameter value out of range"+ tc.ENDC)
+                logging.debug(tc.FAIL + "parameter value out of range", tc.ENDC)
             else:
                 self.GPI15 = (self.GPI15 & 0xffe0000) | value
-                logging.debug("update GPI15:"+ self.GPI15_parameter+ ":"+ self.GPI15)
+                logging.debug("update GPI15:", self.GPI15_parameter, ":", self.GPI15)
             return
-        logging.debug(tc.FAIL + "register index for"+str(self.card)+"card GPI invalid"+ tc.ENDC)
+        logging.debug(tc.FAIL + "register index for", self.card,"card GPI invalid", tc.ENDC)
         
             
     def updatePage(self, chnIdx, stIdx):
-        logging.debug(tc.FCTCALL + "update WREG0 page register [CH/ST]:"+str(chnIdx)+"/"+str(stIdx)+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "update WREG0 page register [CH/ST]:",chnIdx,"/",stIdx, tc.ENDC)
         mask = 0xfffff00
         self.wreg0 = (self.wreg0 & mask) | (chnIdx << 6) | stIdx
         
                            
     def updateArrVal(self, chnIdx= 1, stIdx=0, regIdx=None, bitIdx=0, value=0):
-        logging.debug(tc.FCTCALL + "update DFB arrayed state parameter"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "update DFB arrayed state parameter", tc.ENDC)
         self.updatePage(chnIdx, stIdx)
         if regIdx == 1:
             for idx,val in enumerate(self.wreg1_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG1: update"+self.wreg1_parameter[idx])
+                    logging.debug("WREG1: update",self.wreg1_parameter[idx])
                     if value > 2**self.wreg1_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg1_width[idx]-1) << bitIdx)
                     self.wreg1[chnIdx][stIdx] = (self.wreg1[chnIdx][stIdx] & mask) | (value << bitIdx)
-                    logging.debug(self.wreg1[chnIdx][stIdx]+ hex(self.wreg1[chnIdx][stIdx]))
+                    logging.debug(self.wreg1[chnIdx][stIdx], hex(self.wreg1[chnIdx][stIdx]))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG1 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG1 invalid", tc.ENDC)
         if regIdx == 2:
             for idx,val in enumerate(self.wreg2_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG2: update"+self.wreg2_parameter[idx])
+                    logging.debug("WREG2: update",self.wreg2_parameter[idx])
                     if value > 2**self.wreg2_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg2_width[idx]-1) << bitIdx)
                     self.wreg2[chnIdx][stIdx] = (self.wreg2[chnIdx][stIdx] & mask) | (value << bitIdx)
-                    logging.debug(self.wreg2[chnIdx][stIdx]+ hex(self.wreg2[chnIdx][stIdx]))
+                    logging.debug(self.wreg2[chnIdx][stIdx], hex(self.wreg2[chnIdx][stIdx]))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG2 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG2 invalid", tc.ENDC)
         if regIdx == 3:
             for idx,val in enumerate(self.wreg3_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG3: update"+self.wreg3_parameter[idx])
+                    logging.debug("WREG3: update",self.wreg3_parameter[idx])
                     if value > 2**self.wreg3_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg3_width[idx]-1) << bitIdx)
                     self.wreg3[chnIdx][stIdx] = (self.wreg3[chnIdx][stIdx] & mask) | (value << bitIdx)
-                    logging.debug(self.wreg3[chnIdx][stIdx]+ hex(self.wreg3[chnIdx][stIdx]))
+                    logging.debug(self.wreg3[chnIdx][stIdx], hex(self.wreg3[chnIdx][stIdx]))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG3 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG3 invalid", tc.ENDC)
         if regIdx == 4:
             for idx,val in enumerate(self.wreg4_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG4: update"+self.wreg4_parameter[idx])
+                    logging.debug("WREG4: update",self.wreg4_parameter[idx])
                     if value > 2**self.wreg4_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg4_width[idx]-1) << bitIdx)
                     self.wreg4[chnIdx] = (self.wreg4[chnIdx] & mask) | (value << bitIdx)
-                    logging.debug(self.wreg4[chnIdx]+ hex(self.wreg4[chnIdx]))
+                    logging.debug(self.wreg4[chnIdx], hex(self.wreg4[chnIdx]))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG4 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG4 invalid", tc.ENDC)
         if regIdx == 5:
             for idx,val in enumerate(self.wreg5_bitIdx):
                 if bitIdx == val:
-                    logging.debug("WREG5: update"+self.wreg5_parameter[idx])
+                    logging.debug("WREG5: update",self.wreg5_parameter[idx])
                     if value > 2**self.wreg5_width[idx]-1:
-                        logging.debug(tc.FAIL + "parameter value overflows allotted register space"+ tc.ENDC)
+                        logging.debug(tc.FAIL + "parameter value overflows allotted register space", tc.ENDC)
                         return
                     mask = 0xfffffff ^ ((2**self.wreg5_width[idx]-1) << bitIdx)
                     self.wreg5[chnIdx][stIdx] = (self.wreg5[chnIdx][stIdx] & mask) | (value << bitIdx)
-                    logging.debug(self.wreg5[chnIdx][stIdx]+ hex(self.wreg5[chnIdx][stIdx]))
+                    logging.debug(self.wreg5[chnIdx][stIdx], hex(self.wreg5[chnIdx][stIdx]))
                     return
-            logging.debug(tc.FAIL + "bit index for WREG5 invalid"+ tc.ENDC)
+            logging.debug(tc.FAIL + "bit index for WREG5 invalid", tc.ENDC)
                 
     def updateArrReg(self, chnIdx= 1, stIdx=None, regIdx=None, value=0):
-        logging.debug(tc.FCTCALL + "update DFB arrayed state register"+ tc.ENDC)
-        logging.debug("update WREG0 page register [CH/ST]:"+str(chnIdx)+"/"+str(stIdx))
+        logging.debug(tc.FCTCALL + "update DFB arrayed state register", tc.ENDC)
+        logging.debug("update WREG0 page register [CH/ST]:",chnIdx,"/",stIdx)
         mask = 0xfffff00
         self.wreg0 = (self.wreg0 & mask) | (chnIdx << 6) | stIdx
         if regIdx == 1:
             self.wreg1[stIdx] = (self.wreg1[stIdx] & 0xe000000) | value
-            logging.debug("update WREG1:"+ self.wreg1[stIdx])
+            logging.debug("update WREG1:", self.wreg1[stIdx])
         if regIdx == 2:
             self.wreg2[stIdx] = (self.wreg2[stIdx] & 0xe000000) | value
-            logging.debug("update WREG2:"+ self.wreg2[stIdx])
+            logging.debug("update WREG2:", self.wreg2[stIdx])
         if regIdx == 3:
             self.wreg3[stIdx] = (self.wreg3[stIdx] & 0xe000000) | value
-            logging.debug("update WREG3:"+ self.wreg3[stIdx])
+            logging.debug("update WREG3:", self.wreg3[stIdx])
         if regIdx == 5:
             self.wreg5[stIdx] = (self.wreg5[stIdx] & 0xe000000) | value
-            logging.debug("update WREG5:"+ self.wreg5[stIdx])
+            logging.debug("update WREG5:", self.wreg5[stIdx])
                 
     def sendReg(self, wregval):
-        logging.debug(tc.COMMAND + "send to address"+str(self.address)+ ":"+ tc.BOLD+str(wregval)+ tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1             # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

@@ -298,7 +298,7 @@ class badChn(QWidget):
         self.d2a_hi_slider.setValue(16383)
         
     def send_channel(self):
-        logging.debug(tc.FCTCALL + "send BAD16 CHN"+str(self.chn)+ ": index & arrayed register values"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send BAD16 CHN", self.chn, ": index & arrayed register values", tc.ENDC)
         self.send_wreg2()
         self.send_wreg4()
         self.send_wreg5()
@@ -338,7 +338,7 @@ class badChn(QWidget):
         
         
     def sendReg(self, wregval): 
-        logging.debug(tc.COMMAND + "send to address"+str(self.address)+ ":"+ tc.BOLD+str(wregval)+ tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

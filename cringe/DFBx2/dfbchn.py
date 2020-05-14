@@ -457,7 +457,7 @@ class dfbChn(QWidget):
 #         self.d2a_A_slider.setValue(16383)
         
     def send_channel(self):
-        logging.debug(tc.FCTCALL + "send DFB STATE parameters"+ self.state+ ": index & arrayed register values"+ tc.ENDC)
+        logging.debug(tc.FCTCALL + "send DFB STATE parameters", self.state, ": index & arrayed register values", tc.ENDC)
         self.send_wreg0()
         self.send_wreg1()
         self.send_wreg2()
@@ -496,7 +496,7 @@ class dfbChn(QWidget):
         
 
     def send_wreg3(self):
-        logging.debug("DFB:WREG3: arrayed state feedback parameters: tri+ arl+ P+ I")
+        logging.debug("DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I")
         wreg = 3 << 25
         wreg = wreg | (int(self.FBA) << 24)
         wreg = wreg | (int(self.FBB) << 23)
@@ -515,7 +515,7 @@ class dfbChn(QWidget):
         
         
     def sendReg(self, wregval): 
-        logging.debug(tc.COMMAND + "send to address"+ self.address+ ":"+ tc.BOLD+ wregval+ tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1
