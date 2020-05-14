@@ -37,11 +37,11 @@ class TowerCard(QWidget):
 
         self.towerchannels=[]
         for i in range(8):
-            tc = towerchannel.TowerChannel(parent=None, chn=i, cardaddr=self.address, serialport=serialport, shockvalue=shockvalue)
+            tc = towerchannel.TowerChannel(parent=self, chn=i, cardaddr=self.address, serialport=serialport, shockvalue=shockvalue)
             self.layout.addWidget(tc,0,i+2,1,1)
             self.towerchannels.append(tc)
 
-        self.allcontrolchannel = towerchannel.TowerChannel(parent=None, chn=-1, cardaddr=self.address, serialport=serialport,dummy=True)
+        self.allcontrolchannel = towerchannel.TowerChannel(parent=self, chn=-1, cardaddr=self.address, serialport=serialport,dummy=True)
         self.layout.addWidget(self.allcontrolchannel,0,10,1,1)
 
         self.shockbutton = QPushButton("shock")

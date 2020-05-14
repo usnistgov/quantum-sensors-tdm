@@ -46,7 +46,7 @@ class TowerChannel(QWidget):
         
         if parent == None:       
             self.show()
-            log.debug(self.width())
+            log.debug("towerchannel:self.width()",self.width())
         
             
     def dacspin_changed(self):
