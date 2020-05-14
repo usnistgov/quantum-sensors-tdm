@@ -2,8 +2,8 @@ from cringe import cringe
 from PyQt5 import QtCore, QtWidgets
 from named_serial import named_serial
 
-print()
 named_serial._setup_for_testing({"rack" : "dummy_rack", "tower": "dummy_tower"})
+cringe.log.set_debug()
 
 
 def test_cringe(qtbot): # see pytest-qt for info qtbot

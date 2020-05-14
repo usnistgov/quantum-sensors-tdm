@@ -1,5 +1,5 @@
-VERBOSITY_DEBUG = 10
-VERBOSITY_INFO  = 20 
+VERBOSITY_DEBUG = 50
+VERBOSITY_INFO  = 40 
 
 class Logger():
     """
