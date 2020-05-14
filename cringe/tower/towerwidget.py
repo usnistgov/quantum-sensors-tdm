@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 import struct
 from . import towercard
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 
 class LabelWidget(QWidget):
@@ -73,11 +73,11 @@ class TowerWidget(QWidget):
 
     def unpackState(self, loadState):
         dacvalues = loadState["dacvalues"][:]
-        logging.debug(dacvalues)
+        log.debug(dacvalues)
         if len(dacvalues) != len(self.towercards)*8:
             # silentley ignore saved values if there are the wrong number
             # used to allow changiing the tower setup from the command line
-            logging.debug("wrong number of dacvalues for towerwidget.unpackState")
+            log.debug("wrong number of dacvalues for towerwidget.unpackState")
             return
         for key,tc in self.towercards.items():
             for tchn in tc.towerchannels:

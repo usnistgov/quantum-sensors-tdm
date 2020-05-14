@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from .dpr_counter import dpr_counter
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 
 class dprcal(QWidget):
@@ -134,11 +134,11 @@ class dprcal(QWidget):
 
 
 	def loadCalFile(self):
-		logging.debug(tc.FCTCALL + "load phase calibration file:", tc.ENDC)
+		log.debug(tc.FCTCALL + "load phase calibration file:", tc.ENDC)
 		filename = str(QFileDialog.getOpenFileName())
-# 		logging.debug("filename = [%s]" % filename)
+# 		log.debug("filename = [%s]" % filename)
 		if len(filename) > 0:
-			logging.debug("loading file:", filename)
+			log.debug("loading file:", filename)
 			
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
@@ -150,38 +150,38 @@ class dprcal(QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			logging.debug(tc.FAIL + "load file cancelled:", tc.ENDC)
+			log.debug(tc.FAIL + "load file cancelled:", tc.ENDC)
 			
 			return
 		
 # 		if idx != self.counters:
 		if (idx + 1) != self.counters:
-			logging.debug(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
+			log.debug(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
 			
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		logging.debug(tc.FCTCALL + "save phase calibration file:", tc.ENDC)
+		log.debug(tc.FCTCALL + "save phase calibration file:", tc.ENDC)
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
-			logging.debug("saving calibration file:", filename)
+			log.debug("saving calibration file:", filename)
 			
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			logging.debug(tc.FAIL + "save file cancelled:", tc.ENDC)
+			log.debug(tc.FAIL + "save file cancelled:", tc.ENDC)
 			
 			return
 
 	def CalAllCounters(self):
 		
-		logging.debug(tc.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
+		log.debug(tc.INIT + "auto phase calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
@@ -195,25 +195,25 @@ class dprcal(QWidget):
 			
 	def nullPhase(self):
 		
-		logging.debug(tc.INIT + "null phase:", tc.ENDC)
+		log.debug(tc.INIT + "null phase:", tc.ENDC)
 		
 		self.resetALLphase()
-		logging.debug(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:", tc.ENDC)
+		log.debug(tc.FCTCALL + "GPI1: reset slot & phase trim to 0:", tc.ENDC)
 		
 		mask = 0xfffe000
 		wregval = self.GPI1 & mask
 		self.sendReg(wregval)
 		
 	def sendSlot(self):
-		logging.debug(tc.FCTCALL + "send slot:", self.slot, tc.ENDC)
-		logging.debug("GPI1: send slot:")
+		log.debug(tc.FCTCALL + "send slot:", self.slot, tc.ENDC)
+		log.debug("GPI1: send slot:")
 		
 		mask = 0xfffffe0
 		wregval = (mask & self.GPI1) | self.slot
 		self.sendReg(wregval)
 				
 	def sendReg(self, wregval):
-		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+		log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

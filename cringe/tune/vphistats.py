@@ -61,7 +61,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                  "positiveCrossingFirstX", "negativeCrossingFirstX", "firstMinimumInd",
                  "firstMinimumX", "firstMinimumY", "modDepth", "midPoint", "crossingPoint",
                  "firstMaximumInd", "firstMaximumX", "firstMaximumY"]
-    logging.debug((signals.shape))
+    log.debug((signals.shape))
     for statname in statnames:
         stats[statname] = np.zeros((signals.shape[0], signals.shape[1]))
     for col in range(signals.shape[0]):
@@ -75,7 +75,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                 for i, statname in enumerate(statnames):
                     stats[statname][col, row] = stattuple[i]
             except AssertionError as ex:
-                logging.debug(("AssertionErrors col %d, row %d"%(col,row)))
+                log.debug(("AssertionErrors col %d, row %d"%(col,row)))
                 # we really shouldn't be using try for flow control here
 
     return stats

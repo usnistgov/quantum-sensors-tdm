@@ -10,7 +10,7 @@ import named_serial
 from . import badrap
 from . import sv_array
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 import dprcal
 
 

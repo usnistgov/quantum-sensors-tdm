@@ -12,7 +12,7 @@ import named_serial
 from . import scream
 from . import dprS
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 class dfbscard(QWidget):
 
@@ -88,7 +88,7 @@ class dfbscard(QWidget):
 		self.layout_widget = QWidget(self)
 		self.layout = QGridLayout(self)
 		
-		logging.debug(tc.INIT + "building DFBscream card: slot", self.slot, "/ address", self.address, tc.ENDC)
+		log.debug(tc.INIT + "building DFBscream card: slot", self.slot, "/ address", self.address, tc.ENDC)
 		
 		
 		'''
@@ -196,7 +196,7 @@ class dfbscard(QWidget):
 		
 	def LED_changed(self):
 		self.LED = self.LED_button.isChecked()
-		logging.debug("SCREAM LED boolean (True = OFF):", self.LED, tc.ENDC)
+		log.debug("SCREAM LED boolean (True = OFF):", self.LED, tc.ENDC)
 		if self.LED ==1:
 			self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")			
 			self.LED_button.setText('OFF')
@@ -208,7 +208,7 @@ class dfbscard(QWidget):
 
 	def status_changed(self):
 		self.ST = self.status_button.isChecked()
-		logging.debug("SCREAM ST boolean:", self.ST, tc.ENDC)
+		log.debug("SCREAM ST boolean:", self.ST, tc.ENDC)
 		if self.ST ==1:
 			self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
 		else:
@@ -220,7 +220,7 @@ class dfbscard(QWidget):
 		
 	def send_card_globals(self):
 		
-		logging.debug(tc.FCTCALL + "send card globals to SCREAM card:", tc.ENDC)
+		log.debug(tc.FCTCALL + "send card globals to SCREAM card:", tc.ENDC)
 		self.LED_changed()
 		self.status_changed()
 
@@ -264,76 +264,76 @@ class dfbscard(QWidget):
 		if parameter == "PS":
 			self.PS = value
 			GPI = 8
-			logging.debug("SCREAM PS:", value, tc.ENDC)
+			log.debug("SCREAM PS:", value, tc.ENDC)
 		if parameter == "XPT":
 			self.XPT = value
 			GPI = 9
-			logging.debug("SCREAM XPT:", value, tc.ENDC)
+			log.debug("SCREAM XPT:", value, tc.ENDC)
 		if parameter == "TP":
 			self.TP = value
 			self.TPboolean = 0
 			if value != 0:
 				self.TPboolean = 1
 				self.decode_tp()
-				logging.debug("SCREAM Test Pattern Hi Byte:", hex(self.hibytes), tc.ENDC)
+				log.debug("SCREAM Test Pattern Hi Byte:", hex(self.hibytes), tc.ENDC)
 				GPI = 12
 				self.send_cmd(GPI, self.hibytes)
-				logging.debug("SCREAM Test Pattern Lo Byte:", hex(self.lobytes), tc.ENDC)
+				log.debug("SCREAM Test Pattern Lo Byte:", hex(self.lobytes), tc.ENDC)
 				GPI = 13
 				self.send_cmd(GPI, self.lobytes)
 			GPI = 11
 			value = self.TPboolean
-			logging.debug("SCREAM Test Pattern Boolean:", self.TPboolean, tc.ENDC)
+			log.debug("SCREAM Test Pattern Boolean:", self.TPboolean, tc.ENDC)
 		if parameter == "NSAMP":
 			self.NSAMP = value
 			GPI = 40
-			logging.debug("SCREAM NSAMP:", value, tc.ENDC)
+			log.debug("SCREAM NSAMP:", value, tc.ENDC)
 		if parameter == "SETT":
 			self.SETT = value
 			GPI = 41
-			logging.debug("SCREAM SETT:", value, tc.ENDC)
+			log.debug("SCREAM SETT:", value, tc.ENDC)
 		if parameter == "CARD":
 			self.card_delay = value
 			GPI = 42
-			logging.debug("SCREAM CARD_DELAY:", value, tc.ENDC)
+			log.debug("SCREAM CARD_DELAY:", value, tc.ENDC)
 		if parameter == "PROP":
 			self.prop_delay = value
 			GPI = 43
-			logging.debug("SCREAM PROP_DELAY:", value, tc.ENDC)
+			log.debug("SCREAM PROP_DELAY:", value, tc.ENDC)
 		self.send_cmd(GPI, value)
 
 	def send_ARL(self, parameter, value):
 		if parameter == "ARLsense":
 			self.ARLsense = value
 			GPI = 16
-			logging.debug("SCREAM ARLsense:", value, tc.ENDC)
+			log.debug("SCREAM ARLsense:", value, tc.ENDC)
 		if parameter == "RLDpos":
 			self.RLDpos = value
 			GPI = 17
-			logging.debug("SCREAM RLDpos:", value, tc.ENDC)
+			log.debug("SCREAM RLDpos:", value, tc.ENDC)
 		if parameter == "RLDneg":
 			self.RLDneg = value
 			GPI = 18
-			logging.debug("SCREAM RLDneg:", value, tc.ENDC)
+			log.debug("SCREAM RLDneg:", value, tc.ENDC)
 		self.send_cmd(GPI, value)
 
 	def send_triangle(self, parameter, value):
 		if parameter == "dwell":
 			self.TriDwell = value
-			logging.debug("SCREAM DWELL:", value)
+			log.debug("SCREAM DWELL:", value)
 			self.send_cmd(33, value)
 		if parameter == "range":
 			self.TriRange = value
-			logging.debug("SCREAM RANGE:", value)
+			log.debug("SCREAM RANGE:", value)
 			self.send_cmd(34, value)
 		if parameter == "step":
 			self.TriStep = value
-			logging.debug("SCREAM STEP:", value)
+			log.debug("SCREAM STEP:", value)
 			self.send_cmd(35, value)
 
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		logging.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
+		log.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 
 import struct
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 
 class dprS_counter(QWidget):
@@ -176,10 +176,10 @@ class dprS_counter(QWidget):
 
         if self.counter == 0:         
             self.tot_steps.setText(str(self.cal_off+self.phase_trim_spin.value()))
-            logging.debug(tc.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), tc.ENDC)
+            log.debug(tc.FCTCALL + "step phase", self.card_ID,":", self.pcs_str, "from", self.lastTotVal,"to", self.tot_steps.text(), tc.ENDC)
         else:
             self.tot_steps.setText(str(self.phase_trim_spin.value()))
-            logging.debug(tc.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, tc.ENDC)
+            log.debug(tc.FCTCALL + "step phase:", self.card_ID,":", self.pcs_str, "from", self.lastSpinVal,"to", val, tc.ENDC)
         
 
         self.tot_degs.setText(str(int(self.tot_steps.text())*9))
@@ -187,17 +187,17 @@ class dprS_counter(QWidget):
 
         self.enableDPR()
         
-        logging.debug("set phase adjust counter (pll_counter)")
+        log.debug("set phase adjust counter (pll_counter)")
         self.send_cmd(29, self.counter)
         
         if val > self.lastSpinVal:
-            logging.debug("increment "+ self.pcs_str)
+            log.debug("increment "+ self.pcs_str)
             self.send_cmd(30, 0b01)
         else:
-            logging.debug("decrement "+ self.pcs_str)
+            log.debug("decrement "+ self.pcs_str)
             self.send_cmd(30, 0b10)
             
-        logging.debug("reset phase step register (dyn_phase)")
+        log.debug("reset phase step register (dyn_phase)")
         self.send_cmd(30, 0)
 
         self.disableDPR()
@@ -212,7 +212,7 @@ class dprS_counter(QWidget):
             self.tot_steps.setStyleSheet("background-color: #F08080;")
             
     def commit_cal(self):
-        logging.debug(tc.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, tc.ENDC)
+        log.debug(tc.FCTCALL + "commit calibration", self.card_ID,":",  self.pcs_str, tc.ENDC)
         self.commitFlag = True
         self.cal_offset.setStyleSheet("background-color: #90EE90;")
         self.tot_steps.setStyleSheet("background-color: #90EE90;")
@@ -225,9 +225,9 @@ class dprS_counter(QWidget):
             self.tot_steps.setText(str(self.cal_off))
             self.trim_deg.setText(str(0))
             self.tot_degs.setText(str(self.cal_off*9))
-            logging.debug("send slot:", self.slot)
+            log.debug("send slot:", self.slot)
             self.send_cmd(24, self.slot)
-            logging.debug("send phase trim coefficient:", self.cal_off)
+            log.debug("send phase trim coefficient:", self.cal_off)
             self.send_cmd(25, self.cal_off & 0x000ff)
         self.ptrim[self.counter] = int(self.tot_degs.text())
         self.commitFlag = False
@@ -235,7 +235,7 @@ class dprS_counter(QWidget):
         
 
     def calcounter(self):
-        logging.debug(tc.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, tc.ENDC)
+        log.debug(tc.FCTCALL + "calibrate counter", self.card_ID,":", self.pcs_str, tc.ENDC)
         
         if self.counter == 0:
             '''
@@ -246,28 +246,28 @@ class dprS_counter(QWidget):
              But changing a spin value calls newvalue which automatically steps the phase.
              So we must use a flag, self.resetFlag, set in resetPhase, to branch out of NEWVALUE when called from there.
             '''
-            logging.debug(tc.FCTCALL + "firmware calibrate ALL counters:", tc.ENDC)
-            logging.debug("send slot:", self.slot)
+            log.debug(tc.FCTCALL + "firmware calibrate ALL counters:", tc.ENDC)
+            log.debug("send slot:", self.slot)
             self.send_cmd(24, self.slot)
-            logging.debug("send phase trim coefficient:", self.cal_off)
+            log.debug("send phase trim coefficient:", self.cal_off)
             self.send_cmd(25, self.cal_off & 0x000ff)   # mask for 2's complement negative offsets
         
-            logging.debug("set phase adjust counter (pll_counter)")
+            log.debug("set phase adjust counter (pll_counter)")
             self.send_cmd(29, self.counter)
 
             self.parent.resetALLphase()         # reset ALL phase
             self.tot_steps.setText(self.cal_offset.text())
             self.tot_degs.setText(str(int(self.tot_steps.text())*9))
 
-            logging.debug(tc.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", tc.ENDC)
+            log.debug(tc.FCTCALL + "firmware autocal (for phase trim calibration coefficient & slot offsets):", tc.ENDC)
             
             self.enableDPR()
 
-            logging.debug("phase calibrate = True")
+            log.debug("phase calibrate = True")
             
             self.send_cmd(28, 1)                # PC => HI
             
-            logging.debug("phase calibrate = False")
+            log.debug("phase calibrate = False")
             
             self.send_cmd(28, 0)                # PC => LO
              
@@ -275,7 +275,7 @@ class dprS_counter(QWidget):
 
         else:
             steps = self.phase_trim_spin.value() - int(self.cal_offset.text())
-            logging.debug("software calibrate (for phase trim):", -steps, "phase steps applied")
+            log.debug("software calibrate (for phase trim):", -steps, "phase steps applied")
             
             while steps != 0:
                 if steps > 0:
@@ -290,7 +290,7 @@ class dprS_counter(QWidget):
         self.ptrim[self.counter] = int(self.tot_steps.text())
         
     def loadCal(self, cal_val):
-        logging.debug(tc.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, tc.ENDC)
+        log.debug(tc.FCTCALL + "load calibration", self.card_ID,":", self.pcs_str, tc.ENDC)
         self.cal_off = cal_val
 #         self.cal_off = self.coeffs[self.counter]
         self.cal_offset.setText(str(self.cal_off))
@@ -302,22 +302,22 @@ class dprS_counter(QWidget):
         
                
     def enableDPR(self):            # set True before sending DPR commands
-        logging.debug("enable DPR", tc.ENDC)
+        log.debug("enable DPR", tc.ENDC)
         self.send_cmd(26, 1)
 
     def disableDPR(self):            # set False after sending DPR commands
-        logging.debug("disable DPR", tc.ENDC)
+        log.debug("disable DPR", tc.ENDC)
         self.send_cmd(26, 0)
 
     def resetPhase(self):
-        logging.debug(tc.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, tc.ENDC)
+        log.debug(tc.FCTCALL + "reset phase", self.card_ID,":", self.pcs_str, tc.ENDC)
         
         self.resetFlag = True
         if self.counter == 0:                   # firmware PLL reset
             self.enableDPR()
-            logging.debug("phase reset = True")
+            log.debug("phase reset = True")
             self.send_cmd(27, 1)                # PR HI
-            logging.debug("phase reset = False")
+            log.debug("phase reset = False")
             self.send_cmd(27, 0)                # PR LO
             self.disableDPR()
             self.allCountersReset = True
@@ -345,7 +345,7 @@ class dprS_counter(QWidget):
         
     def send_cmd(self, GPI, val): 
         wregval = (GPI << 20) | val
-        logging.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
+        log.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
         b0 = (wregval & 0x7f ) << 1                # 0-6 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1         # 7-13 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1         # 14-19 bits shifted up 1
@@ -356,7 +356,7 @@ class dprS_counter(QWidget):
         time.sleep(0.001)
             
     def sendReg(self, wregval):
-        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1

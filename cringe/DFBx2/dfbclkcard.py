@@ -13,7 +13,7 @@ from . import dfbrap
 from . import dprcal
 from . import clkrap
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 
 class dfbclkcard(QWidget):
@@ -81,7 +81,7 @@ class dfbclkcard(QWidget):
 		self.layout_widget = QWidget(self)
 		self.layout = QGridLayout(self)
 		
-		logging.debug(tc.INIT + "building DFBCLK card: slot", self.slot, "/ address", self.address, "(DFB) & 0 (CLK)", tc.ENDC)
+		log.debug(tc.INIT + "building DFBCLK card: slot", self.slot, "/ address", self.address, "(DFB) & 0 (CLK)", tc.ENDC)
 		
 		
 		'''
@@ -196,7 +196,7 @@ class dfbclkcard(QWidget):
 		self.dfbclk_widget3.phase_counters[2].setEnabled(0)
 
 	def seqln_changed(self, seqln):
-		logging.debug(tc.FCTCALL + "send SEQLN to DFBCLK card:", tc.ENDC)
+		log.debug(tc.FCTCALL + "send SEQLN to DFBCLK card:", tc.ENDC)
 		self.seqln = seqln
 		self.dfbclk_widget2.seqln_changed(self.seqln)
 # 		print self.wreg7
@@ -212,7 +212,7 @@ class dfbclkcard(QWidget):
 		
 
 	def LED_changed(self):
-		logging.debug(tc.FCTCALL + "send LED boolean (True = OFF) to DFBCLK card:" + tc.ENDC)
+		log.debug(tc.FCTCALL + "send LED boolean (True = OFF) to DFBCLK card:" + tc.ENDC)
 		self.LED = self.LED_button.isChecked()
 		if self.LED ==1:
 			self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")			
@@ -225,7 +225,7 @@ class dfbclkcard(QWidget):
 		
 
 	def status_changed(self):
-		logging.debug(tc.FCTCALL + "send ST boolean to DFBCLK card:" + tc.ENDC)
+		log.debug(tc.FCTCALL + "send ST boolean to DFBCLK card:" + tc.ENDC)
 		self.ST = self.status_button.isChecked()
 		if self.ST ==1:
 			self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
@@ -236,21 +236,21 @@ class dfbclkcard(QWidget):
 		
 
 	def send_triangle(self, wreg4):
-		logging.debug(tc.FCTCALL + "send triangle parameters to DFB CH1 on DFBCLK card:", tc.ENDC)
-		logging.debug("DFBCLK:WREG0: page register: CH 1")
+		log.debug(tc.FCTCALL + "send triangle parameters to DFB CH1 on DFBCLK card:", tc.ENDC)
+		log.debug("DFBCLK:WREG0: page register: CH 1")
 		self.sendReg(1 << 6)
 		self.dfbclk_widget1.send_wreg4(wreg4)
 		
 
 	def send_class_globals(self, wreg6, wreg7):
-		logging.debug(tc.FCTCALL + "send class globals to DFBCLK card:", tc.ENDC)
+		log.debug(tc.FCTCALL + "send class globals to DFBCLK card:", tc.ENDC)
 		self.wreg6 = wreg6
 		self.wreg7 = wreg7
 		self.send_global_regs()
 		
 
 	def send_card_globals(self):
-		logging.debug(tc.FCTCALL + "send card globals to DFBCLK card:", tc.ENDC)
+		log.debug(tc.FCTCALL + "send card globals to DFBCLK card:", tc.ENDC)
 		self.send_dfbclk_wreg6()
 		self.send_dfb_wreg7()
 		
@@ -261,14 +261,14 @@ class dfbclkcard(QWidget):
 		XPT = int(cmd_reg[1:4], base=2)
 		CLK = int(cmd_reg[4])
 		NSAMP = int(cmd_reg[17:], base=2)
-		logging.debug("DFBCLK:WREG6: global parameters: PS, DFBCLK_XPT, CLK, NSAMP:", PS, XPT, CLK, NSAMP)
+		log.debug("DFBCLK:WREG6: global parameters: PS, DFBCLK_XPT, CLK, NSAMP:", PS, XPT, CLK, NSAMP)
 		self.sendReg(self.wreg6)
 		cmd_reg = bin(self.wreg7)[5:].zfill(25)
 		PD = int(cmd_reg[3:7], base=2)
 		CD = int(cmd_reg[7:11], base=2)
 		SL = int(cmd_reg[11:17], base=2)
 		SE = int(cmd_reg[17:], base=2)
-		logging.debug("DFBCLK:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE)
+		log.debug("DFBCLK:WREG7: global parameters: LED, ST, Prop Delay, Card Delay, sequence length, SETT:", self.LED, self.ST, PD, CD, SL, SE)
 		self.sendReg((self.wreg7 & 0xF3FFFFF) | (self.LED << 23) | (self.ST << 22))
 		
 
@@ -276,7 +276,7 @@ class dfbclkcard(QWidget):
 		if self.parent != None:
 			self.parent.send_dfbclk_wreg6(self.address)
 		else:
-			logging.debug("DFBCLK:WREG6: global parameters: PS, DFBCLK_XPT, CLK, NSAMP:", self.PS, self.dfbclk_XPT, self.CLK, self.NSAMP)
+			log.debug("DFBCLK:WREG6: global parameters: PS, DFBCLK_XPT, CLK, NSAMP:", self.PS, self.dfbclk_XPT, self.CLK, self.NSAMP)
 			self.wreg6 = (6 << 25) | (self.PS << 24) | (self.dfbclk_XPT << 21) | (self.CLK << 20) | self.NSAMP
 			self.sendReg(self.wreg6)
 
@@ -284,7 +284,7 @@ class dfbclkcard(QWidget):
 		if self.parent != None:
 			self.parent.send_dfb_wreg7(self.LED, self.ST, self.address)
 		else:
-			logging.debug("DFBCLK:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
+			log.debug("DFBCLK:WREG7: global parameters: LED, ST, prop delay, dfb delay, sequence length, SETT:", self.LED, self.ST, self.prop_delay, \
 				self.dfb_delay, self.seqln, self.SETT)
 			self.wreg7 = (7 << 25) | (self.LED << 23) | (self.ST << 22) | (self.prop_delay << 18) \
 				| (self.dfb_delay << 14) | (self.seqln << 8) | self.SETT
@@ -295,14 +295,14 @@ class dfbclkcard(QWidget):
 # 		self.sendReg((self.wreg7 & 0xF3FFFFF ) | (self.LED << 23) | (self.ST << 22))
 		
 	def send_GPI4(self):
-		logging.debug("DFBCLK:GPI4: test mode select")
+		log.debug("DFBCLK:GPI4: test mode select")
 		wreg = 4 << 17
 		wregval = wreg | self.TP
 		self.sendReg(wregval)
 		
 		
 	def send_GPI5(self):
-		logging.debug("DFBCLK:GPI5: test pattern hi-bytes [31..16]")
+		log.debug("DFBCLK:GPI5: test pattern hi-bytes [31..16]")
 		if self.TP == 1:
 			hibytes = 0x5555
 		if self.TP ==2:
@@ -327,7 +327,7 @@ class dfbclkcard(QWidget):
 		
 		
 	def send_GPI6(self):
-		logging.debug("DFBCLK:GPI6: test pattern lo-bytes [15..0]")
+		log.debug("DFBCLK:GPI6: test pattern lo-bytes [15..0]")
 		if self.TP == 1:
 			lobytes = 0x5555
 		if self.TP ==2:
@@ -352,7 +352,7 @@ class dfbclkcard(QWidget):
 		
 
 	def sendReg(self, wregval): 
-		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+		log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

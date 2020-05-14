@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import *
 import named_serial
 from .dprS_counter import dprS_counter
 from cringe.shared import terminal_colors as tc
-import logging
+from cringe.shared import log
 
 
 class dprS(QWidget):
@@ -139,12 +139,12 @@ class dprS(QWidget):
 
 
 	def loadCalFile(self):
-		logging.debug(tc.FCTCALL + "load calibration file:", tc.ENDC)
+		log.debug(tc.FCTCALL + "load calibration file:", tc.ENDC)
 		
 		filename = str(QFileDialog.getOpenFileName())
-# 		logging.debug("filename = [%s]" % filename)
+# 		log.debug("filename = [%s]" % filename)
 		if len(filename) > 0:
-			logging.debug("loading file:", filename)
+			log.debug("loading file:", filename)
 			
 			f = open(filename, 'r')
 			for idx, val in enumerate(f):
@@ -155,38 +155,38 @@ class dprS(QWidget):
 			f.close()
 			self.filenameEdit.setText(filename)
 		else:
-			logging.debug(tc.FAIL + "load file cancelled:", tc.ENDC)
+			log.debug(tc.FAIL + "load file cancelled:", tc.ENDC)
 			
 			return
 		
 		if (idx + 1) != self.counters:
-			logging.debug(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
+			log.debug(tc.FAIL + "WARNING: calibration file does not meet card class format" + tc.ENDC)
 			
 			return
 # 		for i in range(self.counters):
 # 			self.phase_counters[i].loadCal()
 			
 	def saveCalfile(self):
-		logging.debug(tc.FCTCALL + "save calibration file:", tc.ENDC)
+		log.debug(tc.FCTCALL + "save calibration file:", tc.ENDC)
 		
 		filestring = str(self.card_type)+"_S"+str(self.slot)+"A"+str(self.address)+".txt"
 		filename = str(QFileDialog.getSaveFileName(self, "save calibration file",filestring))
 		if len(filename) > 0:
 			self.filenameEdit.setText(filename)
-			logging.debug("saving calibration file:", filename)
+			log.debug("saving calibration file:", filename)
 			
 			f = open(filename, 'w')
 			for idx in range(self.counters):
 				f.write(str(self.phase_counters[idx].cal_offset.text() +"\n"))
 			f.close()
 		else:
-			logging.debug(tc.FAIL + "save file cancelled:", tc.ENDC)
+			log.debug(tc.FAIL + "save file cancelled:", tc.ENDC)
 			
 			return
 
 	def CalAllCounters(self):
 		
-		logging.debug(tc.INIT + "auto calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
+		log.debug(tc.INIT + "auto calibrate: ", self.card_type, "card address", self.address, tc.ENDC)
 		for i in range(self.counters):
 # 			if self.enb[i] == 1:
 			self.phase_counters[i].calcounter()
@@ -196,24 +196,24 @@ class dprS(QWidget):
 		tc.INIT_slot.setEnabled(mode)
 			
 	def nullPhase(self):
-		logging.debug(tc.INIT + "null phase:", tc.ENDC)
+		log.debug(tc.INIT + "null phase:", tc.ENDC)
 		
 		self.resetALLphase()
-		logging.debug(tc.FCTCALL + "reset slot & phase trim to 0:", tc.ENDC)
+		log.debug(tc.FCTCALL + "reset slot & phase trim to 0:", tc.ENDC)
 		
-		logging.debug("GPI24: send slot:", 0)
+		log.debug("GPI24: send slot:", 0)
 		self.send_cmd(24, 0)
-		logging.debug("GPI25: send phase trim coefficient:", 0)
+		log.debug("GPI25: send phase trim coefficient:", 0)
 		self.send_cmd(25, 0)
 		
 		
 	def sendSlot(self):
-		logging.debug(tc.FCTCALL + "GPI24: send slot:", self.slot, tc.ENDC)
+		log.debug(tc.FCTCALL + "GPI24: send slot:", self.slot, tc.ENDC)
 		
 		self.send_cmd(24, self.slot)
 				
 	def sendReg(self, wregval):
-		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+		log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			 # 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
@@ -225,7 +225,7 @@ class dprS(QWidget):
 		
 	def send_cmd(self, GPI, val): 
 		wregval = (GPI << 20) | val
-		logging.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
+		log.debug(tc.COMMAND + "send to card address", self.address, "/ GPI", GPI, ":", tc.BOLD, wregval, "(", val, ")",tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1				# 0-6 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 	# 7-13 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 	# 14-19 bits shifted up 1
