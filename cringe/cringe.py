@@ -2104,7 +2104,8 @@ def main():
 
     args = p.parse_args()
 
-    log.set_debug()
+    if args.debug:
+        log.set_debug()
     log.info("cringe.main with args={}".format(args))
 
     if not any(vars(args).values()):
