@@ -61,7 +61,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                  "positiveCrossingFirstX", "negativeCrossingFirstX", "firstMinimumInd",
                  "firstMinimumX", "firstMinimumY", "modDepth", "midPoint", "crossingPoint",
                  "firstMaximumInd", "firstMaximumX", "firstMaximumY"]
-    log.debug((signals.shape))
+    log.debug("vphistats:signals.shape",signals.shape)
     for statname in statnames:
         stats[statname] = np.zeros((signals.shape[0], signals.shape[1]))
     for col in range(signals.shape[0]):

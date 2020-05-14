@@ -73,7 +73,7 @@ class TowerWidget(QWidget):
 
     def unpackState(self, loadState):
         dacvalues = loadState["dacvalues"][:]
-        log.debug(dacvalues)
+        log.debug("towerwidget:dacvalues",dacvalues)
         if len(dacvalues) != len(self.towercards)*8:
             # silentley ignore saved values if there are the wrong number
             # used to allow changiing the tower setup from the command line

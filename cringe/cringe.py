@@ -734,6 +734,7 @@ class Cringe(QWidget):
         self.crate_widgets.append(self.tune_widget)
 
         if not self.tower_vector is None:
+            log.debug("building tower widget")
             self.tower_widget = towerwidget.TowerWidget(parent=self, nameaddrlist=self.tower_vector)
             self.scroll = QScrollArea(self)
             self.scroll.setWidgetResizable(True)

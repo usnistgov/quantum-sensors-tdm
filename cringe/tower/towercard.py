@@ -55,7 +55,7 @@ class TowerCard(QWidget):
         
         if parent == None:       
             self.show()
-            log.debug(self.width())
+            log.debug("tower_card self.width()",self.width())
         
             
     def allcontrolchannel_dacspin_changed(self):

@@ -61,6 +61,7 @@ def _setup_for_testing(d):
     global _namedports
     _namedports = d
 
+
 class Serial(serial.Serial):
     ''' Wrapper class around the serial.Serial that uses logical device
     names instead of physical device names.
@@ -103,11 +104,8 @@ class Serial(serial.Serial):
             raise ValueError('No shared ports on non-posix systems')
 
     def _set_as_dummy(self, port, myport):
-        print("namedserial: _set_as_dummy: port={}, myport={}".format(port, myport))
+        # print("namedserial: _set_as_dummy: port={}, myport={}".format(port, myport))
         self.write = lambda v: None
-#    def write(self, value):
-#        print "writing [%s]=%s" % (self.the_port, value)
-#        super(Serial, self).write(value)
 
     def writelist(self, inlist):
         '''Send a list of integers as characters'''

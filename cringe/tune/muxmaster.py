@@ -34,14 +34,14 @@ class MuxMaster():
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacAoffsets.append(dfbchn.d2a_A_spin.value())
-        log.debug(dacAoffsets)
+        log.debug("muxmaster:dacAoffsets",dacAoffsets)
 
     def getdacBoffsets(self):
         dacBoffsets = []
         for dfbrap in self.dfbraps:
             for dfbchn in dfbrap.state_vectors:
                 dacBoffsets.append(dfbchn.d2a_B_spin.value())
-        log.debug(dacBoffsets)
+        log.debug("muxmaster:dacBoffsets",dacBoffsets)
 
     def getadcLockpoints(self):
         adcLockpoints = []
@@ -51,9 +51,9 @@ class MuxMaster():
         return adcLockpoints
 
     def getbaddacHighs(self):
-        log.debug((self.getbadroworder()))
+        log.debug("muxmaster:self.getbadroworder()",self.getbadroworder())
         baddacHighs = []
-        log.debug((len(self.badraps), len(self.badraps[0].chn_vectors)))
+        log.debug("muxmaster:len(self.badraps)",len(self.badraps), "len(self.badraps[0].chn_vectors", len(self.badraps[0].chn_vectors))
         for badrap in self.badraps:
             for chn in badrap.chn_vectors:
 
@@ -74,7 +74,7 @@ class MuxMaster():
                 checked = [button.isChecked() for button in sv.buttons]
                 assert(np.sum(checked)==1)
                 roworder.append(i*self.seqln+find(checked)[0])
-                log.debug(checked)
+                log.debug("muxmaster:checked",checked)
         return roworder
 
     def changedfbrow(self,col=None,row=None,tria=None,trib=None,a2d=None,d2aA=None,d2aB=None,P=None,I=None,FBA=None,FBB=None,ARL=None,data_packet=None,dynamic=None):
