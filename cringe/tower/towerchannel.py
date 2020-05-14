@@ -54,7 +54,7 @@ class TowerChannel(QWidget):
         self.sendvalue(value)
 
     def sendvalue(self,dacvalue):
-        logging.debug(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
+        logging.debug(("towerchannel sending %g to addr %g+ chn %g"%(dacvalue,self.address,self.chn)))
         self.bluebox.setVoltDACUnits(dacvalue)
 
 

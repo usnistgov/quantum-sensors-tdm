@@ -494,7 +494,7 @@ class badrap(QWidget):
         self.send_wreg0()
 
     def send_globals(self):
-        logging.debug(tc.FCTCALL + "send BAD16 globals:", tc.ENDC)
+        logging.debug(tc.FCTCALL + "send BAD16 globals:"+ tc.ENDC)
         self.send_wreg0()
 # 		self.send_wreg1()
         
@@ -538,7 +538,7 @@ class badrap(QWidget):
             self.ampDACunits = 16383
         self.amp_indicator.setText('%5i'%self.ampDACunits)
         mV = 1000*self.ampDACunits/16383.0
-        logging.debug(mV, str(mV))
+        logging.debug(mV+ str(mV))
         self.amp_eng_indicator.setText('%4.3f'%mV)
 # 		self.amp_eng_indicator.setText('%6.3d'%volts)
         
@@ -582,7 +582,7 @@ class badrap(QWidget):
         
 
     def sendReg(self, wregval):
-        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address"+str(self.address)+ ":"+ tc.BOLD+str(wregval)+ tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

@@ -13,13 +13,13 @@ class MuxMaster():
         badstates = []
         for idx, val in enumerate(self.cringe.class_vector):
             #if val == "DFBCLK":
-                #logging.debug("DFBCLK, dont care")
+                #logging.debug("DFBCLK+ dont care")
             if val == "DFBx2":
-                #logging.debug(idx, val)
+                #logging.debug(idx+ val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget2)
             if val == "BAD16":
-                #logging.debug(idx,val)
+                #logging.debug(idx+val)
                 badraps.append(self.cringe.crate_widgets[idx].badrap_widget1)
                 badstates.append(self.cringe.crate_widgets[idx].badrap_widget2)
         #logging.debug(dfbraps)
@@ -53,7 +53,7 @@ class MuxMaster():
     def getbaddacHighs(self):
         logging.debug((self.getbadroworder()))
         baddacHighs = []
-        logging.debug((len(self.badraps), len(self.badraps[0].chn_vectors)))
+        logging.debug((len(self.badraps)+ len(self.badraps[0].chn_vectors)))
         for badrap in self.badraps:
             for chn in badrap.chn_vectors:
 

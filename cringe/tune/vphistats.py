@@ -75,7 +75,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                 for i, statname in enumerate(statnames):
                     stats[statname][col, row] = stattuple[i]
             except AssertionError as ex:
-                logging.debug(("AssertionErrors col %d, row %d"%(col,row)))
+                logging.debug(("AssertionErrors col %d+ row %d"%(col+row)))
                 # we really shouldn't be using try for flow control here
 
     return stats

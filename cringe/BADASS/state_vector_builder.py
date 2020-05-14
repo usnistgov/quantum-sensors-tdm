@@ -60,7 +60,7 @@ class state_vector_builder(QWidget):
 #         self.show()
         
     def update_sv(self):
-        logging.debug(tc.FCTCALL + "update BAD16 internal state vector", self.state, tc.ENDC)
+        logging.debug(tc.FCTCALL + "update BAD16 internal state vector"+ self.state+ tc.ENDC)
         sv_str = ""
         sv_dec = 0
         for i in range(0, 16):
@@ -74,20 +74,20 @@ class state_vector_builder(QWidget):
                 sv_dec = sv_dec
                 
         self.vectors[self.state] = sv_dec
-        logging.debug("state vector binary", sv_str)
+        logging.debug("state vector binary"+ sv_str)
         
         
     def send_state(self):
         addr = 3
         wreg = addr << 25
-        logging.debug(tc.FCTCALL + "update BAD16 single state vector:", self.state, tc.ENDC)
-        logging.debug("BAD16:WREG3: update state index:", self.state)
+        logging.debug(tc.FCTCALL + "update BAD16 single state vector:"+ self.state+ tc.ENDC)
+        logging.debug("BAD16:WREG3: update state index:"+ self.state)
         wregval = wreg + self.state
         self.sendReg(wregval)
         wregval & 0x0000000                        # blank WREG
         addr = 7
         wregval = addr << 25 
-        logging.debug("BAD16:WREG7: send state vector:", hex(self.vectors[self.state]&0xffff))
+        logging.debug("BAD16:WREG7: send state vector:"+ hex(self.vectors[self.state]&0xffff))
         wregval = wregval + self.vectors[self.state] 
         self.sendReg(wregval)
         if self.vectors[self.state] != 0:
@@ -95,7 +95,7 @@ class state_vector_builder(QWidget):
         
 
     def sendReg(self, wregval): 
-        logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+        logging.debug(tc.COMMAND + "send to address"+str(self.address)+ ":"+ tc.BOLD+str(wregval)+ tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

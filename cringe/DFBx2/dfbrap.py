@@ -893,7 +893,7 @@ class dfbrap(QWidget):
 		self.send_wreg7()
 
 	def GR_changed(self):
-		logging.debug(tc.FCTCALL + "send global relock enable to DFB channel", self.col, tc.ENDC)
+		logging.debug(tc.FCTCALL + "send global relock enable to DFB channel"+ self.col+ tc.ENDC)
 		self.GR = self.GR_button.isChecked()
 		if self.GR == 1:
 			self.GR_button.setStyleSheet("background-color: #" + tc.green + ";")
@@ -908,7 +908,7 @@ class dfbrap(QWidget):
 
 	def MSTR_TX_changed(self):
 		self.MVTX = self.MSTR_TX.isChecked()
-		logging.debug(tc.FCTCALL + "set Master Vector Broadcast for DFB channel", self.col, ":", bool(self.MVTX), tc.ENDC)
+		logging.debug(tc.FCTCALL + "set Master Vector Broadcast for DFB channel"+ self.col+ ":"+ bool(self.MVTX)+ tc.ENDC)
 		
 		if self.MVTX == 1:
 			self.MSTR_TX.setStyleSheet("background-color: #" + tc.green + ";")
@@ -920,7 +920,7 @@ class dfbrap(QWidget):
 
 	def MSTR_RX_changed(self):
 		self.MVRX = self.MSTR_RX.isChecked()
-		logging.debug(tc.FCTCALL + "set Master Vector Echo for DFB channel", self.col, ":", bool(self.MVRX), tc.ENDC)
+		logging.debug(tc.FCTCALL + "set Master Vector Echo for DFB channel"+ self.col+ ":"+ bool(self.MVRX)+ tc.ENDC)
 		
 		if self.MVRX == 1:
 			self.MSTR_RX.setStyleSheet("background-color: #" + tc.green + ";")
@@ -931,7 +931,7 @@ class dfbrap(QWidget):
 			self.MSTR_TX.setChecked(0)
 
 	def send_class_globals(self):
-		logging.debug(tc.FCTCALL + "send DFB class globals:", tc.ENDC)
+		logging.debug(tc.FCTCALL + "send DFB class globals:"+ tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4()
 		self.send_wreg6()
@@ -939,7 +939,7 @@ class dfbrap(QWidget):
 		
 
 	def send_channel_globals(self):
-		logging.debug(tc.FCTCALL + "send DFB channel globals:", tc.ENDC)
+		logging.debug(tc.FCTCALL + "send DFB channel globals:"+ tc.ENDC)
 		self.send_wreg0()
 		self.send_wreg4(self.wreg4)
 # 		self.send_wreg7()
@@ -996,7 +996,7 @@ class dfbrap(QWidget):
 			self.ampDACunits = 16383
 		self.amp_indicator.setText('%5i'%self.ampDACunits)
 		mV = 1000*self.ampDACunits/16383.0
-		logging.debug(mV, str(mV))
+		logging.debug(mV+ str(mV))
 		self.amp_eng_indicator.setText('%4.3f'%mV)
 		
 
@@ -1025,7 +1025,7 @@ class dfbrap(QWidget):
 		self.send_wreg4()
 
 	def send_wreg0(self):
-		logging.debug("DFB:WREG0: page register: COL", self.col)
+		logging.debug("DFB:WREG0: page register: COL"+ self.col)
 		wreg = 0 << 25
 		wregval = wreg + (self.col << 6)
 		self.sendReg(wregval)
@@ -1042,12 +1042,12 @@ class dfbrap(QWidget):
 			dwell = int(cmd_reg[1:5], base=2)
 			steps = int(cmd_reg[5:9], base=2)
 			step = int(cmd_reg[11:], base=2)
-			logging.debug("DFB:WREG4: triangle parameters DWELL, STEPS, STEP SIZE (& global relock):", dwell, steps, step, "(",self.GR,")")
+			logging.debug("DFB:WREG4: triangle parameters DWELL+ STEPS+ STEP SIZE (& global relock):"+ dwell+ steps+ step+ "("+self.GR+")")
 			self.sendReg((self.wreg4 & 0xFFF7FFF) | (self.GR << 15))
 			
 
 	def sendReg(self, wregval):
-		logging.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
+		logging.debug(tc.COMMAND + "send to address"+ self.address+ ":"+ tc.BOLD+ wregval+ tc.ENDC)
 		b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
 		b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
 		b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1
