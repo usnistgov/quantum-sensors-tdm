@@ -26,7 +26,7 @@ from .tune.tunetab import TuneTab
 from .tower import towerwidget
 from .calibration.caltab import CalTab
 from cringe.shared import terminal_colors as tc
-from cringe.shared import log
+from cringe.shared import log, logging
 from cringe import zmq_rep
 
 
@@ -230,11 +230,19 @@ class Cringe(QWidget):
         self.seqln_lbl = QLabel("line period")
         self.sys_glob_layout.addWidget(self.seqln_lbl,0,3,1,2,QtCore.Qt.AlignLeft)
 
+        if log.verbosity >= logging.VERBOSITY_DEBUG:
+            self.debug_full_tune_button = QPushButton("debug: extern tune")
+            self.debug_full_tune_button.setFixedHeight(25)
+            self.sys_glob_layout.addWidget(self.debug_full_tune_button, 0,3,1,2,QtCore.Qt.AlignLeft)
+            self.debug_full_tune_button.clicked.connect(self.extern_tune)
+
         self.sys_glob_send = QPushButton(self, text = "send system globals")
         self.sys_glob_send.setFixedHeight(25)
         # 		self.sys_glob_send.setFixedWidth(160)
         self.sys_glob_layout.addWidget(self.sys_glob_send,0,5,1,2, QtCore.Qt.AlignRight)
         self.sys_glob_send.clicked.connect(self.send_all_sys_globals)
+
+
 
         self.layout.addWidget(self.sys_glob_hdr_widget,1,0,1,1,QtCore.Qt.AlignLeft)
 
@@ -246,9 +254,9 @@ class Cringe(QWidget):
         self.sys_control_hdr_widget.setFocusPolicy(QtCore.Qt.NoFocus)
         self.sys_control_hdr_widget.setTitle("SYSTEM CONTROL")
 
-        self.sys_glob_layout = QGridLayout(self.sys_control_hdr_widget)
-        self.sys_glob_layout.setContentsMargins(5,5,5,5)
-        self.sys_glob_layout.setSpacing(5)
+        self.sys_control_layout = QGridLayout(self.sys_control_hdr_widget)
+        self.sys_control_layout.setContentsMargins(5,5,5,5)
+        self.sys_control_layout.setSpacing(5)
 
         self.crate_power = QToolButton(self, text = 'crate power ON')
         self.crate_power.setFixedHeight(25)
@@ -256,7 +264,7 @@ class Cringe(QWidget):
         self.crate_power.setChecked(1)
         self.crate_power.setStyleSheet("background-color: #" + tc.green + ";")
         # 		self.crate_power.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.crate_power,0,0,1,1, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.crate_power,0,0,1,1, QtCore.Qt.AlignLeft)
         # 		self.crate_power.setEnabled(0)
         self.crate_power.toggled.connect(self.cratePower)
 
@@ -267,32 +275,37 @@ class Cringe(QWidget):
         self.server_lock.setChecked(self.locked)
         self.server_lock.setStyleSheet("background-color: #" + tc.green + ";")
         # 		self.resync_system.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.server_lock,0,1,1,1)#, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.server_lock,0,1,1,1)#, QtCore.Qt.AlignLeft)
         self.server_lock.toggled.connect(self.lockServer)
 
         self.send_all_globals = QPushButton(self, text = "send globals")
         self.send_all_globals.setFixedHeight(25)
         # 		self.send_all_globals.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.send_all_globals,0,2,1,1)#, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.send_all_globals,0,2,1,1)#, QtCore.Qt.AlignLeft)
         self.send_all_globals.clicked.connect(self.send_ALL_globals)
 
         self.send_all_states_chns = QPushButton(self, text = "send arrayed")
         self.send_all_states_chns.setFixedHeight(25)
         # 		self.send_all_states_chns.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.send_all_states_chns,0,3,1,1)#, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.send_all_states_chns,0,3,1,1)#, QtCore.Qt.AlignLeft)
         self.send_all_states_chns.clicked.connect(self.send_ALL_states_chns)
 
         self.cal_system = QPushButton(self, text = "CALIBRATE")
         self.cal_system.setFixedHeight(25)
         # 		self.cal_system.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.cal_system,0,4,1,1)#, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.cal_system,0,4,1,1)#, QtCore.Qt.AlignLeft)
         self.cal_system.clicked.connect(self.phcal_system)
 
         self.resync_system = QPushButton(self, text = "RESYNC")
         self.resync_system.setFixedHeight(25)
         # 		self.resync_system.setFixedWidth(160)
-        self.sys_glob_layout.addWidget(self.resync_system,0,5,1,1)#, QtCore.Qt.AlignLeft)
+        self.sys_control_layout.addWidget(self.resync_system,0,5,1,1)#, QtCore.Qt.AlignLeft)
         self.resync_system.clicked.connect(self.system_resync)
+
+        self.full_init_button = QPushButton(self, text = "init")
+        self.full_init_button.setFixedHeight(25)
+        self.sys_control_layout.addWidget(self.full_init_button,0,6,1,1)
+        self.full_init_button.clicked.connect(self.full_crate_init)
 
         self.layout.addWidget(self.sys_control_hdr_widget,1,1,1,1,QtCore.Qt.AlignRight)
 
@@ -812,9 +825,31 @@ class Cringe(QWidget):
         llog = log.child("handleMessage")
         llog.debug(message)
         if message == "SETUP_CRATE":
-            self.setupCrate()
+            self.full_crate_init()
         else:
             raise Exception(f"message={message} not handled")
+
+    def full_crate_init(self):
+        llog = log.child("full_crate_init")
+        llog.info("started")
+        if not self.crate_power.isChecked():
+            self.crate_power.click() # turn on crate
+        self.crate_power.click() # turn off crate
+        self.crate_power.click() # turn on crate
+        self.send_all_sys_globals() # send globals system globals button
+        self.send_all_class_globals() # 2nd half of send globals button
+        self.send_ALL_states_chns(resync=False) # send arrayed button
+        self.phcal_system(resync=False) # CALIBRATE button
+        llog.info("begin resync")
+        self.system_resync()
+        llog.info("done")
+
+    def extern_tune(self):
+        llog = log.child("extern_tune")
+        llog.debug("start")
+        self.tune_widget.vphidemo.c.startclient()
+        self.tune_widget.vphidemo.fullTune()
+        llog.debug("done")
 
     def seqln_changed(self):
         if self.seqln_timer == None:
@@ -1233,7 +1268,7 @@ class Cringe(QWidget):
 
     '''system global methods'''
 
-    def cratePower(self):
+    def cratePower(self, sleep_s=0.1):
         self.power_state = self.crate_power.isChecked()
         self.send_all_globals.setEnabled(self.power_state)
         self.send_all_states_chns.setEnabled(self.power_state)
@@ -1241,7 +1276,7 @@ class Cringe(QWidget):
         self.resync_system.setEnabled(self.power_state)
         if self.power_state == 1:
             
-            log.debug(tc.INIT + "cycle power to crate through EMU: power ON", tc.ENDC)
+            log.info(tc.INIT + "cycle power to crate through EMU: power ON", tc.ENDC)
             
             self.crate_power.setStyleSheet("background-color: #" + tc.green + ";")
             self.crate_power.setText('crate power ON')
@@ -1266,11 +1301,14 @@ class Cringe(QWidget):
                     self.crate_widgets[idx].badrap_widget3.resetALLphase()
         else:
             
-            log.debug(tc.INIT + "cycle power to crate through EMU: power OFF", tc.ENDC)
+            log.info(tc.INIT + "cycle power to crate through EMU: power OFF", tc.ENDC)
             
             self.crate_power.setStyleSheet("background-color: #" + tc.red + ";")
             self.crate_power.setText('crate power OFF')
             self.emu.powerOff()
+        time.sleep(sleep_s)
+        QtCore.QCoreApplication.processEvents()
+
 
     def send_ALL_globals(self):
         
@@ -1280,7 +1318,7 @@ class Cringe(QWidget):
         self.send_all_class_globals()
         
 
-    def send_ALL_states_chns(self):
+    def send_ALL_states_chns(self, resync=False):
         
         log.debug(tc.INIT + tc.BOLD + "send ALL states & channels to DFB/BAD cards:", tc.ENDC)
         
@@ -1315,9 +1353,10 @@ class Cringe(QWidget):
                 log.debug(tc.INIT + "send ALL states to BAD16 card address",self.addr_vector[idx],":", tc.ENDC)
                 
                 self.crate_widgets[idx].badrap_widget2.SendAllStates()
-        self.system_resync()
+        if resync:
+            self.system_resync()
 
-    def phcal_system(self):
+    def phcal_system(self, resync=True):
         
         log.debug(tc.INIT + tc.BOLD + "auto phase calibrate all DFB/BAD cards:", tc.ENDC)
         
@@ -1339,7 +1378,8 @@ class Cringe(QWidget):
                 # 				print
                 # 				print tc.INIT + "auto calibrate BAD16 card address",self.addr_vector[idx],":", tc.ENDC
                 self.crate_widgets[idx].badrap_widget3.autocal.click()
-        self.system_resync()
+        if resync:
+            self.system_resync()
         
 
     def system_resync(self):

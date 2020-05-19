@@ -18,6 +18,7 @@ from .tuneclient import TuneClient
 from .muxmaster import MuxMaster
 from . import analysis
 from . import vphistats
+from cringe import log
 
 def find(condition):
     res, = np.nonzero(np.ravel(condition))
