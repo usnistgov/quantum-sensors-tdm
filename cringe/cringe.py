@@ -7,11 +7,11 @@ import time
 import pickle
 import json
 import os
-from cringe.shared import log
+import zmq
 
 import IPython   #  ADDED JG
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore, QtWidgets, QtNetwork
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
@@ -27,6 +27,8 @@ from .tower import towerwidget
 from .calibration.caltab import CalTab
 from cringe.shared import terminal_colors as tc
 from cringe.shared import log
+from cringe import zmq_rep
+
 
 class Cringe(QWidget):
     '''CRate Interface for NextGen Electronics'''
@@ -803,20 +805,17 @@ class Cringe(QWidget):
 
         log.debug("after loadSettings")
 
-        # 	def card_delay_changed(self):
-        '''
-        not sure what the best structure is for class global commanding
-        at child level need to change control to indicator (QSpinBOx to QLineEdit)
-        1 - can preserve function call triggered from within child as 'QLineEdit.textChanged'
-        or
-        2 - can pass parent.QSpinBox.value() to child function as parameter
-        '''
-        # 		self.dfbx2_widget1.card_delay.setText(str("%2d"%self.card_delay.value()))
-        # 		self.dfbx2_widget1.card_delay_changed(self.card_delay.value())
+        self.control_socket = zmq_rep.ZmqRep(self, "tcp://*:5509")
+        self.control_socket.gotMessage.connect(self.handleMessage)
 
-        '''
-        initialization
-        '''
+    def handleMessage(self, message):
+        llog = log.child("handleMessage")
+        llog.debug(message)
+        if message == "SETUP_CRATE":
+            self.setupCrate()
+        else:
+            raise Exception(f"message={message} not handled")
+
     def seqln_changed(self):
         if self.seqln_timer == None:
             self.seqln_timer = QtCore.QTimer()

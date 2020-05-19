@@ -69,3 +69,4 @@ There is very little, but check in the `doc` folder and you might find some.
   
   * Make a `/etc/namedserialrc` file with `dummy rack` and `dummy crate`
   * `cringe -A 0 1 2  -S 0 1 2 -C DFBCLK DFBx2 BAD16 -T DB1 13` will launch cringe with one of each useful card
+  * `-D` flag will turn on debug output
