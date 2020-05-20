@@ -26,19 +26,25 @@ class ZmqRep(QWidget):
 
     def handleTimeout(self):
         self._i+=1
-        # llog = log.child("ZmqRep: handleTimeout:")
+        llog = log.child("ZmqRep: handleTimeout:")
         # llog.debug("start", self._i)
         self.emit_if_has_message()
 
     def emit_if_has_message(self):
-        # llog = log.child("ZmqRep: emit_if_has_message:")
+        llog = log.child("ZmqRep: emit_if_has_message:")
         # llog.debug("start")
         try:
-            message = self._zmq_sock.recv(zmq.NOBLOCK)
-            self._zmq_sock.send_string("ok")
-            self.gotMessage.emit(message.decode())
+            message = self._zmq_sock.recv(zmq.NOBLOCK).decode()
+            self.gotMessage.emit(message)
             llog.info(f"got: {message}")
         except zmq.Again:
             pass
 
-    
+    def resolve_message(self, success, extra_info):
+        llog = log.child("ZmqRep: resolve_message:")
+        if success:
+            reply = f"ok: {extra_info}"
+        else:
+            reply = f"failure: {extra_info}"
+        llog.info(f"reply: `{reply}`")
+        self._zmq_sock.send_string(reply)

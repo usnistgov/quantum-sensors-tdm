@@ -824,10 +824,19 @@ class Cringe(QWidget):
     def handleMessage(self, message):
         llog = log.child("handleMessage")
         llog.debug(message)
-        if message == "SETUP_CRATE":
-            self.full_crate_init()
+        d = {"SETUP_CRATE": self.full_crate_init,
+             "FULL_TUNE:": self.extern_tune}
+        if message in d.keys():
+            f = d[message]
+            try:
+                success, extra_info = f()
+            except Exception as ex:
+                success = False
+                extra_info = ex
         else:
-            raise Exception(f"message={message} not handled")
+            success = False
+            extra_info = f"`{message} invalid, must be one of {list(d.keys())}"
+        self.control_socket.resolve_message(success, extra_info)
 
     def full_crate_init(self):
         llog = log.child("full_crate_init")
