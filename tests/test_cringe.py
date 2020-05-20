@@ -26,14 +26,21 @@ def test_zmq_rep(qtbot):
     ctx = zmq.Context()
     sock = ctx.socket(zmq.REQ)
     sock.LINGER = 0
-    sock.RCVTIMEO = 10
+    sock.RCVTIMEO = 3000
     sock.connect("tcp://localhost:77998")
-    with qtbot.waitSignal(widget.gotMessage, raising=False, timeout=500) as blocker:
-        sock.send_string("yo")
-    assert blocker.signal_triggered
-    assert blocker.args[0] == "yo"
-    assert sock.recv() == b"ok"
-    print("all done")
+    for i in range(5):
+        with qtbot.waitCallback(timeout=500) as cb0:
+            def callback():
+                cb0()
+                return True, "abc"
+            widget.register(f"yo{i}", callback)
+            sock.send_string(f"yo{i}")
+        reply = sock.recv().decode()
+        assert reply == "ok: abc"
 
+    with qtbot.waitSignal(widget._testOnlySignalOnInvalidMessage, timeout=500) as blocker:
+        sock.send_string("should fail")
+        reply = sock.recv().decode()
+        assert reply == "foo"
 
 
