@@ -527,8 +527,6 @@ class VPhiDemo(QWidget):
             log.info((Mix/100.0))
             self.c.client.setMix(Mix/100.0)
 
-        return True
-
     def prune_bad_channels(self):
         log.info("prune_bad_channels")
         min_amplitude = 600

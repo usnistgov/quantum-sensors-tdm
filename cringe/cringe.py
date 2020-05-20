@@ -819,20 +819,23 @@ class Cringe(QWidget):
         log.debug("after loadSettings")
 
         self.control_socket = zmq_rep.ZmqRep(self, "tcp://*:5509")
-        self.control_socket.register("SETUP_CRATE", self.full_crate_init)
-        self.control_socket.register("FULL_TUNE", self.extern_tune)
+        self.control_socket.gotMessage.connect(self.handleMessage)
 
+    def handleMessage(self, message):
+        llog = log.child("handleMessage")
+        llog.debug(message)
+        if message == "SETUP_CRATE":
+            self.full_crate_init()
+        else:
+            raise Exception(f"message={message} not handled")
 
     def full_crate_init(self):
-        llog = log.child("full_crate_init:")
+        llog = log.child("full_crate_init")
         llog.info("started")
         if not self.crate_power.isChecked():
             self.crate_power.click() # turn on crate
-        llog.info("turning crate_power off")
         self.crate_power.click() # turn off crate
-        llog.info("turning crate_power on")
         self.crate_power.click() # turn on crate
-        llog.info("send_all_sys_globals")
         self.send_all_sys_globals() # send globals system globals button
         self.send_all_class_globals() # 2nd half of send globals button
         self.send_ALL_states_chns(resync=False) # send arrayed button
@@ -840,15 +843,13 @@ class Cringe(QWidget):
         llog.info("begin resync")
         self.system_resync()
         llog.info("done")
-        return True, None
 
     def extern_tune(self):
         llog = log.child("extern_tune")
         llog.debug("start")
         self.tune_widget.vphidemo.c.startclient()
-        success = self.tune_widget.vphidemo.fullTune()
-        llog.debug(f"done, success = {success}")
-        return success, ""
+        self.tune_widget.vphidemo.fullTune()
+        llog.debug("done")
 
     def seqln_changed(self):
         if self.seqln_timer == None:
