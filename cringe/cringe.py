@@ -823,16 +823,17 @@ class Cringe(QWidget):
 
     def handleMessage(self, message):
         llog = log.child("handleMessage")
-        llog.debug(message)
+        llog.info(message)
         d = {"SETUP_CRATE": self.full_crate_init,
-             "FULL_TUNE:": self.extern_tune}
+             "FULL_TUNE": self.extern_tune}
         if message in d.keys():
             f = d[message]
+            llog.info(f"calling: {f}")
             try:
                 success, extra_info = f()
             except Exception as ex:
                 success = False
-                extra_info = ex
+                extra_info = f"Exception: {ex}"
         else:
             success = False
             extra_info = f"`{message} invalid, must be one of {list(d.keys())}"
@@ -852,13 +853,17 @@ class Cringe(QWidget):
         llog.info("begin resync")
         self.system_resync()
         llog.info("done")
+        return True, ""
 
     def extern_tune(self):
         llog = log.child("extern_tune")
         llog.debug("start")
-        self.tune_widget.vphidemo.c.startclient()
+        connected = self.tune_widget.vphidemo.c.startclient()
+        if not connected:
+            return False, "tune client failed to connect, is dastard lancero source running?"
         self.tune_widget.vphidemo.fullTune()
         llog.debug("done")
+        return True, ""
 
     def seqln_changed(self):
         if self.seqln_timer == None:

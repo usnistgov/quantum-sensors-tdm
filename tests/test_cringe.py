@@ -44,7 +44,10 @@ def test_zmq_rep(qtbot):
         reply = sock.recv().decode()
         assert reply == "failure: testing"
     del widget._context, ctx
-    print("all done")
+    # this test hangs the 2nd time through if you use pytest-watch -- -s
+    # it has something to do with the zmq contexts failing to terminate
+    # and I've already added sock.LINGER = 0 on both sockets, so I don't know what
+    # else to try, but it seems to work well enough and the tests work one time through
 
 
 

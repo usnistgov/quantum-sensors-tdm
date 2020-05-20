@@ -63,6 +63,13 @@ rm -r exodriver
 # Documentation
 There is very little, but check in the `doc` folder and you might find some.
 
+# External Commands
+
+  * Cringe has a ZMQ Reply (you use as Request) socket listening on port 5509. It accepts the commands;
+    * `SETUP_CRATE`
+    * `FULL_TUNE`
+  * See tests for more info on replies. 
+
 # Development tips  
 
 ## Working on cringe
@@ -70,3 +77,4 @@ There is very little, but check in the `doc` folder and you might find some.
   * Make a `/etc/namedserialrc` file with `dummy rack` and `dummy crate`
   * `cringe -A 0 1 2  -S 0 1 2 -C DFBCLK DFBx2 BAD16 -T DB1 13` will launch cringe with one of each useful card
   * `-D` flag will turn on debug output
+  * `pytest -s` is useful to see all output, `pytest-watch` will hang due some unknown issue with the `zmq_rep` tests, so just use `pytest`
