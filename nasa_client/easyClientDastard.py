@@ -260,7 +260,7 @@ class EasyClientDastard():
                 n_have = len(data)*len(k_complete)
                 if n_have >= minimumNumPoints:
                     break
-            print(f"{i=} {n_observed=} {counter=}")
+            print(f"i={i} n_observed={n_observed} counter={counter}")
         
         print( "keys",keys)
         print( "lengths", [len(datas_dict[k]) for k in keys])
