@@ -79,6 +79,8 @@ class EasyClientDastard():
             if time.time()-tstart > 2:
                 raise Exception("took too long to get status")
             topic, contents = self.statusSub.recv_multipart()
+            topic = topic.decode()
+            contents = contents.decode()
             self.messagesSeen[topic] += 1
             self._handleStatusMessage(topic, contents)
             print((self.messagesSeen))
