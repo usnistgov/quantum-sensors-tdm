@@ -836,7 +836,7 @@ class Cringe(QWidget):
                 extra_info = f"Exception: {ex}"
         else:
             success = False
-            extra_info = f"`{message} invalid, must be one of {list(d.keys())}"
+            extra_info = f"`{message}` invalid, must be one of {list(d.keys())}"
         self.control_socket.resolve_message(success, extra_info)
 
     def full_crate_init(self):
