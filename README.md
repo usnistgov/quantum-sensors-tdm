@@ -63,12 +63,12 @@ rm -r exodriver
 # Documentation
 There is very little, but check in the `doc` folder and you might find some.
 
-# External Commands
+# Cringe External Commands
 
   * Cringe has a ZMQ Reply (you use as Request) socket listening on port 5509. It accepts the commands;
     * `SETUP_CRATE`
     * `FULL_TUNE`
-  * See tests for more info on replies. 
+  * See tests `tests/test_cringe.py` for more info on replies. 
 
 # Development tips  
 
