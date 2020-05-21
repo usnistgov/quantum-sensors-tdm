@@ -49,7 +49,7 @@ class EasyClientDastard():
         self.statusSub.setsockopt( zmq.LINGER,      0 )
         self.statusSub.connect(address)
         print(("Collecting updates from dastard at %s" % address))
-        self.statusSub.setsockopt(zmq.SUBSCRIBE, "")
+        self.statusSub.setsockopt_string(zmq.SUBSCRIBE, "")
         self.messagesSeen = collections.Counter()
 
     def _connectRecordSub(self, verbose):
@@ -61,7 +61,7 @@ class EasyClientDastard():
         self.recordSub.setsockopt(zmq.LINGER, 0)
         self.recordSub.connect(self.recordSubAddress)
         if verbose: print(("Collecting records from dastard at %s" % self.recordSubAddress))
-        self.recordSub.setsockopt(zmq.SUBSCRIBE, "")
+        self.recordSub.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def _connectRPC(self):
         """ connect to the rpc port of dastard """
