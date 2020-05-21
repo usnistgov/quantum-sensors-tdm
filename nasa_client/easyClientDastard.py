@@ -234,6 +234,7 @@ class EasyClientDastard():
         counter = collections.Counter()
         firstTriggerFramecount = None
         target_triggerFramecount = -1 # impossible framecount
+        # map triggerFramecount to a list containing data for each channel
         datas_dict = collections.defaultdict(lambda: [None]*self.numChannels)
         i = 0
         n_thrown_away_for_delay_seconds = 0
@@ -259,14 +260,15 @@ class EasyClientDastard():
                 n_have = len(data)*len(k_complete)
                 if n_have >= minimumNumPoints:
                     break
+            print(f"{i=} {n_observed=} {counter=}")
         
-        # print "keys",keys
-        # print "lengths", [len(datas_dict[k]) for k in keys]
-        # print "k_complete", k_complete
-        # print "n_have", n_have
-        # print "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds
-        # print self.numChannels, self.numRows, self.numColumns
-        # print "triggerFramecount Counter", counter
+        print( "keys",keys)
+        print( "lengths", [len(datas_dict[k]) for k in keys])
+        print( "k_complete", k_complete)
+        print( "n_have", n_have)
+        print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
+        print( self.numChannels, self.numRows, self.numColumns)
+        print( "triggerFramecount Counter", counter)
         assert(all(np.diff(k_complete)==len(data)))
 
 
