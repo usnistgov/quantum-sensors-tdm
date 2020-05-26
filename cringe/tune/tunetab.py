@@ -521,10 +521,10 @@ class VPhiDemo(QWidget):
 
         if self.shouldSendMixAfterFullTune():
             log.info("sending mix values after full tune")
-            log.info(Mix)
+            log.debug("mix before nan check", Mix)
             Mix[np.isnan(Mix)]=0 # don't send NaN, its invalid for mix
-            log.info(Mix)
-            log.info((Mix/100.0))
+            log.debug("mix before divide by 100", Mix)
+            log.info(Mix/100.0)
             self.c.client.setMix(Mix/100.0)
 
     def prune_bad_channels(self):
