@@ -3,6 +3,7 @@ import numpy as np
 import pylab as plt
 import scipy.signal
 from cringe.tune.analysis import conditionvphis, conditionvphi
+from cringe import log
 
 
 def vPhiStatsSingle(triangle, signal, fracFromBottom=0.5):
@@ -75,7 +76,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                 for i, statname in enumerate(statnames):
                     stats[statname][col, row] = stattuple[i]
             except AssertionError as ex:
-                log.debug(("AssertionErrors col %d, row %d"%(col,row)))
+                log.info("AssertionErrors col %d, row %d"%(col,row))
                 # we really shouldn't be using try for flow control here
 
     return stats
