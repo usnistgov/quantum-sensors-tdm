@@ -37,7 +37,7 @@ def gen_triangle_output(nsamples, tridwell, tristeps, tristepsize):
 def test_vphi_analysis_steps():
     tridwell, tristeps, tristepsize = 2, 9, 30
     lindwell, period, linsteps, linstepsize = analysis.lineartriangleparams(tridwell, tristeps, tristepsize)
-    print(f"{lindwell=}, {period=}, {linsteps=}, {linstepsize=}")
+    # print(f"lindwell={lindwell}, period={period}, linsteps={linsteps}, linstepsize={linstepsize}")
 
 
     fba = np.reshape(gen_triangle_output(2**14, tridwell, tristeps, tristepsize), (1,1,-1))
