@@ -435,7 +435,7 @@ class VPhiDemo(QWidget):
 
         fbatriangle, fbasigsup, fbasigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
         fbastats = vphistats.vPhiStats(fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
-        with open("last_fbastats","w") as f:
+        with open("last_fbastats","wb") as f:
             pickle.dump(fbastats,f)
 
 
