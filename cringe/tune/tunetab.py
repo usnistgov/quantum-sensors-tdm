@@ -531,7 +531,7 @@ class VPhiDemo(QWidget):
         log.info("prune_bad_channels")
         min_amplitude = 600
         max_noise_std = 1
-        with open("last_fbastats","r") as f:
+        with open("last_fbastats","rb") as f:
             vphistats = pickle.load(f)
         # log.info([k for k in vphistats.keys()])
         log.info((vphistats["modDepth"]))

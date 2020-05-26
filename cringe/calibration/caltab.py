@@ -78,26 +78,6 @@ class CalDemo(QWidget):
     def calDemoCard1Channel1(self):
         log.debug("starting demo")
 
-
-#     def fibertomask(self, fibernum):
-#         return "0x%0.4X" % 2**4
-#
-#     def fiberstomask(self, fibersstring):
-#         return "0x%0.4X" % int(fibersstring,2)
-
-#     def acquire(self, mask):
-#         acquirestring = os.path.join(self.acquire_path,"acquire")+" -n 1000 -o foo -d %i -m %s"%(self.d, mask)
-#         with os.popen(acquirestring) as s:
-#             acquireout = s.readlines()
-#         print acquirestring
-#         odstring = "od -t x4 foo"
-#         print odstring
-#         with os.popen(odstring) as s:
-#             odout = s.readlines()
-#         print odout
-
-
-
     def printtestpattern(self):
         log.debug(self.parent)
         tp_mode = self.cringe.tp_mode
