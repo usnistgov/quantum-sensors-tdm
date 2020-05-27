@@ -4,28 +4,16 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
+
 
 class dfbChn(QWidget):
     
     def __init__(self, parent=None, layout=None, state=0, chn=0, cardaddr=3, serialport=None, master=None):
 
         super(dfbChn, self).__init__()
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
         
         self.parent = parent
         self.layout = layout
@@ -71,7 +59,7 @@ class dfbChn(QWidget):
         self.counter_label.setReadOnly(True)
         self.counter_label.setFixedWidth(36)
         self.counter_label.setAlignment(QtCore.Qt.AlignRight)
-        self.counter_label.setStyleSheet("background-color: #" + self.yellow + ";")
+        self.counter_label.setStyleSheet("background-color: #" + tc.yellow + ";")
         self.counter_label.setFocusPolicy(QtCore.Qt.NoFocus)
         self.counter_label.setText(str(self.state))
         self.row_layout.addWidget(self.counter_label,0,0)
@@ -80,14 +68,14 @@ class dfbChn(QWidget):
         self.TriA_button.setFixedHeight(25)
         self.TriA_button.setCheckable(1)
         self.TriA_button.setChecked(self.triA)
-        self.TriA_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.TriA_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.TriA_button,0,1)
 
         self.TriB_button = QToolButton(self, text = '^B')
         self.TriB_button.setFixedHeight(25)
         self.TriB_button.setCheckable(1)
         self.TriB_button.setChecked(self.triB)
-        self.TriB_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.TriB_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.TriB_button,0,2)
 
         self.a2d_lockpt_spin = QSpinBox()
@@ -193,7 +181,7 @@ class dfbChn(QWidget):
 #         self.FBA_button.setFixedWidth(25)
         self.FBA_button.setCheckable(1)
         self.FBA_button.setChecked(self.triA)
-        self.FBA_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.FBA_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.FBA_button,0,12)
 
         self.FBB_button = QToolButton(self, text = 'FB[B]')
@@ -201,7 +189,7 @@ class dfbChn(QWidget):
 #         self.FBB_button.setFixedWidth(25)
         self.FBB_button.setCheckable(1)
         self.FBB_button.setChecked(self.triB)
-        self.FBB_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.FBB_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.FBB_button,0,13)
         
         self.ARL_button = QToolButton(self, text = 'ARL')
@@ -209,7 +197,7 @@ class dfbChn(QWidget):
 #         self.FBB_button.setFixedWidth(25)
         self.ARL_button.setCheckable(1)
         self.ARL_button.setChecked(self.triB)
-        self.ARL_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.ARL_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.row_layout.addWidget(self.ARL_button,0,14)
         
         self.chn_send = QPushButton(self, text = "send channel")
@@ -223,7 +211,7 @@ class dfbChn(QWidget):
         self.lock_button.setFixedHeight(25)
         self.lock_button.setCheckable(1)
         self.lock_button.setChecked(1)
-        self.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.row_layout.addWidget(self.lock_button,0,16)
         
         if master != None:
@@ -257,12 +245,12 @@ class dfbChn(QWidget):
             self.DAChi_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.DAChi_lbl,1,5,1,2)
     
-            self.command_lbl = QLabel("DAC B offset")
-            self.command_lbl.setFixedHeight(25)
-            self.command_lbl.setFrameStyle(50)
-            self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.command_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
-            self.row_layout.addWidget(self.command_lbl,1,7,1,2)
+            tc.COMMAND_lbl = QLabel("DAC B offset")
+            tc.COMMAND_lbl.setFixedHeight(25)
+            tc.COMMAND_lbl.setFrameStyle(50)
+            tc.COMMAND_lbl.setAlignment(QtCore.Qt.AlignCenter)
+            tc.COMMAND_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
+            self.row_layout.addWidget(tc.COMMAND_lbl,1,7,1,2)
     
             self.mode_lbl = QLabel("send mode")
             self.mode_lbl.setFixedHeight(25)
@@ -292,12 +280,12 @@ class dfbChn(QWidget):
             self.FB_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
             self.row_layout.addWidget(self.FB_lbl,1,12,1,3)
 
-            self.command_lbl = QLabel("command")
-            self.command_lbl.setFixedHeight(25)
-            self.command_lbl.setFrameStyle(50)
-            self.command_lbl.setAlignment(QtCore.Qt.AlignCenter)
-            self.command_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
-            self.row_layout.addWidget(self.command_lbl,1,15,1,1)
+            tc.COMMAND_lbl = QLabel("command")
+            tc.COMMAND_lbl.setFixedHeight(25)
+            tc.COMMAND_lbl.setFrameStyle(50)
+            tc.COMMAND_lbl.setAlignment(QtCore.Qt.AlignCenter)
+            tc.COMMAND_lbl.setStyleSheet("background-color: #6A6A6A; color: #EFEFEF")
+            self.row_layout.addWidget(tc.COMMAND_lbl,1,15,1,1)
 
             self.mode_lbl = QLabel("track")
             self.mode_lbl.setFixedHeight(25)
@@ -361,18 +349,18 @@ class dfbChn(QWidget):
     def triA_changed(self):
         self.triA = self.TriA_button.isChecked()
         if self.triA ==1:
-            self.TriA_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.TriA_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.TriA_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.TriA_button.setStyleSheet("background-color: #" + tc.red + ";")  
         self.send_wreg0()
         self.send_wreg2()
             
     def triB_changed(self):
         self.triB = self.TriB_button.isChecked()
         if self.triB ==1:
-            self.TriB_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.TriB_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.TriB_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.TriB_button.setStyleSheet("background-color: #" + tc.red + ";")  
         self.send_wreg0()
         self.send_wreg2()
             
@@ -384,7 +372,7 @@ class dfbChn(QWidget):
             self.send_wreg1()
 
     def a2d_lockpt_sense(self):
-        print("Double Click event")
+        log.debug("Double Click event")
         
     def a2d_lockpt_slider_changed(self):
         self.a2d_lockpt_spin.setValue(self.a2d_lockpt_slider.value())
@@ -436,29 +424,29 @@ class dfbChn(QWidget):
     def FBA_changed(self):
         self.FBA = self.FBA_button.isChecked()
         if self.FBA == 1:
-            self.FBA_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.FBA_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.FBB_button.setChecked(0)
         else:
-            self.FBA_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.FBA_button.setStyleSheet("background-color: #" + tc.red + ";")  
         self.send_wreg0()
         self.send_wreg3()
             
     def FBB_changed(self):
         self.FBB = self.FBB_button.isChecked()
         if self.FBB == 1:
-            self.FBB_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.FBB_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.FBA_button.setChecked(0)
         else:
-            self.FBB_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.FBB_button.setStyleSheet("background-color: #" + tc.red + ";")  
         self.send_wreg0()
         self.send_wreg3()
             
     def ARL_changed(self):
         self.ARL = self.ARL_button.isChecked()
         if self.ARL == 1:
-            self.ARL_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.ARL_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.ARL_button.setStyleSheet("background-color: #" + self.red + ";")  
+            self.ARL_button.setStyleSheet("background-color: #" + tc.red + ";")  
         self.send_wreg0()
         self.send_wreg3()
         
@@ -469,46 +457,46 @@ class dfbChn(QWidget):
 #         self.d2a_A_slider.setValue(16383)
         
     def send_channel(self):
-        print(self.FCTCALL + "send DFB STATE parameters", self.state, ": index & arrayed register values", self.ENDC)
+        log.debug(tc.FCTCALL + "send DFB STATE parameters", self.state, ": index & arrayed register values", tc.ENDC)
         self.send_wreg0()
         self.send_wreg1()
         self.send_wreg2()
         self.send_wreg3()
         self.send_wreg5()
-        print()
+        
 
     def lock_channel(self):
         self.unlocked = self.lock_button.isChecked()
         if self.unlocked == 1:
-            self.lock_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.lock_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.lock_button.setText('dynamic')
         else:
-            self.lock_button.setStyleSheet("background-color: #" + self.red + ";")            
+            self.lock_button.setStyleSheet("background-color: #" + tc.red + ";")            
             self.lock_button.setText('static')
     
     def send_wreg0(self):
-        print("DFB:WREG0: page index (GPI/channel/state)")
+        log.debug("DFB:WREG0: page index (GPI/channel/state)")
         wreg = 0 << 25
         wregval = wreg | (self.chn << 6) | self.state
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg1(self):
-        print("DFB:WREG1: arrayed state variables: ADC lock point")
+        log.debug("DFB:WREG1: arrayed state variables: ADC lock point")
         wreg = 1 << 25
         wregval = wreg | self.a2d_lockpt
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg2(self):
-        print("DFB:WREG2: arrayed state variables: triangle booleans & DAC offset A")
+        log.debug("DFB:WREG2: arrayed state variables: triangle booleans & DAC offset A")
         wreg = 2 << 25
         wregval = wreg | (self.triA << 16) | (self.triB << 17) | self.d2a_A
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg3(self):
-        print("DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I")
+        log.debug("DFB:WREG3: arrayed state feedback parameters: tri, arl, P, I")
         wreg = 3 << 25
         wreg = wreg | (int(self.FBA) << 24)
         wreg = wreg | (int(self.FBB) << 23)
@@ -516,18 +504,18 @@ class dfbChn(QWidget):
         wreg = wreg | ((int(self.P)&0x3ff) << 10)
         wregval = wreg | (int(self.I)&0x3ff)
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg5(self):
-        print()
-        print("DFB:WREG5: DAC offset B & send mode")
+        
+        log.debug("DFB:WREG5: DAC offset B & send mode")
         wreg = 5 << 25
         wregval = wreg | (self.d2a_B << 11) | self.SM
         self.sendReg(wregval)
-        print()
+        
         
     def sendReg(self, wregval): 
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

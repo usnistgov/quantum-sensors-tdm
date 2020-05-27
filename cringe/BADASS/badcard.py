@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import *
 import named_serial
 from . import badrap
 from . import sv_array
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
 import cringe.DFBx2.dprcal as dprcal
 
 
@@ -18,22 +20,6 @@ class badcard(QWidget):
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
         super(badcard, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
 
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
@@ -69,8 +55,8 @@ class badcard(QWidget):
         self.layout_widget = QWidget(self)
         self.layout = QGridLayout(self)
 
-        print(self.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, self.ENDC)
-        print()
+        log.debug(tc.INIT + "building BAD16 card: slot", self.slot, "/ address", self.address, tc.ENDC)
+        
 
         '''
         build widget for card INTERFACE PARAMETERS header
@@ -124,7 +110,7 @@ class badcard(QWidget):
         self.LED_button.setFixedHeight(25)
         self.LED_button.setCheckable(1)
         self.LED_button.setChecked(self.LED)
-        self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.card_glb_layout.addWidget(self.LED_button,0,0,1,1)
         self.LED_button.toggled.connect(self.LED_changed)
         self.LED_button.setEnabled(1)
@@ -136,7 +122,7 @@ class badcard(QWidget):
         self.status_button.setFixedHeight(25)
         self.status_button.setCheckable(1)
         self.status_button.setChecked(self.ST)
-        self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+        self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.card_glb_layout.addWidget(self.status_button,0,2,1,1)
         self.status_button.toggled.connect(self.status_changed)
 
@@ -176,9 +162,9 @@ class badcard(QWidget):
 
 
         rm = 10
-        self.bad16_widget.setFixedWidth(self.scale_factor*1.05)
-        self.class_interface_widget.setFixedWidth((self.scale_factor*1.05)/2 - rm/2)
-        self.card_glb_widget.setFixedWidth((self.scale_factor*1.05)/2 - rm/2)
+        self.bad16_widget.setFixedWidth(int(self.scale_factor*1.05))
+        self.class_interface_widget.setFixedWidth(int((self.scale_factor*1.05)/2 - rm/2))
+        self.card_glb_widget.setFixedWidth(int((self.scale_factor*1.05)/2 - rm/2))
 # 		self.file_mgmt_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
 # 		self.sys_glob_hdr_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
 # 		self.class_glob_hdr_widget.setFixedWidth(self.badrap_widget1.arrayframe.width()+rm)
@@ -186,64 +172,64 @@ class badcard(QWidget):
 
 
     def seqln_changed(self, seqln):
-        print(self.FCTCALL + "send SEQLN to BAD16 card:", self.ENDC)
+        log.debug(tc.FCTCALL + "send SEQLN to BAD16 card:", tc.ENDC)
         self.seqln = seqln
         self.send_wreg0()
 # 		self.wreg0 = ((self.wreg0 & 0xFFFFF00) | self.seqln)
 # 		self.send_wreg0()
         self.badrap_widget2.seqln_changed(seqln)
-        print()
+        
 
     def LED_changed(self):
-        print(self.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + self.ENDC)
+        log.debug(tc.FCTCALL + "send LED boolean (True = OFF) to BAD16 card:" + tc.ENDC)
         self.LED = self.LED_button.isChecked()
         if self.LED ==1:
-            self.LED_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.LED_button.setText('OFF')
         else:
-            self.LED_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.LED_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.LED_button.setText('ON')
         self.send_wreg0()
-        print()
+        
 
     def status_changed(self):
-        print(self.FCTCALL + "send ST boolean to BAD16 card:" + self.ENDC)
+        log.debug(tc.FCTCALL + "send ST boolean to BAD16 card:" + tc.ENDC)
         self.ST = self.status_button.isChecked()
         if self.ST ==1:
-            self.status_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            self.status_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.status_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg0()
         self.badrap_widget3.enbDiagnostic(self.ST)
-        print()
+        
 
     def initMem(self, init):
-        self.init_state = self.INT
+        tc.INIT_state = self.INT
         self.INT = init
-        if self.INT != self.init_state:
+        if self.INT != tc.INIT_state:
             if self.INT == 1:
-                print(self.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + self.ENDC)
+                log.debug(tc.FCTCALL + "BAD16 state vector memory initialized: update init status boolean: 1" + tc.ENDC)
             else:
-                print(self.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + self.ENDC)
+                log.debug(tc.FCTCALL + "BAD16 state vector memory contents updated: update init status boolean: 0" + tc.ENDC)
             self.send_wreg0()
-            print()
+            
 
     def send_triangle(self, wreg1):
-        print(self.FCTCALL + "send triangle parameters to BAD16 card:", self.ENDC)
+        log.debug(tc.FCTCALL + "send triangle parameters to BAD16 card:", tc.ENDC)
         self.wreg1 = wreg1
         self.send_wreg1()
-        print()
+        
 
     def send_class_globals(self, wreg0):
-        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
+        log.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.wreg0 = wreg0
         self.send_wreg0()
-        print()
+        
 
     def send_card_globals(self):
-        print(self.FCTCALL + "send card globals to BAD16 card:", self.ENDC)
+        log.debug(tc.FCTCALL + "send card globals to BAD16 card:", tc.ENDC)
         self.send_wreg0()
-        print()
+        
 
 # 	def card_delay_changed(self):
 # 		'''
@@ -260,8 +246,8 @@ class badcard(QWidget):
         if self.parent != None:
             self.parent.send_bad16_wreg0(self.ST, self.LED, self.INT, self.address)
         else:
-            print("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
-            print()
+            log.debug("BAD16:WREG0: ST, LED, card delay, INIT, sequence length:", self.ST, self.LED, self.bad_delay, self.INT, self.seqln)
+            
             self.wreg0 = (0 << 25) | (self.ST << 16) | (self.LED << 14) | (self.bad_delay << 10) | (self.INT << 8) | self.seqln
             self.sendReg(self.wreg0)
 
@@ -270,12 +256,12 @@ class badcard(QWidget):
         dwell = int(cmd_reg[1:5], base=2)
         steps = int(cmd_reg[5:9], base=2)
         step = int(cmd_reg[11:], base=2)
-        print("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
+        log.debug("BAD16:WREG1: triangle parameters DWELL, STEPS, STEP SIZE:", dwell, steps, step)
         self.sendReg(self.wreg1)
-        print()
+        
 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

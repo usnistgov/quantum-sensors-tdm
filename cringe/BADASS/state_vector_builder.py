@@ -3,30 +3,17 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
 import time
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
+
 
 class state_vector_builder(QWidget):
     
     def __init__(self, parent=None, layout=None, state=0, enb=1, vectors=[0], serialport=None, cardaddr=32):
 
         super(state_vector_builder, self).__init__()
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-        
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
         
         self.serialport = serialport
         self.address = cardaddr
@@ -73,7 +60,7 @@ class state_vector_builder(QWidget):
 #         self.show()
         
     def update_sv(self):
-        print(self.FCTCALL + "update BAD16 internal state vector", self.state, self.ENDC)
+        log.debug(tc.FCTCALL + "update BAD16 internal state vector", self.state, tc.ENDC)
         sv_str = ""
         sv_dec = 0
         for i in range(0, 16):
@@ -87,28 +74,28 @@ class state_vector_builder(QWidget):
                 sv_dec = sv_dec
                 
         self.vectors[self.state] = sv_dec
-        print("state vector binary", sv_str)
-        print()
+        log.debug("state vector binary", sv_str)
+        
         
     def send_state(self):
         addr = 3
         wreg = addr << 25
-        print(self.FCTCALL + "update BAD16 single state vector:", self.state, self.ENDC)
-        print("BAD16:WREG3: update state index:", self.state)
+        log.debug(tc.FCTCALL + "update BAD16 single state vector:", self.state, tc.ENDC)
+        log.debug("BAD16:WREG3: update state index:", self.state)
         wregval = wreg + self.state
         self.sendReg(wregval)
         wregval & 0x0000000                        # blank WREG
         addr = 7
         wregval = addr << 25 
-        print("BAD16:WREG7: send state vector:", hex(self.vectors[self.state]&0xffff))
+        log.debug("BAD16:WREG7: send state vector:", hex(self.vectors[self.state]&0xffff))
         wregval = wregval + self.vectors[self.state] 
         self.sendReg(wregval)
         if self.vectors[self.state] != 0:
             self.parent.parent.initMem(0)
-        print()
+        
 
     def sendReg(self, wregval): 
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

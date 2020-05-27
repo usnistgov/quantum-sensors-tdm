@@ -2,7 +2,8 @@
 import numpy as np
 import pylab as plt
 import scipy.signal
-from .analysis import conditionvphis, conditionvphi
+from cringe.tune.analysis import conditionvphis, conditionvphi
+from cringe import log
 
 
 def vPhiStatsSingle(triangle, signal, fracFromBottom=0.5):
@@ -19,7 +20,7 @@ def vPhiStatsSingle(triangle, signal, fracFromBottom=0.5):
     triangleStepSize = triangle[1] - triangle[0]
     slopes = []
     interpolatedCrossingInds = []
-    for i in plt.find(crossingArray):
+    for i in np.where(crossingArray)[0]:
         if signal[i] - crossingPoint > 0:
             pastCrossingIndex = i + 1
         else:
@@ -61,7 +62,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                  "positiveCrossingFirstX", "negativeCrossingFirstX", "firstMinimumInd",
                  "firstMinimumX", "firstMinimumY", "modDepth", "midPoint", "crossingPoint",
                  "firstMaximumInd", "firstMaximumX", "firstMaximumY"]
-    print((signals.shape))
+    log.debug("vphistats:signals.shape",signals.shape)
     for statname in statnames:
         stats[statname] = np.zeros((signals.shape[0], signals.shape[1]))
     for col in range(signals.shape[0]):
@@ -75,7 +76,7 @@ def vPhiStats(triangle, signals, fracFromBottom=0.5):
                 for i, statname in enumerate(statnames):
                     stats[statname][col, row] = stattuple[i]
             except AssertionError as ex:
-                print(("AssertionErrors col %d, row %d"%(col,row)))
+                log.info("AssertionErrors col %d, row %d"%(col,row))
                 # we really shouldn't be using try for flow control here
 
     return stats

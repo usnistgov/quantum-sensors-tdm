@@ -49,7 +49,7 @@ class EasyClientDastard():
         self.statusSub.setsockopt( zmq.LINGER,      0 )
         self.statusSub.connect(address)
         print(("Collecting updates from dastard at %s" % address))
-        self.statusSub.setsockopt(zmq.SUBSCRIBE, "")
+        self.statusSub.setsockopt_string(zmq.SUBSCRIBE, "")
         self.messagesSeen = collections.Counter()
 
     def _connectRecordSub(self, verbose):
@@ -61,7 +61,7 @@ class EasyClientDastard():
         self.recordSub.setsockopt(zmq.LINGER, 0)
         self.recordSub.connect(self.recordSubAddress)
         if verbose: print(("Collecting records from dastard at %s" % self.recordSubAddress))
-        self.recordSub.setsockopt(zmq.SUBSCRIBE, "")
+        self.recordSub.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def _connectRPC(self):
         """ connect to the rpc port of dastard """
@@ -79,6 +79,8 @@ class EasyClientDastard():
             if time.time()-tstart > 2:
                 raise Exception("took too long to get status")
             topic, contents = self.statusSub.recv_multipart()
+            topic = topic.decode()
+            contents = contents.decode()
             self.messagesSeen[topic] += 1
             self._handleStatusMessage(topic, contents)
             print((self.messagesSeen))
@@ -232,6 +234,7 @@ class EasyClientDastard():
         counter = collections.Counter()
         firstTriggerFramecount = None
         target_triggerFramecount = -1 # impossible framecount
+        # map triggerFramecount to a list containing data for each channel
         datas_dict = collections.defaultdict(lambda: [None]*self.numChannels)
         i = 0
         n_thrown_away_for_delay_seconds = 0
@@ -257,14 +260,15 @@ class EasyClientDastard():
                 n_have = len(data)*len(k_complete)
                 if n_have >= minimumNumPoints:
                     break
+            print(f"i={i} n_observed={n_observed} counter={counter}")
         
-        # print "keys",keys
-        # print "lengths", [len(datas_dict[k]) for k in keys]
-        # print "k_complete", k_complete
-        # print "n_have", n_have
-        # print "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds
-        # print self.numChannels, self.numRows, self.numColumns
-        # print "triggerFramecount Counter", counter
+        print( "keys",keys)
+        print( "lengths", [len(datas_dict[k]) for k in keys])
+        print( "k_complete", k_complete)
+        print( "n_have", n_have)
+        print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
+        print( self.numChannels, self.numRows, self.numColumns)
+        print( "triggerFramecount Counter", counter)
         assert(all(np.diff(k_complete)==len(data)))
 
 

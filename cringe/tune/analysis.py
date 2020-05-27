@@ -64,7 +64,7 @@ def conditionvphis(triangle, signal, tridwell, tristeps, tristepsize):
             try:
                 triout, sigup, sigdown = conditionvphi(triangle[col, row, :], signal[col, row, :], tridwell, tristeps, tristepsize)
             except Exception as ex:
-                raise type(ex)("{}, col {}, row {}".format(ex.message,col,row))
+                raise type(ex)("{}, col {}, row {}".format(ex,col,row))
             outsigsup[col, row, :] = sigup
             outsigsdown[col, row, :] = sigdown
             outtriangles[col, row, :] = triout
@@ -74,28 +74,3 @@ def conditionvphis(triangle, signal, tridwell, tristeps, tristepsize):
             assert all(outtriangles[col, row, :] == outtriangles[0, 0, :])
 
     return outtriangles[0, 0, :], outsigsup, outsigsdown
-
-
-if __name__ == '__main__':
-    plt.ion()
-
-    data = np.load("raw.npy")
-    fb = data[0, 0, :, 1]
-    err = data[0, 0, :, 0]
-
-    triangle = fb
-    signal = err
-    tridwell = 2
-    tristeps = 8
-    tristepsize = 10
-
-    outtriangle, outsignalup, outsignaldown = conditionvphi(triangle, signal, tridwell, tristeps, tristepsize)
-
-    plt.figure()
-    plt.plot(outtriangle, outsignalup)
-    plt.plot(outtriangle, outsignaldown)
-
-    outtriangle, outsigsup, outsigsdown = conditionvphis(data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
-
-    plt.figure()
-    plt.plot(outtriangle, outsigsup[0, :, :].T)

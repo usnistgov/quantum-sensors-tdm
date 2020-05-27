@@ -18,6 +18,7 @@ from .tuneclient import TuneClient
 from .muxmaster import MuxMaster
 from . import analysis
 from . import vphistats
+from cringe import log
 
 def find(condition):
     res, = np.nonzero(np.ravel(condition))
@@ -59,6 +60,7 @@ class TuneTab(QWidget):
 
         self.biasSweeper = BiasSweeper(self, self.mm, self.c)
         self.layout.addWidget(self.biasSweeper)
+        self._test_check_true = True
 
     def packState(self):
         stateVector = {}
@@ -201,7 +203,7 @@ class VPhiDemo(QWidget):
             assert (vals==val).all
             new_dfbrap = self.mm.dfbraps[val]
             new_dfbraps.append(new_dfbrap)
-            print(("learned col %g reads %s"%(col,repr(new_dfbrap))))
+            log.info(("learned col %g reads %s"%(col,repr(new_dfbrap))))
 
         self.mm.dfbraps = new_dfbraps
 
@@ -305,7 +307,7 @@ class VPhiDemo(QWidget):
         return returnVal
 
     def fullTune(self):
-        print("start fbb vphi")
+        log.info("start fbb vphi")
         if not self.validateServerSettings():
             return
         self.c.client.setMixToZero()
@@ -327,7 +329,7 @@ class VPhiDemo(QWidget):
         plots.ylabel("error")
         plots.show()
 
-        print("start locked fba vphi")
+        log.info("start locked fba vphi")
         lfbatriangle, lfbasigsup, lfbasigsdown = self.lockedFBAvphi_colsettings(d2aB, a2dlockpoints, I)
         lfbastats = vphistats.vPhiStats(lfbatriangle, lfbasigsup)
 
@@ -341,7 +343,7 @@ class VPhiDemo(QWidget):
         plots.show()
 
 
-        print("taking 2nd fbb vphi, fba set to first minimum from locked vphi")
+        log.info("taking 2nd fbb vphi, fba set to first minimum from locked vphi")
         d2aA_forfbb2=lfbastats["firstMinimumX"]
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
@@ -411,7 +413,7 @@ class VPhiDemo(QWidget):
 
 
 
-        print(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
+        log.info(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
 
         np.save("last_fbb2_firstMinimumX", fbb2stats["firstMinimumX"])
         np.save("last_lfba_modDepth", lfbastats["modDepth"])
@@ -433,7 +435,7 @@ class VPhiDemo(QWidget):
 
         fbatriangle, fbasigsup, fbasigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
         fbastats = vphistats.vPhiStats(fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
-        with open("last_fbastats","w") as f:
+        with open("last_fbastats","wb") as f:
             pickle.dump(fbastats,f)
 
 
@@ -446,13 +448,13 @@ class VPhiDemo(QWidget):
             d2aA = fbastats["negativeCrossingFirstX"]
 
         minimum_d2aA = self.minimumD2AValueSpin.value()
-        print(("using {} as minimum_d2aA".format(self.minimumD2AValueSpin.value())))
+        log.info(("using {} as minimum_d2aA".format(self.minimumD2AValueSpin.value())))
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 if d2aA[col,row] <= minimum_d2aA and period > 0:
                     nPeriodToAdd = int(np.ceil((minimum_d2aA-d2aA[col,row])/period))
                     d2aA[col,row]+=nPeriodToAdd*fbastats["periodXUnits"][col,row]
-                    print(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g"%(col, row, nPeriodToAdd, minimum_d2aA)))
+                    log.info(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g"%(col, row, nPeriodToAdd, minimum_d2aA)))
         a2d = fbastats["crossingPoint"]
 
         fbatriangles = np.zeros((self.c.ncol, self.c.nrow, len(fbatriangle)),dtype="int64")
@@ -498,27 +500,6 @@ class VPhiDemo(QWidget):
         # cringe should have created this directory earlier
         np.save(os.path.expanduser("~/.cringe/mix_fractions"), Mix/100.0)
 
-
-
-        # # set all values
-        # for col in xrange(self.c.ncol):
-        #     for row in xrange(self.c.nrow):
-        #         self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=0,d2aB=d2aB[col,row],FBA=0, ARL=0,tria=1)
-        #
-        #
-        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
-        # fba = data[0,0,:,1] #triangle
-        # err = data[0,0,:,0] #signal
-        # np.save("last_last_fba_vphi",data)
-        # lastfbatriangle, lastfbasigsup, lastfbasigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
-        # lastfbastats = vphistats.vPhiStats(fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
-        # plots = ColPlots(self,self.c.ncol,self.c.nrow)
-        # plots.plot(lastfbatriangle,lastfbasigsup)
-        # plots.title("current fba vphis")
-        # plots.xlabel("fba triangle")
-        # plots.ylabel("error")
-        # plots.show()
-
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 if chanisgood[col,row]:
@@ -531,29 +512,29 @@ class VPhiDemo(QWidget):
                     self.mm.setdfbrow(col,row,a2d=0,I=0,d2aA=minimum_d2aA+0.5*sq1periods[col],d2aB=0,FBA=0, ARL=0)
 
         sq1periodsstrs = ["col %g %g"%(i, int(round(sq1periods[i]))) for i in range(len(sq1periods))]
-        print(("median sq1 periods by column (arbs):\n "+"\n".join(sq1periodsstrs)))
-        print(("median of all columns: %g arbs"%np.median(sq1periods)))
+        log.info(("median sq1 periods by column (arbs):\n "+"\n".join(sq1periodsstrs)))
+        log.info(("median of all columns: %g arbs"%np.median(sq1periods)))
         goodfluxjumpthreshold=int(np.median(sq1periods)/2)
-        print(("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good"%goodfluxjumpthreshold))
-        print(("This value was set for you, your previous value was %g"%oldfluxjumpthreshold))
+        log.info(("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good"%goodfluxjumpthreshold))
+        log.info(("This value was set for you, your previous value was %g"%oldfluxjumpthreshold))
         self.mm.setFluxJumpThreshold(goodfluxjumpthreshold)
 
         if self.shouldSendMixAfterFullTune():
-            print("sending mix values after full tune")
-            print(Mix)
+            log.info("sending mix values after full tune")
+            log.debug("mix before nan check", Mix)
             Mix[np.isnan(Mix)]=0 # don't send NaN, its invalid for mix
-            print(Mix)
-            print((Mix/100.0))
+            log.debug("mix before divide by 100", Mix)
+            log.info(Mix/100.0)
             self.c.client.setMix(Mix/100.0)
 
     def prune_bad_channels(self):
-        print("prune_bad_channels")
+        log.info("prune_bad_channels")
         min_amplitude = 600
         max_noise_std = 1
-        with open("last_fbastats","r") as f:
+        with open("last_fbastats","rb") as f:
             vphistats = pickle.load(f)
-        # print([k for k in vphistats.keys()])
-        print((vphistats["modDepth"]))
+        # log.info([k for k in vphistats.keys()])
+        log.info((vphistats["modDepth"]))
         assert(vphistats["modDepth"].shape == (self.c.ncol, self.c.nrow))
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
@@ -572,15 +553,15 @@ class VPhiDemo(QWidget):
                 errorChan = col*2*self.c.nrow+row*2
                 fbChan = errorChan+1
                 if vphistats["modDepth"][col,row] < min_amplitude:
-                    print(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix"%(
+                    log.info(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix"%(
                         col,row, fbChan, vphistats["modDepth"][col,row], min_amplitude
                     )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
         # fba = data[0,0,:,1] #triangle
         # err = data[0,0,:,0] #signal
         # fba_std = np.std(data[:,:,:,1],axis=2)
         # err_std = np.std(data[:,:,:,0],axis=2)
-        # print(fba_std)
-        # print(err_std)
+        # log.info(fba_std)
+        # log.info(err_std)
 
 
 
@@ -602,12 +583,12 @@ class VPhiDemo(QWidget):
         num_points = 2**14
         navgs = 40
         sample_spacing_s = 1/float(self.c.sample_rate)
-        print("taking noise psd, not changin any settings, so make sure you have FBA locked and the correct send mode, and the mix on")
-        print("sample time = %g s"%sample_spacing_s)
+        log.info("taking noise psd, not changin any settings, so make sure you have FBA locked and the correct send mode, and the mix on")
+        log.info("sample time = %g s"%sample_spacing_s)
         freqs = np.fft.rfftfreq(num_points, sample_spacing_s)
         ffts = np.zeros((self.c.ncol, self.c.nrow, len(freqs)))
         df = float(freqs[1]-freqs[0])
-        print("frequency spacing of psd =  %0.2f hz"%df)
+        log.info("frequency spacing of psd =  %0.2f hz"%df)
 
         for i in range(navgs):
             data = self.c.getNewData(0.001,minimumNumPoints=num_points, exactNumPoints=True)
@@ -636,9 +617,9 @@ class VPhiDemo(QWidget):
         medpsd = np.median(psd[:,:,ilo:ihi],axis=-1)
         medpsdcol = np.median(medpsd,axis=-1)
         noisestr=["col %d %0.4f"%(i, medpsdcol[i]) for i in range(self.c.ncol)]
-        print("median noise arbs/sqrt(hz) from %0.2f-%0.2f hz:\n"%(freqs[ilo],freqs[ihi])+"\n".join(noisestr))
-        print(("median across all columns: %g arbs/sqrt(hz)"%np.median(medpsdcol)))
-        print("saved files last_noise_freqs_hz and last_noise_psd_arbs_per_sqrt_hz, copy or rename if you want to keep them")
+        log.info("median noise arbs/sqrt(hz) from %0.2f-%0.2f hz:\n"%(freqs[ilo],freqs[ihi])+"\n".join(noisestr))
+        log.info(("median across all columns: %g arbs/sqrt(hz)"%np.median(medpsdcol)))
+        log.info("saved files last_noise_freqs_hz and last_noise_psd_arbs_per_sqrt_hz, copy or rename if you want to keep them")
 
 class SettlingTimeSweeper(QWidget):
     def __init__(self, parent, mm, client):
@@ -681,7 +662,7 @@ class SettlingTimeSweeper(QWidget):
         try:
             data = np.load("last_fbb_vphi.npy")
         except:
-            print("file last_fbb_vphi.npy doesn't exist, try running a full tune first")
+            log.info("file last_fbb_vphi.npy doesn't exist, try running a full tune first")
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
         return outtriangle, outsigsup, outsigsdown
@@ -689,10 +670,10 @@ class SettlingTimeSweeper(QWidget):
     def sweepUnlocked(self):
         """set nsamp to 1, sweep thru settling times, measure error and fb,
         plot them, change back nsamp and settinling time to original values"""
-        print("starting sweep Unlocked")
+        log.info("starting sweep Unlocked")
         self.c.client.setMixToZero()
 
-        print("taking FBB vphi to find good adc values")
+        log.info("taking FBB vphi to find good adc values")
         adc_lo_frac = self.adcLoSpin.value()*0.01
         adc_hi_frac = self.adcHiSpin.value()*0.01
         fbbtriangle, fbbsigsup, fbbsigsdown = self.FBBvphi_from_file()
@@ -707,7 +688,7 @@ class SettlingTimeSweeper(QWidget):
             adc_lo[col] = bottom+modDepth*adc_lo_frac
             adc_hi[col] = bottom+modDepth*adc_hi_frac
 
-        print("locking at adc values to find d2aA values")
+        log.info("locking at adc values to find d2aA values")
         # lock at desired a2d points
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
@@ -716,7 +697,7 @@ class SettlingTimeSweeper(QWidget):
                 else:
                     a2d = adc_hi[col]
                 self.mm.changedfbrow(col,row,a2d=a2d,d2aA=8000,tria=0,trib=0,FBA=1,FBB=0,ARL=0,data_packet=0,dynamic=1)
-        print("done locking at adc values to find d2aA values")
+        log.info("done locking at adc values to find d2aA values")
 
 
         # grab data to get d2aA values
@@ -724,14 +705,14 @@ class SettlingTimeSweeper(QWidget):
         fba = data[0,0,:,1] # feedback signal, should be locked
         err = data[0,0,:,0] # signal, should be near zero
         d2aA = np.median(data[:,:,:,1],axis=-1)
-        print(d2aA)
+        log.info(d2aA)
 
 
-        print("setting d2aA values")
+        log.info("setting d2aA values")
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 self.mm.changedfbrow(col,row, a2d=0,d2aA=d2aA[col,row], FBA=0)
-        print("done setting d2aA values")
+        log.info("done setting d2aA values")
 
 
 
@@ -746,7 +727,7 @@ class SettlingTimeSweeper(QWidget):
         errstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         fbstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         for i,SETT in enumerate(SETTs):
-            print(("sweep SETT = %g"%SETT))
+            log.info(("sweep SETT = %g"%SETT))
             self.mm.setSETT(SETT)
 
             data = self.c.getNewData(0.01,minimumNumPoints=10000,divideNsamp=False)
@@ -792,7 +773,7 @@ class SettlingTimeSweeper(QWidget):
         errstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         fbstds = np.zeros((self.c.ncol,self.c.nrow, len(SETTs)))
         for i,SETT in enumerate(SETTs):
-            print(("sweep SETT = %g"%SETT))
+            log.info(("sweep SETT = %g"%SETT))
             self.mm.setSETT(SETT)
 
             data = self.c.getNewData(0.01,minimumNumPoints=10000,divideNsamp=False)
@@ -919,7 +900,7 @@ class BitErrorDemo(QWidget):
                 hists[col,row,:] = np.log(c)
 
             nwrongcol[col] = np.sum(nwrong[col,:])
-            print(("col %g, %g/%g fb values wrong"%(col, nwrongcol[col],nframes*self.c.nrow)))
+            log.info(("col %g, %g/%g fb values wrong"%(col, nwrongcol[col],nframes*self.c.nrow)))
 
         self.makeplots()
         self.plots.plot(np.arange(-100,99),hists)
@@ -962,7 +943,7 @@ class BiasSweeper(QWidget):
         try:
             data = np.load("last_fbb_vphi.npy")
         except:
-            print("file last_fbb_vphi.npy doesn't exist, try running a full tune first")
+            log.info("file last_fbb_vphi.npy doesn't exist, try running a full tune first")
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(data[:,:,:,1], data[:,:,:,0], tridwell, tristeps, tristepsize)
         return outtriangle, outsigsup, outsigsdown
@@ -1144,7 +1125,7 @@ class ColPlots(QDialog):
         cid = self.canvas.mpl_connect('pick_event', self.onclick)
 
     def onclick(self, event):
-        print(event.artist.get_label()+" was clicked")
+        log.info(event.artist.get_label()+" was clicked")
 
     def createaxes(self):
         self.axes = []
@@ -1231,7 +1212,7 @@ class ColPlots(QDialog):
 
 
 def writeMixFile(fname, mix):
-    print(('writing mix to %s'%fname))
+    log.info(('writing mix to %s'%fname))
     ncol, nrow = mix.shape
     f = open(fname, 'w')
     for col in range(ncol):

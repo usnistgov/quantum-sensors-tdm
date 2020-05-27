@@ -7,26 +7,14 @@ from PyQt5.QtWidgets import *
 # import named_serial
 import struct
 from instruments import bluebox
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
 
 class TowerChannel(QWidget):
     
     def __init__(self, parent=None, chn=0, cardaddr=3, serialport="tower",dummy=False, shockvalue=65535):
 
         super(type(self), self).__init__(parent)
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
         
         self.parent = parent
         self.layout = QHBoxLayout(self)
@@ -40,7 +28,6 @@ class TowerChannel(QWidget):
 
         self.saveState = {}
                 
-
         self.dacspin = QSpinBox()
         self.dacspin.setRange(0, 65535)
         self.dacspin.setFixedWidth(70)
@@ -52,14 +39,14 @@ class TowerChannel(QWidget):
         
         self.dummy=dummy
         if self.dummy:
-            self.dacspin.setStyleSheet("background-color: #" + self.yellow + ";")
+            self.dacspin.setStyleSheet("background-color: #" + tc.yellow + ";")
         else:
             self.dacspin.valueChanged.connect(self.dacspin_changed)
 
         
         if parent == None:       
             self.show()
-            print(self.width())
+            log.debug("towerchannel:self.width()",self.width())
         
             
     def dacspin_changed(self):
@@ -67,7 +54,7 @@ class TowerChannel(QWidget):
         self.sendvalue(value)
 
     def sendvalue(self,dacvalue):
-        print(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
+        log.debug(("towerchannel sending %g to addr %g, chn %g"%(dacvalue,self.address,self.chn)))
         self.bluebox.setVoltDACUnits(dacvalue)
 
 

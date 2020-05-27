@@ -1,5 +1,8 @@
 import struct
 import named_serial
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
+
 
 #########################################################################
 #
@@ -34,14 +37,6 @@ class EMU_Card(object):
 
         super(EMU_Card, self).__init__()
 
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
         self.revision      = 0.1
@@ -50,15 +45,15 @@ class EMU_Card(object):
         
         self.address = address
         
-        print(self.INIT + "building EMU card: slot 19-21 / address", self.address, self.ENDC)
-        print()
+        log.debug(tc.INIT + "building EMU card: slot 19-21 / address", self.address, tc.ENDC)
+        
 
     ######################################################################################
 
     def powerOn(self):
         ''' Turn crate EMU/PCCC power card on. '''
-        print(self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "ON", self.ENDC)
-        print()
+        log.debug(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "ON", tc.ENDC)
+        
 
         wregval = 0b001 << 25
 
@@ -68,8 +63,8 @@ class EMU_Card(object):
 
     def powerOff(self):
         ''' Turn crate EMU/PCCC power card off. '''
-        print(self.FCTCALL + "switch power to crate through EMU:", self.BOLD, "OFF", self.ENDC)
-        print()
+        log.debug(tc.FCTCALL + "switch power to crate through EMU:", tc.BOLD, "OFF", tc.ENDC)
+        
 
         wregval = 0b010 << 25
 
@@ -87,7 +82,7 @@ class EMU_Card(object):
         self.sendReg(wregval)
                 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1            # 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1     # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1     # 3rd 7 bits shifted up 1

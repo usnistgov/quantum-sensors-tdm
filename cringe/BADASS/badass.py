@@ -9,41 +9,16 @@ from PyQt5.QtWidgets import *
 import named_serial
 from . import badrap
 from . import sv_array
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
 import dprcal
-# from ./DFBx2.dfbrap import dfbrap
-# from ./DFBx2.dprcal import dprcal
-# from dprcal import dprcal
+
 
 class badass(QWidget):
 
     def __init__(self, parent=None, addr=None, slot=None, seqln=None, lsync=32):
 
         super(badass, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
-
-# 		print QApplication.palette()	
-# 		self.color_list = QColor.colorNames()
-# 		print self.color_list
-# 		self.tt_palette = QPalette(self)
-# 		self.tt_palette.setColor(2, 18, Qt.white)
-# 		self.tt_palette.setColor(2, 19, Qt.black)
-# 		self.tt_palette.setColor(2,10,Qt.yellow)
-# 		self.tt_palette.setColor(2,6,Qt.black)
 
         self.serialport = named_serial.Serial(port='rack', shared = True)
 
@@ -52,8 +27,7 @@ class badass(QWidget):
         self.addr = addr
         self.slot = slot
         self.seqln = seqln
-# 		self.lsync = lsync
-# 		self.frame = self.lsync * self.seqln
+
 
         self.delay = 0
         self.led = 0

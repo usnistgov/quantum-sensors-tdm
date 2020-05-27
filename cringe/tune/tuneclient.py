@@ -47,8 +47,10 @@ class TuneClient(QWidget):
         try: # blocks for 1 second if server isn't there
             self.client.setupAndChooseChannels()
             self.statustext.setText("connected to server, lysnc=%g, ncol=%g, nrow=%g, nsamp=%g"%(self.lsync, self.ncol, self.nrow, self.nsamp))
+            return True
         except:
             self.statustext.setText("failed to connect to server")
+            return False
 
     def plotpi(self):
         window = Window(self)

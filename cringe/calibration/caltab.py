@@ -76,35 +76,15 @@ class CalDemo(QWidget):
         self.layout.addLayout(layout)
 
     def calDemoCard1Channel1(self):
-        print("starting demo")
-
-
-#     def fibertomask(self, fibernum):
-#         return "0x%0.4X" % 2**4
-#
-#     def fiberstomask(self, fibersstring):
-#         return "0x%0.4X" % int(fibersstring,2)
-
-#     def acquire(self, mask):
-#         acquirestring = os.path.join(self.acquire_path,"acquire")+" -n 1000 -o foo -d %i -m %s"%(self.d, mask)
-#         with os.popen(acquirestring) as s:
-#             acquireout = s.readlines()
-#         print acquirestring
-#         odstring = "od -t x4 foo"
-#         print odstring
-#         with os.popen(odstring) as s:
-#             odout = s.readlines()
-#         print odout
-
-
+        log.debug("starting demo")
 
     def printtestpattern(self):
-        print(self.parent)
+        log.debug(self.parent)
         tp_mode = self.cringe.tp_mode
-        print((tp_mode.itemText(tp_mode.currentIndex())))
+        log.debug((tp_mode.itemText(tp_mode.currentIndex())))
         TP = self.cringe.TP
         lobytes,hibytes=self.cringe.lohibytes()
-        print(hex(lobytes),hex(hibytes))
+        log.debug(hex(lobytes),hex(hibytes))
 
     def increment_counter(self):
         dfbcard = self.cringe.crate_widgets[1]
@@ -117,9 +97,9 @@ class CalDemo(QWidget):
         lobytes,hibytes=self.cringe.lohibytes()
         data = self.c.getNewData(divideNsamp=False, sendMode="raw")
         ncorrect = (data[0,0,:,0]==lobytes).sum()+(data[0,0,:,0]==hibytes).sum()
-        print((list(map(hex, data[0,0,:20,0]))))
-        print((list(map(hex, data[0,0,:20,1]))))
-        print((ncorrect/float(data.size)))
+        log.debug((list(map(hex, data[0,0,:20,0]))))
+        log.debug((list(map(hex, data[0,0,:20,1]))))
+        log.debug((ncorrect/float(data.size)))
         return ncorrect
 
     def sweepcounter(self):

@@ -10,7 +10,9 @@ from PyQt5.QtWidgets import *
 
 import named_serial
 from .dfbchn import dfbChn
-# print "importing dfbrap"
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
+
 
 class clkrap(QWidget):
 
@@ -19,22 +21,6 @@ class clkrap(QWidget):
     def __init__(self, parent=None, addr=0, slot=1, seqln=None, lsync=40):
 
         super(clkrap, self).__init__()
-
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
-        self.grey = "808080"
 
         self.parent = parent
         self.address = addr
@@ -145,7 +131,7 @@ class clkrap(QWidget):
         self.resync_button = QPushButton(self, text = "RESYNC")
         self.resync_button.setFixedWidth(125)
         self.resync_button.setFixedHeight(25)
-        self.resync_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.resync_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.layout.addWidget(self.resync_button,3,5,1,2,QtCore.Qt.AlignRight)
         self.resync_button.clicked.connect(self.resync)
 
@@ -153,7 +139,7 @@ class clkrap(QWidget):
         self.CLKstate_button.setFixedHeight(25)
         self.CLKstate_button.setCheckable(1)
         self.CLKstate_button.setChecked(self.CLKstate)
-        self.CLKstate_button.setStyleSheet("background-color: #" + self.green + ";")
+        self.CLKstate_button.setStyleSheet("background-color: #" + tc.green + ";")
         self.layout.addWidget(self.CLKstate_button,5,5,1,1,QtCore.Qt.AlignLeft)
         self.CLKstate_button.toggled.connect(self.CLKstate_changed)
 
@@ -165,11 +151,11 @@ class clkrap(QWidget):
     '''
     def lsync_changed(self):
         self.lsync = int(self.lsync_indicator.text())
-# 		print self.WARNING + "Line period changed:", self.lsync*8, "ns", self.ENDC
+# 		print tc.WARNING + "Line period changed:", self.lsync*8, "ns", tc.ENDC
         self.lsync_minus1 = self.lsync - 1
         self.line_period_changed()
         self.frame_period_changed()
-        print(self.FCTCALL + "send LSYNC-1 to (DFB)CLK:", self.ENDC)
+        log.debug(tc.FCTCALL + "send LSYNC-1 to (DFB)CLK:", tc.ENDC)
         self.send_wreg2()
 
     def seqln_changed(self, seqln):
@@ -185,27 +171,27 @@ class clkrap(QWidget):
         self.CLKstate = self.CLKstate_button.isChecked()
         self.notCLKstate = not(self.CLKstate)
         if self.CLKstate == 1:
-            print(self.FCTCALL + "line clock enabled:", self.ENDC)
-            self.CLKstate_button.setStyleSheet("background-color: #" + self.green + ";")
+            log.debug(tc.FCTCALL + "line clock enabled:", tc.ENDC)
+            self.CLKstate_button.setStyleSheet("background-color: #" + tc.green + ";")
             self.CLKstate_button.setText('RUN')
-            self.resync_button.setStyleSheet("background-color: #" + self.green + ";")
+            self.resync_button.setStyleSheet("background-color: #" + tc.green + ";")
         else:
-            print(self.FCTCALL + "line clock disabled:", self.ENDC)
-            self.CLKstate_button.setStyleSheet("background-color: #" + self.red + ";")
+            log.debug(tc.FCTCALL + "line clock disabled:", tc.ENDC)
+            self.CLKstate_button.setStyleSheet("background-color: #" + tc.red + ";")
             self.CLKstate_button.setText('STOP')
-            self.resync_button.setStyleSheet("background-color: #" + self.red + ";")
+            self.resync_button.setStyleSheet("background-color: #" + tc.red + ";")
         self.send_wreg1()
 
     def resync(self):
         if self.CLKstate == 1:
-            print(self.FCTCALL + "resynchronize system:", self.ENDC)
-            print()
+            log.debug(tc.FCTCALL + "resynchronize system:", tc.ENDC)
+            
             self.CLKstate_button.click()
             time.sleep(1)
             self.CLKstate_button.click()
         else:
-            print(self.FAIL + "line clock must be enabled for RESYNC:", self.ENDC)
-            print()
+            log.debug(tc.FAIL + "line clock must be enabled for RESYNC:", tc.ENDC)
+            
 
     def line_period_changed(self):
         self.line_period_indicator.setText(str(8*(self.lsync)))
@@ -218,28 +204,28 @@ class clkrap(QWidget):
 
 
     def send_wreg1(self):
-        print("CLK:WREG1: clock state:", self.CLKstate)
+        log.debug("CLK:WREG1: clock state:", self.CLKstate)
         wreg = 1 << 25
         wregval = wreg | (self.notCLKstate << 24) | (self.CLKstate << 23)
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg2(self):
-        print("CLK:WREG2: LSYNC-1:", self.lsync_minus1)
+        log.debug("CLK:WREG2: LSYNC-1:", self.lsync_minus1)
         wreg = 2 << 25
         wregval = wreg | self.lsync_minus1
         self.sendReg(wregval)
-        print()
+        
 
     def send_wreg7(self):
-        print("CLK:WREG7: sequence length:", self.seqln)
+        log.debug("CLK:WREG7: sequence length:", self.seqln)
         wreg = 7 << 25
         wregval = wreg | (self.seqln << 8)
         self.sendReg(wregval)
-        print()
+        
 
     def sendReg(self, wregval):
-        print(self.COMMAND + "send to address", self.address, ":", self.BOLD, wregval, self.ENDC)
+        log.debug(tc.COMMAND + "send to address", self.address, ":", tc.BOLD, wregval, tc.ENDC)
         b0 = (wregval & 0x7f ) << 1			# 1st 7 bits shifted up 1
         b1 = ((wregval >> 7) & 0x7f) <<  1	 # 2nd 7 bits shifted up 1
         b2 = ((wregval >> 14) & 0x7f) << 1	 # 3rd 7 bits shifted up 1

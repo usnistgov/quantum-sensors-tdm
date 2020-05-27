@@ -11,5 +11,7 @@ def EasyClient(host='localhost', port=2011, clockmhz=50):
         dastardBasePort = port
     try:
         return easyClientDastard.EasyClientDastard(host,dastardBasePort)
-    except:
+    except Exception as ex:
+        print("EasyClient falling back to EasyClientNDFB because of")
+        print(f"Exception: ex")
         return easyClientNDFB.EasyClientNDFB(host,port,clockmhz)

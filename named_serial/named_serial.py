@@ -20,6 +20,9 @@ import platform
 import serial
 if os.name == 'posix':
     import fcntl #for locking
+_namedports = {}
+
+
 def __setup():
     '''On module import read rc file and setup namedports dictionary'''
     # stuck in a function to hide all the variables
@@ -41,10 +44,10 @@ def __setup():
         _namedports[name] = port
     return _namedports
 
-_setup_done = False
+
 def namedports():
     global _namedports
-    if not _setup_done:
+    if len(_namedports) == 0:
         _namedports = __setup()
     return _namedports
 
@@ -52,6 +55,12 @@ def namedports():
 def getnames():
     '''Convenience routine for building ui - returns all defined names'''
     return list(namedports().keys())
+
+
+def _setup_for_testing(d):
+    global _namedports
+    _namedports = d
+
 
 class Serial(serial.Serial):
     ''' Wrapper class around the serial.Serial that uses logical device
@@ -76,6 +85,9 @@ class Serial(serial.Serial):
             # This is probably better.
             raise ValueError("Named port '%s' not in configuration file" % port)
         myport = namedports()[port]
+        if "dummy" in myport:
+            self._set_as_dummy(port, myport)
+            return
         try:
             # serial.Serial.__init__(self, myport, baud)
             super(Serial, self).__init__(port=myport, baudrate=baud, **kwargs) #better?
@@ -91,9 +103,9 @@ class Serial(serial.Serial):
         if shared and os.name != 'posix':
             raise ValueError('No shared ports on non-posix systems')
 
-#    def write(self, value):
-#        print "writing [%s]=%s" % (self.the_port, value)
-#        super(Serial, self).write(value)
+    def _set_as_dummy(self, port, myport):
+        # print("namedserial: _set_as_dummy: port={}, myport={}".format(port, myport))
+        self.write = lambda v: None
 
     def writelist(self, inlist):
         '''Send a list of integers as characters'''

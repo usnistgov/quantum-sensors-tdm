@@ -4,29 +4,17 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-# import named_serial
 import struct
 from . import towerchannel
+from cringe.shared import terminal_colors as tc
+from cringe.shared import log
+
 
 class TowerCard(QWidget):
     
     def __init__(self, parent=None, cardaddr=3, serialport="tower", shockvalue=65535,name="default"):
 
         super(type(self), self).__init__(parent)
-
-        self.COMMAND = '\033[95m'
-        self.FCTCALL = '\033[94m'
-        self.INIT = '\033[92m'
-        self.WARNING = '\033[93m'
-        self.FAIL = '\033[91m'
-        self.ENDC = '\033[0m'
-        self.BOLD = "\033[1m"
-
-        self.green = "90EE90"
-        self.red ="F08080"
-        self.yellow = "FFFFCC"
-        self.grey = "808080"
-        self.white = "FFFFFF"
         
         self.parent = parent
         self.layout = QGridLayout(self)
@@ -49,11 +37,11 @@ class TowerCard(QWidget):
 
         self.towerchannels=[]
         for i in range(8):
-            tc = towerchannel.TowerChannel(parent=None, chn=i, cardaddr=self.address, serialport=serialport, shockvalue=shockvalue)
+            tc = towerchannel.TowerChannel(parent=self, chn=i, cardaddr=self.address, serialport=serialport, shockvalue=shockvalue)
             self.layout.addWidget(tc,0,i+2,1,1)
             self.towerchannels.append(tc)
 
-        self.allcontrolchannel = towerchannel.TowerChannel(parent=None, chn=-1, cardaddr=self.address, serialport=serialport,dummy=True)
+        self.allcontrolchannel = towerchannel.TowerChannel(parent=self, chn=-1, cardaddr=self.address, serialport=serialport,dummy=True)
         self.layout.addWidget(self.allcontrolchannel,0,10,1,1)
 
         self.shockbutton = QPushButton("shock")
@@ -67,7 +55,7 @@ class TowerCard(QWidget):
         
         if parent == None:       
             self.show()
-            print(self.width())
+            log.debug("tower_card self.width()",self.width())
         
             
     def allcontrolchannel_dacspin_changed(self):
@@ -79,21 +67,21 @@ class TowerCard(QWidget):
         oldvalues = [tc.dacspin.value() for tc in self.towerchannels]
         for tc in self.towerchannels:
             tc.dacspin.setValue(tc.shockvalue)
-        print(("sleeping for %0.2f seconds"%self.shocksleepseconds))
+        log.debug(("sleeping for %0.2f seconds"%self.shocksleepseconds))
         time.sleep(self.shocksleepseconds)
         for (tc, oldvalue) in zip(self.towerchannels, oldvalues):
             tc.dacspin.setValue(oldvalue)
 
 
     def gored(self):
-        self.shockbutton.setStyleSheet("background-color: #" + self.red + ";")
+        self.shockbutton.setStyleSheet("background-color: #" + tc.red + ";")
         for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + self.red + ";")
+            tc.dacspin.setStyleSheet("background-color: #" + tc.red + ";")
 
     def gowhite(self):
-        self.shockbutton.setStyleSheet("background-color: #" + self.white + ";")
+        self.shockbutton.setStyleSheet("background-color: #" + tc.white + ";")
         for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + self.white + ";")
+            tc.dacspin.setStyleSheet("background-color: #" + tc.white + ";")
 
     def packState(self):
         self.stateVector    =    {
