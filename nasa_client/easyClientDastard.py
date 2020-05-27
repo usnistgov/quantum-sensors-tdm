@@ -56,9 +56,9 @@ class EasyClientDastard():
         """ connect to the record update port of dastard """
         self.recordSub = self.context.socket(zmq.SUB)
         self.recordSubAddress = "tcp://%s:%d" % (self.host, self.baseport+2)
-        self.recordSub.setsockopt(zmq.RCVTIMEO, 1000) # this doesn't seem to do anything
-        self.recordSub.setsockopt(zmq.RCVHWM, 5000)
-        self.recordSub.setsockopt(zmq.LINGER, 0)
+        self.recordSub.RCVTIMEO = 1000
+        self.recordSub.RCVHWM = 5000
+        self.recordSub.LINGER = 0
         self.recordSub.connect(self.recordSubAddress)
         if verbose: print(("Collecting records from dastard at %s" % self.recordSubAddress))
         self.recordSub.setsockopt_string(zmq.SUBSCRIBE, "")
@@ -173,8 +173,9 @@ class EasyClientDastard():
         # recieve data until there is no more data to recieve to
         self.recordSub.close() # close socket and reconnect, rely on ZMQ_LINGER=0
         self._connectRecordSub(verbose=False)
-        # the ZMQ send hwm should be set to 1 in dastard
-        # and there is a channel with buffer size 500 in dastard
+        # https://stackoverflow.com/questions/43771830/zeromq-packets-being-lost-even-after-setting-hwm-and-bufsize
+        # says never set SENDHWM = 1
+        # dastard has SENDHWM = 10 and a channel with buffer size 500
         # while True:
         #     try:
         #         self.recordSub.recv(zmq.NOBLOCK)
@@ -183,13 +184,13 @@ class EasyClientDastard():
         # return
 
     def getMessage(self, sendMode=0):
-        m = self.recordSub.recv_multipart()
-        header = np.frombuffer(m[0],RECORD_HEADER_DTYPE)[0]
+        h, m = self.recordSub.recv_multipart()
+        header = np.frombuffer(h,RECORD_HEADER_DTYPE)[0]
         if sendMode == 0:
             if header["chan"]%2==0:
-                data = np.frombuffer(m[1], np.int16)
+                data = np.frombuffer(m, np.int16)
             else:
-                data = np.frombuffer(m[1], np.uint16)
+                data = np.frombuffer(m, np.uint16)
         else:
             raise Exception("sendMode {} not implemented".format(sendMode))
         assert header["nsamples"] == len(data)
@@ -238,6 +239,7 @@ class EasyClientDastard():
         datas_dict = collections.defaultdict(lambda: [None]*self.numChannels)
         i = 0
         n_thrown_away_for_delay_seconds = 0
+        # tstart = time.time()
         while True:
             i+=1
             if i>40*self.numChannels:
@@ -260,15 +262,29 @@ class EasyClientDastard():
                 n_have = len(data)*len(k_complete)
                 if n_have >= minimumNumPoints:
                     break
-            print(f"i={i} n_observed={n_observed} counter={counter}")
+            # print(f"i={i} n_observed={n_observed} counter={counter}")
+            # x = header["triggerFramecount"]-firstTriggerFramecount
+            # y = x//10000
+            # ch = header["chan"]
+            # nsamp = len(data)
+            # dt = (time.time()-tstart)*1000
+            # unixnano = header["unixnano"]
+            # dtb = (time.time()*1000-unixnano*1e-6)
+            # print(f"timestamp={y} chan={ch} nsamp={nsamp} dt={dt:.2f}ms dtb={dtb:.2f}ms")
+            # if dt>200:
+            #     raise Exception()
+            # v = list(counter.values())
+            # j = np.argmax(v)
+            # fc = list(counter.keys())[j]
+            # print(i, fc, v[j])
         
-        print( "keys",keys)
-        print( "lengths", [len(datas_dict[k]) for k in keys])
-        print( "k_complete", k_complete)
-        print( "n_have", n_have)
-        print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
-        print( self.numChannels, self.numRows, self.numColumns)
-        print( "triggerFramecount Counter", counter)
+        # print( "keys",keys)
+        # print( "lengths", [len(datas_dict[k]) for k in keys])
+        # print( "k_complete", k_complete)
+        # print( "n_have", n_have)
+        # print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
+        # print( self.numChannels, self.numRows, self.numColumns)
+        # print( "triggerFramecount Counter", counter)
         assert(all(np.diff(k_complete)==len(data)))
 
 
