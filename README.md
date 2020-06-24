@@ -20,6 +20,8 @@ The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that m
 # Before Install setup venv
 Install python3-venv and roxterm. For certain versions of Ubuntu (17.10 and newer), official Debian packages of roxterm are unavaible. An unsupported version of roxterm can be installed by adding the PPA described at https://launchpad.net/~h-realh/+archive/ubuntu/roxterm prior to running the apt install commands.
 ```
+sudo add-apt-repository ppa:h-realh/roxterm
+sudo apt-get update
 sudo apt install python3-venv roxterm
 ```
 Then you can copy and paste the entire next block hopefully.
