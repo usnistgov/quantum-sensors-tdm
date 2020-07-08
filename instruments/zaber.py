@@ -114,7 +114,7 @@ class Zaber(serial_instrument.SerialInstrument):
 
         value = self.__sendCommand(value=0, command=Command)
 
-        version1, version2, version3, version4, version5, version6 = value
+        version1, version2, version3, version4, version5, version6 = struct.unpack("BBBBBB", value)
 
         # Convert data to integer value
         version = 256**3 * version6 + 256**2 * version5 + 256 * version4 + version3
