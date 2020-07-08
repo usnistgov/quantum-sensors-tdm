@@ -18,7 +18,10 @@ The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that m
 
 
 # Before Install setup venv
+Install python3-venv and roxterm. For certain versions of Ubuntu (17.10 and newer), official Debian packages of roxterm are unavaible. An unsupported version of roxterm can be installed by adding the PPA described at https://launchpad.net/~h-realh/+archive/ubuntu/roxterm prior to running the apt install commands.
 ```
+sudo add-apt-repository ppa:h-realh/roxterm
+sudo apt-get update
 sudo apt install python3-venv roxterm
 ```
 Then you can copy and paste the entire next block hopefully.
@@ -34,7 +37,7 @@ The echo line adds `source ~/qsp/bin/activate` to `~/.bashrc`, which activates t
 # Installation
 You probably want to install all the stuff you need for tdm, not just this repo, so
 ```  
-pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm -e git+ssh://git@bitbucket.org/joe_fowler/mass.git@#egg=mass -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander -e git+ssh://git@bitbucket.org/nist_microcal/realtime_gui.git#egg=realtime_gui
+pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm -e git+ssh://git@bitbucket.org/joe_fowler/mass.git#egg=mass -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander -e git+ssh://git@bitbucket.org/nist_microcal/realtime_gui.git#egg=realtime_gui
 ```
 You may need to enter your bitbucket and or github login info. It may go smoother if you set up an ssh key with bitbucket and github so you don't need to enter loging info. If you have a a public ssh key setup, you may be required to add it. If you get an error like `Permission denied (public key)` you probably have to add your key to github or bitbucket (I've only seen this on github).
 
@@ -45,8 +48,9 @@ You also need to copy `sudo cp namedserial/namedserialrc /etc` and `sudo cp adr_
 You can figure out which of those to remove if you only need some.
 
 Also install dastard and microscope:
-  * https://github.com/usnistgov/microscope
   * https://github.com/usnistgov/dastard
+  * https://github.com/usnistgov/microscope
+
 
 You also need to install the `exodriver` (I'm pretty sure) for labjack, see instructions here: https://labjack.com/support/software/installers/exodriver
 Or try the following:
