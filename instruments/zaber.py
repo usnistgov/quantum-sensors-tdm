@@ -88,12 +88,12 @@ class Zaber(serial_instrument.SerialInstrument):
 
         return bytevals
 
-
     def __writeBytes(self, bytestowrite):
 
-        result = self.serial.writelist(bytestowrite)
+        result = self.serial.write()
         if result != len(bytestowrite):
             print(('Error in serial write to Zaber, result, len(bytestowrite)', result, len(bytestowrite)))
+            raise Exception()
         return result
 
 
@@ -103,7 +103,7 @@ class Zaber(serial_instrument.SerialInstrument):
         bytevals.insert(0, command)
         bytevals.insert(0, self.unit)
 
-        self.__writeBytes(bytevals)
+        self.write(bytes(bytevals))
         return self.serial.read(6)
 
 ########################################### Public Methods #################################################
@@ -114,22 +114,7 @@ class Zaber(serial_instrument.SerialInstrument):
 
         value = self.__sendCommand(value=0, command=Command)
 
-        byteval_1 = value[0]
-        byteval_2 = value[1]
-        byteval_3 = value[2]
-        byteval_4 = value[3]
-        byteval_5 = value[4]
-        byteval_6 = value[5]
-
-        # Device #
-        version1, = struct.unpack("B", byteval_1)
-        # Command #
-        version2, = struct.unpack("B", byteval_2)
-        # Return data
-        version3, = struct.unpack("B", byteval_3)
-        version4, = struct.unpack("B", byteval_4)
-        version5, = struct.unpack("B", byteval_5)
-        version6, = struct.unpack("B", byteval_6)
+        version1, version2, version3, version4, version5, version6 = value
 
         # Convert data to integer value
         version = 256**3 * version6 + 256**2 * version5 + 256 * version4 + version3
