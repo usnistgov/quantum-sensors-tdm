@@ -206,6 +206,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetRunningCurrent(self.ClosingCurrent)
         sleep(1)
         self.SetTargetVelocity(self.ClosingSpeed)
+        sleep(1)
         self.MoveRelative(int((OpeningRevs-SlowRevs+.5)*self.MicroStepsPerRev)) # open 8.5 more revs
         sleep((OpeningRevs-SlowRevs+.5)/(self.ClosingSpeed*self.SpeedConvert)*1.3) #wait for motor to finish 1.3 to be certain
 
