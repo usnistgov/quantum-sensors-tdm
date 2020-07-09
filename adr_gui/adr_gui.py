@@ -408,11 +408,15 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 # check to see if we are in control state
                 now_settings = {}
                 tc=self.tempControl.a.temperature_controller
-                if tc.getControlMode()=='closed' and\
-                tc.getRamp()[0]=='on' and\
-                0<tc.getRamp()[1]<.2 and\
-                0.04<tc.getTemperatureSetPoint()<0.2 and\
-                numpy.abs(self.tempControl.getTempError())<0.005:
+                control_mode = tc.getControlMode()
+                ramp_status, ramp_rate = tc.getRamp()
+                setpoint = tc.getTemperatureSetPoint() 
+                temperror = self.tempControl.getTempError()
+                if control_mode == 'closed' and\
+                ramp_status == 'on' and\
+                0<ramp_rate<.2 and\
+                0.04<setpoint<0.2 and\
+                numpy.abs(temperror)<0.005:
                     print(("started with heater out %0.2f, but determined it is already in control state"%self.lastHOut))
                     print("STARTING IN CONTROL STATE")
                     self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
@@ -420,6 +424,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                     self.tempControl.readyToControl = True
                     self.SIG_skipToControl.emit()
                 else:
+                    print(f"lastHout={lastHOut}, control_mode {control_mode},  ramp_status {ramp_status}, ramp_rate {ramp_rate}, temperror {temperror}, setpoint {setpoint}")
                     warningBox = QMessageBox()
                     warningBox.setText("Warning heater out is %0.2f, should be zero in initial state (unless its in closed loop control).  Manually correct system and try again.  Will exit after this."%self.lastHOut)
                     warningBox.exec_()
