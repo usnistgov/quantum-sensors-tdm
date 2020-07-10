@@ -256,18 +256,15 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def getRamp(self):
         ''' Get the ramp mode either 'on' or 'off' and the ramp rate in Kelvin/minute '''
 
-        switch = {
-            '0' : 'off',
-            '1' : 'on'
-        }
-
         commandstring = 'RAMP?'
         result = self.ask(commandstring)
-        results = result.split(','.encode())
-        ramp = ['off', 0]
-        ramp[0] = switch.get(results[0] , 'com error')
-        ramp[1] = float(results[1])
-
+        results = result.decode().strip().split(',')
+        if results[0]=='0':
+            ramp = ['off', float(results[1])]
+        elif results[0]=='1':
+            ramp = ['on', float(results[1])]
+        else:
+            raise ValueError(f'Ramp status = {results[0]} when expecting on or off')
         return ramp
 
     def setTemperatureControlSetup(self, channel = 1, units = 'Kelvin', maxrange = 10, delay = 2, htrres = 1, output = 'current', filterread = 'unfiltered'):

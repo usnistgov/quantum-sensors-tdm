@@ -424,7 +424,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                     self.tempControl.readyToControl = True
                     self.SIG_skipToControl.emit()
                 else:
-                    print(f"lastHout={lastHOut}, control_mode {control_mode},  ramp_status {ramp_status}, ramp_rate {ramp_rate}, temperror {temperror}, setpoint {setpoint}")
+                    print(f"lastHOut={self.lastHOut}, control_mode {control_mode},  ramp_status {ramp_status}, ramp_rate {ramp_rate}, temperror {temperror}, setpoint {setpoint}")
                     warningBox = QMessageBox()
                     warningBox.setText("Warning heater out is %0.2f, should be zero in initial state (unless its in closed loop control).  Manually correct system and try again.  Will exit after this."%self.lastHOut)
                     warningBox.exec_()
