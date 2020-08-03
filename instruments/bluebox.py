@@ -86,33 +86,19 @@ class BlueBox(object):
         '''
         if (volt < self.min_voltage or volt > self.max_voltage):
             raise ValueError('Voltage set value out of range')
-        # 1 bit = 100 uV
-        #val = int(round(volt * 10000.0))
-        val = int(round(volt * 65535.0 / self.max_voltage))
-        bytevals = self.getbytes(val)
-        result = self.serial.writelist(bytevals)
-        if result != len(bytevals): 
-            self.value = None
-        else:
-            self.value = volt
-        return self.value
+        dac_units = int(round(volt * 65535.0 / self.max_voltage))
+        return self.setVoltDACUnits(dac_units)
 
     def setVoltDACUnits(self, val): 
         '''Set the voltage of the bluebox. 
         Parameters:
         dacvalue
         '''
-        #if (volt < self.min_voltage or volt > self.max_voltage):
-        #    raise ValueError, 'Voltage set value out of range'
-        # 1 bit = 100 uV
-        #val = int(round(volt * 10000.0))
-        #val = int(round(volt * 65535.0 / self.max_voltage))
-        bytevals = self.getbytes(val)
-        result = self.serial.writelist(bytevals)
-        if result != len(bytevals): 
-            self.value = None
-        else:
-            self.value = val
+        b = self.getbytes(val)
+        n = self.serial.write(b)
+        if n != len(b):
+            raise Exception(f"tried to write {len(b)} bytes, actually wrote {n}")
+        self.value = self.max_voltage*val/65535.0
         return self.value
 
     def _getbytes_mrk1(self, value):
@@ -125,7 +111,7 @@ class BlueBox(object):
         bytevals.append((((value / 16) & 0x3f) * 4) + 1)
         bytevals.append(((value & 0xf) * 4) + 2)
         bytevals.append((self.address * 4) + 3)
-        return bytevals
+        return bytes(bytevals)
 
     def _getbytes_mrk2(self, value):
         #  word 0 - 7 least significant bits  + 0
@@ -135,7 +121,7 @@ class BlueBox(object):
         bytevals.append((value & 0x7f) << 1)
         bytevals.append((value & 0x3f80) >> 6)
         bytevals.append(( 10 << 3 ) + ( ( value & 0xc000 ) >> 13 ) + 1)
-        return bytevals
+        return bytes(bytevals)
 
     def _getbytes_tower(self, value):
         ''' get 4 bytes for the tower '''
@@ -150,5 +136,4 @@ class BlueBox(object):
         bytevals.append((value>>14) + ((addr & 0x1F) << 2) )
         bytevals.append(0x80 + (addr >> 5))
         #print "bb bytevals", bytevals
-        
-        return bytevals
+        return bytes(bytevals)

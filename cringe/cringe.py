@@ -842,14 +842,24 @@ class Cringe(QWidget):
     def full_crate_init(self):
         llog = log.child("full_crate_init")
         llog.info("started")
+        crate_sleep_s = 1.0
         if not self.crate_power.isChecked():
             self.crate_power.click() # turn on crate
+            time.sleep(crate_sleep_s)
         self.crate_power.click() # turn off crate
+        time.sleep(crate_sleep_s)
+        llog.info("crate power turned off")
         self.crate_power.click() # turn on crate
+        time.sleep(crate_sleep_s)
+        llog.info("crate power turned on")
         self.send_all_sys_globals() # send globals system globals button
+        llog.info("sent all sys globals")
         self.send_all_class_globals() # 2nd half of send globals button
+        llog.info("sent all class globals")
         self.send_ALL_states_chns(resync=False) # send arrayed button
+        llog.info("sent arrayed")
         self.phcal_system(resync=False) # CALIBRATE button
+        llog.info("sent calibration")
         llog.info("begin resync")
         self.system_resync()
         llog.info("done")

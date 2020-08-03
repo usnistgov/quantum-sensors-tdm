@@ -106,8 +106,3 @@ class Serial(serial.Serial):
     def _set_as_dummy(self, port, myport):
         # print("namedserial: _set_as_dummy: port={}, myport={}".format(port, myport))
         self.write = lambda v: None
-
-    def writelist(self, inlist):
-        '''Send a list of integers as characters'''
-        outstring = ''.join(map(chr, inlist))
-        return self.write(outstring.encode())

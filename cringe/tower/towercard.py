@@ -10,6 +10,7 @@ from cringe.shared import terminal_colors as tc
 from cringe.shared import log
 
 
+
 class TowerCard(QWidget):
     
     def __init__(self, parent=None, cardaddr=3, serialport="tower", shockvalue=65535,name="default"):
@@ -60,28 +61,28 @@ class TowerCard(QWidget):
             
     def allcontrolchannel_dacspin_changed(self):
         value = self.allcontrolchannel.dacspin.value()
-        for tc in self.towerchannels:
-            tc.dacspin.setValue(value)
+        for tcard in self.towerchannels:
+            tcard.dacspin.setValue(value)
 
     def shock(self):
-        oldvalues = [tc.dacspin.value() for tc in self.towerchannels]
-        for tc in self.towerchannels:
-            tc.dacspin.setValue(tc.shockvalue)
+        oldvalues = [tcard.dacspin.value() for tcard in self.towerchannels]
+        for tcard in self.towerchannels:
+            tcard.dacspin.setValue(tcard.shockvalue)
         log.debug(("sleeping for %0.2f seconds"%self.shocksleepseconds))
         time.sleep(self.shocksleepseconds)
-        for (tc, oldvalue) in zip(self.towerchannels, oldvalues):
-            tc.dacspin.setValue(oldvalue)
+        for (tcard, oldvalue) in zip(self.towerchannels, oldvalues):
+            tcard.dacspin.setValue(oldvalue)
 
 
     def gored(self):
         self.shockbutton.setStyleSheet("background-color: #" + tc.red + ";")
-        for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + tc.red + ";")
+        for tcard in self.towerchannels:
+            tcard.dacspin.setStyleSheet("background-color: #" + tc.red + ";")
 
     def gowhite(self):
         self.shockbutton.setStyleSheet("background-color: #" + tc.white + ";")
-        for tc in self.towerchannels:
-            tc.dacspin.setStyleSheet("background-color: #" + tc.white + ";")
+        for tcard in self.towerchannels:
+            tcard.dacspin.setStyleSheet("background-color: #" + tc.white + ";")
 
     def packState(self):
         self.stateVector    =    {
