@@ -62,11 +62,11 @@ class Zaber(serial_instrument.SerialInstrument):
         #self.serial = None
 #        self.value = None  #unknown value
         self.MicroStepsPerRev = 12800  #microsteps per revolution
-        self.SpeedConvert = 7.0000e-004  #rev/sec at speed = 1
+        self.RevsPerSecAtSpeed1 = 7.0000e-004  #rev/sec at speed = 1
 
         # Values from Dan - may be good for all heat switches
         self.OpeningSpeed = 50
-        self.OpeningCurrent  = 10  #full current
+        self.OpeningCurrent = 10  #full current
         self.OpeningRevs = 10  #how much to open switch
         self.SlowRevs = 2  #how many revs to open slowly at high torque
         self.ClosingSpeed = 1000
@@ -190,7 +190,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetTargetVelocity(self.OpeningSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
         self.MoveRelativeThenWait(int(SlowRevs*self.MicroStepsPerRev)) # open 2 revolutions
-        # time.sleep(SlowRevs/(self.OpeningSpeed*self.SpeedConvert)*1.2) # wait for motion to complete
+        # time.sleep(SlowRevs/(self.OpeningSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
 
         # drop torque , up speed and finish
@@ -198,7 +198,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetTargetVelocity(self.ClosingSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
         self.MoveRelativeThenWait(int((OpeningRevs-SlowRevs)*self.MicroStepsPerRev)) # open rest of revs
-        # time.sleep((OpeningRevs-SlowRevs)/(self.ClosingSpeed*self.SpeedConvert)*1.2) # wait for motion to complete
+        # time.sleep((OpeningRevs-SlowRevs)/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
     def CloseHeatSwitch(self, ClosingRevs = None):
 
@@ -209,7 +209,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetTargetVelocity(self.ClosingSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
         self.MoveRelativeThenWait(int(-ClosingRevs*self.MicroStepsPerRev))
-        # time.sleep(ClosingRevs/(self.ClosingSpeed*self.SpeedConvert)*1.2)
+        # time.sleep(ClosingRevs/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2)
 
     def getPosition(self):
         value = self.__sendCommandParseReply(value=0, command=60)
@@ -250,9 +250,10 @@ class Zaber(serial_instrument.SerialInstrument):
     def getEncoderPosition(self):
         return self.__sendCommandParseReply(value=0, command=89)
 
-    def waitForRelativeMoveToComplete(self):
+    def waitForRelativeMoveToComplete(self, timeout_s):
         """ this function should work, but it always causes an error of some sort, 
         don't expect it to work"""
+        tstart = time.time()
         while True:
             reply = self.serial.read(6)
             if len(reply) == 0:
@@ -264,7 +265,16 @@ class Zaber(serial_instrument.SerialInstrument):
                 break
             else:
                 raise Exception(f"reply should be length 0 or 6, got {length(reply)}, reply={reply}")
+            elapsed_s = time.time()-tstart
+            if elapsed_s > timeout_s:
+                raise Exception(f"should have finished relative move by now. elapsed_s = {elapsed_s}, timeout_s = {timeout_s}")
 
-    def MoveRelativeThenWait(self, steps):
-        self.__sendCommand(value=steps, command=21)
-        self.waitForRelativeMoveToComplete()
+    def MoveRelativeThenWait(self, microsteps, speed):
+        revolutions = microsteps/self.MicroStepsPerRev
+        estimated_time_s = revolutions/(self.RevsPerSecAtSpeed1*speed)
+        self.__sendCommand(value=microsteps, command=21)
+        self.waitForRelativeMoveToComplete(1.3*estimated_time_s) 
+
+    def setKnobDisable(self, val: bool):
+        assert isinstance(val, bool)
+        self.__sendCommand(107, int(val))
