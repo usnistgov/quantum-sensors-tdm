@@ -72,6 +72,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.ClosingSpeed = 1000
         self.ClosingCurrent = 10 #less than full or not
         self.debug = False # set to true to enable debug prints
+        _ = self.serial.readall() # just make sure there isn't a backlog of comms
     
 ########################################### Private Methods #################################################
 
@@ -189,7 +190,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetRunningCurrent(self.OpeningCurrent)
         self.SetTargetVelocity(self.OpeningSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
-        self.MoveRelativeThenWait(int(SlowRevs*self.MicroStepsPerRev)) # open 2 revolutions
+        self.MoveRelativeThenWait(int(SlowRevs*self.MicroStepsPerRev), self.OpeningSpeed) # open 2 revolutions
         # time.sleep(SlowRevs/(self.OpeningSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
 
@@ -197,7 +198,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetRunningCurrent(self.ClosingCurrent)
         self.SetTargetVelocity(self.ClosingSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
-        self.MoveRelativeThenWait(int((OpeningRevs-SlowRevs)*self.MicroStepsPerRev)) # open rest of revs
+        self.MoveRelativeThenWait(int((OpeningRevs-SlowRevs)*self.MicroStepsPerRev), self.ClosingSpeed) # open rest of revs
         # time.sleep((OpeningRevs-SlowRevs)/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
     def CloseHeatSwitch(self, ClosingRevs = None):
@@ -208,7 +209,7 @@ class Zaber(serial_instrument.SerialInstrument):
         self.SetRunningCurrent(self.ClosingCurrent)
         self.SetTargetVelocity(self.ClosingSpeed)
         self.SetCurrentPosition(1000000) # makes negative relative moves work
-        self.MoveRelativeThenWait(int(-ClosingRevs*self.MicroStepsPerRev))
+        self.MoveRelativeThenWait(int(-ClosingRevs*self.MicroStepsPerRev), self.ClosingSpeed)
         # time.sleep(ClosingRevs/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2)
 
     def getPosition(self):
@@ -275,6 +276,23 @@ class Zaber(serial_instrument.SerialInstrument):
         self.__sendCommand(value=microsteps, command=21)
         self.waitForRelativeMoveToComplete(1.3*estimated_time_s) 
 
-    def setKnobDisable(self, val: bool):
-        assert isinstance(val, bool)
-        self.__sendCommand(107, int(val))
+
+    # in practice this just causes the heat switch to turn a lot, so commenting it out
+    # def setKnobDisable(self, val: bool):
+    #     assert isinstance(val, bool)
+    #     self.__sendCommand(107, int(val))
+
+    # setting it to "displacement" causes the motor to just keep turning
+    # def setKnobMovementMode(self, mode):
+    #     if mode == "displacement":
+    #         val = 1
+    #     elif mode == "velocity": 
+    #         val = 0
+    #     else:
+    #         raise Exception("only displacement and velocity are supported movement modes")
+
+    #     self.__sendCommand(109, val)
+
+    # setting it to 1 causes the motor to just keep turning
+    # def setKnobJogSize(self, size):
+    #     self.__sendCommand(110, size)
