@@ -1,5 +1,6 @@
 VERBOSITY_DEBUG = 50
 VERBOSITY_INFO  = 40 
+VERBOSITY_ERROR = 10 # lower numbers are shown more easily
 
 
 class Logger():
@@ -31,6 +32,14 @@ class Logger():
                 print("INFO:", self.prepend, *args)
             else:
                 print("INFO:", *args)
+
+    def error(self, *args):
+        if self.verbosity >= VERBOSITY_ERROR:
+            if self.prepend:
+                print("ERROR:", self.prepend, *args)
+            else:
+                print("ERROR:", *args)
+
         
     def child(self, prepend):
         return Logger(self.verbosity, self.prepend+prepend)

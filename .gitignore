@@ -3,3 +3,4 @@ __pycache__
 *.bak
 *.npy
 last_fbastats
+.build

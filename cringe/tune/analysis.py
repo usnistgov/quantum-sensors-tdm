@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pylab as plt
-
+from cringe.shared import log
 
 def lineartriangleparams(tridwell, tristeps, tristepsize):
     lindwell = 2**tridwell
@@ -11,6 +11,7 @@ def lineartriangleparams(tridwell, tristeps, tristepsize):
 
 
 def conditionvphi(triangle, signal, tridwell, tristeps, tristepsize):
+    llog = log.child("analysis.conditionvphi")
     """Returns a ramping up part of triangle, averaged ramping up and down parts of signal.
     """
     lindwell, linperiod, linsteps, linstepsize = lineartriangleparams(tridwell, tristeps, tristepsize)
@@ -34,10 +35,27 @@ def conditionvphi(triangle, signal, tridwell, tristeps, tristepsize):
     for i in range(nperiods):
         # this should be all, but lets have some slop for bit errors
         # plt.plot((sampledtriangle[i*linsteps:(i+1)*linsteps]-onetriangle)*(2**14-1))
-        if not np.sum(sampledtriangle[i*linsteps:(i + 1)*linsteps] == onetriangle) == linsteps * 1:
+        y = sampledtriangle[i*linsteps:(i + 1)*linsteps]
+        a = np.abs(y - onetriangle)
+        b = a >= 2 # sometimes we're seeing 1 unit errors... lets not worry
+        if any(a>0):
+            llog.error("biterrors detected, ignoring them for now. but you should recalibrate")
+        s = np.sum(b)
+        # if s < 1024:
+        #     ind = np.where(~a)[0][0]
+        #     print(f"i={i} s={s} {ind}")
+        if s > 1: # also allow one tolerance here
             np.save("last_failed_sampledtriangle",sampledtriangle)
             np.save("last_failed_triangle",triangle)
             np.save("last_failed_signal",signal)
+            ind = np.where(~b)[0][0]
+            print(f"i={i} s={s} ind={ind}. onetriangle[ind]={onetriangle[ind]}, y[ind]={y[ind]}")
+            print(f"{b}")
+            # plt.figure()
+            # plt.plot(y,".-")
+            # plt.plot(ind,y[ind],".")
+            # plt.show()
+            # plt.pause(10)
             raise Exception("triangle appears imperfect")
     oneramp = sampledtriangle[1:linsteps//2]
 

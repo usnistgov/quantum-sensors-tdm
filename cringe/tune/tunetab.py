@@ -432,7 +432,7 @@ class VPhiDemo(QWidget):
         # oneplot.figure.canvas.draw()
         QApplication.processEvents()  # process gui events
 
-        log.info(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
+        log.debug(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
 
         np.save("last_fbb2_firstMinimumX", fbb2stats["firstMinimumX"])
         np.save("last_lfba_modDepth", lfbastats["modDepth"])
@@ -465,7 +465,7 @@ class VPhiDemo(QWidget):
             d2aA = fbastats["negativeCrossingFirstX"]
 
         minimum_d2aA = self.minimumD2AValueSpin.value()
-        log.info(("using {} as minimum_d2aA".format(
+        log.debug(("using {} as minimum_d2aA".format(
             self.minimumD2AValueSpin.value())))
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
@@ -474,7 +474,7 @@ class VPhiDemo(QWidget):
                         np.ceil((minimum_d2aA-d2aA[col, row])/period))
                     d2aA[col, row] += nPeriodToAdd * \
                         fbastats["periodXUnits"][col, row]
-                    log.info(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g" % (
+                    log.debug(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g" % (
                         col, row, nPeriodToAdd, minimum_d2aA)))
         a2d = fbastats["crossingPoint"]
 
@@ -551,7 +551,7 @@ class VPhiDemo(QWidget):
             log.debug("mix before nan check", Mix)
             Mix[np.isnan(Mix)] = 0  # don't send NaN, its invalid for mix
             log.debug("mix before divide by 100", Mix)
-            log.info(Mix/100.0)
+            log.debug(Mix/100.0)
             self.c.client.setMix(Mix/100.0)
 
     def prune_bad_channels(self):
