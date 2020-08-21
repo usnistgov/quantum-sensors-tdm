@@ -699,7 +699,7 @@ class SettlingTimeSweeper(QWidget):
         tridwell, tristeps, tristepsize = 2, 9, 20
 
         try:
-            data = np.load("last_fbb_vphi.npy")
+            data = np.load(get_savepath("last_fbb_vphi.npy"))
         except:
             log.info(
                 "file last_fbb_vphi.npy doesn't exist, try running a full tune first")
@@ -993,7 +993,7 @@ class BiasSweeper(QWidget):
         tridwell, tristeps, tristepsize = 2, 9, 20
 
         try:
-            data = np.load("last_fbb_vphi.npy")
+            data = np.load(get_savepath("last_fbb_vphi.npy"))
         except:
             log.info(
                 "file last_fbb_vphi.npy doesn't exist, try running a full tune first")
