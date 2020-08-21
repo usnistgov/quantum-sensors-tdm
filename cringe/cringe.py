@@ -842,7 +842,7 @@ class Cringe(QWidget):
     def full_crate_init(self):
         llog = log.child("full_crate_init")
         llog.info("started")
-        crate_sleep_s = 1.0
+        crate_sleep_s = 2.0
         if not self.crate_power.isChecked():
             self.crate_power.click() # turn on crate
             time.sleep(crate_sleep_s)
