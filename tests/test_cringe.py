@@ -1,3 +1,4 @@
+
 from cringe import cringe
 from cringe import zmq_rep
 from cringe.tune import analysis
@@ -8,19 +9,26 @@ import time
 import os
 import numpy as np
 
-named_serial._setup_for_testing({"rack" : "dummy_rack", "tower": "dummy_tower"})
+named_serial._setup_for_testing({"rack": "dummy_rack", "tower": "dummy_tower"})
 cringe.log.set_debug()
 
-datadir = os.path.join(os.path.dirname(__file__),"data")
+datadir = os.path.join(os.path.dirname(__file__), "data")
+
 
 def test_condition_vphi_allow_1_unit_error_in_1_sample():
     triangle = np.load(os.path.join(datadir, "last_failed_triangle_0.npy"))
     signal = np.load(os.path.join(datadir, "last_failed_signal_0.npy"))
-    oneramp, outSignalUp, outSignalDown = analysis.conditionvphi(triangle, signal, 2, 9, 20)
-    
+    oneramp, outSignalUp, outSignalDown = analysis.conditionvphi(
+        triangle, signal, 2, 9, 20)
+
+
+def test_get_savepath():
+    import cringe.shared
+    path = cringe.shared.get_savepath("abcd")
+    assert isinstance(path, str)
 
 # def test_cringe(qtbot): # see pytest-qt for info qtbot
-#     widget = cringe.Cringe(None, addr_vector=[0, 1, 2], slot_vector=[0, 1, 2], 
+#     widget = cringe.Cringe(None, addr_vector=[0, 1, 2], slot_vector=[0, 1, 2],
 #     class_vector=["DFBCLK", "DFBx2", "BAD16"],
 #     seqln=13, lsync=32, tower_vector=["DB1", 13], calibrationtab=True)
 #     qtbot.addWidget(widget)
@@ -60,6 +68,3 @@ def test_condition_vphi_allow_1_unit_error_in_1_sample():
 #     # it has something to do with the zmq contexts failing to terminate
 #     # and I've already added sock.LINGER = 0 on both sockets, so I don't know what
 #     # else to try, but it seems to work well enough and the tests work one time through
-
-
-

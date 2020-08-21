@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pylab as plt
 from cringe.shared import log
+from cringe.shared import get_savepath
+
 
 def lineartriangleparams(tridwell, tristeps, tristepsize):
     lindwell = 2**tridwell
@@ -14,11 +16,13 @@ def conditionvphi(triangle, signal, tridwell, tristeps, tristepsize):
     llog = log.child("analysis.conditionvphi")
     """Returns a ramping up part of triangle, averaged ramping up and down parts of signal.
     """
-    lindwell, linperiod, linsteps, linstepsize = lineartriangleparams(tridwell, tristeps, tristepsize)
+    lindwell, linperiod, linsteps, linstepsize = lineartriangleparams(
+        tridwell, tristeps, tristepsize)
 
     # truncate to a full number of periods
     minval = np.amin(triangle)
-    mininds, = np.nonzero(triangle == minval)  # throw out min inds where the next value is also a minind
+    # throw out min inds where the next value is also a minind
+    mininds, = np.nonzero(triangle == minval)
     # mininds[plt.find(np.diff(mininds) > 1)]  # throw out min inds where the next value is also a minind
     assert len(mininds) >= 2
     triangle = triangle[mininds[0]:mininds[-1] - lindwell + 1]
@@ -37,19 +41,22 @@ def conditionvphi(triangle, signal, tridwell, tristeps, tristepsize):
         # plt.plot((sampledtriangle[i*linsteps:(i+1)*linsteps]-onetriangle)*(2**14-1))
         y = sampledtriangle[i*linsteps:(i + 1)*linsteps]
         a = np.abs(y - onetriangle)
-        b = a >= 2 # sometimes we're seeing 1 unit errors... lets not worry
-        if any(a>0):
-            llog.error("biterrors detected, ignoring them for now. but you should recalibrate")
+        b = a >= 2  # sometimes we're seeing 1 unit errors... lets not worry
+        if any(a > 0):
+            llog.error(
+                "biterrors detected, ignoring them for now. but you should recalibrate")
         s = np.sum(b)
         # if s < 1024:
         #     ind = np.where(~a)[0][0]
         #     print(f"i={i} s={s} {ind}")
-        if s > 1: # also allow one tolerance here
-            np.save("last_failed_sampledtriangle",sampledtriangle)
-            np.save("last_failed_triangle",triangle)
-            np.save("last_failed_signal",signal)
+        if s > 1:  # also allow one tolerance here
+            np.save(os.path.join(
+                savedir, "last_failed_sampledtriangle"), sampledtriangle)
+            np.save(get_savepath("last_failed_triangle"), triangle)
+            np.save(get_savepath("last_failed_signal"), signal)
             ind = np.where(~b)[0][0]
-            print(f"i={i} s={s} ind={ind}. onetriangle[ind]={onetriangle[ind]}, y[ind]={y[ind]}")
+            print(
+                f"i={i} s={s} ind={ind}. onetriangle[ind]={onetriangle[ind]}, y[ind]={y[ind]}")
             print(f"{b}")
             # plt.figure()
             # plt.plot(y,".-")
@@ -73,16 +80,18 @@ def conditionvphi(triangle, signal, tridwell, tristeps, tristepsize):
 
 def conditionvphis(triangle, signal, tridwell, tristeps, tristepsize):
     ncol, nrow, _ = signal.shape
-    lindwell, linperiod, linsteps, linstepsize = lineartriangleparams(tridwell, tristeps, tristepsize)
+    lindwell, linperiod, linsteps, linstepsize = lineartriangleparams(
+        tridwell, tristeps, tristepsize)
     outsigsup = np.zeros((ncol, nrow, linsteps//2 - 1))
     outsigsdown = np.zeros_like(outsigsup)
     outtriangles = np.zeros_like(outsigsup)
     for col in range(ncol):
         for row in range(nrow):
             try:
-                triout, sigup, sigdown = conditionvphi(triangle[col, row, :], signal[col, row, :], tridwell, tristeps, tristepsize)
+                triout, sigup, sigdown = conditionvphi(
+                    triangle[col, row, :], signal[col, row, :], tridwell, tristeps, tristepsize)
             except Exception as ex:
-                raise type(ex)("{}, col {}, row {}".format(ex,col,row))
+                raise type(ex)("{}, col {}, row {}".format(ex, col, row))
             outsigsup[col, row, :] = sigup
             outsigsdown[col, row, :] = sigdown
             outtriangles[col, row, :] = triout

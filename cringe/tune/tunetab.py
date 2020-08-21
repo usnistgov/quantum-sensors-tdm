@@ -19,6 +19,10 @@ from .muxmaster import MuxMaster
 from . import analysis
 from . import vphistats
 from cringe import log
+from cringe.shared import get_savepath
+
+
+"""like the old pylab function, easier to use than np.where"""
 
 
 def find(condition):
@@ -199,7 +203,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=1)
         fba = data[0, 0, :, 1]  # feedback
         err = data[0, 0, :, 0]  # error
-        np.save("last_learn_columns_data", data)
+        np.save(get_savepath("last_learn_columns_data"), data)
         new_dfbraps = []
         for col in range(data.shape[0]):
             vals = data[col, :, :, 1]
@@ -232,7 +236,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fba = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
-        np.save("last_fba_vphi", data)
+        np.save(get_savepath("last_fba_vphi"), data)
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
@@ -246,7 +250,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
-        np.save("last_fbb_vphi", data)
+        np.save(get_savepath("last_fbb_vphi"), data)
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
@@ -264,7 +268,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
         fbb = data[0, 0, :, 0]  # triangle
-        np.save("last_locked_fba_vphi", data)
+        np.save(get_savepath("last_locked_fba_vphi"), data)
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(
             data[:, :, :, 0], data[:, :, :, 1], tridwell, tristeps, tristepsize)
@@ -283,7 +287,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
         fbb = data[0, 0, :, 0]  # triangle
-        np.save("last_locked_fba_vphi", data)
+        np.save(get_savepath("last_locked_fba_vphi"), data)
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(
             data[:, :, :, 0], data[:, :, :, 1], tridwell, tristeps, tristepsize)
@@ -371,7 +375,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
-        np.save("last_fbb2_vphi", data)
+        os.path.join(get_savepath("last_fbb2_vphi"), data)
         fbb2triangle, fbb2sigsup, fbb2sigsdown = analysis.conditionvphis(
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
         fbb2stats = vphistats.vPhiStats(fbb2triangle, fbb2sigsup)
@@ -434,10 +438,14 @@ class VPhiDemo(QWidget):
 
         log.debug(("added {} Phi0s".format(self.minimumD2AValueSpin.value())))
 
-        np.save("last_fbb2_firstMinimumX", fbb2stats["firstMinimumX"])
-        np.save("last_lfba_modDepth", lfbastats["modDepth"])
-        np.save("last_lfba_firstMinimumY", lfbastats["firstMinimumY"])
-        np.save("last_fbb2_periodXUnits", fbbstats["periodXUnits"])
+        np.save(get_savepath("last_fbb2_firstMinimumX"),
+                fbb2stats["firstMinimumX"])
+        np.save(get_savepath("last_lfba_modDepth"),
+                lfbastats["modDepth"])
+        np.save(get_savepath("last_lfba_firstMinimumY"),
+                lfbastats["firstMinimumY"])
+        np.save(get_savepath("last_fbb2_periodXUnits"),
+                fbbstats["periodXUnits"])
 
         # take fba vphis with correct d2aB values
         tridwell, tristeps, tristepsize = 2, 8, 30
@@ -448,7 +456,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fba = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
-        np.save("last_fba_vphi", data)
+        np.save(get_savepath("last_fba_vphi"), data)
 
         fracFromBottom = self.PercentFromBottomSpin.value()*0.01
 
@@ -515,7 +523,7 @@ class VPhiDemo(QWidget):
         else:
             Mix = chanisgood*MixSlopeProduct/fbastats["negativeCrossingSlope"]
 
-        np.save("last_mix_values", Mix/100.0)
+        os.path.join(get_savepath("last_mix_values"), Mix/100.0)
         writeMixFile(os.path.expanduser(
             "~/nasa_daq/matter/autotune_mix.mixing_config"), Mix/100.0)
         # cringe should have created this directory earlier
@@ -636,8 +644,8 @@ class VPhiDemo(QWidget):
         plots.ylim((0, 0.08))
         plots.show()
 
-        np.save("last_noise_freqs_hz", freqs)
-        np.save("last_noise_psd_arbs_per_sqrt_hz", ffts)
+        np.save(get_savepath("last_noise_freqs_hz"), freqs)
+        np.save(get_savepath("last_noise_psd_arbs_per_sqrt_hz"), ffts)
 
         flo = 15000
         fhi = 40000
@@ -772,8 +780,8 @@ class SettlingTimeSweeper(QWidget):
             fbs[:, :, i] = fb
             fbstds[:, :, i] = fbstd
 
-        np.save("last_unlocked_sett_sweep_SETTs", SETTs)
-        np.save("last_unlocked_sett_sweep_errs", errs)
+        np.save(get_savepath("last_unlocked_sett_sweep_SETTs"), SETTs)
+        np.save(get_savepath("last_unlocked_sett_sweep_errs"), errs)
 
         plots = ColPlots(self, self.c.ncol, self.c.nrow)
         plots.plot(SETTs, errstds)
