@@ -375,7 +375,7 @@ class VPhiDemo(QWidget):
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
-        os.path.join(get_savepath("last_fbb2_vphi"), data)
+        np.save(get_savepath("last_fbb2_vphi"), data)
         fbb2triangle, fbb2sigsup, fbb2sigsdown = analysis.conditionvphis(
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
         fbb2stats = vphistats.vPhiStats(fbb2triangle, fbb2sigsup)
@@ -523,7 +523,7 @@ class VPhiDemo(QWidget):
         else:
             Mix = chanisgood*MixSlopeProduct/fbastats["negativeCrossingSlope"]
 
-        os.path.join(get_savepath("last_mix_values"), Mix/100.0)
+        np.save(get_savepath("last_mix_values"), Mix/100.0)
         writeMixFile(os.path.expanduser(
             "~/nasa_daq/matter/autotune_mix.mixing_config"), Mix/100.0)
         # cringe should have created this directory earlier
