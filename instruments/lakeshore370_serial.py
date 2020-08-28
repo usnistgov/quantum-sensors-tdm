@@ -14,28 +14,7 @@ import scipy
 from scipy.interpolate import interp1d
 from . import serial_instrument
 import serial
-import time
-
-
-# define the retry decorator
-def retry(tries=3, delay_s=0.1):
-    def decorator(method):
-        def wrapper(*args, **kwargs):
-            for i in range(tries):
-                try:
-                    return method(*args, **kwargs)
-                except Exception as ex:
-                    import traceback
-                    import sys
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    s = traceback.format_exception(exc_type, exc_value, exc_traceback)
-                    print(f"while retrying {method} in {__name__}:")
-                    print("".join(s))
-                    time.sleep(delay_s)
-
-            raise Exception(f"{method} failed after {retries} retries with delays_s={delay_s}")
-        return wrapper
-    return decorator
+from instruments import retry
 
 
 
