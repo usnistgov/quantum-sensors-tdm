@@ -14,6 +14,30 @@ import scipy
 from scipy.interpolate import interp1d
 from . import serial_instrument
 import serial
+import time
+
+
+# define the retry decorator
+def retry(tries=3, delay_s=0.1):
+    def decorator(method):
+        def wrapper(*args, **kwargs):
+            for i in range(tries):
+                try:
+                    return method(*args, **kwargs)
+                except Exception as ex:
+                    import traceback
+                    import sys
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    s = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                    print(f"while retrying {method} in {__name__}:")
+                    print("".join(s))
+                    time.sleep(delay_s)
+
+            raise Exception(f"{method} failed after {retries} retries with delays_s={delay_s}")
+        return wrapper
+    return decorator
+
+
 
 class Lakeshore370(serial_instrument.SerialInstrument):
     '''
@@ -49,22 +73,20 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             'on' : b'1'
             })
 
+    @retry(tries=3, delay_s=0.1)
     def getTemperature(self, channel=1):
         ''' Get temperature from a given channel as a float '''
 
         commandstring = 'RDGK? ' + str(channel)
-        #result = self.ask(commandstring)
-        #self.voltage = float(result)
         self.voltage = self.askFloat(commandstring)
 
         return self.voltage
 
+    @retry(tries=3, delay_s=0.1)
     def getResistance(self, channel=1):
         '''Get resistance from a given channel as a float.'''
 
         commandstring = 'RDGR? ' + str(channel)
-#        result = self.ask(commandstring)
-#        resistance = float(result)
         resistance = self.askFloat(commandstring)
 
         return resistance
@@ -124,6 +146,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'MOUT ' + str(heatpercent)
         self.write(commandstring)
 
+    @retry(tries=3, delay_s=0.1)
     def getManualHeaterOut(self):
         ''' Get the manual heater output as a percent of heater range '''
 
@@ -134,6 +157,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return heaterout
 
+    @retry(tries=3, delay_s=0.1)
     def getHeaterOut(self):
         ''' Get the manual heater output as a percent of heater range '''
 
@@ -468,7 +492,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def magUpSetup(self, heater_resistance=1):
         ''' Setup the lakeshore for magup '''
 
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'open')
         self.setControlPolarity(polarity = 'unipolar')
         self.setHeaterRange(range=10) 	# 1 Volt max input to Kepco for 100 Ohm shunt
@@ -478,7 +502,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def demagSetup(self, heater_resistance=1):
         ''' Setup the lakeshore for demag '''
 
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'open')
         self.setControlPolarity(polarity = 'bipolar')  #Set to bipolar so that current can get to zero faster
         self.setHeaterRange(range=10)  # 1 Volt max input to Kepco for 100 Ohm shunt
@@ -493,7 +517,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         sleep(15)  #Give time for range to settle, or servoing will fail
         self.setReadChannelSetup(channel=1, mode='current', exciterange=exciterange, resistancerange=63.2e3,autorange='off')
         sleep(2)
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'closed')
         self.setControlPolarity(polarity = 'unipolar')
         self.setRamp(rampmode = 'off') #Turn off ramp mode to not to ramp setpoint down to aprox 0
@@ -745,7 +769,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
 
     # All these methods have been renamed and will be depricated eventualy
-
+    @retry(tries=3, delay_s=0.1)
     def GetTemperature(self, channel=1):
         ''' Get temperature from a given channel as a float '''
 
@@ -756,6 +780,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return self.voltage
 
+    @retry(tries=3, delay_s=0.1)
     def GetResistance(self, channel=1):
         '''Get resistance from a given channel as a float.'''
 
@@ -1167,7 +1192,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def MagUpSetup(self, heater_resistance=1):
         ''' Setup the lakeshore for magup '''
 
-        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.SetControlMode(controlmode = 'open')
         self.SetControlPolarity(polarity = 'unipolar')
         self.SetHeaterRange(range=10)     # 1 Volt max input to Kepco for 100 Ohm shunt
@@ -1177,7 +1202,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def DemagSetup(self, heater_resistance=1):
         ''' Setup the lakeshore for demag '''
 
-        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.SetControlMode(controlmode = 'open')
         self.SetControlPolarity(polarity = 'bipolar')  #Set to bipolar so that current can get to zero faster
         self.SetHeaterRange(range=10)  # 1 Volt max input to Kepco for 100 Ohm shunt
@@ -1190,7 +1215,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         sleep(15)  #Give time for range to settle, or servoing will fail
         self.SetReadChannelSetup(channel=1, mode='current', exciterange=1e-8, resistancerange=63.2e3,autorange='off')
         sleep(2)
-        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.SetTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.SetControlMode(controlmode = 'closed')
         self.SetControlPolarity(polarity = 'unipolar')
         self.SetRamp(rampmode = 'off') #Turn off ramp mode to not to ramp setpoint down to aprox 0
