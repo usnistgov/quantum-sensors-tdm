@@ -19,6 +19,14 @@ class TempControl():
         self.controlChannel = channel
 
 
+    def readAltChannelAndReturnToControlChannel(self, alt_ch):
+        self.a.temperature_controller.setScan(alt_ch)
+        time.sleep(1)
+        temp_K = self.a.temperature_controller.getTemperature(alt_ch)
+        self.a.temperature_controller.setScan(self.controlChannel)
+        return temp_K
+       
+
     def setupRamp(self):
         heaterOut = self.getHeaterOut()
         if heaterOut == 0:
