@@ -173,7 +173,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.pushButton_altChannel.clicked.connect(self.handleCheckAltTemp)
 
         # Load combo box starting values from QSettings
-        self.comboBoxes = [self.currentExcitationComboBox, self.controlChannelComboBox, comboBox_altChannel]
+        self.comboBoxes = [self.currentExcitationComboBox, self.controlChannelComboBox, self.comboBox_altChannel]
         for iComboBox in self.comboBoxes:
             try:
                 iComboBox.indexValue = self.settings.value(iComboBox.label_text, type=int)
@@ -606,9 +606,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         
     def handleCheckAltTemp(self):
         alt_ch = self.controlChannelValues[self.comboBox_altChannel.currentIndex()]
-        self.tempControl.readAltChannelAndReturnToControlChannel(alt_ch)
+        temp_K = self.tempControl.readAltChannelAndReturnToControlChannel(alt_ch)
         time_read = time.strftime("%m/%d %H:%M:%S")
-        self.label_altTempReading.setText(f"Channel {ch} was {temp_:.3f} K at {time_read}")
+        self.label_altTempReading.setText(f"Channel {alt_ch} was {temp_K:.3f} K at {time_read}")
+        if self.settings:   
+            self.settings.setValue(self.comboBox_altChannel.label_text, self.comboBox_altChannel.currentIndex())
 
 
 

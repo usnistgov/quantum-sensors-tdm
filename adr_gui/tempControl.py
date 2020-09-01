@@ -21,7 +21,7 @@ class TempControl():
 
     def readAltChannelAndReturnToControlChannel(self, alt_ch):
         self.a.temperature_controller.setScan(alt_ch)
-        time.sleep(1)
+        time.sleep(5)
         temp_K = self.a.temperature_controller.getTemperature(alt_ch)
         self.a.temperature_controller.setScan(self.controlChannel)
         return temp_K
