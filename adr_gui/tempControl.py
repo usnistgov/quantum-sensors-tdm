@@ -53,7 +53,7 @@ class TempControl():
 
             self.a.temperature_controller.setHeaterRange(range=0)
             # temp setpoint should respond instantly when heater range is zero
-            self.a.temperature_controller.setTemperatureControlSetup(channel = self.controlChannel, units='Kelvin', maxrange=100, delay=2, output='current', filterread='unfiltered')
+            self.a.temperature_controller.setTemperatureControlSetup(channel = self.controlChannel, units='Kelvin', maxrange=100, delay_s=2, output='current', filterread='unfiltered')
             self.a.temperature_controller.setControlMode(controlmode = 'closed')
             self.a.temperature_controller.setControlPolarity(polarity = 'unipolar')
             self.a.temperature_controller.setTemperatureSetPoint(setpoint=0.035)
