@@ -974,7 +974,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return ramp
 
-    def SetTemperatureControlSetup(self, channel = 1, units = 'Kelvin', maxrange = 10, delay = 2, htrres = 1, output = 'current', filterread = 'unfiltered'):
+    def SetTemperatureControlSetup(self, channel = 1, units = 'Kelvin', maxrange = 10, delay_s = 2, htrres = 1, output = 'current', filterread = 'unfiltered'):
         '''
         Setup the temperature control channel, units 'Kelvin' or 'Ohms', the maximum heater range in mA, delay in seconds, heater resistance in Ohms, output the 'current' or 'power', and 'filterer' or 'unfiltered'
         '''
@@ -1013,7 +1013,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             'filtered' : '1'
         }
 
-        commandstring = 'CSET ' + str(channel) + ', ' + switchfilter.get(filterread,'0') + ', ' + switchunits.get(units,'1') + ', ' + str(delay) + ', ' + switchoutput.get(output,'1') + ', ' + rangestring + ', ' + str(htrres)
+        commandstring = 'CSET ' + str(channel) + ', ' + switchfilter.get(filterread,'0') + ', ' + switchunits.get(units,'1') + ', ' + str(delay_s) + ', ' + switchoutput.get(output,'1') + ', ' + rangestring + ', ' + str(htrres)
         self.write(commandstring)
 
     def SetReadChannelSetup(self, channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 63.2e3,autorange = 'off', excitation = 'on'):
