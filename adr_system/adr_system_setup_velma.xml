@@ -1,0 +1,21 @@
+<adr_config settings_version="1.0">
+  <name>Velma</name>
+  <max_voltage>0.950000</max_voltage>
+  <max_resistance>18.000000</max_resistance>
+  <log_folder>/home/pcuser/data/ADRLogs/</log_folder>
+  <tc_check_folder>/home/pcuser/data/</tc_check_folder>
+  <temperature_controllers>
+    <temperature_controller type="lakeshore370_serial" gpib_pad="13"/>
+  </temperature_controllers>
+  <heat_switches>
+    <heat_switch type="zaber" port="zaber"/>
+    <heat_switch type="hpdLabjack"  />
+  </heat_switches>
+  <blueboxes>
+    <bluebox version="mrk2" port="vbox"/>
+    <bluebox version="mrk2" port="zaber"/>
+  </blueboxes>
+  <magnet_relays>
+    <relay type="labjackU3_dougstyle"  />
+  </magnet_relays>
+</adr_config>

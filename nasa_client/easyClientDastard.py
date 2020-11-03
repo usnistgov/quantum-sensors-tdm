@@ -102,14 +102,13 @@ class EasyClientDastard():
         if topic == "STATUS":
             self._statusRecieved = True
             self.numChannels = d["Nchannels"]
-            if d["Ncol"] == [] and DEBUG:
-                self.numColumns = 1
-            else:
-                self.numColumns = d["Ncol"][0]
-            if d["Nrow"] == [] and DEBUG:
-                self.numRows = self.numChannels//2
-            else:
-                self.numRows = d["Nrow"][0]
+            self.numColumns = len(d["ChanGroups"])
+            # if d["Ncol"] == [] and DEBUG:
+            #     self.numColumns = 1
+            # else:
+            #     self.numColumns = d["Ncol"][0]
+            self.numRows = d["ChanGroups"][0]["Nchan"]
+  
             self.sourceName = d["SourceName"]
             self._oldNSamples = d["Nsamples"]
             self._oldNPresamples = d["Npresamp"]
