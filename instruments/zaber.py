@@ -41,7 +41,7 @@ class Zaber(serial_instrument.SerialInstrument):
 ######################################################################################
     # Zaber class
 
-    def __init__(self, port='zaber', baud=9600, shared=True, unit=2):
+    def __init__(self, port='zaber', baud=9600, shared=True, unit=1):
         '''Zaber motor - parameters:
         port - a logical portname defined in namedserialrc
         baud -  9600 for zaber
@@ -118,9 +118,9 @@ class Zaber(serial_instrument.SerialInstrument):
             raise Exception(f"all reply should be length 6, got length {len(reply)}, reply={reply}")
         b = struct.unpack("BBBBBB", reply)
         self._debug(f"reply_bytes={b}")
-        # assert b[0] == self.unit
+        assert b[0] == self.unit
         # in principle we should check the reply is from the right unit number
-        # but in practice we always use just one, so who cares?
+        # but in practice we always use just one, so who cares? for now lets check
         v = b[2] + b[3]*256 + b[4]*256**2 + b[5]*256**3
         if b[5] > 127: # handle twos complement
             v -= 256**4
