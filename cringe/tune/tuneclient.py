@@ -30,13 +30,13 @@ class TuneClient(QWidget):
 
         self.startclientbutton.clicked.connect(self.startclient)
 
-        self.client = None
+        self.client = nasa_client.EasyClient(clockmhz=125, setupOnInit=False)
 
-        timer = QtCore.QTimer()
-        timer.setSingleShot(False)
-        timer.timeout.connect(self.startclient)
-        timer.start(4000)
-        self.startclient()
+        # timer = QtCore.QTimer()
+        # timer.setSingleShot(False)
+        # timer.timeout.connect(self.startclient)
+        # timer.start(4000)
+        # self.startclient()
 
 
     def startclient(self):

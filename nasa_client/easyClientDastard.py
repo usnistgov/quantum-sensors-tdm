@@ -18,17 +18,6 @@ RECORD_HEADER_DTYPE = np.dtype([("chan",np.uint16),("headerVersion",np.uint8), (
      ("npresamples",np.uint32),("nsamples",np.uint32),("samplePeriod","f4"),("voltsPerArb","f4"),
      ("unixnano",np.uint64), ("triggerFramecount",np.uint64)])
 
-
-# // uint16: channel number
-# // uint8: headerVersion number
-# // uint8: code for data type (0-1 = 8 bits; 2-3 = 16; 4-5 = 32; 6-7 = 64; odd=uint; even=int)
-# // uint32: # of pre-trigger samples
-# // uint32: # of samples, total
-# // float32: sample period, in seconds (float)
-# // float32: volts per arb conversion (float)
-# // uint64: trigger time, in ns since epoch 1970
-# // uint64: trigger frame #
-
 class EasyClientDastard():
     """This client will connect to a server's summary channels."""
     def __init__(self, host='localhost', baseport=5500, setupOnInit = True):
@@ -83,10 +72,18 @@ class EasyClientDastard():
             contents = contents.decode()
             self.messagesSeen[topic] += 1
             self._handleStatusMessage(topic, contents)
-            print((self.messagesSeen))
-            if all([self.messagesSeen[t]>0 for t in ["STATUS", "LANCERO", "TRIGGER", "SIMPULSE"]]):
-                    return
-        raise Exception("didn't get source and status messages")
+            if DEBUG:
+                print(f"messages seen so far = {self.messagesSeen}")
+            if all([self.messagesSeen[t]>0 for t in ["STATUS", "LANCERO", "SIMPULSE"]]):
+                if self.sourceName == "Lancero":
+                    self.numRows = self.sequenceLength
+                    self.numColumns = self.numChannels//(2*self.numRows)
+                    assert self.numChannels%(2*self.numRows) == 0
+                else:
+                    raise Exception(f"source {self.sourceName} not yet supported")
+                print("returned from _getStatus")
+                return
+        raise Exception(f"didn't get source and status messages, messagesSeen: {self.messagesSeen}")
 
     def _handleStatusMessage(self,topic, contents):
         if DEBUG:
@@ -102,13 +99,6 @@ class EasyClientDastard():
         if topic == "STATUS":
             self._statusRecieved = True
             self.numChannels = d["Nchannels"]
-            self.numColumns = len(d["ChanGroups"])
-            # if d["Ncol"] == [] and DEBUG:
-            #     self.numColumns = 1
-            # else:
-            #     self.numColumns = d["Ncol"][0]
-            self.numRows = d["ChanGroups"][0]["Nchan"]
-  
             self.sourceName = d["SourceName"]
             self._oldNSamples = d["Nsamples"]
             self._oldNPresamples = d["Npresamp"]
@@ -118,9 +108,11 @@ class EasyClientDastard():
             print("using SIMPULSE")
             self.nSamp = 2
             self.clockMhz = 125
+            self.sequenceLength=self.numChannels
         if topic == "LANCERO" and self.sourceName=="Lancero":
             self.nSamp = d["DastardOutput"]["Nsamp"]
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
+            self.sequenceLength = d["DastardOutput"]["SequenceLength"]
         if topic == "TRIGGER":
             self._oldTriggerDict = d[0]
 
@@ -137,9 +129,10 @@ class EasyClientDastard():
         self.rpc.call("SourceControl.ConfigurePulseLengths", configLengths)
         configTriggers = {"AutoTrigger":True,
                   "AutoDelay":int(0),
-                  "ChannelIndicies":self.channelIndicies}
+                  "ChannelIndices":self.channelIndicies}
         # sending new trigger settings should reset the last trigger value in Dastard
         # so all channels trigge at the same starting point
+        print(f"configTriggers {configTriggers}")
         self.rpc.call("SourceControl.ConfigureTriggers", configTriggers)
         # possibly should be using CoupleErrToFB here
 
@@ -196,10 +189,10 @@ class EasyClientDastard():
         assert header["headerVersion"] == 0
         return header, data
 
-    def fbChannel(self, col, row):
+    def fbChannelIndex(self, col, row):
         return 2*(col*self.numRows+row)+1
 
-    def errorChannel(self, col, row):
+    def errorChannelIndex(self, col, row):
         return 2*(col*self.numRows+row)
 
     def setMixToZero(self):
@@ -217,7 +210,7 @@ class EasyClientDastard():
     def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3):
         '''
         getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0)
-        returns dataOut[col,row,frame,error=1/fb=2]
+        returns dataOut[col,row,frame,error=0/fb=1]
         rejects data taken within delaySeconds of calling getNewData, used to ensure new data
         returns at least minimumNumPoints frames
         if exactNumPoints is True, returns exactly minimumNumPoints frames, but does throw away data to achieve this
@@ -290,8 +283,8 @@ class EasyClientDastard():
         dataOut = np.zeros((self.numColumns, self.numRows, n_have, 2),dtype="int32")
         for col in range(self.numColumns):
             for row in range(self.numRows):
-                errorIndex = self.errorChannel(col, row)
-                fbIndex = self.fbChannel(col, row)
+                errorIndex = self.errorChannelIndex(col, row)
+                fbIndex = self.fbChannelIndex(col, row)
                 # [col, row, frame, 0=error/1=feedback]
                 j=0    
                 for k in k_complete:
