@@ -18,7 +18,8 @@ to do:
 DFB_CARD_INDEX
 error handling: Tbath, v_bias
 overbias
-loadmuxsettings
+tesacquire used for unmuxed case. 
+what to do about tesacquire, tesanalyze, sweeper, LoadMuxSettings, singleMuxIV 
 
 '''
 
@@ -27,20 +28,18 @@ import sys, os, yaml, time
 import numpy as np
 # from PyQt4 import Qt
 # import time
-# import pickle
 
 # # QSP written module imports
+from adr_system import AdrSystem
+from instruments import BlueBox 
+from . import tespickle 
 # import sweeper4_mod as sweeper
 # import adr_system
 # import tesacquire
 # import tespickle
-# import agilent33220a
 # sys.path.append('/home/pcuser/gittrunk/nist_lab_internals/DetectorMapping/')
 # import LoadMuxSettings
 # import singleMuxIV as smIV
-# from IPython import embed
-
-# import bluebox
 
 
 ########################################################################################################
@@ -68,8 +67,6 @@ if not os.path.exists(cfg['io']['RootPath']):
 localtime=time.localtime()
 thedate=str(localtime[0])+'%02i'%localtime[1]+'%02i'%localtime[2]
 pickle_file=cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+cfg['io']['suffix']+'.pkl' 
-
-print('\n\nStarting IV acquisition script on ',baystring,'*'*80,'\nRows: ',mux_rows,'\nTemperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
 
 DFB_CARD_INDEX=0 #
 
@@ -186,18 +183,18 @@ def overBias(adrTempControl,voltage_sweep_source,Thigh,Tb,Vbias=0.5,Tsensor=cfg[
 # main script starts here.
 
 def main():
-    print('IV data will be saved at: ',pickle_file)
+    print('\n\nStarting IV acquisition script on ',baystring,'*'*80,'\nRows: ',mux_rows,'\nTemperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
     # get the current time
     t0 = time.time()
     # instanciate needed classes
-    app = Qt.QApplication(sys.argv)
-    adr = adr_system.AdrSystem(app=app, lsync=cfg['dfb']['lsync'], number_mux_rows=number_mux_rows, dfb_settling_time=dfb_settling_time, \
+    app = Qt.QApplication(sys.argv) # will this work? is it needed?
+    adr = AdrSystem(app=app, lsync=cfg['dfb']['lsync'], number_mux_rows=number_mux_rows, dfb_settling_time=dfb_settling_time, \
                                  dfb_number_of_samples=cfg['dfb']['nsamp'], \
-                                 doinit=True, logfolder = '/home/pcuser/data/ADRLogs/')
+                                 doinit=False)
 
     # Set up the voltage source that creates the voltage bias and the voltage source for the SQ2fb (typically both tower)
-    voltage_sweep_source = bluebox.BlueBox(port='vbox', version=cfg['runconfig']['voltageBiasSource'], address=tcfg['db_tower_address'], channel=bias_channel)
-    sq2fb = bluebox.BlueBox(port='vbox', version='tower', address=tcfg['sq2fb_tower_address'], channel= sq2fb_tower_channel)
+    voltage_sweep_source = BlueBox(port='vbox', version=cfg['runconfig']['voltageBiasSource'], address=tcfg['db_tower_address'], channel=bias_channel)
+    sq2fb = BlueBox(port='vbox', version='tower', address=tcfg['sq2fb_tower_address'], channel= sq2fb_tower_channel)
     tesacq = tesacquire.TESAcquire(app=app)
     tes_pickle = tespickle.TESPickle(pickle_file)
 
@@ -237,8 +234,8 @@ def main():
             # We're going to change the temperature to OverBiasThigh, so need to go to temp
             print('')
         else:
-            adr.adr_control.tempcontrol.SetTemperatureSetPoint(temp)
-            stable = IsTemperatureStable(temp,adr=adr.adr_control.tempcontrol, Tsensor=cfg['runconfig']['thermometerChannel'],tol=.005,time_out=180.)
+            adr.temperature_controller.SetTemperatureSetPoint(temp)
+            stable = IsTemperatureStable(temp,adr=adr.temperature_controller, Tsensor=cfg['runconfig']['thermometerChannel'],tol=.005,time_out=180.)
             if not stable:
                 print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
 
@@ -246,7 +243,7 @@ def main():
         if cfg['runconfig']['multiplex'] == True:
             if cfg['runconfig']['overbias']:
                 print('Overbiasing at Temperature', OverBiasThigh)
-                overBias(adr.adr_control.tempcontrol, voltage_sweep_source, Thigh=OverBiasThigh, Tb=temp,
+                overBias(adr.temperature_controller, voltage_sweep_source, Thigh=OverBiasThigh, Tb=temp,
                          Vbias=OverBiasVbias, Tsensor=Tsensor)
                 print('Overbias complete.  Letting bath temperature stabilize for ' + str(postOverBiasWaitPeriod) + 's.')
                 time.sleep(postOverBiasWaitPeriod)
@@ -264,7 +261,7 @@ def main():
                                                     plotter=plotter)
 
             print('Exited multiplexed IV function' + '*' * 80)
-            bath_temperature_measured = adr.adr_control.tempcontrol.GetTemperature(cfg['runconfig']['thermometerChannel'])
+            bath_temperature_measured = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
             # Save the results in the pickle; make same format as unmultiplexed IVs in series
             for ii in range(len(mux_rows)):
                 ivdata = np.vstack((v, vfb_array[ii]))
@@ -280,7 +277,7 @@ def main():
                 if cfg['runconfig']['overbias'] == True: # overbias if needed
                     print('Running Overbias subscript ...')
                     Tsetpoint = adr.temperature_controller.GetTemperatureSetPoint()
-                    overBias(adr.adr_control.tempcontrol,voltage_sweep_source,Thigh=OverBiasThigh,Tb=Tsetpoint,Vbias=OverBiasVbias,Tsensor=cfg['runconfig']['thermometerChannel'])
+                    overBias(adr.temperature_controller,voltage_sweep_source,Thigh=OverBiasThigh,Tb=Tsetpoint,Vbias=OverBiasVbias,Tsensor=cfg['runconfig']['thermometerChannel'])
                     print('Overbias complete.  Letting bath temperature stabilize for '+str(postOverBiasWaitPeriod)+'s.')
                     if OverbiasExternal:
                         function_generator_offset = agilent_33220A.GetOffset()
@@ -352,13 +349,10 @@ def main():
                         heater_source.setvolt(0)
 
                     ivdata = np.vstack((ivreturn[1],ivreturn[2]))
-                    measured_temperature=adr.adr_control.tempcontrol.GetTemperature(cfg['runconfig']['thermometerChannel'])
+                    measured_temperature=adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
 
                     # Save the results in the pickle
-                    if OverbiasExternal:
-                        iv_dict = tes_pickle.createIVDictHeater(ivdata, temp, feedback_resistance, heater_voltage,heater_resistance, measured_temperature,bias_resistor,function_generator_offset)
-                    else:
-                        iv_dict = tes_pickle.createIVDictHeater(ivdata,temp,feedback_resistance,heater_voltage,heater_resistance,measured_temperature,bias_resistor)
+                    iv_dict = tes_pickle.createIVDictHeater(ivdata,temp,feedback_resistance,heater_voltage,heater_resistance,measured_temperature,bias_resistor)
                     tes_pickle.addIVRun(column, row, iv_dict)
                     tes_pickle.savePickle()
     voltage_sweep_source.setvolt(0) 
@@ -366,11 +360,10 @@ def main():
     t_end=time.time()
     print('almost done')
     print('Length of measurement = ',(t_end-t0)/60.,' minutes')
-    #adr.adr_control.tempcontrol.SetTemperatureSetPoint(temps[0])
+    #adr.temperature_controller.SetTemperatureSetPoint(temps[0])
     print('done')
     #app.quit() #doesn't actually seem to do much
     #print '2'
 
-print('begin')
-if __name__ == '__main__': main()
-print('truly') #encounter IO error before hitting this print statement when OVERBIAS set to True, not sure why
+if __name__ == '__main__': 
+    main()
