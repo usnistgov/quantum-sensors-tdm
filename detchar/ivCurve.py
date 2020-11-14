@@ -5,6 +5,8 @@ ivCurve.py
 @author JH
 
 Script to take IV curves on a single column of detectors as a function of bath temperature. 
+Assumes multiplexer is setup in cringe before running.
+Must exit out of adr_gui  
 
 usage:
 ./ivCurve.py <config_filename>
@@ -24,108 +26,98 @@ what to do about tesacquire, tesanalyze, sweeper, LoadMuxSettings, singleMuxIV
 '''
 
 # standard python module imports
-import sys, os, yaml, time
+import sys, os, yaml, time, subprocess, re
 import numpy as np
-# from PyQt4 import Qt
-# import time
+import matplotlib.pyplot as plt 
 
 # # QSP written module imports
 from adr_system import AdrSystem
 from instruments import BlueBox 
-from . import tespickle 
-# import sweeper4_mod as sweeper
-# import adr_system
-# import tesacquire
-# import tespickle
-# sys.path.append('/home/pcuser/gittrunk/nist_lab_internals/DetectorMapping/')
-# import LoadMuxSettings
-# import singleMuxIV as smIV
+import tespickle 
+from nasa_client import EasyClient
 
 
-########################################################################################################
-########################################################################################################
-########################################################################################################
-# open config file
-with open(sys.argv[1], 'r') as ymlfile:
-    cfg = yaml.load(ymlfile)
 
-# open tower config file
-with open(cfg['mux_settings']['tower_config'], 'r') as ymlfile:
-    tcfg = yaml.load(ymlfile)
 
-# define column and rows
-baystring = 'Column' + cfg['detectors']['Column']
-if cfg['detectors']['Rows'] == 'all':
-    mux_rows = list(range(32)) 
-else:
-    mux_rows = list(cfg['detectors']['Rows'])
+##########################################################################################################
+##########################################################################################################
+##########################################################################################################
 
-# define where the data is store
-if not os.path.exists(cfg['io']['RootPath']):
-    print('The path: %s does not exist! Making directory now.'%cfg['io']['RootPath'])
-    os.makedirs(cfg['io']['RootPath'])
-localtime=time.localtime()
-thedate=str(localtime[0])+'%02i'%localtime[1]+'%02i'%localtime[2]
-pickle_file=cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+cfg['io']['suffix']+'.pkl' 
+def findThisProcess( process_name ):
+    ps = subprocess.Popen("ps -eaf | grep "+process_name, shell=True, stdout=subprocess.PIPE)
+    output = ps.stdout.read()
+    ps.stdout.close()
+    ps.wait()
+    return output
 
-DFB_CARD_INDEX=0 #
+def isThisRunning( process_name ):
+    output = findThisProcess( process_name )
+    if re.search('path/of/process'+process_name, output) is None:
+        return False
+    else:
+        return True
 
-# defined tower card addresses for needed voltage sources
-bias_channel=tcfg['db_tower_channel_%s'%cfg['detectors']['Column']]
-sq2fb_tower_channel=tcfg['sq2fb_tower_channel_%s'%cfg['detectors']['Column']]
+def getDataAverageAndCheck(ec,v_min=0.1,v_max=0.9,npts=10000,verbose=False):
+    flag=False
+    data = ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
+    data_mean = np.mean(data,axis=2)
+    data_std = np.std(data,axis=2)
 
-# overbias settings (drives channels that cannot by autobiased normal by raising and lowering the temp)
-OVERBIAS = True
+    if verbose:
+        for ii in range(ec.ncol):
+            for jj in range(ec.nrow):
+                print('Col ',ii, 'Row ',jj, ': %0.4f +/- %0.4f'%(data_mean[ii,jj,1],data_std[ii,jj,1]))
 
-OverBiasThigh=0.22 #0.35 # temp (K) to raise bath temperature #.3
-OverBiasVbias=.60 # voltage bias to applied before lowering temperature
-postOverBiasWaitPeriod= 60. # time to let Tbath settle after overbias (secs)
+    a = data_mean[:,:,1][data_mean[:,:,1]>v_max]
+    b = data_mean[:,:,1][data_mean[:,:,1]<v_min]
+    if a.size: 
+        print('Value above ',v_max,' detected')
+        # relock here
+        flag=True
+    if b.size:
+        print('Value below ',v_min,' detected')
+        # relock here
+        flag=True
 
-# temperature settings
-Tsensor=2 #2#1
-for t in cfg['runconfig']['bathTemperatures']:
-    if t>2.0:
-        print('setpoint temperature ',t,' greater than 2.0K.  Not allowed!  Abort!')
-        sys.exit()
+    # have some error handling about if std/mean > threshold
 
-UseLoadMuxSettings=True
-if UseLoadMuxSettings:
-    print('loading mux settings from muxbias.csv')
-    lms=LoadMuxSettings.LoadMuxSettings('/home/pcuser/gittrunk/nist_lab_internals/DetectorMapping/muxbias.csv')
-    #lms=LoadMuxSettings.LoadMuxSettings('/home/pcuser/gittrunk/nist_lab_internals/DetectorMapping/muxbias_201602_4pixArpiBoard.csv')
-    rows,radacvalues,sq2fbvalues,IVstart,IVstop=lms.FormatForIV(column,skipzeros=True,skipNotMeasured=True)
-    print('rows:', rows)
-    print('radacvalues:', radacvalues)
-    print('sq2fbvalues:', sq2fbvalues)
-    print('IVstart', IVstart)
-    print('IVstop',IVstop)
+    return data_mean, flag
+
+def iv_sweep(ec, vs, v_start=0.1,v_stop=0,v_step=0.01,sweepUp=False,showPlot=False,verbose=False,):
+    ''' ec: instance of easy client
+        vs: instance of bluebox (voltage source)
+        v_start: initial voltage
+        v_stop: final voltage
+        v_step: voltage step size
+        sweepUp: if True sweeps in ascending voltage
+    '''
+    v_arr = np.arange(v_stop,v_start+v_step,v_step)
+    if not sweepUp:
+        v_arr=v_arr[::-1]
     
-    #input('look ok?')
+    N=len(v_arr)
+    data_ret = np.zeros((ec.ncol,ec.nrow,N,2))
+    flags = np.zeros(N)
+    for ii in range(N):
+        vs.setvolt(v_arr[ii])
+        data, flag = getDataAverageAndCheck(ec,verbose=verbose)
+        data_ret[:,:,ii,:] = data
+        flags[ii] = flag
     
-else:
-    rows =      [0] 
-    radacvalues=[7000]
-    sq2fbvalues=[2030]
-
-# dfb settings
-if cfg['runconfig']['multiplex']==True:
-    number_mux_rows = len(mux_rows)
-else:
-    number_mux_rows = 2
-
-dfb_settling_time = cfg['dfb']['lsync'] - cfg['dfb']['nsamp'] - 1
-
-# IS THIS REALLY NEEDED?  LET'S NOT DO THIS FOR NOW
-# # set the number of points to average for a single IV data point.  I typically see 60Hz pickup so I'd like to 
-# # average over several 60 Hz periods, that's what num_frames is setup to do
-# sampling_interval = 8.e-9*number_mux_rows*cfg['dfb']['lsync']
-# num_frames = 2**(int(round(np.log2(1/sampling_interval/60.*8)))) # number of data points in IV point to average
-# dwell_time = sampling_interval*num_frames+0.5
-
-
-##########################################################################################################
-##########################################################################################################
-##########################################################################################################
+    if showPlot:
+        for ii in range(ec.ncol):
+            plt.figure(ii)
+            for jj in range(ec.nrow):
+                plt.subplot(211)
+                plt.plot(v_arr,data_ret[ii,jj,:,1])
+                plt.xlabel('V_bias')
+                plt.ylabel('V_fb')
+                plt.subplot(212)
+                plt.plot(v_arr,data_ret[ii,jj,:,0])
+                plt.xlabel('V_bias')
+                plt.ylabel('V_err')
+        plt.show()
+    return v_arr, data_ret, flags
 
 def removeZerosIV(iv):
     ''' Removes the zeros put in by jump 
@@ -136,7 +128,7 @@ def removeZerosIV(iv):
             iv = np.hstack((iv[:,: pnt],iv[:,pnt+1 :]))
     return iv
 
-def IsTemperatureStable(T_target,adr, Tsensor=cfg['runconfig']['thermometerChannel'],tol=.005,time_out=180.):
+def IsTemperatureStable(T_target,adr, Tsensor=1,tol=.005,time_out=180.):
     ''' determine if the servo has reached the desired temperature '''
     
     if time_out < 10:
@@ -155,7 +147,7 @@ def IsTemperatureStable(T_target,adr, Tsensor=cfg['runconfig']['thermometerChann
             return False
     return True
 
-def overBias(adrTempControl,voltage_sweep_source,Thigh,Tb,Vbias=0.5,Tsensor=cfg['runconfig']['thermometerChannel']):
+def overBias(adrTempControl,voltage_sweep_source,Thigh,Tb,Vbias=0.5,Tsensor=1):
     ''' raise Tbath above Tc, overbias bolometer, cool back to base temperature while 
         keeping bolometer in the normal state
     '''
@@ -175,7 +167,37 @@ def overBias(adrTempControl,voltage_sweep_source,Thigh,Tb,Vbias=0.5,Tsensor=cfg[
     else:
         print('Could not cool back to base temperature'+str(Tb)+'. Current temperature = ', adrTempControl.GetTemperature(Tsensor))
     
-    
+def setupTemperatureController(adrTempControl, channel, t_set=0.1,heaterRange=100,heaterResistance=100.0):
+    print('Setting up temperature controller to servo mode on channel',channel, 'and regulating to %.1f mK'%(t_set*1000))
+    # determine what is the current state of temperature control
+    mode = adrTempControl.getControlMode() # can be closed, open, off, or zone
+    #cur_chan,autscan=adrTempControl.GetScan() # which channel is currently being read? 
+    #cur_temp = adrTempControl.getTemperature(cur_chan) # read the current temperature from that channel
+    #cur_tset = adrTempControl.getTemperatureSetPoint() # current temperature setpoint for controlling
+
+    print('current mode: ',mode)
+
+    if mode=='off':
+        pass
+        
+    elif mode=='open':
+        adrTempControl.SetManualHeaterOut(0)
+        time.sleep(1)
+
+    elif mode=='closed':
+        adrTempControl.setTemperatureSetPoint(0) 
+
+    adrTempControl.setupPID(exciterange=3.16e-9, therm_control_channel=channel, ramprate=0.05, heater_resistance=heaterResistance,heater_range=heaterRange,setpoint=t_set)
+
+def convertToLegacyFormat(v_arr,data_ret,nrows,pd,tes_pickle,column,mux_rows,column_index=0):
+    for ii in range(nrows):
+        ivdata = np.vstack((v_arr, data_ret[column_index,ii,:,1])) # only return the feedback, not error
+        iv_dict = tes_pickle.createIVDictHeater(ivdata, temperature=pd['temp'], feedback_resistance=pd['feedback_resistance'],
+                                                heater_voltage=None,heater_resistance=None, 
+                                                measured_temperature=pd['measured_temperature'],
+                                                bias_resistance=pd['bias_resistance'])
+        tes_pickle.addIVRun(column, mux_rows[ii], iv_dict)
+        tes_pickle.savePickle()
 
 ############################################################################################################
 ############################################################################################################
@@ -183,187 +205,118 @@ def overBias(adrTempControl,voltage_sweep_source,Thigh,Tb,Vbias=0.5,Tsensor=cfg[
 # main script starts here.
 
 def main():
+
+    # error handling
+    # check if adr_gui running, dastard commander, cringe?, dcom ...
+
+    # open config file
+    with open(sys.argv[1], 'r') as ymlfile:
+        cfg = yaml.load(ymlfile)
+
+    # open tower config file
+    with open(cfg['runconfig']['tower_config'], 'r') as ymlfile:
+        tcfg = yaml.load(ymlfile)
+
+    # determine column and rows
+    baystring = 'Column' + cfg['detectors']['Column']
+    if cfg['detectors']['Rows'] == 'all':
+        mux_rows = list(range(32)) 
+    else:
+        mux_rows = list(cfg['detectors']['Rows'])
+
+    # define where the data is store
+    if not os.path.exists(cfg['io']['RootPath']):
+        print('The path: %s does not exist! Making directory now.'%cfg['io']['RootPath'])
+        os.makedirs(cfg['io']['RootPath'])
+    localtime=time.localtime()
+    thedate=str(localtime[0])+'%02i'%localtime[1]+'%02i'%localtime[2]
+    pickle_file=cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+cfg['io']['suffix']+'.pkl' 
+
+    # defined tower card addresses for needed voltage sources
+    bias_channel=tcfg['db_tower_channel_%s'%cfg['detectors']['Column']]
+    sq2fb_tower_channel=tcfg['sq2fb_tower_channel_%s'%cfg['detectors']['Column']]
+
+    # punt if you are asking for a temperature higher than 2K
+    for t in cfg['runconfig']['bathTemperatures']:
+        if t>2.0:
+            print('setpoint temperature ',t,' greater than 2.0K.  Not allowed!  Abort!')
+            sys.exit()
+    
+    # handle overbias voltage value; only used if overbias selected.
+    if cfg['voltage_bias']['v_overbias']==None:
+        V_overbias = cfg['voltage_bias']['v_start']
+    else:
+        V_overbias = cfg['voltage_bias']['v_overbias']
+
     print('\n\nStarting IV acquisition script on ',baystring,'*'*80,'\nRows: ',mux_rows,'\nTemperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
-    # get the current time
-    t0 = time.time()
-    # instanciate needed classes
-    app = Qt.QApplication(sys.argv) # will this work? is it needed?
-    adr = AdrSystem(app=app, lsync=cfg['dfb']['lsync'], number_mux_rows=number_mux_rows, dfb_settling_time=dfb_settling_time, \
-                                 dfb_number_of_samples=cfg['dfb']['nsamp'], \
-                                 doinit=False)
-
-    # Set up the voltage source that creates the voltage bias and the voltage source for the SQ2fb (typically both tower)
-    voltage_sweep_source = BlueBox(port='vbox', version=cfg['runconfig']['voltageBiasSource'], address=tcfg['db_tower_address'], channel=bias_channel)
+    
+    # instanciate needed classes ------------------------------------------------------------------------------------------------------------
+    ec = EasyClient() # easy client for streaming data
+    #c.setupAndChooseChannels() already done when initializing the class
+    adr = AdrSystem(app=None, lsync=ec.lsync, number_mux_rows=ec.nrow, dfb_number_of_samples=ec.nSamp, doinit=False)
+    voltage_sweep_source = BlueBox(port='vbox', version=cfg['voltage_bias']['source'], address=tcfg['db_tower_address'], channel=bias_channel)
     sq2fb = BlueBox(port='vbox', version='tower', address=tcfg['sq2fb_tower_address'], channel= sq2fb_tower_channel)
-    tesacq = tesacquire.TESAcquire(app=app)
-    tes_pickle = tespickle.TESPickle(pickle_file)
+    #tes_pickle = tespickle.TESPickle(pickle_file)
 
-    if cfg['runconfig']['voltageBiasSource']=='tower' and cfg['runconfig']['v_autobias']>2.5:
+    if cfg['voltage_bias']['source']=='tower' and cfg['voltage_bias']['v_autobias']>2.5:
         print('tower can only source 2.5V.  Switching v_autobias to 2.5V')
         cfg['runconfig']['v_autobias']=2.5
 
-    # setup crate for unmuxed case
-    if not cfg['runconfig']['multiplex']:
-        print('Setting up the DFB for non-multiplexed IVs')
-        tesacq.dcSet32(0, 0, adr.crate)  # turn on one SQ1 bias with RA8 card, sets all other values to 0
-        tesacq.dfBSetSame(adr.crate, DFB_CARD_INDEX, number_mux_rows, dfb_adc, cfg['dfb']['dac'], cfg['dfb']['P'],
-                          cfg['dfb']['I'])  # hard coded that it is dfb_card[0] in the crate class
-        tesacq.initRAMAll(adr.crate)  # wipe out all the junk in memory for each ra8 card
-        tesacq.raClearAll(
-            adr.crate)  # set all channels on all ra8 cards to 0 for both high and low.  All channels enabled
-        tesacq.pciSetup(pci_mask, pci_firmware_delay, cfg['dfb']['nsamp'])  # setup the PCI card, will this fail?
-        # tesacquire.pci.setNumberOfFrames(num_frames)
-        print('DMA size =', tesacquire.pci.getDMASize())
-
-    #Initialize sweeper
-    sw = sweeper.Sweeper(app, adr.crate.dfb_cards[DFB_CARD_INDEX], voltage_sweep_source, numberofrows = number_mux_rows, pci_intitialized = 'False')
-    time.sleep(1)
-    sw.set_data_directory(root_path)
-
-    if not LoopOverHeaterVoltage:
-        heater_voltage=None
-
-    #Main loop starts here: loop over temperatures, do IV for each TES
-    temp_num=0
-    for temp in cfg['runconfig']['bathTemperatures']:
-        print('IVs at Temperature',temp)
-        temp_num=temp_num+1
+    if cfg['runconfig']['setupTemperatureServo'] and cfg['runconfig']['bathTemperatures'][0] !=0: # initialize temperature servo if asked
+        if adr.temperature_controller.getControlMode() == 'closed':
+            t_set = adr.temperature_controller.getTemperatureSetPoint()
+        else:
+            t_set = 0.05
+        setupTemperatureController(adrTempControl=adr.temperature_controller, channel=cfg['runconfig']['thermometerChannel'], \
+                                   t_set=t_set,heaterRange=cfg['runconfig']['thermometerHeaterRange'],heaterResistance=100.0)
+    
+    # MAIN LOOP OVER TEMPERATURES STARTS HERE ---------------------------------------------------------------------------------------------- 
+    for ii in range(len(cfg['runconfig']['bathTemperatures'])): # loop over temperatures
+        temp = cfg['runconfig']['bathTemperatures'][ii]
         if temp == 0:
-            print('temp = 0, which is a flag to not servo the temperature.')
-        elif cfg['runconfig']['overbias']:
-            # We're going to change the temperature to OverBiasThigh, so need to go to temp
-            print('')
+            print('temp = 0, which is a flag to take an IV curve as is without commanding the temperature controller.')
+        elif cfg['voltage_bias']['overbias']: # overbias case
+            overBias(adrTempControl=adr.temperature_controller,voltage_sweep_source=voltage_sweep_source,
+                     Thigh=cfg['voltage_bias']['overbiasThigh'],Tb=temp,Vbias=V_overbias,Tsensor=cfg['runconfig']['thermometerChannel'])
         else:
             adr.temperature_controller.SetTemperatureSetPoint(temp)
             stable = IsTemperatureStable(temp,adr=adr.temperature_controller, Tsensor=cfg['runconfig']['thermometerChannel'],tol=.005,time_out=180.)
             if not stable:
                 print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
+    
+        # at this point, should be at stable temperature and ready for IV curve
+        bath_temperature_measured_before = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        v_arr, data_ret, flags = iv_sweep(ec=ec, vs=voltage_sweep_source, 
+                                          v_start=cfg['voltage_bias']['v_start'], v_stop=cfg['voltage_bias']['v_stop'],v_step=cfg['voltage_bias']['v_step'],
+                                          sweepUp=cfg['voltage_bias']['sweepUp'], showPlot=True,verbose=True)
 
-        # take the IV curves
-        if cfg['runconfig']['multiplex'] == True:
-            if cfg['runconfig']['overbias']:
-                print('Overbiasing at Temperature', OverBiasThigh)
-                overBias(adr.temperature_controller, voltage_sweep_source, Thigh=OverBiasThigh, Tb=temp,
-                         Vbias=OverBiasVbias, Tsensor=Tsensor)
-                print('Overbias complete.  Letting bath temperature stabilize for ' + str(postOverBiasWaitPeriod) + 's.')
-                time.sleep(postOverBiasWaitPeriod)
+    #         print('Entering multiplexed IV function' + '*' * 80)
+    #         v, vfb_array = smIV.singleMuxIV(app=app,voltage_start=cfg['runconfig']['v_start'], voltage_end=cfg['runconfig']['v_stop'],
+    #                                                 voltage_step=cfg['runconfig']['v_step'],
+    #                                                 column=column, rows=mux_rows, rows_not_locked=rows_not_locked,
+    #                                                 ADCoffset=dfb_adc, dfb_dac = cfg['dfb']['dac'], sq2fbvalue=sq2fb_value_muxedIV,
+    #                                                 dfb_numberofsamples=cfg['dfb']['nsamp'], lsync=cfg['dfb']['lsync'], dfb_p=cfg['dfb']['P'],
+    #                                                 dfb_i=cfg['dfb']['I'],
+    #                                                 tes_bias=voltage_sweep_source, sq2fb=sq2fb,
+    #                                                 dfb=adr.crate.dfb_cards[DFB_CARD_INDEX],
+    #                                                 normal_voltage_blast=normal_voltage_blast,
+    #                                                 plotter=plotter)
 
-            print('Entering multiplexed IV function' + '*' * 80)
-            v, vfb_array = smIV.singleMuxIV(app=app,voltage_start=cfg['runconfig']['v_start'], voltage_end=cfg['runconfig']['v_stop'],
-                                                    voltage_step=cfg['runconfig']['v_step'],
-                                                    column=column, rows=mux_rows, rows_not_locked=rows_not_locked,
-                                                    ADCoffset=dfb_adc, dfb_dac = cfg['dfb']['dac'], sq2fbvalue=sq2fb_value_muxedIV,
-                                                    dfb_numberofsamples=cfg['dfb']['nsamp'], lsync=cfg['dfb']['lsync'], dfb_p=cfg['dfb']['P'],
-                                                    dfb_i=cfg['dfb']['I'],
-                                                    tes_bias=voltage_sweep_source, sq2fb=sq2fb,
-                                                    dfb=adr.crate.dfb_cards[DFB_CARD_INDEX],
-                                                    normal_voltage_blast=normal_voltage_blast,
-                                                    plotter=plotter)
+    
+        bath_temperature_measured_after = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        
+        # if cfg['runconfig']['dataFormat']=='legacy':
+        #     pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
+        #           'bias_resistance':cfg['calnums']['rbias']}
+        #     tes_pickle = tespickle.TESPickle(pickle_file)
+        #     convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
+        #                           column=cfg['detectors']['Column'],mux_rows=cfg['detectors']['Rows'],column_index=0)
+        # else:
+        #     print('Currently no alternative than legacy data format')
+        #     # stuff in the config file
 
-            print('Exited multiplexed IV function' + '*' * 80)
-            bath_temperature_measured = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
-            # Save the results in the pickle; make same format as unmultiplexed IVs in series
-            for ii in range(len(mux_rows)):
-                ivdata = np.vstack((v, vfb_array[ii]))
-                iv_dict = tes_pickle.createIVDictHeater(ivdata, temp, feedback_resistance, heater_voltage,
-                                                        heater_resistance, bath_temperature_measured,bias_resistor)
-                tes_pickle.addIVRun(column, mux_rows[ii], iv_dict)
-                tes_pickle.savePickle()
-
-        else: # detector by detector in series case
-            #Loop over rows
-            for i in range(len(rows)):
-                row = rows[i]
-                if cfg['runconfig']['overbias'] == True: # overbias if needed
-                    print('Running Overbias subscript ...')
-                    Tsetpoint = adr.temperature_controller.GetTemperatureSetPoint()
-                    overBias(adr.temperature_controller,voltage_sweep_source,Thigh=OverBiasThigh,Tb=Tsetpoint,Vbias=OverBiasVbias,Tsensor=cfg['runconfig']['thermometerChannel'])
-                    print('Overbias complete.  Letting bath temperature stabilize for '+str(postOverBiasWaitPeriod)+'s.')
-                    if OverbiasExternal:
-                        function_generator_offset = agilent_33220A.GetOffset()
-                    time.sleep(postOverBiasWaitPeriod)
-                else:
-                    if OverbiasExternal:
-                        print('Applying an external voltage with the signal generator now')
-                        agilent_33220A.SetFunction('dc')
-                        agilent_33220A.SetLoad(bias_resistor)  # adjusts offset and amplitude values displayed
-                        agilent_33220A.SetOffset(OverBiasVbiasExternal)  # VDC, change voltage after I set the load
-                        agilent_33220A.SetOutput('on')
-                        function_generator_offset = agilent_33220A.GetOffset()
-                        time.sleep(5.0)
-                    else:
-                        print('Not overbiasing or applying external voltage this time')
-                tempstring = np.str(np.int(temp*1000))
-                tempstring = tempstring + 'mK'
-
-                #number_of_ivs = len(tes_pickle.getRuns(bay, row, 'iv'))
-                #new_iv_string = 'iv%03i' % number_of_ivs
-                new_iv_string = 'Row%02i' % row
-                print('Row %d' % row)
-                # figure out where to get the S1 and S2 bias settings
-                if use_pickle_rowdata is True:
-                    rowinfo = tes_pickle.getRowInfo(column, row)
-                    if rowinfo is None:
-                        print('Did not find row info')
-                        radacvalue = radacvalues[row]
-                        sq2fbvalue = sq2fbvalues[row]
-                    else:
-                        radacvalue = rowinfo['radac']
-                        sq2fbvalue = rowinfo['sq2fb']
-                else:
-                    radacvalue = radacvalues[i]
-                    sq2fbvalue = sq2fbvalues[i]
-
-                tesacq.dcSet32(row, radacvalue, adr.crate) # turn on one SQ1 bias with RA8 card, sets all other values to 0
-                print('Sq2fb ', sq2fbvalue)
-                #setVoltDACUnits(self, val)
-                sq2fb.setVoltDACUnits(sq2fbvalue) # bias the squid2
-                time.sleep(2)
-
-                filestring = 'Temperature_' + tempstring + "_row_%02i" % row
-
-                # measure the average temperature just before taking the measurement
-                if UseLoadMuxSettings:
-                    voltage_start=IVstart[i]
-                    voltage_end=IVstop[i]
-                else:
-                    voltage_start=cfg['runconfig']['v_start']
-                    voltage_end=cfg['runconfig']['v_stop']
-
-                # loop over heater voltages
-                for heater_voltage in heater_voltages:
-                    if LoopOverHeaterVoltage:
-                        print('setting heater to', heater_voltage, 'V')
-                        heater_source = bluebox.BlueBox(port='vbox', version='tower', address=heater_address[i],channel=heater_channel[i])
-                        heater_source.setvolt(heater_voltage)
-
-                        # take the IV curve.  All the complexity is here.
-                    
-                    
-                    
-                    ivreturn = sw.SmartSweep(voltage_start=voltage_start, voltage_end=voltage_end, voltage_step=cfg['runconfig']['v_step'], dwell_time=dwell_time, \
-                                             measure_rows=None, jump_start=-1, jump_stop=-1, sweepstring=filestring, iv_string=new_iv_string,\
-                                             normal_voltage_blast=normal_voltage_blast,normal_branch_voltage_append=normal_branch_voltage_append)#,plotter=plotter)
-
-                    if LoopOverHeaterVoltage:
-                        heater_source.setvolt(0)
-
-                    ivdata = np.vstack((ivreturn[1],ivreturn[2]))
-                    measured_temperature=adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
-
-                    # Save the results in the pickle
-                    iv_dict = tes_pickle.createIVDictHeater(ivdata,temp,feedback_resistance,heater_voltage,heater_resistance,measured_temperature,bias_resistor)
-                    tes_pickle.addIVRun(column, row, iv_dict)
-                    tes_pickle.savePickle()
-    voltage_sweep_source.setvolt(0) 
-    tesacq.pciStop()
-    t_end=time.time()
-    print('almost done')
-    print('Length of measurement = ',(t_end-t0)/60.,' minutes')
-    #adr.temperature_controller.SetTemperatureSetPoint(temps[0])
-    print('done')
-    #app.quit() #doesn't actually seem to do much
-    #print '2'
+        if cfg['voltage_bias']['setVtoZeroPostIV']:
+            voltage_sweep_source.setvolt(0)     
 
 if __name__ == '__main__': 
     main()
