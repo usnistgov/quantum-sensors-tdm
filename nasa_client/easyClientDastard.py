@@ -313,7 +313,7 @@ class EasyClientDastard():
 
 
     def toVolts(self,dataOut, sendmode):
-        print("doing toVolts")
+        #print("doing toVolts")
         dataOut = numpy.array(dataOut,dtype="float64")
         if sendmode == 0:
             dataOut[:,:,:,0]/=float((2**12-1)*self.nSamp) # error
