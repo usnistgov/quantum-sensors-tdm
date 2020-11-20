@@ -230,7 +230,8 @@ def main():
         os.makedirs(cfg['io']['RootPath'])
     localtime=time.localtime()
     thedate=str(localtime[0])+'%02i'%localtime[1]+'%02i'%localtime[2]
-    pickle_file=cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+cfg['io']['suffix']+'.pkl' 
+    filename = cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+cfg['io']['suffix']
+    pickle_file=filename+'.pkl' 
 
     # defined tower card addresses for needed voltage sources
     bias_channel=tcfg['db_tower_channel_%s'%cfg['detectors']['Column']]
@@ -271,7 +272,9 @@ def main():
                                    t_set=t_set,heaterRange=cfg['runconfig']['thermometerHeaterRange'],heaterResistance=100.0)
     
     # MAIN LOOP OVER TEMPERATURES STARTS HERE ---------------------------------------------------------------------------------------------- 
-    for ii in range(len(cfg['runconfig']['bathTemperatures'])): # loop over temperatures
+    N = len(cfg['runconfig']['bathTemperatures'])
+    iv_dict={} 
+    for ii in range(N): # loop over temperatures
         temp = cfg['runconfig']['bathTemperatures'][ii]
         if temp == 0:
             print('temp = 0, which is a flag to take an IV curve as is without commanding the temperature controller.')
@@ -285,7 +288,7 @@ def main():
                 print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
     
         # at this point, should be at stable temperature and ready for IV curve
-        bath_temperature_measured_before = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        Tb_i = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
         v_arr, data_ret, flags = iv_sweep(ec=ec, vs=voltage_sweep_source, 
                                           v_start=cfg['voltage_bias']['v_start'], v_stop=cfg['voltage_bias']['v_stop'],v_step=cfg['voltage_bias']['v_step'],
                                           sweepUp=cfg['voltage_bias']['sweepUp'], showPlot=True,verbose=True)
@@ -302,18 +305,22 @@ def main():
     #                                                 normal_voltage_blast=normal_voltage_blast,
     #                                                 plotter=plotter)
 
-    
-        bath_temperature_measured_after = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        Tb_f = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
         
-        # if cfg['runconfig']['dataFormat']=='legacy':
-        #     pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
-        #           'bias_resistance':cfg['calnums']['rbias']}
-        #     tes_pickle = tespickle.TESPickle(pickle_file)
-        #     convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
-        #                           column=cfg['detectors']['Column'],mux_rows=cfg['detectors']['Rows'],column_index=0)
-        # else:
-        #     print('Currently no alternative than legacy data format')
-        #     # stuff in the config file
+        if cfg['runconfig']['dataFormat']=='legacy':
+            print('saving IV curve in legacy format')
+            pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
+                  'bias_resistance':cfg['calnums']['rbias']}
+            tes_pickle = tespickle.TESPickle(pickle_file)
+            convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
+                                  column=cfg['detectors']['Column'],mux_rows=cfg['detectors']['Rows'],column_index=0)
+        else:
+            print('Saving data in new format')
+            # ret_dict keys: 'v', 'config', 'ivdict'
+            # ivdict has structure: ivdict[iv##]: 'Treq', 'Tb_i', 'Tb_f','data','flags' 
+            iv_dict['iv%02d'%ii]=['Treq': temp,'Tb_i':Tb_i, 'Tb_f':Tb_f,'data':data_ret,'flags':flags]
+            ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
+            pickle.dump( ret_dict, open( pickle_file, "wb" ) )
 
         if cfg['voltage_bias']['setVtoZeroPostIV']:
             voltage_sweep_source.setvolt(0)     
