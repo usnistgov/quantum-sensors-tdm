@@ -480,10 +480,10 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         self.setReadChannelSetup(channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 2e3,autorange = 'on')
 
 
-    def demagSetup(self, heater_resistance=1):
+    def demagSetup(self, channel=1, heater_resistance=1):
         ''' Setup the lakeshore for demag '''
 
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=channel, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'open')
         self.setControlPolarity(polarity = 'bipolar')  #Set to bipolar so that current can get to zero faster
         self.setHeaterRange(range=10)  # 1 Volt max input to Kepco for 100 Ohm shunt
@@ -1400,3 +1400,24 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
+
+    def MagDown(self,magdowntime=25,channel=1,heater_resistance=100.0,pausetime=5.0):
+        ''' read the current heater output and mag down in magdowntime (minutes) 
+            magdowntime: time in min over which to ramp down to 0 heater output 
+            channel: thermometer channel to read
+            heater_resistance: resistance attached to the lakeshore370 heater output (this really isn't used)
+            pausetime: seconds between heater output voltage steps
+        '''
+        self.demagSetup(channel=channel, heater_resistance=heater_resistance)
+
+        magdownsteps = math.ceil(magdowntime*60/pausetime) # steps in seconds
+        idownbegin = self.getHeaterOut()
+        idownvalues = numpy.linspace(idownbegin,0,magdownsteps)
+
+        print('Demaging from heater output %.2f to 0 in %.1f minutes'%(idownbegin,magdowntime))
+        for ivalue in idownvalues:
+            print('Heater out: ',ivalue)
+            self.setManualHeaterOut(ivalue)
+            sleep(pausetime)
+
+        
