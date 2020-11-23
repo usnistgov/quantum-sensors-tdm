@@ -22,7 +22,6 @@ class Agilent33220A(instrument.Instrument):
         super(Agilent33220A, self).__init__()
 
         # identity string of the instrument
-        print('hello I am here')
         self.id_string = "Agilent Technologies,33220A,MY44036372,2.02-2.02-22-2"
         self.manufacturer = 'Agilent'
         self.model_number = '33220A'
@@ -32,7 +31,7 @@ class Agilent33220A(instrument.Instrument):
         rm = pyvisa.ResourceManager()
         device_list = rm.list_resources()
         if self.pyvisa_name not in device_list:
-            print('%s not found in pyvisa resource list.  Check the instrument is plugged in'%self.pyvisa_name)
+            print('%s not found in pyvisa resource list.  Check that the instrument is plugged in'%self.pyvisa_name)
         
         self.fg = rm.open_resource(self.pyvisa_name) #instance of pyvisa function generator
         self.fg.read_termination = '\n'
