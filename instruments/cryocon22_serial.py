@@ -173,13 +173,13 @@ class Cryocon22(serial_instrument.SerialInstrument):
     def disableControlLoops(self):
         self.write('stop')
     
-    def controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',P=1,I=1,D=1,heater_range='low'):
+    def controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',PID=[1,1,1],heater_range='low'):
         ''' initialize the control loop setup '''
         loop_channel_string=str(loop_channel)
         self.setControlSource(loop_channel,t_channel) # links control loop to thermometer t_channel
         self.setTemperatureUnitsToKelvin(t_channel)
         self.setHeaterRange(loop_channel, heater_range)
-        self.setPID(loop_channel,P,I,D)
+        self.setPID(loop_channel,P=PID[0],I=PID[1],D=PID[2])
         self.setControlLoopMode(loop_channel,'PID')
         self.setControlTemperature(control_temp, loop_channel)
         for ii in [1,2,3,4]: # turn all other loops off
