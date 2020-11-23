@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 
 # # QSP written module imports
 from adr_system import AdrSystem
-from instruments import BlueBox 
+from instruments import BlueBox, Cryocon22 
 import tespickle 
 from nasa_client import EasyClient
 
@@ -199,6 +199,101 @@ def convertToLegacyFormat(v_arr,data_ret,nrows,pd,tes_pickle,column,mux_rows,col
         tes_pickle.addIVRun(column, mux_rows[ii], iv_dict)
         tes_pickle.savePickle()
 
+def createIVDictBB_thermalization(ivdata,t_initial=None,\
+                    #t_final=None,\
+                    #t_total=None,\
+                    bath_temperature_commanded=None,\
+                    bath_temperature_measured=None,\
+                    bb_temperature_commanded=None,\
+                    bb_temperature_measured_before=None,\
+                    bb_temperature_measured_after=None,\
+                    bb_voltage_measured_before=None,\
+                    bb_voltage_measured_after=None,\
+                    feedback_resistance=None,\
+                    bias_resistance=None,\
+                    multiplexedIV=None):
+    new_dict = {}
+    new_dict['data'] = ivdata
+    new_dict['datetime'] = time.localtime()
+    new_dict['initial_measurement_time'] = t_initial
+    #new_dict['final_measurement_time'] = t_final
+    #new_dict['total_measurement_time'] = t_total
+    new_dict['bath_temperature_commanded'] = bath_temperature_commanded
+    new_dict['bath_temperature_measured'] = bath_temperature_measured
+    new_dict['bb_temperature_commanded'] = bb_temperature_commanded
+    new_dict['bb_temperature_measured_before'] = bb_temperature_measured_before
+    new_dict['bb_temperature_measured_after'] = bb_temperature_measured_after
+    new_dict['bb_voltage_measured_before'] = bb_voltage_measured_before
+    new_dict['bb_voltage_measured_after'] = bb_voltage_measured_after
+    new_dict['feedback_resistance'] = feedback_resistance
+    new_dict['bias_resistance'] = bias_resistance
+    new_dict['plot_data_in_ivmuxanalyze'] = True
+    new_dict['multiplexedIV'] = multiplexedIV
+    return new_dict
+
+def coldloadControlInit():
+    print('to be written')
+
+def coldloadServoStabilizeWait(cc, temp, loop_channel,tolerance,postServoBBsettlingTime,tbbServoMaxTime):
+    ''' servo coldload to temperature T and wait for temperature to stabilize '''
+    if tbb>50.0:
+        print('Blackbody temperature '+str(tbb)+ ' exceeds safe range.  Tbb < 50K')
+        sys.exit()
+    
+    print('setting BB temperature to '+str(tbb)+'K')
+    cc.setControlTemperature(temp=temp,loop_channel=loop_channel)
+                
+    # wait for thermometer on coldload to reach tbb --------------------------------------------
+    is_stable = cc.isTemperatureStable(loop_channel,tolerance)
+    stable_num=0
+    while not is_stable:
+        time.sleep(5)
+        is_stable = cc.isTemperatureStable(loop_channel,tolerance)
+        stable_num += 1
+        if stable_num*5/60. > tbbServoMaxTime:
+            break
+             
+    print('Letting the blackbody thermalize for ',postServoBBsettlingTime,' minutes.')
+    time.sleep(60*postServoBBsettlingTime)
+              
+def iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose):
+    ''' loop over bath temperatures and collect IV curves '''
+    for jj, temp in enumerate(cfg['runconfig']['bathTemperatures']): # loop over temperatures
+        if temp == 0: 
+            print('temp = 0, which is a flag to take an IV curve as is without commanding the temperature controller.')
+        elif cfg['voltage_bias']['overbias']: # overbias case
+            overBias(adrTempControl=adrTempControl,voltage_sweep_source=voltage_sweep_source,
+                     Thigh=cfg['voltage_bias']['overbiasThigh'],Tb=temp,Vbias=V_overbias,Tsensor=cfg['runconfig']['thermometerChannel'])
+        else:
+            adr.temperature_controller.SetTemperatureSetPoint(temp)
+            stable = IsTemperatureStable(temp,adr=adrTempControl, Tsensor=cfg['runconfig']['thermometerChannel'],
+                                         tol=cfg['runconfig']['temp_tolerance'],time_out=180.)
+            if not stable:
+                print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
+                
+        # Grab bath temperature before/after and run IV curve
+        Tb_i = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        v_arr, data_ret, flags = iv_sweep(ec=ec, vs=voltage_sweep_source, 
+                                          v_start=cfg['voltage_bias']['v_start'], v_stop=cfg['voltage_bias']['v_stop'],v_step=cfg['voltage_bias']['v_step'],
+                                          sweepUp=cfg['voltage_bias']['sweepUp'], showPlot=showPlot,verbose=verbose)
+        Tb_f = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+
+        # save the data            
+        if cfg['runconfig']['dataFormat']=='legacy':
+            print('saving IV curve in legacy format')
+            pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
+                  'bias_resistance':cfg['calnums']['rbias']}
+            tes_pickle = tespickle.TESPickle(pickle_file)
+            convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
+                                  column=cfg['detectors']['Column'],mux_rows=cfg['detectors']['Rows'],column_index=0)
+        else:
+            print('Saving data in new format')
+            # ret_dict keys: 'v', 'config', 'ivdict'
+            # ivdict has structure: ivdict[iv##]: 'Treq', 'Tb_i', 'Tb_f','data','flags' 
+            iv_dict['iv%02d'%jj]=['Treq': temp,'Tb_i':Tb_i, 'Tb_f':Tb_f,'data':data_ret,'flags':flags]
+            ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
+            pickle.dump( ret_dict, open( pickle_file, "wb" ) )
+
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
@@ -258,11 +353,16 @@ def main():
     voltage_sweep_source = BlueBox(port='vbox', version=cfg['voltage_bias']['source'], address=tcfg['db_tower_address'], channel=bias_channel)
     sq2fb = BlueBox(port='vbox', version='tower', address=tcfg['sq2fb_tower_address'], channel= sq2fb_tower_channel)
     #tes_pickle = tespickle.TESPickle(pickle_file)
+    if 'coldload' in cfg.keys():
+        if cfg['coldload']['execute']:
+            cc = Cryocon22()
+            cc.controlLoopSetup(loop_channel=cfg['coldload']['loop_channel'],control_temp=cfg['coldload']['bbTemperatures'][0],
+                                t_channel=cfg['coldload']['t_channel'],PID=cfg['coldload']['PID'], heater_range=cfg['coldload']['heater_range']) # setup BB control
 
     if cfg['voltage_bias']['source']=='tower' and cfg['voltage_bias']['v_autobias']>2.5:
         print('tower can only source 2.5V.  Switching v_autobias to 2.5V')
         cfg['runconfig']['v_autobias']=2.5
-
+']'
     if cfg['runconfig']['setupTemperatureServo'] and cfg['runconfig']['bathTemperatures'][0] !=0: # initialize temperature servo if asked
         if adr.temperature_controller.getControlMode() == 'closed':
             t_set = adr.temperature_controller.getTemperatureSetPoint()
@@ -270,60 +370,39 @@ def main():
             t_set = 0.05
         setupTemperatureController(adrTempControl=adr.temperature_controller, channel=cfg['runconfig']['thermometerChannel'], \
                                    t_set=t_set,heaterRange=cfg['runconfig']['thermometerHeaterRange'],heaterResistance=100.0)
-    
-    # MAIN LOOP OVER TEMPERATURES STARTS HERE ---------------------------------------------------------------------------------------------- 
+       
+    # -----------------------------------------------------------------------------------------------------
+    #Main loop starts here: loop over BB temperatures and bath temperatures, run multiplexed IVs 
     N = len(cfg['runconfig']['bathTemperatures'])
     iv_dict={} 
-    for ii in range(N): # loop over temperatures
-        temp = cfg['runconfig']['bathTemperatures'][ii]
-        if temp == 0:
-            print('temp = 0, which is a flag to take an IV curve as is without commanding the temperature controller.')
-        elif cfg['voltage_bias']['overbias']: # overbias case
-            overBias(adrTempControl=adr.temperature_controller,voltage_sweep_source=voltage_sweep_source,
-                     Thigh=cfg['voltage_bias']['overbiasThigh'],Tb=temp,Vbias=V_overbias,Tsensor=cfg['runconfig']['thermometerChannel'])
+
+    if 'coldload' in cfg.keys(): 
+        if cfg['coldload']['execute']:
+            for ii, tbb in enumerate(cfg['coldload']['bbTemperatures']): # loop over coadload temps
+                if tbb>50.0:
+                    print('Blackbody temperature '+str(tbb)+ ' exceeds safe range.  Tbb < 50K')
+                    sys.exit()
+                elif tbb==0:
+                    print 'Tbb = 0 is a flag to take a current temperature.  No servoing'
+                else:
+                    cc.setControlState(state='on') # this command not needed every loop.  Too stupid to figure this out now.
+                    if ii==0 and cfg['coldload']['immediateFirstMeasurement']: #skip the wait time for 1st measurement
+                        postServoBBsettlingTime = 0
+                    else: postServoBBsettlingTime = cfg['coldload']['postServoBBsettlingTime']
+                        
+                coldloadServoStabilizeWait(cc=cc, temp=tbb, loop_channel=cfg['coldload']['loop_channel'],
+                                           tolerance=cfg['coldload']['temp_tolerance'], 
+                                           postServoBBsettlingTime=postServoBBsettlingTime
+                                           tbbServoMaxTime=cfg['coldload']['tbbServoMaxTime'])
+
+                iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
         else:
-            adr.temperature_controller.SetTemperatureSetPoint(temp)
-            stable = IsTemperatureStable(temp,adr=adr.temperature_controller, Tsensor=cfg['runconfig']['thermometerChannel'],tol=.005,time_out=180.)
-            if not stable:
-                print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
-    
-        # at this point, should be at stable temperature and ready for IV curve
-        Tb_i = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
-        v_arr, data_ret, flags = iv_sweep(ec=ec, vs=voltage_sweep_source, 
-                                          v_start=cfg['voltage_bias']['v_start'], v_stop=cfg['voltage_bias']['v_stop'],v_step=cfg['voltage_bias']['v_step'],
-                                          sweepUp=cfg['voltage_bias']['sweepUp'], showPlot=True,verbose=True)
+            iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
+    else:
+        iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
 
-    #         print('Entering multiplexed IV function' + '*' * 80)
-    #         v, vfb_array = smIV.singleMuxIV(app=app,voltage_start=cfg['runconfig']['v_start'], voltage_end=cfg['runconfig']['v_stop'],
-    #                                                 voltage_step=cfg['runconfig']['v_step'],
-    #                                                 column=column, rows=mux_rows, rows_not_locked=rows_not_locked,
-    #                                                 ADCoffset=dfb_adc, dfb_dac = cfg['dfb']['dac'], sq2fbvalue=sq2fb_value_muxedIV,
-    #                                                 dfb_numberofsamples=cfg['dfb']['nsamp'], lsync=cfg['dfb']['lsync'], dfb_p=cfg['dfb']['P'],
-    #                                                 dfb_i=cfg['dfb']['I'],
-    #                                                 tes_bias=voltage_sweep_source, sq2fb=sq2fb,
-    #                                                 dfb=adr.crate.dfb_cards[DFB_CARD_INDEX],
-    #                                                 normal_voltage_blast=normal_voltage_blast,
-    #                                                 plotter=plotter)
-
-        Tb_f = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
-        
-        if cfg['runconfig']['dataFormat']=='legacy':
-            print('saving IV curve in legacy format')
-            pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
-                  'bias_resistance':cfg['calnums']['rbias']}
-            tes_pickle = tespickle.TESPickle(pickle_file)
-            convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
-                                  column=cfg['detectors']['Column'],mux_rows=cfg['detectors']['Rows'],column_index=0)
-        else:
-            print('Saving data in new format')
-            # ret_dict keys: 'v', 'config', 'ivdict'
-            # ivdict has structure: ivdict[iv##]: 'Treq', 'Tb_i', 'Tb_f','data','flags' 
-            iv_dict['iv%02d'%ii]=['Treq': temp,'Tb_i':Tb_i, 'Tb_f':Tb_f,'data':data_ret,'flags':flags]
-            ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
-            pickle.dump( ret_dict, open( pickle_file, "wb" ) )
-
-        if cfg['voltage_bias']['setVtoZeroPostIV']:
-            voltage_sweep_source.setvolt(0)     
+    if cfg['voltage_bias']['setVtoZeroPostIV']:
+        voltage_sweep_source.setvolt(0)     
 
 if __name__ == '__main__': 
     main()
