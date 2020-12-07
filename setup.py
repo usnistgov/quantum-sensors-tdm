@@ -10,7 +10,7 @@ setup(
     python_requires='>=3.5',
     description="Software to help run a NIST TDM system with Python 3.",
     install_requires=["matplotlib", "numpy", "PyQt5","pySerial","LabJackPython", "lxml", 
-    "argparse", "zmq", "scipy","pytest", "pytest-qt", "ipython"],
+    "argparse", "zmq", "scipy","pytest", "pytest-qt", "ipython", "pyvisa"],
     license="MIT license",
     include_package_data=True,
     keywords='tdm, tes',
