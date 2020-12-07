@@ -2,7 +2,7 @@
 
 """The setup script."""
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     author="GCO",
@@ -15,7 +15,9 @@ setup(
     include_package_data=True,
     keywords='tdm, tes',
     name='qsptdm',
-    packages=["adr_gui", "adr_system", "cringe", "named_serial", "nasa_client"],
+#   Somehow this doesn't install subpackages
+#    packages=["adr_gui", "adr_system", "cringe", "named_serial", "nasa_client"],
+    packages=find_packages(),
     test_suite='tests',
     url='',
     version='0.1.0',
