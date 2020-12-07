@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 import sys
 import optparse
 import argparse
@@ -2441,7 +2441,7 @@ def main():
             load_filename = str(QFileDialog.getOpenFileName(caption="choose cringe file",
                                                             directory=os.path.expanduser("~/cringe_config"), filter="(*.pkl)")[0])
         else:
-            load_filename = args.setup_filename
+            load_filename = args.setup_filename[0]
         load_file = open(load_filename, "rb")
         log.info("build GUI from file:")
         log.info(f"load filename: {load_filename}")
