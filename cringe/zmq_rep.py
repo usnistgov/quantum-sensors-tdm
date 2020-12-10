@@ -7,8 +7,10 @@ from PyQt5.QtWidgets import *
 import cringe
 from cringe.shared import log
 
-
 class ZmqRep(QWidget):
+    ''' ZMQ server (reply socket) for use with cringe
+    You can find a nice simple example example of how to talk to 
+    this at https://zeromq.org/languages/python/'''
     gotMessage = QtCore.Signal(str)
     def __init__(self, parent, address_with_port):
         llog = log.child("ZmqRep: __init__:")
