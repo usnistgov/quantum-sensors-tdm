@@ -26,7 +26,7 @@ class TESPickle(object):
             pickle_file = self.pickle_file
         
         try:
-            f = open(pickle_file, 'r')
+            f = open(pickle_file, 'rb')
             self.gamma = pickle.load(f)
             f.close()
         except:
@@ -39,7 +39,7 @@ class TESPickle(object):
             pickle_file = self.pickle_file
         else:
             pickle_file = save_pickle_file
-        f = open(pickle_file, 'w')
+        f = open(pickle_file, 'wb')
         pickle.dump(self.gamma, f)
         f.close()
     

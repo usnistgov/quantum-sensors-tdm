@@ -31,8 +31,9 @@ import numpy as np
 import matplotlib.pyplot as plt 
 
 # # QSP written module imports
+from cringe.cringe_control import CringeControl
 from adr_system import AdrSystem
-from instruments import BlueBox, Cryocon22 
+from instruments import BlueBox, Cryocon22  
 import tespickle 
 from nasa_client import EasyClient
 
@@ -256,7 +257,7 @@ def coldloadServoStabilizeWait(cc, temp, loop_channel,tolerance,postServoBBsettl
     print('Letting the blackbody thermalize for ',postServoBBsettlingTime,' minutes.')
     time.sleep(60*postServoBBsettlingTime)
               
-def iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose):
+def iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,pickle_file,V_overbias,showPlot,verbose):
     ''' loop over bath temperatures and collect IV curves '''
     for jj, temp in enumerate(cfg['runconfig']['bathTemperatures']): # loop over temperatures
         if temp == 0: 
@@ -272,16 +273,16 @@ def iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,ve
                 print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
                 
         # Grab bath temperature before/after and run IV curve
-        Tb_i = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        Tb_i = adrTempControl.GetTemperature(cfg['runconfig']['thermometerChannel'])
         v_arr, data_ret, flags = iv_sweep(ec=ec, vs=voltage_sweep_source, 
                                           v_start=cfg['voltage_bias']['v_start'], v_stop=cfg['voltage_bias']['v_stop'],v_step=cfg['voltage_bias']['v_step'],
                                           sweepUp=cfg['voltage_bias']['sweepUp'], showPlot=showPlot,verbose=verbose)
-        Tb_f = adr.temperature_controller.GetTemperature(cfg['runconfig']['thermometerChannel'])
+        Tb_f = adrTempControl.GetTemperature(cfg['runconfig']['thermometerChannel'])
 
         # save the data            
         if cfg['runconfig']['dataFormat']=='legacy':
             print('saving IV curve in legacy format')
-            pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':bath_temperature_measured_after,
+            pd = {'temp':temp,'feedback_resistance':cfg['calnums']['rfb'], 'measured_temperature':Tb_f,
                   'bias_resistance':cfg['calnums']['rbias']}
             tes_pickle = tespickle.TESPickle(pickle_file)
             convertToLegacyFormat(v_arr,data_ret,nrows=ec.nrow,pd=pd,tes_pickle=tes_pickle,
@@ -290,7 +291,7 @@ def iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,ve
             print('Saving data in new format')
             # ret_dict keys: 'v', 'config', 'ivdict'
             # ivdict has structure: ivdict[iv##]: 'Treq', 'Tb_i', 'Tb_f','data','flags' 
-            iv_dict['iv%02d'%jj]=['Treq': temp,'Tb_i':Tb_i, 'Tb_f':Tb_f,'data':data_ret,'flags':flags]
+            iv_dict['iv%02d'%jj]={'Treq':temp, 'Tb_i':Tb_i, 'Tb_f':Tb_f, 'data':data_ret, 'flags':flags}
             ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
             pickle.dump( ret_dict, open( pickle_file, "wb" ) )
 
@@ -303,6 +304,9 @@ def main():
 
     # error handling
     # check if adr_gui running, dastard commander, cringe?, dcom ...
+
+    verbose=False 
+    showPlot=False
 
     # open config file
     with open(sys.argv[1], 'r') as ymlfile:
@@ -362,7 +366,7 @@ def main():
     if cfg['voltage_bias']['source']=='tower' and cfg['voltage_bias']['v_autobias']>2.5:
         print('tower can only source 2.5V.  Switching v_autobias to 2.5V')
         cfg['runconfig']['v_autobias']=2.5
-']'
+
     if cfg['runconfig']['setupTemperatureServo'] and cfg['runconfig']['bathTemperatures'][0] !=0: # initialize temperature servo if asked
         if adr.temperature_controller.getControlMode() == 'closed':
             t_set = adr.temperature_controller.getTemperatureSetPoint()
@@ -383,7 +387,7 @@ def main():
                     print('Blackbody temperature '+str(tbb)+ ' exceeds safe range.  Tbb < 50K')
                     sys.exit()
                 elif tbb==0:
-                    print 'Tbb = 0 is a flag to take a current temperature.  No servoing'
+                    print('Tbb = 0 is a flag to take a current temperature.  No servoing')
                 else:
                     cc.setControlState(state='on') # this command not needed every loop.  Too stupid to figure this out now.
                     if ii==0 and cfg['coldload']['immediateFirstMeasurement']: #skip the wait time for 1st measurement
@@ -392,14 +396,14 @@ def main():
                         
                 coldloadServoStabilizeWait(cc=cc, temp=tbb, loop_channel=cfg['coldload']['loop_channel'],
                                            tolerance=cfg['coldload']['temp_tolerance'], 
-                                           postServoBBsettlingTime=postServoBBsettlingTime
+                                           postServoBBsettlingTime=postServoBBsettlingTime,
                                            tbbServoMaxTime=cfg['coldload']['tbbServoMaxTime'])
 
-                iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
+                iv_v_tbath(cfg,ec,adr.temperature_controller,voltage_sweep_source,pickle_file,V_overbias,showPlot,verbose)
         else:
-            iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
+            iv_v_tbath(cfg,ec,adr.temperature_controller,voltage_sweep_source,pickle_file,V_overbias,showPlot,verbose)
     else:
-        iv_v_tbath(cfg,ec,adrTempControl,voltage_sweep_source,V_overbias,showPlot,verbose)
+        iv_v_tbath(cfg,ec,adr.temperature_controller,voltage_sweep_source,pickle_file,V_overbias,showPlot,verbose)
 
     if cfg['voltage_bias']['setVtoZeroPostIV']:
         voltage_sweep_source.setvolt(0)     
