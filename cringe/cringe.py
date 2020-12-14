@@ -971,12 +971,15 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.vphidemo.fullTune()
         llog.debug("done")
         return True, ""
-        
+
     def get_class_var(self, arg1):
         '''give the remove use some way to get the value of instance variable '''
         if arg1 in self.__dict__:
             return True, str(self.__dict__[arg1])
         return False, 'class variable %s not found' % arg1
+
+    def get_num_rows(self):
+        return True,str(self.seqln)
 
     def get_fb_lock(self, col, row, a_or_b):
         numcols = 0
@@ -996,16 +999,25 @@ class Cringe(QtWidgets.QWidget):
         mycol = int(col)
         if mycol not in range(numcols):
             raise ValueError('bad column in get_fb_lock')
-        myrow = int(row)
-        if  myrow not in range(numrows):
-            raise ValueError('bad row in get_fb_lock')
-        if a_or_b == 'A':
-            # note = cam use master_vector for all in column
-            value = columnwidgets[mycol].state_vectors[myrow].FBA_button.isChecked()
+        if row == '*':
+            if a_or_b == 'A':
+                # note = cam use master_vector for all in column
+                value = columnwidgets[mycol].master_vector.FBA_button.isChecked()
+            else:
+                value = columnwidgets[mycol].master_vector.FBB_button.isChecked()
+            if value:
+                return True, '1'
         else:
-            value = columnwidgets[mycol].state_vectors[myrow].FBB_button.isChecked()
-        if value:
-            return True, '1'
+            myrow = int(row)
+            if  myrow not in range(numrows):
+                raise ValueError('bad row in get_fb_lock')
+            if a_or_b == 'A':
+                # note = cam use master_vector for all in column
+                value = columnwidgets[mycol].state_vectors[myrow].FBA_button.isChecked()
+            else:
+                value = columnwidgets[mycol].state_vectors[myrow].FBB_button.isChecked()
+            if value:
+                return True, '1'
         return True, '0'
 
     def set_fb_lock(self, state, col, row, a_or_b):
@@ -1027,13 +1039,20 @@ class Cringe(QtWidgets.QWidget):
         mycol = int(col)
         if mycol not in range(numcols):
             raise ValueError('bad column in get_fb_lock')
-        myrow = int(row)
-        if  myrow not in range(numrows):
-            raise ValueError('bad row in get_fb_lock')
-        if a_or_b == 'A':
-            columnwidgets[mycol].state_vectors[myrow].FBA_button.setChecked(mystate)
+        if row == '*':
+            if a_or_b == 'A':
+                columnwidgets[mycol].master_vector.FBA_button.setChecked(mystate)
+            else:
+                columnwidgets[mycol].master_vector.FBB_button.setChecked(mystate)
+            
         else:
-            columnwidgets[mycol].state_vectors[myrow].FBB_button.setChecked(mystate)
+            myrow = int(row)
+            if  myrow not in range(numrows):
+                raise ValueError('bad row in get_fb_lock')
+            if a_or_b == 'A':
+                columnwidgets[mycol].state_vectors[myrow].FBA_button.setChecked(mystate)
+            else:
+                columnwidgets[mycol].state_vectors[myrow].FBB_button.setChecked(mystate)
         return True, ''
 
     def seqln_changed(self):
