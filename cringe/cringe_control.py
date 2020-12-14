@@ -11,7 +11,7 @@ CRINGE_COMMANDS = {
     'setup_crate':{'fname':'full_crate_init', 'args':None, 'help':'Full crate init'},
     'full_tune':{'fname': 'extern_tune', 'args':None, 'help':'Full tune'},
     'get_class_var':{'fname':'get_class_var', 'args':['varname'], 'help':'Return the str rep of a class variable'}, 
-    'get_num_rows'{'fname':'get_num_rows', 'args':None, 'help':'Return number or rows or seqln'},
+    'get_num_rows':{'fname':'get_num_rows', 'args':None, 'help':'Return number or rows or seqln'},
     'get_fb_lock':{'fname':'get_fb_lock', 'args':['column', 'row'], 'help':'Check the state of the fb lock. Requires col, row a/b'},      
     'set_fb_lock':{'fname':'set_fb_lock', 'args':['column', 'row', 'lock'], 'help':'Set the state of the fb lock. Requires state, col, row, a/b'},            
 #    'devtest':{'fname':'devtest', 'args':['arg1'], 'help':'temporary for development testing'},      
