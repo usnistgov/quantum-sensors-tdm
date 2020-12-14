@@ -277,10 +277,10 @@ class ivCurve:
             if temp == 0: 
                 print('temp = 0, which is a flag to take an IV curve as is without commanding the temperature controller.')
             elif self.cfg['voltage_bias']['overbias']: # overbias case
-                self.overBias(Thigh=self.cfg['voltage_bias']['overbiasThigh'],Tb=temp,Vbias=V_overbias,Tsensor=cfg['runconfig']['thermometerChannel'])
+                self.overBias(Thigh=self.cfg['voltage_bias']['overbiasThigh'],Tb=temp,Vbias=V_overbias,Tsensor=self.cfg['runconfig']['thermometerChannel'])
             else:
                 self.adr.temperature_controller.SetTemperatureSetPoint(temp)
-                stable = self.IsTemperatureStable(temp,Tsensor=cfg['runconfig']['thermometerChannel'],
+                stable = self.IsTemperatureStable(temp,Tsensor=self.cfg['runconfig']['thermometerChannel'],
                                             tol=self.cfg['runconfig']['temp_tolerance'],time_out=180.)
                 if not stable:
                     print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
