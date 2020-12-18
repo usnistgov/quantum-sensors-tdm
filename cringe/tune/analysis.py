@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pylab as plt
 from cringe.shared import log
 from cringe.shared import get_savepath
+import os
 
 
 def lineartriangleparams(tridwell, tristeps, tristepsize):
