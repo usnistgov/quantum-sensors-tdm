@@ -4,7 +4,7 @@ ivCurve.py
 11/2020
 @author JH
 
-Script to take IV curves on a single column of detectors as a function of bath temperature. 
+Script to take IV curves on a SINGLE COLUMN of detectors as a function of bath temperature. 
 Assumes multiplexer is setup in cringe before running.
 Must exit out of adr_gui  
 
@@ -17,14 +17,11 @@ tower configuration file
 pyYAML
 
 to do:
-DFB_CARD_INDEX
-error handling: Tbath, v_bias
-overbias
-tesacquire used for unmuxed case. 
-what to do about tesacquire, tesanalyze, sweeper, LoadMuxSettings, singleMuxIV 
+mapping of rows/ra to row index 
 
 
 Notes:
+**IF ALL THREE FIBERS RUNNING**
 EasyClient getNewData() method returns following structure:
 (column, row (sequence length), sample number, 0/1=error/fb)
 The 0th index (column) has perhaps a funny indexing
@@ -32,6 +29,12 @@ The 0th index (column) has perhaps a funny indexing
 1: dfbx2 ch2
 2: dfb/clk ch1 
 This is defined by what fibers are installed where.
+
+**IF ALL THREE FIBERS RUNNING**
+dfb_card    server col index    cringe col index
+dfb/clk ch1    2                0
+dfbx2 ch1      0                1
+dfbx2 ch2      1                2   
 
 '''
 
@@ -63,10 +66,37 @@ class ivCurve:
         self.tp = tp # tes pickle  
 
         # other stuff
-        self.cfg = cfg 
-        self.rows_not_locked = self.cfg['dfb']['rows_not_locked']
+        self.cfg = cfg # config file
         self.showPlot = showPlot
         self.verbose = verbose
+
+        # mux stuff
+        self.colName = self.cfg['detectors']['Column']
+        self.rowAddName = self.cfg['detectors']['Rows']
+        self.ncol = self.ec.ncol 
+        self.nrow = self.ec.nrow 
+        self.dfb_col_index = self.cfg['dfb']['dfb_card_index'] # index used for cringe control
+        self.ec_col_index = self.cfg['dfb']['ec_col_index'] # index of returned data structure corresponding to desired column
+        self.dfb_row_index = range(0,self.nrow) # a list
+        self.row_index_not_locked = self.cfg['dfb']['row_index_not_locked']  
+
+        self.numpts=10000 # number of samples to average per IV
+        self.autoRange=True # dynamic range extender
+        self.v_autoRange_lim=(0.15,0.85) # limits for autoRange. NOTE >=0.9 high limit produces poor results
+        self.sample_delay = 0.05 # time to wait after commanding voltage before sampling
+        self.relock_delay = 0.05 # time to wait after relock before sampling
+
+        self.errorHandling()
+
+    def errorHandling(self):
+        if len(self.rowAddName) != self.nrow:
+            print('Row addresses: ',self.rowAddName,' incompatible with easyClient number of rows: ',self.nrow)
+            sys.exit()
+
+        if self.ec_col_index > self.ncol:
+            print('ec_col_index = ',self.ec_col_index, 'incompatible with easyCleint number of columns: ',self.ncol)
+            sys.exit()
+
 
     # I don't use the two below, but may be useful in future for error handling since much setup is assumed for this script to work
     # -----------------------------------------------------------------------------------------------------------------------------
@@ -88,44 +118,70 @@ class ivCurve:
     # data collection methods -----------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
-    def getDataAverageAndCheck(self,v_min=0.1,v_max=0.9,npts=10000):
-        ''' This method called for each IV point to collect data.  '''
+    def getIVdataPt(self,npts=10000,v_lim=(0.1,0,9),autoRange=True):
+        ''' Data collection method called for each IV point.    
+            Average npts and return one dfb value for all columns and all rows in array of shape c, 
+            where the last index is either 0: error and 1: feedback.  
+            If autoRange called, dfb will be relocked if dfb voltage is out of defined range 
+            
+            Input
+            npts: number of points to average, default=10000
+            v_lim: (v_low,v_high), limits of autoRange. Only used if autoRange=True
+            autoRange: <bool> if True relock when dfb voltage outside range v_lim
+
+            return: data_mean, ar
+            data_mean: array of shape (ncol,nrow,2) providing after of npts
+            ar: dictionary concerning autoRange with keys:
+                 'flag': <bool> if True an autoRange has been applied for at least one row
+                 'indicies': <1D array> row indicies for which autoRange has been applied
+                 'offset': <array of shape (ncol,nrow,2)> of offsets from autoRange
+
+        '''
+        ar={'flag':False,'indicies':[],'offset':np.zeros((self.ec.ncol,self.ec.nrow))}
         flag=False
         data = self.ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
         data_mean = np.mean(data,axis=2)
-        data_std = np.std(data,axis=2)
-
+        #data_std = np.std(data,axis=2)
         if self.verbose:
-            for ii in range(self.ec.ncol):
+            for ii in range(self.ec.ncol): # this is kind of stupid since only 1 col intended, but maybe for future?
                 for jj in range(self.ec.nrow):
                     print('Col ',ii, 'Row ',jj, ': %0.4f +/- %0.4f'%(data_mean[ii,jj,1],data_std[ii,jj,1]))
 
-        a = data_mean[:,:,1][data_mean[:,:,1]>v_max]
-        b = data_mean[:,:,1][data_mean[:,:,1]<v_min]
-        if a.size: 
-            print('Value above ',v_max,' detected')
-            # relock here
-            flag=True
-        if b.size:
-            print('Value below ',v_min,' detected')
-            # relock here
-            flag=True
+        
+        if autoRange:
+            above = np.where(data_mean[self.ec_col_index,:,1]>v_lim[1])[0]
+            below = np.where(data_mean[self.ec_col_index,:,1]<v_lim[0])[0]
+            dexs = np.hstack((above,below))
+            
+            if dexs.size:
+                print('autoRange dectected.  Relocking feedback on row indicies: ',dexs)
+                ar['flag']=True
+                ar['indicies']=dexs
+                for dex in dexs:
+                    self.relock(dfb_row_index=[dex], a_or_b='A')
+                time.sleep(self.relock_delay)
+                data_new = self.ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
+                #time.sleep(1)
+                #data_new = self.ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
+                data_new_mean = np.mean(data_new,axis=2)
+                #data_new_std = np.std(data,axis=2)
+                dv = data_mean - data_new_mean
+                print(dv[self.ec_col_index,:,1][[dexs]])
+                ar['offset'][self.ec_col_index,:][[dexs]] = dv[self.ec_col_index,:,1][[dexs]]
 
-        # have some error handling about if std/mean > threshold
-
-        return data_mean, flag
+        return data_mean, ar 
 
     # data packaging methods ------------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
-    def convertToLegacyFormat(self,v_arr,data_ret,nrows,pd,column,mux_rows,column_index=0):
-        for ii in range(nrows):
-            ivdata = np.vstack((v_arr, data_ret[column_index,ii,:,1])) # only return the feedback, not error
+    def convertToLegacyFormat(self,v_arr,data_ret,pd):
+        for ii in range(self.nrow):
+            ivdata = np.vstack((v_arr, data_ret[self.ec_col_index,ii,:,1])) # only return the feedback, not error
             iv_dict = self.tp.createIVDictHeater(ivdata, temperature=pd['temp'], feedback_resistance=pd['feedback_resistance'],
                                                     heater_voltage=None,heater_resistance=None, 
                                                     measured_temperature=pd['measured_temperature'],
                                                     bias_resistance=pd['bias_resistance'])
-            self.tp.addIVRun(column, mux_rows[ii], iv_dict)
+            self.tp.addIVRun(self.colName, self.rowAddName[ii], iv_dict)
             self.tp.savePickle()
     
     # adr temperature control methods ---------------------------------------------------------------------------------------------
@@ -223,13 +279,25 @@ class ivCurve:
     # higher-level IV collection methods ------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
-    def relock(self,col_index=1,a_or_b='A'):
-        for ii in range(self.ec.nrow):
-            if self.rows_not_locked !=None and ii in self.rows_not_locked:
-                self.cc.set_fb_lock(0,col_index,ii,a_or_b)
+    def relock(self,dfb_row_index='all', a_or_b='A'):
+        ''' 
+            open and close the feedback loop for rows on a single column
+
+            dfb_col_index: integer corresponding to fiber index 
+            dfb_row_index: <list> row indicies in column to relock 
+            a_or_b: select feedback to lock 'A' or 'B'
+        '''
+
+        # error handling if col or row index does not exist for future
+        if dfb_row_index=='all':
+            dfb_row_index=self.dfb_row_index
+
+        for row in dfb_row_index:
+            if self.row_index_not_locked !=None and row in self.row_index_not_locked: # set unlocked if listed in row_index_not_locked
+                self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) 
             else:
-                self.cc.set_fb_lock(0,col_index,ii,a_or_b)
-                self.cc.set_fb_lock(1,col_index,ii,a_or_b)
+                self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) # unlock
+                self.cc.set_fb_lock(1,self.dfb_col_index,row,a_or_b) # relock
 
     def iv_sweep(self, v_start=0.1,v_stop=0,v_step=0.01,sweepUp=False):
         ''' v_start: initial voltage
@@ -237,39 +305,58 @@ class ivCurve:
             v_step: voltage step size
             sweepUp: if True sweeps in ascending voltage
         '''
+        # build commanded voltage bias vector
         v_arr = np.arange(v_stop,v_start+v_step,v_step)
         if not sweepUp:
             v_arr=v_arr[::-1]
         
-        # set to initial point are relock
+        # set to initial point and relock
         self.vs.setvolt(v_arr[0])
         self.relock()
+        time.sleep(self.relock_delay)
 
+        # take data at all voltage bias points
         N=len(v_arr)
-        data_ret = np.zeros((self.ec.ncol,self.ec.nrow,N,2))
-        flags = np.zeros(N)
+        data_raw = np.zeros((self.ec.ncol,self.ec.nrow,N,2))
+        ar_arr = []
         for ii in range(N):
             self.vs.setvolt(v_arr[ii])
-            data, flag = self.getDataAverageAndCheck()
-            data_ret[:,:,ii,:] = data
-            flags[ii] = flag
-        
+            time.sleep(self.sample_delay)
+            data, ar = self.getIVdataPt(npts=self.numpts,v_lim=self.v_autoRange_lim,autoRange=self.autoRange)
+            data_raw[:,:,ii,:] = data
+            ar_arr.append(ar)
+
+        # build corrected arrays
+        data_corr=data_raw.copy()
+        if self.autoRange:
+            for ii in range(N):
+                if ar_arr[ii]['flag']:
+                    for jj in range(self.nrow):
+                        data_corr[self.ec_col_index,jj,ii+1:,1]=data_corr[self.ec_col_index,jj,ii+1:,1] + ar_arr[ii]['offset'][self.ec_col_index,jj] # ??
+
         if self.showPlot:
             for ii in range(self.ec.ncol):
                 fig = plt.figure(ii)
                 fig.suptitle('Column %d'%ii)
                 for jj in range(self.ec.nrow):
                     plt.subplot(211)
-                    plt.plot(v_arr,data_ret[ii,jj,:,1])
+                    if self.autoRange:
+                        plt.plot(v_arr,data_corr[ii,jj,:,1],'-')
+                        #plt.plot(v_arr,data_raw[ii,jj,:,1],'o-') 
+                    else:
+                        plt.plot(v_arr,data_raw[ii,jj,:,1],'-')
                     plt.xlabel('V_bias')
                     plt.ylabel('V_fb')
                     plt.subplot(212)
-                    plt.plot(v_arr,data_ret[ii,jj,:,0])
+                    if self.autoRange:
+                        plt.plot(v_arr,data_corr[ii,jj,:,0])
+                    else:
+                        plt.plot(v_arr,data_raw[ii,jj,:,0])
                     plt.xlabel('V_bias')
                     plt.ylabel('V_err')
                 plt.legend(range(self.ec.nrow))
             plt.show()
-        return v_arr, data_ret, flags
+        return v_arr, data_corr, data_raw, ar_arr
 
     def iv_v_tbath(self,V_overbias):
         ''' loop over bath temperatures and collect IV curves '''
@@ -287,9 +374,9 @@ class ivCurve:
                     
             # Grab bath temperature before/after and run IV curve
             Tb_i = self.adr.temperature_controller.GetTemperature(self.cfg['runconfig']['thermometerChannel'])
-            v_arr, data_ret, flags = self.iv_sweep(v_start=self.cfg['voltage_bias']['v_start'], v_stop=self.cfg['voltage_bias']['v_stop'],
-                                              v_step=self.cfg['voltage_bias']['v_step'],
-                                              sweepUp=self.cfg['voltage_bias']['sweepUp'])
+            v_arr, data_corr, data_raw, ar_arr = self.iv_sweep(v_start=self.cfg['voltage_bias']['v_start'], v_stop=self.cfg['voltage_bias']['v_stop'],
+                                                              v_step=self.cfg['voltage_bias']['v_step'],
+                                                              sweepUp=self.cfg['voltage_bias']['sweepUp'])
             Tb_f = self.adr.temperature_controller.GetTemperature(self.cfg['runconfig']['thermometerChannel'])
 
             # save the data            
@@ -297,8 +384,7 @@ class ivCurve:
                 print('saving IV curve in legacy format')
                 pd = {'temp':temp,'feedback_resistance':self.cfg['calnums']['rfb'], 'measured_temperature':Tb_f,
                     'bias_resistance':self.cfg['calnums']['rbias']}
-                self.convertToLegacyFormat(v_arr,data_ret,nrows=self.ec.nrow,pd=pd,
-                                      column=self.cfg['detectors']['Column'],mux_rows=self.cfg['detectors']['Rows'],column_index=0)
+                self.convertToLegacyFormat(v_arr,data_corr,pd=pd)
             else:
                 print('Saving data in new format')
                 # ret_dict keys: 'v', 'config', 'ivdict'
@@ -306,6 +392,7 @@ class ivCurve:
                 iv_dict['iv%02d'%jj]={'Treq':temp, 'Tb_i':Tb_i, 'Tb_f':Tb_f, 'data':data_ret, 'flags':flags}
                 ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
                 pickle.dump( ret_dict, open( pickle_file, "wb" ) )
+
 
 ############################################################################################################
 ############################################################################################################
