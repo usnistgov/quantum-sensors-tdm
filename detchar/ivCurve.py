@@ -56,8 +56,8 @@ from nasa_client import EasyClient
 
 class ivCurve:
     ''' class for your script to send remote commands to cringe'''
-    def __init__(self,cfg,cc,ec,vs,adr,ccon,tp,showPlot,verbose):
-        # pass a bunch of other class instances
+    def __init__(self,cfg,cc,ec,vs,adr,ccon,tp,pickle_file,showPlot,verbose):
+        # class instances
         self.cc = cc # cringe control
         self.ec = ec # easyClient
         self.vs = vs # voltage source to drive TES voltage bias
@@ -65,12 +65,15 @@ class ivCurve:
         self.ccon = ccon # cryocon
         self.tp = tp # tes pickle  
 
-        # other stuff
+        # config
         self.cfg = cfg # config file
         self.showPlot = showPlot
         self.verbose = verbose
 
-        # mux stuff
+        # filename of return data structure
+        self.pickle_file = pickle_file
+
+        # mux 
         self.colName = self.cfg['detectors']['Column']
         self.rowAddName = self.cfg['detectors']['Rows']
         self.ncol = self.ec.ncol 
@@ -80,11 +83,20 @@ class ivCurve:
         self.dfb_row_index = range(0,self.nrow) # a list
         self.row_index_not_locked = self.cfg['dfb']['row_index_not_locked']  
 
+        # static globals
+        # iv config 
         self.numpts=10000 # number of samples to average per IV
         self.autoRange=True # dynamic range extender
         self.v_autoRange_lim=(0.15,0.85) # limits for autoRange. NOTE >=0.9 high limit produces poor results
         self.sample_delay = 0.05 # time to wait after commanding voltage before sampling
         self.relock_delay = 0.05 # time to wait after relock before sampling
+
+        # blackbody
+        if 'coldload' in self.cfg.keys() and self.cfg['coldload']['execute']:
+            self.executeColdloadIVs = True
+            self.postServoBBsettlingTime = self.cfg['coldload']['tWaitIV'] # mintues to allow blackbody to settle before measurement
+        else:
+            self.executeColdloadIVs = False
 
         self.errorHandling()
 
@@ -177,7 +189,18 @@ class ivCurve:
     def convertToLegacyFormat(self,v_arr,data_ret,pd):
         for ii in range(self.nrow):
             ivdata = np.vstack((v_arr, data_ret[self.ec_col_index,ii,:,1])) # only return the feedback, not error
-            iv_dict = self.tp.createIVDictHeater(ivdata, temperature=pd['temp'], feedback_resistance=pd['feedback_resistance'],
+            if self.executeColdloadIVs:
+                iv_dict = self.tp.createIVDictBB(ivdata,bath_temperature_commanded=pd['temp'],\
+                                                 bath_temperature_measured=pd['measured_temperature'],\
+                                                 bb_temperature_commanded=pd['Tbb_command'],\
+                                                 bb_temperature_measured_before=pd['Tbb_i'],\
+                                                 bb_temperature_measured_after=pd['Tbb_f'],\
+                                                 bb_voltage_measured_before=None,\
+                                                 bb_voltage_measured_after=None,\
+                                                 feedback_resistance=self.cfg['calnums']['rfb'],\
+                                                 bias_resistance=self.cfg['calnums']['rbias'])
+            else:
+                iv_dict = self.tp.createIVDictHeater(ivdata, temperature=pd['temp'], feedback_resistance=pd['feedback_resistance'],
                                                     heater_voltage=None,heater_resistance=None, 
                                                     measured_temperature=pd['measured_temperature'],
                                                     bias_resistance=pd['bias_resistance'])
@@ -251,16 +274,13 @@ class ivCurve:
     # blackbody temperature control methods ---------------------------------------------------------------------------------------------
     # ----------------------------------------------------------------------------------------------------------------------------- 
 
-    def coldloadControlInit(self):
-        print('to be written')
-
-    def coldloadServoStabilizeWait(self,temp, loop_channel,tolerance,postServoBBsettlingTime,tbbServoMaxTime):
+    def coldloadServoStabilizeWait(self,temp, loop_channel,tolerance,tbbServoMaxTime=5.0,postServoBBsettlingTime=20.):
         ''' servo coldload to temperature T and wait for temperature to stabilize '''
-        if tbb>50.0:
-            print('Blackbody temperature '+str(tbb)+ ' exceeds safe range.  Tbb < 50K')
+        if temp>50.0:
+            print('Blackbody temperature '+str(temp)+ ' exceeds safe range.  Tbb < 50K')
             sys.exit()
         
-        print('setting BB temperature to '+str(tbb)+'K')
+        print('setting BB temperature to '+str(temp)+'K')
         self.ccon.setControlTemperature(temp=temp,loop_channel=loop_channel)
                     
         # wait for thermometer on coldload to reach tbb --------------------------------------------
@@ -358,7 +378,7 @@ class ivCurve:
             plt.show()
         return v_arr, data_corr, data_raw, ar_arr
 
-    def iv_v_tbath(self,V_overbias):
+    def iv_v_tbath(self,V_overbias,Tbb_command=None):
         ''' loop over bath temperatures and collect IV curves '''
         for jj, temp in enumerate(self.cfg['runconfig']['bathTemperatures']): # loop over temperatures
             if temp == 0: 
@@ -373,25 +393,35 @@ class ivCurve:
                     print('cannot obtain a stable temperature at %.3f mK !! I\'m going ahead and taking an IV anyway.'%(temp*1000))
                     
             # Grab bath temperature before/after and run IV curve
+            if self.executeColdloadIVs:
+                Tbb_i = self.ccon.getTemperature()
+            else:
+                Tbb_i=Tbb_f=Tbb_command=None
             Tb_i = self.adr.temperature_controller.GetTemperature(self.cfg['runconfig']['thermometerChannel'])
             v_arr, data_corr, data_raw, ar_arr = self.iv_sweep(v_start=self.cfg['voltage_bias']['v_start'], v_stop=self.cfg['voltage_bias']['v_stop'],
                                                               v_step=self.cfg['voltage_bias']['v_step'],
                                                               sweepUp=self.cfg['voltage_bias']['sweepUp'])
             Tb_f = self.adr.temperature_controller.GetTemperature(self.cfg['runconfig']['thermometerChannel'])
+            if self.executeColdloadIVs:
+                tbb_f = self.ccon.getTemperature()
 
             # save the data            
             if self.cfg['runconfig']['dataFormat']=='legacy':
                 print('saving IV curve in legacy format')
                 pd = {'temp':temp,'feedback_resistance':self.cfg['calnums']['rfb'], 'measured_temperature':Tb_f,
-                    'bias_resistance':self.cfg['calnums']['rbias']}
+                        'bias_resistance':self.cfg['calnums']['rbias'],'Tbb_i':Tbb_i, 'Tbb_f':Tbb_f,'Tbb_command':Tbb_command}
                 self.convertToLegacyFormat(v_arr,data_corr,pd=pd)
             else:
                 print('Saving data in new format')
                 # ret_dict keys: 'v', 'config', 'ivdict'
                 # ivdict has structure: ivdict[iv##]: 'Treq', 'Tb_i', 'Tb_f','data','flags' 
-                iv_dict['iv%02d'%jj]={'Treq':temp, 'Tb_i':Tb_i, 'Tb_f':Tb_f, 'data':data_ret, 'flags':flags}
-                ret_dict = {'v':v_arr,'config':cfg,'ivdict':ivdict}
-                pickle.dump( ret_dict, open( pickle_file, "wb" ) )
+                iv_dict['iv%02d'%jj]={'Treq':temp, 'Tb_i':Tb_i, 'Tb_f':Tb_f, 'data':data_corr, 'data_raw':data_raw, 'autoRangeDict': ar_arr}
+                if self.executeColdloadIVs:
+                    coldloaddict={'Tbb_i':Tbb_i, 'Tbb_f':Tbb_f,'Tbb_command':Tbb_command}
+                else:
+                    coldloaddict=None
+                ret_dict = {'v':v_arr,'config':self.cfg,'ivdict':ivdict,'coldload':coldloaddict}
+                pickle.dump( ret_dict, open( self.pickle_file, "wb" ) )
 
 
 ############################################################################################################
@@ -463,11 +493,11 @@ def main():
     if 'coldload' in cfg.keys():
         if cfg['coldload']['execute']:
             ccon = Cryocon22()
-            ccon.controlLoopSetup(loop_channel=cfg['coldload']['loop_channel'],control_temp=cfg['coldload']['bbTemperatures'][0],
-                                t_channel=cfg['coldload']['t_channel'],PID=cfg['coldload']['PID'], heater_range=cfg['coldload']['heater_range']) # setup BB control
+            #ccon.controlLoopSetup(loop_channel=cfg['coldload']['loop_channel'],control_temp=cfg['coldload']['bbTemperatures'][0],
+            #                    t_channel=cfg['coldload']['t_channel'],PID=cfg['coldload']['PID'], heater_range=cfg['coldload']['heater_range']) # setup BB control
         else: ccon=None
 
-    IV = ivCurve(cfg,cc,ec,vs,adr,ccon,tp,showPlot,verbose) # class for all sub-methods above
+    IV = ivCurve(cfg,cc,ec,vs,adr,ccon,tp,pickle_file,showPlot,verbose) # class for all sub-methods above
 
     if cfg['voltage_bias']['source']=='tower' and cfg['voltage_bias']['v_autobias']>2.5:
         print('tower can only source 2.5V.  Switching v_autobias to 2.5V')
@@ -494,18 +524,17 @@ def main():
                     sys.exit()
                 elif tbb==0:
                     print('Tbb = 0 is a flag to take a current temperature.  No servoing')
+                    postServoBBsettlingTime=0
                 else:
                     ccon.setControlState(state='on') # this command not needed every loop.  Too stupid to figure this out now.
                     if ii==0 and cfg['coldload']['immediateFirstMeasurement']: #skip the wait time for 1st measurement
                         postServoBBsettlingTime = 0
                     else: postServoBBsettlingTime = cfg['coldload']['postServoBBsettlingTime']
-                        
+                print(tbb)
                 IV.coldloadServoStabilizeWait(temp=tbb, loop_channel=cfg['coldload']['loop_channel'],
-                                        tolerance=cfg['coldload']['temp_tolerance'], 
-                                        postServoBBsettlingTime=postServoBBsettlingTime,
-                                        tbbServoMaxTime=cfg['coldload']['tbbServoMaxTime'])
+                                        tolerance=cfg['coldload']['tempBB_tolerance'],postServoBBsettlingTime=postServoBBsettlingTime)
 
-                IV.iv_v_tbath(V_overbias)
+                IV.iv_v_tbath(V_overbias,Tbb_command=tbb)
         else:
             IV.iv_v_tbath(V_overbias)
     else:
