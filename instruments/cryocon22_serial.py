@@ -220,9 +220,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         
     def isTemperatureStable(self,loop_channel,tolerance=0.1):
         t_channel=self.getControlSource(loop_channel).split('CH')[1]
-        sleep(self.commandDelay) 
         t_m = self.getTemperature(t_channel)
-        sleep(self.commandDelay) 
         t_c = self.getControlTemperature(loop_channel)
         t_error = t_m - t_c
         print(t_m, t_c, t_error)
