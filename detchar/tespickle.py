@@ -26,7 +26,7 @@ class TESPickle(object):
             pickle_file = self.pickle_file
         
         try:
-            f = open(pickle_file, 'r')
+            f = open(pickle_file, 'rb')
             self.gamma = pickle.load(f)
             f.close()
         except:
@@ -39,7 +39,7 @@ class TESPickle(object):
             pickle_file = self.pickle_file
         else:
             pickle_file = save_pickle_file
-        f = open(pickle_file, 'w')
+        f = open(pickle_file, 'wb')
         pickle.dump(self.gamma, f)
         f.close()
     
@@ -382,8 +382,7 @@ class TESPickle(object):
                        bb_voltage_measured_before=None,\
                        bb_voltage_measured_after=None,\
                        feedback_resistance=None,\
-                       bias_resistance=None,\
-                       multiplexedIV=None):
+                       bias_resistance=None):
         new_dict = {}
         new_dict['data'] = ivdata
         new_dict['datetime'] = time.localtime()
@@ -397,7 +396,6 @@ class TESPickle(object):
         new_dict['feedback_resistance'] = feedback_resistance
         new_dict['bias_resistance'] = bias_resistance
         new_dict['plot_data_in_ivmuxanalyze'] = True
-        new_dict['multiplexedIV'] = multiplexedIV
         return new_dict
 
     def createTcDict(self,temperature_sc, temperature_nm, amplitude_sc_trans, amplitude_nm_trans, amplitude_sc, amplitude_nm, feedback_resistance=None, heater_output=None):

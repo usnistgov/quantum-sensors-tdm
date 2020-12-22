@@ -2,7 +2,7 @@
 
 """The setup script."""
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     author="GCO",
@@ -10,12 +10,14 @@ setup(
     python_requires='>=3.5',
     description="Software to help run a NIST TDM system with Python 3.",
     install_requires=["matplotlib", "numpy", "PyQt5","pySerial","LabJackPython", "lxml", 
-    "argparse", "zmq", "scipy","pytest", "pytest-qt", "ipython"],
+    "argparse", "zmq", "scipy","pytest", "pytest-qt", "ipython", "pyvisa"],
     license="MIT license",
     include_package_data=True,
     keywords='tdm, tes',
     name='qsptdm',
-    packages=["adr_gui", "adr_system", "cringe", "named_serial", "nasa_client"],
+#   Somehow this doesn't install subpackages
+#    packages=["adr_gui", "adr_system", "cringe", "named_serial", "nasa_client"],
+    packages=find_packages(),
     test_suite='tests',
     url='',
     version='0.1.0',
@@ -24,7 +26,8 @@ setup(
     entry_points = {
         'console_scripts': ['adr_gui=adr_gui.adr_gui:main',
         "cringe=cringe.cringe:main",
-        "tower_power_gui=instruments.tower_power_supply_gui:main"],
+        "tower_power_gui=instruments.tower_power_supply_gui:main",
+        "cringe_control=cringe.cringe_control:cringe_control_commandline_main"],
     },
     scripts = ["doc/tdm_term"],
 )

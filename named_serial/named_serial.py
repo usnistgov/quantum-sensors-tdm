@@ -105,4 +105,8 @@ class Serial(serial.Serial):
 
     def _set_as_dummy(self, port, myport):
         # print("namedserial: _set_as_dummy: port={}, myport={}".format(port, myport))
-        self.write = lambda v: None
+        #self.write = lambda v: None
+        self.write = self._dummy_write
+        
+    def _dummy_write(self, data):
+        return len(data)

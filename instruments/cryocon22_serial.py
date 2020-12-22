@@ -37,13 +37,23 @@ class Cryocon22(serial_instrument.SerialInstrument):
         '''Constructor  port is the only required parameter '''
 
         super(Cryocon22, self).__init__(port, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.05, readtimeout=0.05)
-        
+        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.15, readtimeout=0.05)
+        # Empirically found that min_time_between_writes >=0.15
+
         # identity string of the instrument
         self.id_string = "Cryocon22C SNo:205346"
         self.manufacturer = 'Cryocon'
         self.model_number = '22'
         self.description  = 'Temperature Controller'
+    
+    def parseAsk(self,result):
+        return result.decode().split(self.lineend.decode())[0]
+
+    def writeAndflush(self,str):
+        # this is cludge because I find that after any write command a read command gives \r\n, the lineend
+        self.write(str)
+        sleep(0.15)
+        self.serial.read_all()
     
     # The gets ------------------------------------------------
     def getTemperature(self, channel='both'):
@@ -81,78 +91,93 @@ class Cryocon22(serial_instrument.SerialInstrument):
         else:
             raise ValueError
     def getControlLoopState(self):
-        data = self.ask('control?')
-        return data
+        result = self.ask('control?')
+        result = self.parseAsk(result)
+        return result
     
     def getControlLoopMode(self,loop_channel=1):
-        return self.ask('loop '+str(loop_channel)+':type?')
-    
+        result = self.ask('loop '+str(loop_channel)+':type?')
+        result = self.parseAsk(result)
+        return result
+
     def getControlTemperature(self,loop_channel=1):
-        return float(self.ask('loop '+str(loop_channel)+':setpt?').split('K')[0])
+        ''' return float in K '''
+        # note askFloat() doesn't work because 'K' follows the value.
+        # when a return attaches units, it cannot convert to float
+        result = self.ask('loop '+str(loop_channel)+':setpt?')
+        result = self.parseAsk(result)
+        return float(result.split('K')[0])
     
     def getControlSource(self,loop_channel):
-        return self.ask('loop '+str(loop_channel)+':source?')
-    
+        result = self.ask('loop '+str(loop_channel)+':source?')
+        result = self.parseAsk(result)
+        return result
+
     def getHeaterRange(self,loop_channel):
-        return self.ask('loop '+str(loop_channel)+':range?')
+        result = self.ask('loop '+str(loop_channel)+':range?')
+        result = self.parseAsk(result)
+        return result
     
     def getPID(self,loop_channel):
-        P = self.ask('loop '+str(loop_channel)+':pgain?')
-        I = self.ask('loop '+str(loop_channel)+':igain?')
-        D = self.ask('loop '+str(loop_channel)+':dgain?')
+        P = self.askFloat('loop '+str(loop_channel)+':pgain?') 
+        I = self.askFloat('loop '+str(loop_channel)+':igain?')
+        D = self.askFloat('loop '+str(loop_channel)+':dgain?')
         return P,I,D
     
     def getCalibrationCurveName(self,curve_number):
-        return self.ask('sensorix '+str(curve_number)+':name?')
+        result = self.ask('sensorix '+str(curve_number)+':name?')
+        result = self.parseAsk(result)
+        return result
     
     def getCalibrationCurveForSensor(self,t_channel):
         curve_num=int(self.ask('input '+str(t_channel)+':sensor?'))
+        sleep(self.commandDelay) 
         curve_name = self.getCalibrationCurveName(curve_num)
         return curve_num,curve_name
     
     # The sets ------------------------------------------------
     
-    def setUnits(self,channel='a',unit='k'):
+    def setUnits(self,channel='a',unit='k'): #
         if channel in ['a','b','A','B']:
             if unit in ['k','K','s','S']:
-                self.write('inp '+channel+':unit '+ unit)
+                self.writeAndflush('inp '+channel+':unit '+ unit)
             else:
                 print('ValueError: unit can only be \'k\' or \'s\'')
                 raise ValueError
         else:
             print('ValueError: channel can only be \'a\' or \'b\'')
     
-    def setControlTemperature(self,temp,loop_channel=1):
-        self.write('loop '+str(loop_channel)+ ':setpt '+str(temp))
+    def setControlTemperature(self,temp,loop_channel=1): #
+        self.writeAndflush('loop '+str(loop_channel)+ ':setpt '+str(temp))
     
-    def setControlState(self,state='off'):
+    def setControlState(self,state='off'): #
         if state == 'off' or state == 'OFF':
-            self.write('stop')
+            self.writeAndflush('stop')
         elif state == 'on' or state == 'ON':
-            self.write('control')
+            self.writeAndflush('control')
     
-    def setTemperatureUnitsToKelvin(self,channel='A'):
+    def setTemperatureUnitsToKelvin(self,channel='A'): #
         if channel in ['A','B','a','b']:
-            self.write('Input '+channel+':units k')
+            self.writeAndflush('Input '+channel+':units k')
     
-    def setControlLoopMode(self,loop_channel,mode='off'):
+    def setControlLoopMode(self,loop_channel,mode='off'): #
         if loop_channel not in [1,2,3,4]:
             print('Invalid loop_channel: '+str(loop_channel)+'. Must be 1,2,3, or 4')
             raise ValueError
         if mode in ['off','man','pid','table','rampt','rampp','OFF','MAN','PID','TABLE','RAMPT','RAMPP']:
-            self.write('loop '+str(loop_channel)+':type '+mode)
+            self.writeAndflush('loop '+str(loop_channel)+':type '+mode)
         else:
             print('Invalid mode: '+mode+'. Only off, man, pid, table, rampt, rampp allowed.')
             raise ValueError
 
-    def setControlSource(self,loop_channel=1, t_channel='a'):
-        self.write('loop '+str(loop_channel)+':source '+t_channel)
+    def setControlSource(self,loop_channel=1, t_channel='a'): #
+        self.writeAndflush('loop '+str(loop_channel)+':source '+t_channel)
     
     def setPID(self,loop_channel,P,I,D):
         loop_channel_string=str(loop_channel)
-        self.write('loop '+loop_channel_string+':pgain '+str(P))
-        self.write('loop '+loop_channel_string+':igain '+str(I))
-        self.write('loop '+loop_channel_string+':dgain '+str(D))
+        self.writeAndflush('loop '+loop_channel_string+':pgain '+str(P)) 
+        self.writeAndflush('loop '+loop_channel_string+':igain '+str(I)) 
+        self.writeAndflush('loop '+loop_channel_string+':dgain '+str(D))
     
     def setHeaterRange(self,loop_channel,heater_range='low'):
         if loop_channel not in [1,2,3,4]:
@@ -161,32 +186,32 @@ class Cryocon22(serial_instrument.SerialInstrument):
         if heater_range not in ['low', 'mid', 'LOW','MID']:
             print('Invalid heater range: '+range+'. Only low and mid ranges allowed')
             raise ValueError
-        self.write('loop '+str(loop_channel)+':range '+heater_range)
-        return self.get('loop '+str(loop_channel)+':range?')
-    
+        self.writeAndflush('loop '+str(loop_channel)+':range '+heater_range)
+        return self.getHeaterRange(loop_channel) 
+
     def setSensorToCurve(self,t_channel='a', curve_number=2):
         ''' Assign a calibration curve to a temperature sensor.  
             curve_number2 is the factory installed LS DT-670 curve
         '''
-        self.write('input '+str(t_channel)+' sensorix '+str(curvenumber))
+        self.writeAndflush('input '+str(t_channel)+' sensorix '+str(curvenumber))
         
     def disableControlLoops(self):
-        self.write('stop')
+        self.writeAndflush('stop')
     
     def controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',PID=[1,1,1],heater_range='low'):
         ''' initialize the control loop setup '''
         loop_channel_string=str(loop_channel)
-        self.setControlSource(loop_channel,t_channel) # links control loop to thermometer t_channel
-        self.setTemperatureUnitsToKelvin(t_channel)
-        self.setHeaterRange(loop_channel, heater_range)
-        self.setPID(loop_channel,P=PID[0],I=PID[1],D=PID[2])
-        self.setControlLoopMode(loop_channel,'PID')
+        self.setControlSource(loop_channel,t_channel) # links control loop to thermometer t_channel 
+        self.setTemperatureUnitsToKelvin(t_channel) 
+        self.setHeaterRange(loop_channel, heater_range) 
+        self.setPID(loop_channel,P=PID[0],I=PID[1],D=PID[2]) 
+        self.setControlLoopMode(loop_channel,'PID') 
         self.setControlTemperature(control_temp, loop_channel)
         for ii in [1,2,3,4]: # turn all other loops off
             if ii != loop_channel:
-                self.setControlLoopMode(ii,'off')
+                self.setControlLoopMode(ii,'off') 
         print('loop channel '+loop_channel_string+' control loop config:')
-        print('source:' + self.getControlSource(loop_channel))
+        print('source:' + str(self.getControlSource(loop_channel)))
         print('Heater range: ' + self.getHeaterRange(loop_channel))
         print('PID = ',self.getPID(loop_channel))
         print('Control mode: ' + self.getControlLoopMode(loop_channel))
