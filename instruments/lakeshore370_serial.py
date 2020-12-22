@@ -480,33 +480,33 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         self.setReadChannelSetup(channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 2e3,autorange = 'on')
 
 
-    def demagSetup(self, heater_resistance=1):
+    def demagSetup(self, channel=1, heater_resistance=1):
         ''' Setup the lakeshore for demag '''
 
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=channel, units='Kelvin', maxrange=10, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'open')
         self.setControlPolarity(polarity = 'bipolar')  #Set to bipolar so that current can get to zero faster
         self.setHeaterRange(range=10)  # 1 Volt max input to Kepco for 100 Ohm shunt
         self.setReadChannelSetup(channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 2e3,autorange = 'on')
 
 
-    def setupPID(self, exciterange=3.16e-9, therm_control_channel=1, ramprate=0.05, heater_resistance=1):
+    def setupPID(self, exciterange=3.16e-9, therm_control_channel=1, ramprate=0.05, heater_resistance=1,heater_range=100,setpoint=0.035):
         '''Setup the lakeshore for temperature regulation '''
         self.setScan(channel = therm_control_channel, autoscan = 'off')
         sleep(3)
-        self.setReadChannelSetup(channel=1, mode='current', exciterange=exciterange, resistancerange=63.2e3,autorange='on')
+        self.setReadChannelSetup(channel=therm_control_channel, mode='current', exciterange=exciterange, resistancerange=63.2e3,autorange='on')
         sleep(15)  #Give time for range to settle, or servoing will fail
-        self.setReadChannelSetup(channel=1, mode='current', exciterange=exciterange, resistancerange=63.2e3,autorange='off')
+        self.setReadChannelSetup(channel=therm_control_channel, mode='current', exciterange=exciterange, resistancerange=63.2e3,autorange='off')
         sleep(2)
-        self.setTemperatureControlSetup(channel=1, units='Kelvin', maxrange=100, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
+        self.setTemperatureControlSetup(channel=therm_control_channel, units='Kelvin', maxrange=100, delay_s=2, htrres=heater_resistance, output='current', filterread='unfiltered')
         self.setControlMode(controlmode = 'closed')
         self.setControlPolarity(polarity = 'unipolar')
         self.setRamp(rampmode = 'off') #Turn off ramp mode to not to ramp setpoint down to aprox 0
         sleep(.5) #Give time for Set Ramp to take effect
-        self.SetTemperatureSetPoint(setpoint=0.035)
+        self.SetTemperatureSetPoint(setpoint=setpoint)
         sleep(.5) #Give time for Setpoint to take effect
         self.setRamp(rampmode = 'on' , ramprate = ramprate)
-        self.setHeaterRange(range=100) #Set heater range to 100mA to get 10V output range
+        self.setHeaterRange(range=heater_range) #Set heater range to 100mA to get 10V output range
         #self.SetReadChannelSetup(channel = 1, mode = 'current', exciterange = 1e-9, resistancerange = 2e3,autorange = 'on')
 
 # Public Calibration Methods
@@ -933,6 +933,22 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         polarity = switch.get(result , 'com error')
 
         return polarity
+
+    def GetScan(self):
+        ''' Determine which channel is on '''
+        switch = {
+            '0' : 'off',
+            '1' : 'on'
+        }
+
+        commandstring = 'SCAN?'
+        result = self.ask(commandstring)
+        result=result.decode()
+        results = result.split(',')
+        chan = int(results[0])
+        status = switch.get(str(int(results[1])),'com error')
+        return chan, status
+        
 
     def SetScan(self, channel = 1, autoscan = 'off'):
         ''' Set the channel autoscanner 'on' or 'off' '''
@@ -1384,3 +1400,24 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
+
+    def MagDown(self,magdowntime=25,channel=1,heater_resistance=100.0,pausetime=5.0):
+        ''' read the current heater output and mag down in magdowntime (minutes) 
+            magdowntime: time in min over which to ramp down to 0 heater output 
+            channel: thermometer channel to read
+            heater_resistance: resistance attached to the lakeshore370 heater output (this really isn't used)
+            pausetime: seconds between heater output voltage steps
+        '''
+        self.demagSetup(channel=channel, heater_resistance=heater_resistance)
+
+        magdownsteps = math.ceil(magdowntime*60/pausetime) # steps in seconds
+        idownbegin = self.getHeaterOut()
+        idownvalues = numpy.linspace(idownbegin,0,magdownsteps)
+
+        print('Demaging from heater output %.2f to 0 in %.1f minutes'%(idownbegin,magdowntime))
+        for ivalue in idownvalues:
+            print('Heater out: ',ivalue)
+            self.setManualHeaterOut(ivalue)
+            sleep(pausetime)
+
+        
