@@ -94,7 +94,7 @@ class ivCurve:
         # blackbody
         if 'coldload' in self.cfg.keys() and self.cfg['coldload']['execute']:
             self.executeColdloadIVs = True
-            self.postServoBBsettlingTime = self.cfg['coldload']['tWaitIV'] # mintues to allow blackbody to settle before measurement
+            self.tWaitIV = self.cfg['coldload']['tWaitIV'] # mintues to allow blackbody to settle before measurement
         else:
             self.executeColdloadIVs = False
 
@@ -274,7 +274,7 @@ class ivCurve:
     # blackbody temperature control methods ---------------------------------------------------------------------------------------------
     # ----------------------------------------------------------------------------------------------------------------------------- 
 
-    def coldloadServoStabilizeWait(self,temp, loop_channel,tolerance,tbbServoMaxTime=5.0,postServoBBsettlingTime=20.):
+    def coldloadServoStabilizeWait(self,temp, loop_channel,tolerance,tbbServoMaxTime=5.0,tWaitIV=20.):
         ''' servo coldload to temperature T and wait for temperature to stabilize '''
         if temp>50.0:
             print('Blackbody temperature '+str(temp)+ ' exceeds safe range.  Tbb < 50K')
@@ -293,8 +293,8 @@ class ivCurve:
             if stable_num*5/60. > tbbServoMaxTime:
                 break
                 
-        print('Letting the blackbody thermalize for ',postServoBBsettlingTime,' minutes.')
-        time.sleep(60*postServoBBsettlingTime)
+        print('Letting the blackbody thermalize for ',tWaitIV,' minutes.')
+        time.sleep(60*tWaitIV)
 
     # higher-level IV collection methods ------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
@@ -403,7 +403,7 @@ class ivCurve:
                                                               sweepUp=self.cfg['voltage_bias']['sweepUp'])
             Tb_f = self.adr.temperature_controller.GetTemperature(self.cfg['runconfig']['thermometerChannel'])
             if self.executeColdloadIVs:
-                tbb_f = self.ccon.getTemperature()
+                Tbb_f = self.ccon.getTemperature()
 
             # save the data            
             if self.cfg['runconfig']['dataFormat']=='legacy':
@@ -524,15 +524,15 @@ def main():
                     sys.exit()
                 elif tbb==0:
                     print('Tbb = 0 is a flag to take a current temperature.  No servoing')
-                    postServoBBsettlingTime=0
+                    tWaitIV=0
                 else:
                     ccon.setControlState(state='on') # this command not needed every loop.  Too stupid to figure this out now.
                     if ii==0 and cfg['coldload']['immediateFirstMeasurement']: #skip the wait time for 1st measurement
-                        postServoBBsettlingTime = 0
-                    else: postServoBBsettlingTime = cfg['coldload']['postServoBBsettlingTime']
-                print(tbb)
-                IV.coldloadServoStabilizeWait(temp=tbb, loop_channel=cfg['coldload']['loop_channel'],
-                                        tolerance=cfg['coldload']['tempBB_tolerance'],postServoBBsettlingTime=postServoBBsettlingTime)
+                        tWaitIV = 0
+                    else: 
+                        tWaitIV = cfg['coldload']['tWaitIV']
+                    IV.coldloadServoStabilizeWait(temp=tbb, loop_channel=cfg['coldload']['loop_channel'],
+                                        tolerance=cfg['coldload']['tempBB_tolerance'],tWaitIV=tWaitIV)
 
                 IV.iv_v_tbath(V_overbias,Tbb_command=tbb)
         else:
