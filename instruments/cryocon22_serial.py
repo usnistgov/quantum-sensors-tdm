@@ -3,19 +3,46 @@ cryocon22_serial
 Created on Nov, 2020 adapted from cryocon_gpib.py
 @author: hubmayr
 
-Notes:
-1) self.ask() gives a string of ###\x00\x00..., current getting rid of \x00 with split and globally in the class with get() function
-2) low, mid, high control range outputs .1, .33 and 1.0A
-3) Cold load setup (50Ohm termination resistor at room temperature, 1000 ohm heater 
+From the manual:
+
+USB configuration
+The USB connection on the Model 22C is a simple serial port emulator. Therefore,
+installation of drivers is not generally required. Once connected, configuration and
+use is identical to a standard RS-232 serial port.
+The USB serial port emulator interface supports Baud Rates of 9600, 19,200, 38,400,
+57,600 and 115200. The factory default is 9600.
+
+Other USB communications parameters are fixed in the instrument. They are:
+Parity: None, Bits: 8, Stop Bits: 1, Mode: Half Duplex
+
+Note: Ensure that the baud rate expected by your computer
+matches the baud rate set in the instrument. The rate is
+changeable from the instrument's front panel by using the System
+Functions Menu. Default is 9600.
+
+The USB interface uses a "New Line", or Line Feed character as a line termination. In
+LabView or the C programming language, this character is \n or hexadecimal 0xA.
+The controller will always return the \n character at the end of each line.
+
+My Notes:
+
+Cryocon22 can readout two thermometers labeled "CHA" or "CHB".  Thermometers are referred to as "channel" in this software.
+Unit has capability of four control loops labeled 1,2,3,4.  These are referred to as "loop_channel" in this software.
+Unit allows an number of calibration curves.  These are called by the curve_number in the software, and each curve has a name associated with it. 
+
+On software itself:
+1) line termination is actually b'\r\n' and not \n 
+
+On application to cryogenic cold load:
+1) low, mid, high control range outputs .1, .33 and 1.0A
+2) Cold load setup (50Ohm termination resistor at room temperature, 1000 ohm heater 
 resistor on the cold load itself is in parallel with this) gives max powers:
 
 low: 17.9 mW
 mid: 195 mW
 high 1.8 W, 
 
-Therefore never want to use the high range.  
-
-4) front panel doesn't update when commands are issued.  Need to flip the screen. 
+Therefore never want to use the high range, and this software forbids it.
 '''
 
 from . import serial_instrument
@@ -37,7 +64,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         '''Constructor  port is the only required parameter '''
 
         super(Cryocon22, self).__init__(port, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.15, readtimeout=0.05)
+        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.15, readtimeout=0.05, lineend = b"\r\n")
         # Empirically found that min_time_between_writes >=0.15
 
         # identity string of the instrument
@@ -49,9 +76,12 @@ class Cryocon22(serial_instrument.SerialInstrument):
     def parseAsk(self,result):
         return result.decode().split(self.lineend.decode())[0]
 
-    def writeAndflush(self,str):
-        # this is cludge because I find that after any write command a read command gives \r\n, the lineend
-        self.write(str)
+    def writeAndflush(self,thestring):
+        # this is cludge because I find that after any write command a read command gives \r\n, the lineend.
+        # This caused problems when subsequent commands asked for a response, did a single read command
+        # which reads only one line, and returned only \r\n.  Thus the solution is to just read all after 
+        # every write.  
+        self.write(thestring)
         sleep(0.15)
         self.serial.read_all()
     
@@ -96,6 +126,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         return result
     
     def getControlLoopMode(self,loop_channel=1):
+        # NOTE if PID is returned there are two extra spaces.
         result = self.ask('loop '+str(loop_channel)+':type?')
         result = self.parseAsk(result)
         return result
@@ -131,7 +162,6 @@ class Cryocon22(serial_instrument.SerialInstrument):
     
     def getCalibrationCurveForSensor(self,t_channel):
         curve_num=int(self.ask('input '+str(t_channel)+':sensor?'))
-        sleep(self.commandDelay) 
         curve_name = self.getCalibrationCurveName(curve_num)
         return curve_num,curve_name
     
@@ -193,7 +223,9 @@ class Cryocon22(serial_instrument.SerialInstrument):
         ''' Assign a calibration curve to a temperature sensor.  
             curve_number2 is the factory installed LS DT-670 curve
         '''
-        self.writeAndflush('input '+str(t_channel)+' sensorix '+str(curvenumber))
+        thestring = 'input '+str(t_channel)+':sensorix '+str(curve_number)
+        print(thestring) 
+        self.writeAndflush(thestring)
         
     def disableControlLoops(self):
         self.writeAndflush('stop')
@@ -219,7 +251,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         print('Control status: ' + self.getControlLoopState())
         
     def isTemperatureStable(self,loop_channel,tolerance=0.1):
-        t_channel=self.getControlSource(loop_channel).split('CH')[1]
+        t_channel=self.getControlSource(loop_channel).split('CH')[1] # have this as input to method to save one read/write?
         t_m = self.getTemperature(t_channel)
         t_c = self.getControlTemperature(loop_channel)
         t_error = t_m - t_c
