@@ -9,7 +9,6 @@ from . import towercard
 from cringe.shared import terminal_colors as tc
 from cringe.shared import log
 
-BAY_NAMES = ["CX","CY","DX","DY","AX","AY","BX","BY"]
 
 class LabelWidget(QWidget):
     def __init__(self, parent=None):
@@ -38,7 +37,7 @@ class TowerWidget(QWidget):
             self.layout.addWidget(tc)
 
 
-        for i,s in enumerate(["addr","name"]+BAY_NAMES+["all chn", "shock"]):
+        for i,s in enumerate(["addr","name","CX","CY","DX","DY","AX","AY","BX","BY","all chn", "shock"]):
             l = QLabel(s)
             label.layout.addWidget(l,0,i,1,1)
 
@@ -56,15 +55,6 @@ class TowerWidget(QWidget):
         if parent == None:
             self.show()
             #print self.width()
-
-    def get_bayindex(self, bayname):
-        return BAY_NAMES.index(bayname)
-
-    def set_channel_dac(self, cardname, bay_index, dacvalue):
-        self.towercards[cardname].towerchannels[bay_index].dacspin.setValue(dacvalue)
-
-    def set_card_dac(self, cardname, dacvalue):
-        self.towercards[cardname].allcontrolchannel.dacspin.setValue(dacvalue)
 
     def sendall(self):
         for key,tc in self.towercards.items():

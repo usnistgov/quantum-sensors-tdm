@@ -324,17 +324,10 @@ class VPhiDemo(QWidget):
         try:
             self._fullTune()
         except Exception as ex:
-            import traceback
-            import sys
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            s = traceback.format_exception(exc_type, exc_value, exc_traceback)
-            print("TRACEBACK")
-            print("".join(s))
-            print("TRACEBACK DONE")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText(f"tune failed with exception:\n{ex}")
-            msg.setWindowTitle("Tune Failed\nDo you need to learn columns?")
+            msg.setWindowTitle("Tune Failed")
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
 

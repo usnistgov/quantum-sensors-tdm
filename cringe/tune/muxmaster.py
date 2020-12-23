@@ -29,28 +29,6 @@ class MuxMaster():
         self.badraps = badraps
         self.badstates = badstates
 
-
-    def setTowerChannelDAC(self, cardname, bayname, dacvalue):
-        bay_index = self.cringe.tower_widget.get_bayindex(bayname)
-        self.cringe.tower_widget.set_channel_dac(cardname, bay_index, dacvalue)
-
-    def setTowerCardAllChannelsToSameDAC(self, cardname, dacvalue):
-        self.cringe.tower_widget.set_card_dac(cardname, bay_index, dacvalue)
-
-    def relockFBA(self, col, row):
-        dfbrap=self.dfbraps[col]
-        chn = dfbrap.state_vectors[row]
-        if chn.FBA_button.isChecked():
-            chn.FBA_button.setChecked(False)
-        chn.FBA_button.setChecked(True)
-
-    def relockFBB(self, col, row):
-        dfbrap=self.dfbraps[com]
-        chn = dfbrap.state_vectors[row]
-        if chn.FBB_button.isChecked():
-            chn.FBB_button.setChecked(False)
-        chn.FBB_button.setChecked(True)
-
     def getdacAoffsets(self):
         dacAoffsets = []
         for dfbrap in self.dfbraps:
