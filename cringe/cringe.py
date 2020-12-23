@@ -929,7 +929,14 @@ class Cringe(QtWidgets.QWidget):
                 success, extra_info = f(*command_args)
             except Exception as ex:
                 success = False
-                extra_info = f"Exception: {ex}"
+                import traceback
+                import sys
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                s = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                print("TRACEBACK")
+                print("".join(s))
+                print("TRACEBACK DONE")
+                extra_info = f"Exception: {ex}\n{s}"
         else:
             success = False
             extra_info = f"`{message}` invalid, must be one of {list(self.cringe_commands.keys())}"
@@ -970,6 +977,23 @@ class Cringe(QtWidgets.QWidget):
             return False, "tune client failed to connect, is dastard lancero source running?"
         self.tune_widget.vphidemo.fullTune()
         llog.debug("done")
+        return True, ""
+
+    def rpc_set_tower_channel(self, cardname, bayname, dacvalue):
+        self.tune_widget.mm.setTowerChannelDAC(cardname, bayname, int(dacvalue))
+        return True, ""
+
+    def rpc_set_tower_card_all_channels(self, cardname, dacvalue):
+        self.tune_widget.mm.setTowerCardAllChannelsToSameDAC(cardname, int(dacvalue))
+
+
+    def rpc_relock_fba(self, colnum, rownum):
+        self.tune_widget.mm.relockFBA(int(colnum), int(rownum))
+        return True, ""
+            
+
+    def rpc_relock_fbb(self, colnum, rownum):
+        self.tune_widget.mm.relockFBB(int(colnum), int(rownum))    
         return True, ""
 
     def get_class_var(self, arg1):
