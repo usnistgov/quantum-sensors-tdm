@@ -224,7 +224,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
             curve_number2 is the factory installed LS DT-670 curve
         '''
         thestring = 'input '+str(t_channel)+':sensorix '+str(curve_number)
-        print(thestring) 
+        #print(thestring) 
         self.writeAndflush(thestring)
         
     def disableControlLoops(self):
