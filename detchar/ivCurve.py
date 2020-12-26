@@ -518,7 +518,6 @@ def main():
     if 'coldload' in cfg.keys():
         if cfg['coldload']['execute']:
             ccon = Cryocon22()
-            controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',PID=[1,1,1],heater_range='low')
             ccon.controlLoopSetup(loop_channel=cfg['coldload']['loop_channel'],control_temp=cfg['coldload']['bbTemperatures'][0],
                                 t_channel=cfg['coldload']['t_channel'],PID=cfg['coldload']['PID'], heater_range='low') # setup BB control
         else: ccon=None
