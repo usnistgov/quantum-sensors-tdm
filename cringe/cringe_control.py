@@ -108,7 +108,7 @@ class CringeControl:
     def relock_fba(self, col, row):
         return self.send(' '.join(('relock_fba', str(int(col)), str(int(row)))))
 
-    def relock_fba(self, col, row):
+    def relock_fbb(self, col, row):
         return self.send(' '.join(('relock_fbb', str(int(col)), str(int(row)))))
 
     def test(self):
