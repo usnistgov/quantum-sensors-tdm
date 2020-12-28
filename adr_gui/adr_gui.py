@@ -534,8 +534,9 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.printStatus("temp set point should = 0, waiting for heater out = 0.0 before switching to mag up")
             if self.tempControl.getSetTemp() > 0.001: self.tempControl.setSetTemp(0.001)
         elif self.lastHOut == 0.0:
-            if self.lastTemp_K>4:
-                print(("in GoingToMagUp state, but temp = %f is too high, needs to be below 4"%self.lastTemp_K))
+            LIMIT = 4.1
+            if self.lastTemp_K>LIMIT:
+                print(f"in GoingToMagUp state, but temp = {self.lastTempK} is too high, needs to be below {LIMIT}")
             else:
                 time.sleep(5.0)
                 self.SIG_startMagUp.emit()
