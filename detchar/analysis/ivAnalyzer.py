@@ -27,8 +27,13 @@ class ivAnalyzer(object):
 
         # determine if file has data looped over bath temperature or coldload or both
         self.determineTemperatureSweeps()
-        self.v=self.ivdict['v']
-        self.v_ascending_order = False
+        self.v_orig=self.ivdict['v']
+        if (self.v_orig[1] - self.v_orig[0]) < 0:
+            self.v = self.v_orig[::-1]
+            self.v_ascending_order=False
+        else:
+            self.v = self.v_orig 
+            self.v_ascending_order=True
         self.n_vbias = len(self.v)
 
         # load row to detector map if provided
@@ -105,23 +110,17 @@ class ivAnalyzer(object):
     def plotCLresponse(self,col,row,Tb):
         result = self.constructVfbArray(col,row,Tb)
         for ii in range(self.n_cl_temps):
-            plt.plot(self.v,result[:,ii])
+            plt.plot(self.v_orig,result[:,ii])
         plt.show()
 
     # iv analysis steps -----------------
     def makeAscendingOrder(self,y):
-        if (self.v[1] - self.v[0]) < 0:
-            self.v_ascending_order=True
-            self.v = self.v[::-1]
-        y = y[::-1]
+        if not self.v_ascending_order:
+            y = y[::-1]
         return y
     
     def removeOffset(self,vfb,intercept='normal',debug=False):
         ''' remove iv curve dc offset.  vfb also forced to have positive slope in normal branch. '''
-        if not self.v_ascending_order:
-            print('array is not ascending order. Abort!')
-            sys.exit()
-
         n,m=np.shape(vfb)
 
         if intercept=='normal':
@@ -135,8 +134,9 @@ class ivAnalyzer(object):
             # fit "normal" branch
             pvals=np.zeros((m,2))
             for ii in range(m):
-                pval = np.polyfit(self.v[dex[ii]:],vfb[dex[ii]:,ii],1) # index determined by deviation from flat
-                #pval = np.polyfit(self.v[-10:],vfb[-10:,ii],1) # fixed index provided
+                #pval = np.polyfit(self.v[dex[ii]:],vfb[dex[ii]:,ii],1) # index determined by deviation from flat
+                # pval[0] = slope, pval[1] = offset
+                pval = np.polyfit(self.v[-11:-1],vfb[-11:-1,ii],1) # fixed index provided
                 pvals[ii,:] = pval
             #pvals = np.polynomial.polynomial.polyfit(self.v[dex:],vfb[dex:,:],1) 
             vfb_corr = vfb - pvals[:,1] 
@@ -144,6 +144,10 @@ class ivAnalyzer(object):
             # if normal branch slope negative, make positive
             if pvals[0,0] < 0:
                 vfb_corr = -1*vfb_corr
+
+            # force all in set to have same DC offset
+            offset_delta = vfb_corr[-2,:] - vfb_corr[-2,0]
+            vfb_corr = vfb_corr - offset_delta
         else:
             print('only intercept=normal currently supported')
 
@@ -151,8 +155,8 @@ class ivAnalyzer(object):
             x_fit = np.linspace(0,np.max(self.v),100)
             for ii in range(m):
                 fig, (ax0,ax1) = plt.subplots(nrows=2,ncols=1,sharex=True,figsize=(6,12))
-                #ax0.plot(self.v,vfb,'bo')
-                #ax0.plot(self.v[dex[ii]:],vfb[dex[ii]:,ii],'ro')
+                ax0.plot(self.v,vfb[:,ii],'bo')
+                ax0.plot(self.v[dex[ii]:],vfb[dex[ii]:,ii],'ro')
                 y_fit = np.polyval(pvals[ii,:],x_fit)
                 ax0.plot(x_fit,y_fit,'r--')
                 ax0.set_ylabel('Vfb raw (V)')
@@ -160,13 +164,11 @@ class ivAnalyzer(object):
                 print(pvals[ii,:])
                 ax1.plot(self.v,vfb_corr[:,ii],'bo')
                 y_fit2 = np.polyval([abs(pvals[ii][0]),0],x_fit)
-                ax1.plot(x_fit,y_fit2,'r-')
+                ax1.plot(x_fit,y_fit2,'r--')
                 ax1.set_ylabel('Vfb offset removed (V)')
                 ax1.set_xlabel('raw voltage bias (V)')
                 ax1.legend(('data','fit'))
                 plt.show()
-                #plt.clf()
-                #plt.cla()
         return vfb_corr, pvals
 
     def toPhysicalUnitsSimple(self,y):
@@ -174,19 +176,73 @@ class ivAnalyzer(object):
         x = self.v / self.Rb * self.Rshunt
         return x,y_corr
 
-    def foo(self,col,row,Tb):
-        y = self.constructVfbArray(col,row,Tb)
-        y = self.makeAscendingOrder(y)
-        vfb_corr, pvals = self.removeOffset(y,intercept='normal',debug=False)
-        x,vfb_corr = self.toPhysicalUnitsSimple(vfb_corr)
-        n,m = np.shape(vfb_corr)
+    def plotResults(self,col,row,Tb):
+        ''' Plot IV results for a series of IV curves for column "col" and row "row"
+
+            fig1: raw IV 
+            fig2: 2x2
+            a: converted IV
+            b: converted PV 
+            c: converted RP
+            d: converted RoP
+        ''' 
+        result = self.constructVfbArray(col,row,Tb)
+        y=self.makeAscendingOrder(result)
+        y,pvals = self.removeOffset(y,intercept='normal',debug=False)
+        x,y_phys = self.toPhysicalUnitsSimple(y)
+        n,m = np.shape(y)
+
+        # fig 0: raw IV
+        fig0, (ax0) = plt.subplots(nrows=1,ncols=1,sharex=False,figsize=(6,4))
         for ii in range(m):
-            plt.plot(x*vfb_corr[:,ii]*1e12,x/vfb_corr[:,ii])
-            plt.xlabel('Power (pW) ')
-            plt.ylabel('Resistance ($\Omega$)')
+            ax0.plot(self.v_orig,result[:,ii])
+        ax0.set_xlabel('Raw Voltage (V)')
+        ax0.set_ylabel('Raw Feedback Voltage (V)')
+        ax0.grid()
+
+        # fig 1: 2x2 IV, PV, RP, Ro vs P
+        v = x*1e6 
+        i = y_phys*1e6 
+        r = np.zeros((n,m))
+        p = np.zeros((n,m))
+        for ii in range(m):
+            r[:,ii] = v/i[:,ii]*1000
+            p[:,ii] = i[:,ii]*v
+
+        fig1, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,12))
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+        for ii in range(m):
+            ax[0].plot(v,i[:,ii])
+            ax[1].plot(v,p[:,ii])
+            ax[2].plot(p[:,ii],r[:,ii])
+            ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
+        xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','P (pW)']
+        ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R/R$_o$']
+        for ii in range(4):
+            ax[ii].set_xlabel(xlabels[ii])
+            ax[ii].set_ylabel(ylabels[ii])
+            ax[ii].grid()
+
+        # plot ranges
+        ax[0].set_xlim((0,np.max(v)*1.1))
+        ax[0].set_ylim((0,np.max(i)*1.1))
+        ax[1].set_xlim((0,np.max(v)*1.1))
+        ax[1].set_ylim((0,np.max(p)*1.1))
+        ax[2].set_xlim((0,np.max(p)*1.1))
+        ax[2].set_ylim((0,np.max(r[-1,:])*1.1))
+        ax[3].set_xlim((0,np.max(p)*1.1))
+        ax[3].set_ylim((0,1.1))
+
         plt.show()
 
-
+    def foo(self,col,row,Tb):
+        y=self.constructVfbArray(col,row,Tb)
+        y=self.makeAscendingOrder(y)
+        y,pvals = self.removeOffset(y,intercept='normal',debug=False)
+        plt.plot(pvals[:,0],'bo-') # slope
+        plt.plot(pvals[:,1],'ro-') # offset
+        plt.legend(('slope','offset'))
+        plt.show()
 
 
 
