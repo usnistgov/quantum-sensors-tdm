@@ -23,8 +23,6 @@ pyYAML
 
 to do:
 mapping of rows/ra to row index 
-handle rows not locked
-
 
 Notes:
 **IF ALL THREE FIBERS RUNNING**
@@ -35,13 +33,6 @@ The 0th index (column) has perhaps a funny indexing
 1: dfbx2 ch2
 2: dfb/clk ch1 
 This is defined by what fibers are installed where.
-
-**IF ALL THREE FIBERS RUNNING**
-dfb_card    server col index    cringe col index
-dfb/clk ch1    2                0
-dfbx2 ch1      0                1
-dfbx2 ch2      1                2   
-
 '''
 
 # standard python module imports
@@ -87,7 +78,7 @@ class ivCurve:
         self.dfb_col_index = self.cfg['dfb']['dfb_card_index'] # index used for cringe control
         self.ec_col_index = self.cfg['dfb']['ec_col_index'] # index of returned data structure corresponding to desired column
         self.dfb_row_index = range(0,self.nrow) # a list
-        self.makeLockedRows()  
+        self.defineLockedRows()  
 
         # static globals
         # iv config 
@@ -134,18 +125,33 @@ class ivCurve:
         else:
             return True
 
-    def makeLockedRows(self):
-        self.row_index_not_locked = self.cfg['dfb']['row_index_not_locked']
-        self.dfb_rowindex_to_lock = list(range(0,self.nrow))
-        if not self.row_index_not_locked: #row_indec_not_locked empty
-            for ii in self.row_index_not_locked:
-                print('unlocking row index: ',ii)
-                self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows
-                self.dfb_rowindex_to_lock.pop(ii)
-        # explicitly lock all requested rows:
-        for ii in self.dfb_rowindex_to_lock:
-            self.cc.set_fb_lock(1,self.dfb_col_index,ii,a_or_b='A') # lock these specific rows
+    def defineLockedRows(self):
+        ''' define which rows show have feedback locked and which rows remain unlocked.  
+            This method explicitly unlocks specified channels and locks the others 
+            Creates global variables:
+
+            self.dfb_rowindex_unlocked 
+            self.dfb_rowindex_locked 
+        '''
+        self.dfb_rowindex_unlocked = self.cfg['dfb']['dfb_rowindex_unlocked']
+        dfb_rowindex_locked = list(range(0,self.nrow))
+        if self.dfb_rowindex_unlocked: # if there are rows to leave unlocked 
+            for ii in self.dfb_rowindex_unlocked:
+                self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows, does this work with Galen's revision????
+            self.dfb_rowindex_locked = list(np.delete(dfb_rowindex_locked,self.dfb_rowindex_unlocked))
+        else:
+            self.dfb_rowindex_locked = dfb_rowindex_locked 
+        print('Row indexs to lock: ',self.dfb_rowindex_locked)
         
+        # explicitly lock all requested rows:
+        for ii in self.dfb_rowindex_locked:
+            #self.cc.set_fb_lock(1,self.dfb_col_index,ii,a_or_b='A') # lock these specific rows
+            self.cc.relock_fba(self.dfb_col_index,ii)
+
+    def savePickle(self,return_dict):
+        f = open(self.pickle_file, 'wb')
+        pickle.dump(return_dict, f)
+        f.close()
     # data collection methods -----------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
@@ -182,12 +188,12 @@ class ivCurve:
         if autoRange:
             above = np.where(data_mean[self.ec_col_index,:,1]>v_lim[1])[0]
             below = np.where(data_mean[self.ec_col_index,:,1]<v_lim[0])[0]
-            dexs = np.hstack((above,below))
-            # remove rows not locked from dexs
+            dexs = np.sort(np.hstack((above,below)))
+            # remove rows defined in self.dfb_rowindex_unlocked from dexs
             if dexs.size:
-                if self.row_index_not_locked:
-                    common_dexs = list(set(dexs).intersection(self.row_index_not_locked))
-                    dexs = np.delete(dexs,common_dexs)
+                if self.dfb_rowindex_unlocked:
+                    common_dexs = list(set(dexs).intersection(self.dfb_rowindex_unlocked))
+                    dexs = np.setdiff1d(dexs,common_dexs)
             
             if dexs.size:
                 print('autoRange dectected.  Relocking feedback on row indicies: ',dexs)
@@ -337,7 +343,7 @@ class ivCurve:
                 
 
         # if row=='all':
-        #     for ii in self.dfb_rowindex_to_lock:
+        #     for ii in self.dfb_rowindex_locked:
         #     #self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) # unlock, # used with Gene's version of cringe_control
         #     #self.cc.set_fb_lock(1,self.dfb_col_index,row,a_or_b) # relock, # used with Gene's version of cringe_control
         #         if a_or_b=='A':
@@ -365,7 +371,7 @@ class ivCurve:
         # set to initial point and relock all
         self.vs.setvolt(v_arr[0])
         time.sleep(self.relock_delay)
-        for ii in self.dfb_rowindex_to_lock:
+        for ii in self.dfb_rowindex_locked:
             self.relock(ii)
         time.sleep(self.relock_delay)
 
@@ -468,10 +474,7 @@ class ivCurve:
         ret_dict = {'v':v_arr,'config':self.cfg,'iv':iv_structure}
         return ret_dict
     
-    def savePickle(self,return_dict):
-        f = open(self.pickle_file, 'wb')
-        pickle.dump(return_dict, f)
-        f.close()
+    
 
                 
 
@@ -573,7 +576,7 @@ def main():
     print('Rows: ',mux_rows,'\nBath temperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
     if 'coldload' in cfg.keys(): 
         if cfg['coldload']['execute']:
-            print('Coldload Temperatures: ',cfg['coldlad']['bbTemperatures'])
+            print('Coldload Temperatures: ',cfg['coldload']['bbTemperatures'])
             iv_results = []
             for ii, tbb in enumerate(cfg['coldload']['bbTemperatures']): # loop over coadload temps
                 if tbb>50.0:
@@ -602,14 +605,18 @@ def main():
         else:
             ret_dict = IV.iv_v_tbath(V_overbias)
             if cfg['runconfig']['dataFormat']!='legacy':
+                ret_dict['iv'] = [ret_dict['iv']] # nested list to ease data processing in ivAnalyzer.py
                 IV.savePickle(ret_dict)
     else:
         ret_dict = IV.iv_v_tbath(V_overbias)
         if cfg['runconfig']['dataFormat']!='legacy':
-            IV.savePickle(ret_dict)
+            ret_dict['iv'] = [ret_dict['iv']]
+            IV.savePickle(ret_dict) # nested list to ease data processing in ivAnalyzer.py
 
     if cfg['voltage_bias']['setVtoZeroPostIV']:
         vs.setvolt(0)    
+
+    print('Data saved at: ',pickle_file)
             
 if __name__ == '__main__': 
     main()
