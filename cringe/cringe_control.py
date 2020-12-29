@@ -10,10 +10,6 @@ CRINGE_PORT = 5509
 CRINGE_COMMANDS = {
     'setup_crate':{'fname':'full_crate_init', 'args':None, 'help':'Full crate init'},
     'full_tune':{'fname': 'extern_tune', 'args':None, 'help':'Full tune'},
-    # 'get_class_var':{'fname':'get_class_var', 'args':['varname'], 'help':'Return the str rep of a class variable'}, 
-    # 'get_num_rows':{'fname':'get_num_rows', 'args':None, 'help':'Return number or rows or seqln'},
-    # 'get_fb_lock':{'fname':'get_fb_lock', 'args':['column', 'row'], 'help':'Check the state of the fb lock. Requires col, row a/b'},      
-    # 'set_fb_lock':{'fname':'set_fb_lock', 'args':['column', 'row', 'lock'], 'help':'Set the state of the fb lock. Requires state, col, row, a/b'},            
     'relock_fba':{'fname':'rpc_relock_fba', 'args': ['col', 'row'], 'help': 'relock FBA for col and row, column matches dastard after tune'},
     'relock_fbb':{'fname':'rpc_relock_fbb', 'args': ['col', 'row'], 'help': 'relock FBB for col and row, column matches dastard after tune'},
     'set_tower_channel':{'fname':'rpc_set_tower_channel', 'args':['cardname', 'bayname', 'dacvalue'], 'help':'set the dac value for a tower card by cardname and bayname (strings)'},
@@ -48,55 +44,6 @@ class CringeControl:
         ''' This command was in cringe before I added this module'''
         command = 'full_tune'
         reply = self.send(command)
-        return reply
-
-    def get_class_var(self, varname):
-        ''' Get the str rep of a class variable of cringe - for example
-        load_filename  will get the name of the current config file'''
-        command = 'get_class_var'
-        if len(varname.split()) != 1:
-            return 'bad_argument: no spaces in varname'
-        reply = self.send(' '.join((command, varname)))
-        return reply
-
-    def get_fb_lock(self, col, row, a_or_b='A' ):
-        ''' gets the current fb lock state of mux position'''
-        mycol = str(int(col))
-        if row != '*':
-            myrow = str(int(row))
-        else:
-            myrow = '*'
-        myaorb = None
-        if a_or_b.upper() == 'A':
-            myaorb = 'A'
-        elif a_or_b.upper() == 'B':
-            myaorb = 'B'
-        if myaorb is None:
-            return 'bad_argument: only A or B'
-        command = 'get_fb_lock'
-        reply = self.send(' '.join((command, mycol, myrow, myaorb)))
-        return reply
-
-    def set_fb_lock(self, state, col, row, a_or_b='A' ):
-        ''' sets the current fb lock state of mux position'''
-        if state:
-            mystate = '1'
-        else:
-            mystate = '0'
-        mycol = str(int(col))
-        if row != '*':
-            myrow = str(int(row))
-        else:
-            myrow = '*'
-        myaorb = None
-        if a_or_b.upper() == 'A':
-            myaorb = 'A'
-        elif a_or_b.upper() == 'B':
-            myaorb = 'B'
-        if myaorb is None:
-            return 'bad_argument: only A or B'
-        command = 'set_fb_lock'
-        reply = self.send(' '.join((command, mystate, mycol, myrow, myaorb)))
         return reply
 
     def set_tower_channel(self, cardname, bayname, dacvalue):

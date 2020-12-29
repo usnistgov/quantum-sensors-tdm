@@ -915,13 +915,6 @@ class Cringe(QtWidgets.QWidget):
         # original commands were uppercase - still accept those
         command = command_words[0].lower()
         command_args = command_words[1:]
-# how it was originally done
-#         d = {"SETUP_CRATE": self.full_crate_init,
-#              "FULL_TUNE": self.extern_tune,
-#              "DUMB_TEST": self.dumb_test,
-#              'get': self.getstuff}
-#         if command in d:
-#             f = d[command]
         if command in self.cringe_commands:
             f = self.cringe_commands[command]['func']
             llog.info(f"calling: {f}")
@@ -995,89 +988,6 @@ class Cringe(QtWidgets.QWidget):
     def rpc_relock_fbb(self, colnum, rownum):
         self.tune_widget.mm.relockFBB(int(colnum), int(rownum))    
         return True, ""
-
-    def get_class_var(self, arg1):
-        '''give the remove use some way to get the value of instance variable '''
-        if arg1 in self.__dict__:
-            return True, str(self.__dict__[arg1])
-        return False, 'class variable %s not found' % arg1
-
-    def get_num_rows(self):
-        return True,str(self.seqln)
-
-    def get_fb_lock(self, col, row, a_or_b):
-        numcols = 0
-        numrows = self.seqln
-        columnwidgets = []
-
-        for cardindex, card in enumerate(self.class_vector):
-            if card == 'DFBCLK':
-                numcols += 1
-                columnwidgets.append(self.crate_widgets[cardindex].dfbclk_widget1)
-                continue
-            if card == 'DFBx2':
-                numcols += 2
-                columnwidgets.append(self.crate_widgets[cardindex].dfbx2_widget1)
-                columnwidgets.append(self.crate_widgets[cardindex].dfbx2_widget2)
-
-        mycol = int(col)
-        if mycol not in range(numcols):
-            raise ValueError('bad column in get_fb_lock')
-        if row == '*':
-            if a_or_b == 'A':
-                # note = cam use master_vector for all in column
-                value = columnwidgets[mycol].master_vector.FBA_button.isChecked()
-            else:
-                value = columnwidgets[mycol].master_vector.FBB_button.isChecked()
-            if value:
-                return True, '1'
-        else:
-            myrow = int(row)
-            if  myrow not in range(numrows):
-                raise ValueError('bad row in get_fb_lock')
-            if a_or_b == 'A':
-                # note = cam use master_vector for all in column
-                value = columnwidgets[mycol].state_vectors[myrow].FBA_button.isChecked()
-            else:
-                value = columnwidgets[mycol].state_vectors[myrow].FBB_button.isChecked()
-            if value:
-                return True, '1'
-        return True, '0'
-
-    def set_fb_lock(self, state, col, row, a_or_b):
-        numcols = 0
-        numrows = self.seqln
-        columnwidgets = []
-
-        for cardindex, card in enumerate(self.class_vector):
-            if card == 'DFBCLK':
-                numcols += 1
-                columnwidgets.append(self.crate_widgets[cardindex].dfbclk_widget1)
-                continue
-            if card == 'DFBx2':
-                numcols += 2
-                columnwidgets.append(self.crate_widgets[cardindex].dfbx2_widget1)
-                columnwidgets.append(self.crate_widgets[cardindex].dfbx2_widget2)
-
-        mystate = bool(int(state))
-        mycol = int(col)
-        if mycol not in range(numcols):
-            raise ValueError('bad column in get_fb_lock')
-        if row == '*':
-            if a_or_b == 'A':
-                columnwidgets[mycol].master_vector.FBA_button.setChecked(mystate)
-            else:
-                columnwidgets[mycol].master_vector.FBB_button.setChecked(mystate)
-            
-        else:
-            myrow = int(row)
-            if  myrow not in range(numrows):
-                raise ValueError('bad row in get_fb_lock')
-            if a_or_b == 'A':
-                columnwidgets[mycol].state_vectors[myrow].FBA_button.setChecked(mystate)
-            else:
-                columnwidgets[mycol].state_vectors[myrow].FBB_button.setChecked(mystate)
-        return True, ''
 
     def seqln_changed(self):
         if self.seqln_timer == None:
