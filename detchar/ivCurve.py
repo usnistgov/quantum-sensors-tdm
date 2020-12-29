@@ -79,7 +79,7 @@ class ivCurve:
         # filename of return data structure
         self.pickle_file = pickle_file
 
-        # mux 
+        # mux and dfb
         self.colName = self.cfg['detectors']['Column']
         self.rowAddName = self.cfg['detectors']['Rows']
         self.ncol = self.ec.ncol 
@@ -142,6 +142,9 @@ class ivCurve:
                 print('unlocking row index: ',ii)
                 self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows
                 self.dfb_rowindex_to_lock.pop(ii)
+        # explicitly lock all requested rows:
+        for ii in self.dfb_rowindex_to_lock:
+            self.cc.set_fb_lock(1,self.dfb_col_index,ii,a_or_b='A') # lock these specific rows
         
     # data collection methods -----------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------

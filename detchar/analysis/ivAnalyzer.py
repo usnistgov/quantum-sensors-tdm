@@ -89,7 +89,7 @@ class ivAnalyzer(object):
         else: 
             self.coldloadExecute = False 
             self.bbTemps=None
-            self.n_col_temps=0 
+            self.n_cl_temps=0 
 
         self.TbTemps = self.config['runconfig']['bathTemperatures']
         self.n_Tb_temps = len(self.ivdatadict[0])
@@ -244,6 +244,10 @@ class ivAnalyzer(object):
         plt.legend(('slope','offset'))
         plt.show()
 
+    def foo2(self,col,row):
+        vfb=self.ivdatadict[0]['data'][col,row,:,1]
+        plt.plot(self.v_orig,vfb)
+        plt.show()
 
 
 
