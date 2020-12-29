@@ -87,7 +87,7 @@ class ivCurve:
         self.dfb_col_index = self.cfg['dfb']['dfb_card_index'] # index used for cringe control
         self.ec_col_index = self.cfg['dfb']['ec_col_index'] # index of returned data structure corresponding to desired column
         self.dfb_row_index = range(0,self.nrow) # a list
-        self.row_index_not_locked = self.cfg['dfb']['row_index_not_locked']  
+        self.makeLockedRows()  
 
         # static globals
         # iv config 
@@ -116,9 +116,9 @@ class ivCurve:
             sys.exit()
 
 
-    # I don't use the two below, but may be useful in future for error handling since much setup is assumed for this script to work
+    # helper methods 
     # -----------------------------------------------------------------------------------------------------------------------------
-    
+    # Currently not used but may be useful in future for error handling since much setup is assumed for this script to work
     def findThisProcess(self, process_name ):
         ps = subprocess.Popen("ps -eaf | grep "+process_name, shell=True, stdout=subprocess.PIPE)
         output = ps.stdout.read()
@@ -126,6 +126,7 @@ class ivCurve:
         ps.wait()
         return output
 
+    # Currently not used but may be useful in future for error handling since much setup is assumed for this script to work
     def isThisRunning(self, process_name ):
         output = findThisProcess( process_name )
         if re.search('path/of/process'+process_name, output) is None:
@@ -133,6 +134,15 @@ class ivCurve:
         else:
             return True
 
+    def makeLockedRows(self):
+        self.row_index_not_locked = self.cfg['dfb']['row_index_not_locked']
+        self.dfb_rowindex_to_lock = list(range(0,self.nrow))
+        if not self.row_index_not_locked: #row_indec_not_locked empty
+            for ii in self.row_index_not_locked:
+                print('unlocking row index: ',ii)
+                self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows
+                self.dfb_rowindex_to_lock.pop(ii)
+        
     # data collection methods -----------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
@@ -170,21 +180,24 @@ class ivCurve:
             above = np.where(data_mean[self.ec_col_index,:,1]>v_lim[1])[0]
             below = np.where(data_mean[self.ec_col_index,:,1]<v_lim[0])[0]
             dexs = np.hstack((above,below))
+            # remove rows not locked from dexs
+            if dexs.size:
+                if self.row_index_not_locked:
+                    common_dexs = list(set(dexs).intersection(self.row_index_not_locked))
+                    dexs = np.delete(dexs,common_dexs)
             
             if dexs.size:
                 print('autoRange dectected.  Relocking feedback on row indicies: ',dexs)
                 ar['flag']=True
                 ar['indicies']=dexs
                 for dex in dexs:
-                    self.relock(dfb_row_index=[dex], a_or_b='A')
+                    self.relock(dex,a_or_b='A')
                 time.sleep(self.relock_delay)
                 data_new = self.ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
-                #time.sleep(1)
-                #data_new = self.ec.getNewData(minimumNumPoints=npts,exactNumPoints=True,toVolts=True)
                 data_new_mean = np.mean(data_new,axis=2)
                 #data_new_std = np.std(data,axis=2)
                 dv = data_mean - data_new_mean
-                print(dv[self.ec_col_index,:,1][[dexs]])
+                #print(dv[self.ec_col_index,:,1][[dexs]])
                 ar['offset'][self.ec_col_index,:][[dexs]] = dv[self.ec_col_index,:,1][[dexs]]
 
         return data_mean, ar 
@@ -306,27 +319,34 @@ class ivCurve:
     # higher-level IV collection methods ------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------------------------------
 
-    def relock(self,dfb_row_index='all', a_or_b='A'):
+    def relock(self,dfb_row_index,a_or_b='A'):
         ''' 
-            open and close the feedback loop for rows on a single column
+            open and close the feedback loop for row
 
-            dfb_col_index: integer corresponding to fiber index 
-            dfb_row_index: <list> row indicies in column to relock 
-            a_or_b: select feedback to lock 'A' or 'B'
+            dfb_row_index: <integer> index in line period to relock
+            a_or_b: <str> select feedback to lock 'A' or 'B'
         '''
 
-        # error handling if col or row index does not exist for future
-        if dfb_row_index=='all':
-            dfb_row_index=self.dfb_row_index
+        if a_or_b=='A':
+            self.cc.relock_fba(col=self.dfb_col_index, row=dfb_row_index) # used with Galen's update to cringe_control
+        elif a_or_b=='B':
+            self.cc.relock_fbb(col=self.dfb_col_index, row=dfb_row_index) # used with Galen's update to cringe_control
+                
 
-        for row in dfb_row_index:
-            if self.row_index_not_locked !=None and row in self.row_index_not_locked: # set unlocked if listed in row_index_not_locked
-                self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) # used with Gene's version of cringe_control
-                #pass
-            else:
-                self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) # unlock, # used with Gene's version of cringe_control
-                self.cc.set_fb_lock(1,self.dfb_col_index,row,a_or_b) # relock, # used with Gene's version of cringe_control
-                #self.cc.relock_fba(col=self.dfb_col_index, row=row) # Galen's version of cringe_control
+        # if row=='all':
+        #     for ii in self.dfb_rowindex_to_lock:
+        #     #self.cc.set_fb_lock(0,self.dfb_col_index,row,a_or_b) # unlock, # used with Gene's version of cringe_control
+        #     #self.cc.set_fb_lock(1,self.dfb_col_index,row,a_or_b) # relock, # used with Gene's version of cringe_control
+        #         if a_or_b=='A':
+        #             self.cc.relock_fba(col=self.dfb_col_index, row=ii) # used with Galen's update to cringe_control
+        #         elif a_or_b=='B':
+        #             self.cc.relock_fbb(col=self.dfb_col_index, row=ii) # used with Galen's update to cringe_control
+        # else:
+        #     if a_or_b=='A':
+        #         self.cc.relock_fba(col=self.dfb_col_index, row=row) # used with Galen's update to cringe_control
+        #     elif a_or_b=='B':
+        #         self.cc.relock_fbb(col=self.dfb_col_index, row=row) # used with Galen's update to cringe_control
+                
 
     def iv_sweep(self, v_start=0.1,v_stop=0,v_step=0.01,sweepUp=False):
         ''' v_start: initial voltage
@@ -339,9 +359,11 @@ class ivCurve:
         if not sweepUp:
             v_arr=v_arr[::-1]
         
-        # set to initial point and relock
+        # set to initial point and relock all
         self.vs.setvolt(v_arr[0])
-        self.relock()
+        time.sleep(self.relock_delay)
+        for ii in self.dfb_rowindex_to_lock:
+            self.relock(ii)
         time.sleep(self.relock_delay)
 
         # take data at all voltage bias points
@@ -483,7 +505,7 @@ def main():
     localtime=time.localtime()
     thedate=str(localtime[0])+'%02i'%localtime[1]+'%02i'%localtime[2]
     etime = str(time.time()).split('.')[0]
-    filename = cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+etime #cfg['io']['suffix']
+    filename = cfg['io']['RootPath']+cfg['detectors']['DetectorName']+'_'+baystring+'_ivs_'+thedate+'_'+etime
     pickle_file=filename+'.pkl' 
 
     # defined tower card addresses for needed voltage sources
@@ -545,9 +567,10 @@ def main():
 
     print('\n'*5)
     print('\n\nStarting IV acquisition script on ',baystring,'*'*80)
-    print('Rows: ',mux_rows,'\nTemperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
+    print('Rows: ',mux_rows,'\nBath temperatures:',cfg['runconfig']['bathTemperatures'],'\nData will be saved in file: ',pickle_file)
     if 'coldload' in cfg.keys(): 
         if cfg['coldload']['execute']:
+            print('Coldload Temperatures: ',cfg['coldlad']['bbTemperatures'])
             iv_results = []
             for ii, tbb in enumerate(cfg['coldload']['bbTemperatures']): # loop over coadload temps
                 if tbb>50.0:
