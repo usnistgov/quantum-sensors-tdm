@@ -980,14 +980,41 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.mm.setTowerCardAllChannelsToSameDAC(cardname, int(dacvalue))
 
 
-    def rpc_relock_fba(self, colnum, rownum):
-        self.tune_widget.mm.relockFBA(int(colnum), int(rownum))
+    def rpc_relock_fba(self, col, row):
+        self.tune_widget.mm.relockFBA(int(col), int(row))
         return True, ""
             
 
-    def rpc_relock_fbb(self, colnum, rownum):
-        self.tune_widget.mm.relockFBB(int(colnum), int(rownum))    
+    def rpc_relock_fbb(self, col, row):
+        self.tune_widget.mm.relockFBB(int(col), int(row))    
         return True, ""
+
+    def rpc_relock_all_locked_fba(self, col):
+        for row in range(self.seqln):
+            self.tune_widget.mm.relockFBAifLocked(int(col), row)
+        return True, ""
+
+    def rpc_set_fb_i(self, col, fb_i):
+        # two step setting to make sure the gui doesn't ignore it
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", I=0)
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", I=int(fb_i))
+        return True, ""        
+
+    def rpc_set_arl_off(self, col):
+        # if the master is already off, setting it to off won't change any others
+        # so we first set master true, then false
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", ARL=True)
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", ARL=False)
+        return True, ""
+
+    def rpc_set_fba_offset(self, col, fba_offset):
+        # two step setting to make sure the gui doesn't ignore it
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=0)
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=int(fba_offset))
+        return True, ""
+
+
+
 
     def seqln_changed(self):
         if self.seqln_timer == None:

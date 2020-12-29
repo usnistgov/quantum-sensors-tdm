@@ -37,6 +37,13 @@ class MuxMaster():
     def setTowerCardAllChannelsToSameDAC(self, cardname, dacvalue):
         self.cringe.tower_widget.set_card_dac(cardname, bay_index, dacvalue)
 
+    def relockFBAifLocked(self, col, row):
+        dfbrap=self.dfbraps[col]
+        chn = dfbrap.state_vectors[row]
+        if chn.FBA_button.isChecked():
+            chn.FBA_button.setChecked(False)
+            chn.FBA_button.setChecked(True)        
+
     def relockFBA(self, col, row):
         dfbrap=self.dfbraps[col]
         chn = dfbrap.state_vectors[row]

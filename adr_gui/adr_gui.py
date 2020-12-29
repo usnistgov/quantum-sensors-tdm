@@ -16,6 +16,8 @@ import zmq
 import struct
 from lxml import etree
 from nasa_client import JSONClient # for stopping dastard
+from cringe import zmq_rep
+from . import adr_gui_control
 
 class MyLogger():
     def __init__(self):
@@ -265,6 +267,75 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
         self.zmq_context = zmq.Context()
 
+        self.control_socket = zmq_rep.ZmqRep(self, adr_gui_control.build_zmq_addr(host='*'))
+        self.control_socket.gotMessage.connect(self.handleMessage)
+        # maybe abstracted too far?  Have the data structure point to 
+        # the method name - here add a element 'func' as unbound method 
+        self.adr_gui_commands = adr_gui_control.ADR_GUI_COMMANDS.copy()
+        for command in self.adr_gui_commands:
+            self.adr_gui_commands[command]['func'] = self.__getattribute__(
+                self.adr_gui_commands[command]['fname'])
+
+    def handleMessage(self, message):
+        logger.log(f"got message: {message}")
+        command_words = message.split()
+        # original commands were uppercase - still accept those
+        command = command_words[0].lower()
+        command_args = command_words[1:]
+        if command in self.adr_gui_commands:
+            f = self.adr_gui_commands[command]['func']
+            logger.log(f"calling: {f}")
+            try:
+                success, extra_info = f(*command_args)
+            except Exception as ex:
+                success = False
+                import traceback
+                import sys
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                s = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                print("TRACEBACK")
+                print("".join(s))
+                print("TRACEBACK DONE")
+                extra_info = f"Exception: {ex}\n{s}"
+        else:
+            success = False
+            extra_info = f"`{message}` invalid, must be one of {list(self.adr_gui_commands.keys())}"
+        self.control_socket.resolve_message(success, extra_info)
+
+    def rpc_get_temp_k(self):
+        return True, self.lastTemp_K
+    
+    def rpc_get_temp_rms_uk(self):
+        assert self.isControlState()
+        return True, self._last_stddev_uk
+
+    def rpc_get_slope_hout_per_hour(self):
+        assert self.isControlState()
+        return True, self._last_slope_hout_per_hour
+
+    def rpc_get_hout(self):
+        assert self.isControlState()
+        return True, self.lastHOut
+
+    def rpc_set_temp_k(self, requested_setpoint_k):
+        assert self.isControlState()
+        requested_setpoint_mk = float(requested_setpoint_k)*1000
+        lo, hi = self.setPointmKEdit.allowed_range
+        if requested_setpoint_mk > hi:
+            return False, f"requested set point > than max, max = {hi}"
+        if requested_setpoint_mk < lo:
+            return False, f"requested set point < than min, min = {lo}"
+        self.setPointmKEdit.setText(str(requested_setpoint_mk))
+        self.enforceAllowedRange(self.setPointmKEdit)
+        achieved_setpoint_mk = self.setPointmKEdit.value
+        if achieved_setpoint_mk == requested_setpoint_mk:
+            return True, achieved_setpoint_mk*1e-3
+        else:
+            return False, achieved_setpoint_mk*1e-3
+
+    def rpc_echo(self, x):
+        return True, x
+
     def enforceAllowedRange(self, line_edit):
         v = float(line_edit.text())
         if v < line_edit.allowed_range[0]: v = line_edit.allowed_range[0]
@@ -394,6 +465,9 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempPlot.clear_points()
         self.currentPlot.clear_points()
 
+    def isControlState(self):
+        return self.stateLabel.text().split(": ")[1] == "control"
+
     def stateTick(self):
         sname = self.stateLabel.text().split(": ")[1]
         self.autorange()
@@ -510,8 +584,12 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         slope_hour, duration = self.controlHeaterSlope()
         if numpy.isnan(duration):
             self.printStatus("waiting for more data points before calculating stddev and heater slope")
+            self._last_stddev_uk = -1e9
+            self._last_slope_hout_per_hour = 1e9
         else:
-            self.printStatus("temp stddev = %0.2f uK, heater slope = %0.2f %%/hour over last %g seconds"%(stddev*1e6, slope_hour, numpy.round(duration)))
+            self._last_stddev_uk = stddev*1e6
+            self._last_slope_hout_per_hour = slope_hour
+            self.printStatus("temp stddev = %0.2f uK, heater slope = %0.2f %%/hour over last %g seconds"%(self._last_stddev_uk, slope_hour, numpy.round(duration)))
         if self.adrShouldMagup(self.startTimeEdit.value, self.startOutEdit.value, self.lastHOut):
             self.stateStartTime=time.time()
             self.tempControl.setSetTemp(0.0)

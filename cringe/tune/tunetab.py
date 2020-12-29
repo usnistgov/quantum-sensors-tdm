@@ -333,8 +333,8 @@ class VPhiDemo(QWidget):
             print("TRACEBACK DONE")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
-            msg.setText(f"tune failed with exception:\n{ex}")
-            msg.setWindowTitle("Tune Failed\nDo you need to learn columns?")
+            msg.setText(f"Tune Failed: Do you need to learn columns?\nexception was:\n{ex}\n")
+            msg.setWindowTitle("Tune Failed")
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
 
