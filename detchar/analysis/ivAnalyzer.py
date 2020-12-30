@@ -30,7 +30,7 @@ class ivAnalyzer(object):
     def __init__(self, file, rowMapFile=None,calnums=None):
         ''' file is full path to the data '''
         self.file = file
-        self.getPath 
+        self.getPath() 
         self.rowMapFile = rowMapFile
 
         # load the data self.ivdict is the main dictionary structure
@@ -53,12 +53,6 @@ class ivAnalyzer(object):
         self.loadRowMap() 
         self.getNumberOfColsRows()
 
-        print('Loaded %s'%self.file)
-        print('Bath temperatures (K) = ',self.TbTemps)
-        print('Cold Load Executed = ',self.coldloadExecute)
-        if self.coldloadExecute:
-            print('Coldload Temperatures (K) = ',self.bbTemps)
-
         # calibration numbers
         if calnums==None:
             self.Rfb = self.config['calnums']['rfb'] +50.0 # feedback resistance from dfb card to squid 1 feedback (50 Ohm as output impedance of dfb card)
@@ -67,18 +61,36 @@ class ivAnalyzer(object):
             self.Mr = self.config['calnums']['mr'] # mutual inductance ratio
             self.vfb_gain = self.config['calnums']['vfb_gain'] # fullscale voltage out of dfB
             if 'Rx' in self.config['calnums'].keys(): # parasitic resistance in series with the TES, a list, one per row
-                self.Rx = self.config['calnums']
+                self.Rx = self.config['calnums']['Rx']
+            else:
+                self.Rx = [0]*self.nrow
+        else:
+            self.Rfb = calnums['rfb'] +50.0 # feedback resistance from dfb card to squid 1 feedback (50 Ohm as output impedance of dfb card)
+            self.Rb = calnums['calnums']['rbias'] # resistance between voltage bias source and shunt chip  
+            self.Rshunt = calnums['rjnoise'] # shunt resistance
+            self.Mr = calnums['mr'] # mutual inductance ratio
+            self.vfb_gain = calnums['vfb_gain'] # fullscale voltage out of dfB
+            if 'Rx' in calnums.keys(): # parasitic resistance in series with the TES, a list, one per row
+                self.Rx = calnums['Rx']
             else:
                 self.Rx = [0]*self.nrow
 
+        # initialize data arrays and define units
+        self.v=self.i=self.p=self.r=self.ro=None # initialize the main data arrays
+        self.mult_v = 1e6 # multiplier to voltage axis to convert to units such as uV
+        self.mult_i = 1e6 # multiplier to current axis to convert to units such as uA 
+        self.mult_r = 1e3 # multiplier to resistance axis to convert to units such as 
         self.v_units='$\mu$V'
         self.i_units='$\mu$A'
         self.p_units='pW'
         self.r_units='m$\Omega$'
-        self.mult_v = 1e6 # multiplier to voltage axis to convert to units such as uV
-        self.mult_i = 1e6 # multiplier to current axis to convert to units such as uA 
-        self.mult_r = 1e3 # multiplier to resistance axis to convert to units such as mOhms
         self.sweepType=None
+
+        print('Loaded %s'%self.file)
+        print('Bath temperatures (K) = ',self.TbTemps)
+        print('Cold Load Executed = ',self.coldloadExecute)
+        if self.coldloadExecute:
+            print('Coldload Temperatures (K) = ',self.bbTemps)
 
     # helper methods -------------------------------------------------------------------------
 
@@ -129,6 +141,11 @@ class ivAnalyzer(object):
             print('WARNING: Number of bath temperatures in the data structure =%d. Does not match number in config file = %d'%(self.n_Tb_temps,len(self.TbTemps)))
     
     def getSweepTemps(self,sweep_temps='all',sweepType='bath_temperature'):
+        ''' populate the global variables 
+            self.sweepTempIndicies
+            self.sweepTemps
+            self.n_sweeps
+        '''
         # some error handling
         if sweepType not in ['bath_temperature','coldload']:
             print('unrecognized sweepType: ',sweepType,' Aborting.')
@@ -269,12 +286,14 @@ class ivAnalyzer(object):
         n,m = np.shape(y)
         x = np.zeros((n,m))
         for ii in range(m):
-            #v_shunt = (I - y_corr[:,ii])*self.Rshunt # voltage drop across shunt resistor 
-            #x[:,ii] = v_shunt - y_corr[:,ii]*self.Rx[ii]
             x[:,ii] = I*self.Rshunt - y_corr[:,ii]*(self.Rshunt+self.Rx[ii])
         return x,y_corr
 
     def get_virp(self,col,row,static_temp,sweep_temps='all',sweepType='bath_temperature'):
+        ''' calculate the main data products voltage bias (v), TES current (i), TES resistance (r), 
+            TES power (p) for a device connected to the multiplexer readout channel on col, row.  
+            See constructVfbArray docstring for definitions of other inputs to this method.
+        '''
         result = self.constructVfbArray(col,row,static_temp,sweep_temps,sweepType) # assemble the array
         y=self.makeAscendingOrder(result) # put array in ascending voltage bias order
         y,pvals = self.removeOffset(y,intercept='normal',debug=False) # remove the DC offset
@@ -290,8 +309,57 @@ class ivAnalyzer(object):
         r = v/i*self.mult_r 
         p = i*v
 
-        self.v=v; self.i=i; self.r=r; self.p=p
+        self.v=v; self.i=i; self.r=r; self.p=p; self.ro = r/np.mean(r[-10:,:],axis=0)
         return result,v,i,r,p
+
+    def getFracRn(self,fracRns,arr='p',ro=None):
+        ''' 
+        Return the value of arr at fraction of Rn.  
+        
+        input:
+        fracRns: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
+        arr: NxM array to determine the Rn fraction at
+        ro: NxM normalized resistance
+
+        arr and ro must be same shape
+
+        return: len(fracRns) x M array of the interpolated values
+        
+        '''
+        # if strings are provided, use the global variables
+        if type(arr) == str:
+            if arr == 'p':
+                arr = self.p
+            elif arr == 'i':
+                arr = self.i 
+            elif arr == 'v':
+                arr = self.v
+            # if arr == None:
+            #     print('arr=None.  Global variable for arr does not exist')
+            #     sys.exit() 
+
+        # ensure the normalized resistance array can be used.
+        if ro==None:
+            ro=self.ro 
+        # else:
+        #     print('self.ro is not defined.  Either define it or provide ro array to method getFracRn')
+        #     sys.exit()
+
+        # if fracRns is a list, turn it into a np.array
+        if type(fracRns)==list:
+            fracRns = np.array(fracRns) 
+
+        # make sure fracRn is actually a fraction.
+        if len(np.where(fracRns>1)[0])>0:
+            print('fracRns have values >1.  Fractions of Rn expected, and not percentage Rn')
+            print(fracRns)
+            sys.exit()
+
+        n,m=np.shape(arr)
+        result = np.zeros((len(fracRns),m))
+        for ii in range(m):
+            result[:,ii] = np.interp(fracRns,ro[:,ii],arr[:,ii])
+        return result
 
     # plotting methods ---------------------------------------------------------------------
 
@@ -359,6 +427,36 @@ class ivAnalyzer(object):
 
         fig1.suptitle('Row Index = %02d'%row)
         ax[3].legend(tuple(self.sweepTemps))
+        plt.show()
+
+    def foo(self,col,row,fracRns,static_temp,sweep_temps='all',sweepType='coldload'):
+        result,v,i,r,p = self.get_virp(col,row,static_temp,sweep_temps,sweepType)
+        p1 = self.getFracRn(fracRns,arr=p,ro=None) # len(fracRn) x len(sweep_temps) array
+        dp = np.diff(p1)
+        fig1 = plt.figure(1)
+        plt.plot(self.ro,self.p,'b-')
+        plt.plot(fracRns,p1,'ro')
+        plt.xlim((0,1.1))
+        plt.ylim((0,np.max(self.p)))
+        plt.xlabel('Normalized Resistance')
+        plt.ylabel('Power %s'%self.p_units)
+        plt.grid()
+
+        fig2 = plt.figure(2)
+        for ii in range(len(fracRns)):
+            plt.plot(self.sweepTemps,p1[ii,:],'o-')
+        plt.xlabel('T$_{cl}$ (K)')
+        plt.ylabel('TES power plateau (%s)'%self.p_units)
+        plt.legend((fracRns))
+        plt.grid()
+
+        fig2 = plt.figure(3)
+        for ii in range(len(fracRns)):
+            plt.plot(self.sweepTemps-self.sweepTemps[0],p1[ii,0]-p1[ii,:],'o-')
+        plt.xlabel('T$_{cl}$ - T$_{cl,o}$ (K)')
+        plt.ylabel('P$_o$ - P (%s)'%self.p_units)
+        plt.legend((fracRns))
+        plt.grid()
         plt.show()
 
 
