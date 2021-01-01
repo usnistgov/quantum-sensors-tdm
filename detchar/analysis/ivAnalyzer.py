@@ -213,7 +213,7 @@ class ivAnalyzer(object):
 
             for ii in range(self.n_sweeps):
                 result[:,ii]=self.ivdatadict[cl_index][self.sweepTempIndicies[ii]]['data'][col,row,:,1]
-
+        self.result = result # store raw data as global variable
         return result
 
     # iv analysis steps -----------------
@@ -357,10 +357,26 @@ class ivAnalyzer(object):
         n,m=np.shape(arr)
         result = np.zeros((len(fracRns),m))
         for ii in range(m):
-            result[:,ii] = np.interp(fracRns,ro[:,ii],arr[:,ii])
+            x = self.removeNaN(ro[:,ii])
+            y = self.removeNaN(arr[:,ii])
+            YY = np.interp(fracRns,x,y)
+
+            # over write with NaN for when data does not extend to fracRn
+            ro_min = np.min(x)
+            toCut = np.where(fracRns<ro_min)[0]
+            N = len(toCut)
+            if N >0:
+                YY[0:N] = np.zeros(N)*np.NaN
+            result[:,ii] = YY
+
+
         return result
 
     # data cleaning methods ------------------------------------------------
+    def removeNaN(self,arr):
+        ''' only works on 1d vector, not array '''
+        return arr[~np.isnan(arr)]
+
     def findFirstZero(self,vec):
         ''' single vector, return index and value where vec crosses zero '''
         ii=0; val = vec[ii]
@@ -438,6 +454,9 @@ class ivAnalyzer(object):
             if self.badDataIndicies[ii] != None:
                 self.v[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
                 self.i[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.p[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.r[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.ro[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
         if PLOT:
             plt.plot(i_orig,'b*')
             plt.plot(self.i,'ro')
@@ -511,17 +530,19 @@ class ivAnalyzer(object):
         ax[3].legend(tuple(self.sweepTemps))
         plt.show()
 
-    def clAnalysis(self,col,row,fracRns,static_temp,sweep_temps='all'):
-        ''' coldload analysis: produce plots showing P versus Ro, P versus T, and Po-P versus T-To '''
-        result,v,i,r,p = self.get_virp(col,row,static_temp,sweep_temps,sweepType='coldload')
+    def analyzeColdload(self,col,row,static_temp,sweep_temps, threshold=25, fracRns=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]):
+        ''' main method for analyzing cold load data '''
+        result,v,i,r,p = self.get_virp(0,row,.13,'all','coldload') # make main data vectors
+        self.findBadDataIndex(threshold=threshold,PLOT=False)      # remove bad data
+        self.removeBadData(False)
         p_at_fracR = self.getFracRn(fracRns,arr=self.p,ro=self.ro) # len(fracRn) x len(sweep_temps) array
 
         # P versus R/Rn
         fig1 = plt.figure(1)
         plt.plot(self.ro,self.p,'-') # plots for all Tbath
         plt.plot(fracRns,p_at_fracR,'ro')
-        plt.xlim((0,1.1))
-        plt.ylim((0,np.max(self.p)))
+        #plt.xlim((0,1.1))
+        #plt.ylim((0,np.max(self.p)))
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power (%s)'%self.p_units)
         plt.title('Row %02d'%row)
@@ -549,25 +570,3 @@ class ivAnalyzer(object):
         plt.grid()
         plt.title('Row %02d'%row)
         plt.show()
-
-    def foo2(self,col,row,static_temp,sweep_temps='all',sweepType='bath_temperature'):
-        result,v,i,r,p = self.get_virp(col,row,static_temp,sweep_temps,sweepType)
-        #result = self.constructVfbArray(col,row,static_temp,sweep_temps,sweepType)
-        drdx = np.zeros((self.n_vbias,self.n_sweeps))
-        dr2dx2 = np.zeros((self.n_vbias,self.n_sweeps))
-        for ii in range(self.n_sweeps):
-            x = np.gradient(i[:,ii])
-            drdx[:,ii] = x
-            dr2dx2[:,ii] = np.gradient(x)
-        plt.plot(i[:,0],'bo-')
-        plt.plot(drdx[:,0],'go-')
-        plt.plot(dr2dx2[:,0],'ro-')
-        plt.plot(np.diff(i[:,0]),'co-')
-        plt.show()
-
-        return np.diff(i[:,0])
-
-    def foo(self,row, threshold):
-        result,v,i,r,p = self.get_virp(0,row,.13,'all','coldload')
-        self.findBadDataIndex(threshold=threshold,PLOT=False)
-        self.removeBadData(True)
