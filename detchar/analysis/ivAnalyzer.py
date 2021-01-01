@@ -416,7 +416,10 @@ class ivAnalyzer(object):
         dexs=[]
         for ii in range(m):
             alldexs = np.where(abs(di[:,ii])>threshold*norm_di[ii])
-            dexs.append(np.max(alldexs[0])) # assume the highest vbias is what we want
+            if len(alldexs[0]) == 0:
+                dexs.append(None)
+            else:
+                dexs.append(np.max(alldexs[0])) # assume the highest vbias is what we want
         self.badDataIndicies = dexs
 
         if PLOT: #for debuggin purposes
@@ -432,8 +435,9 @@ class ivAnalyzer(object):
         ''' fill bad data with np.nan '''
         i_orig = self.i.copy()
         for ii in range(self.n_sweeps):
-            self.v[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
-            self.i[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+            if self.badDataIndicies[ii] != None:
+                self.v[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.i[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
         if PLOT:
             plt.plot(i_orig,'b*')
             plt.plot(self.i,'ro')
