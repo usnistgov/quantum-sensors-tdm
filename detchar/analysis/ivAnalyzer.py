@@ -533,7 +533,7 @@ class ivAnalyzer(object):
 
     def analyzeColdload(self,col,row,static_temp,sweep_temps='all', threshold=10,
                         fracRns=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                        nu=None,savePlots=False):
+                        nu=None,savePlots=False,displayPlots=True):
         ''' Analyze set of IV curves swept through coldload temperature.
             Produces plots:
             1) Ro versus P with fracRns cuts shown
@@ -633,7 +633,8 @@ class ivAnalyzer(object):
             fig3.savefig('RowIndex%02d_3_dpdt.png'%row)
             if doPrediction:
                 fig4.savefig('RowIndex%02d_4_eta.png'%row)
-        #plt.show()
+        if displayPlots:
+            plt.show()
         plt.close('all')
 
 
