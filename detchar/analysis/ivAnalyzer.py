@@ -18,6 +18,8 @@ To do:
 import numpy as np
 import matplotlib.pyplot as plt
 import sys, pickle
+from scipy.constants import k,h,c
+from scipy.integrate import quad, simps
 
 class ivAnalyzer(object):
     '''
@@ -530,12 +532,20 @@ class ivAnalyzer(object):
         ax[3].legend(tuple(self.sweepTemps))
         plt.show()
 
-    def analyzeColdload(self,col,row,static_temp,sweep_temps, threshold=25, fracRns=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]):
+    def analyzeColdload(self,col,row,static_temp,sweep_temps='all', threshold=25,
+                        fracRns=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                        nu=[165.75e9,224.25e9]):
         ''' main method for analyzing cold load data '''
         result,v,i,r,p = self.get_virp(0,row,.13,'all','coldload') # make main data vectors
         self.findBadDataIndex(threshold=threshold,PLOT=False)      # remove bad data
         self.removeBadData(False)
         p_at_fracR = self.getFracRn(fracRns,arr=self.p,ro=self.ro) # len(fracRn) x len(sweep_temps) array
+
+        # predicted thermal power from blackbody in detector passband
+        Ptherm = []
+        for ii in range(self.n_sweeps):
+            Ptherm.append(self.thermalPower(nu1=nu[0],nu2=nu[1],T=self.sweepTemps[ii],F=None))
+        Ptherm=np.array(Ptherm)
 
         # P versus R/Rn
         fig1 = plt.figure(1)
@@ -564,9 +574,47 @@ class ivAnalyzer(object):
         min_dex = np.argmin(self.sweepTemps)
         for ii in range(len(fracRns)):
             plt.plot(self.sweepTemps-self.sweepTemps[min_dex],p_at_fracR[ii,min_dex]-p_at_fracR[ii,:],'o-')
+        dPtherm = Ptherm - Ptherm[min_dex]
+        plt.plot(self.sweepTemps-self.sweepTemps[min_dex],dPtherm,'k-')
         plt.xlabel('T$_{cl}$ - T$_{cl,o}$ (K)')
         plt.ylabel('P$_o$ - P (%s)'%self.p_units)
         plt.legend((fracRns))
         plt.grid()
         plt.title('Row %02d'%row)
         plt.show()
+
+        # efficiency versus delta T
+        fig4 = plt.figure(4)
+        for ii in range(len(fracRns)):
+            plt.plot(self.sweepTemps-self.sweepTemps[min_dex],(p_at_fracR[ii,min_dex]-p_at_fracR[ii,:])/dPtherm,'o-')
+        plt.xlabel('T$_{cl}$ - T$_{cl,o}$ (K)')
+        plt.ylabel('$\eta$')
+        plt.legend((fracRns))
+        plt.grid()
+        plt.title('Row %02d'%row)
+        plt.show()
+
+    def Pnu_thermal(self,nu,T):
+        ''' power spectral density (W/Hz) of single mode from thermal source at
+            temperature T (in K) and frequency nu (Hz).
+        '''
+        x = h*nu/(k*T)
+        B = h*nu * (np.exp(x)-1)**-1
+        return B
+
+    def thermalPower(self,nu1,nu2,T,F=None):
+        ''' Calculate the single mode thermal power (in pW) emitted from a blackbody
+            at temperature T (in Kelvin) from frequency nu1 to nu2 (in Hz).
+            F = F(\nu) is an arbitrary absolute passband defined between nu1 and nu2 with linear
+            samplign between nu1 and nu2.  The default is F=None, in which case a
+            top hat band is assumed.
+        '''
+        try:
+            if F==None: # case for tophat
+                P = quad(self.Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
+        except: # case for arbitrary passband shape F
+            N = len(F)
+            nu = np.linspace(nu1,nu2,N)
+            integrand = self.Pnu_thermal(nu,T)*F
+            P = simps(integrand,nu)
+        return P*1e12
