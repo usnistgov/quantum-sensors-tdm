@@ -34,9 +34,10 @@ class ivAnalyzer(object):
         self.file = file
         self.getPath()
         self.rowMapFile = rowMapFile
+        self.loadRowMap() # load row to detector map if provided
 
         # load the data self.ivdict is the main dictionary structure
-        self.ivdict = self.loadPickle(file)
+        self.ivdict = self.loadPickle(self.file)
         self.ivdatadict = self.ivdict['iv'] # the main data structure which is a list: self.ivdatadict[Tbb_ii][T_bath_jj]
         self.config = self.ivdict['config']
 
@@ -51,8 +52,6 @@ class ivAnalyzer(object):
             self.v_ascending_order=True
         self.n_vbias = len(self.v_command)
 
-        # load row to detector map if provided
-        self.loadRowMap()
         self.getNumberOfColsRows()
 
         # calibration numbers
@@ -100,7 +99,7 @@ class ivAnalyzer(object):
         self.ncol, self.nrow, self.nsamp, err_fb = np.shape(self.ivdatadict[0][0]['data'])
 
     def loadPickle(self,filename):
-        f=open(self.file,'rb')
+        f=open(filename,'rb')
         d=pickle.load(f)
         f.close()
         return d
@@ -532,22 +531,38 @@ class ivAnalyzer(object):
         ax[3].legend(tuple(self.sweepTemps))
         plt.show()
 
-    def analyzeColdload(self,col,row,static_temp,sweep_temps='all', threshold=25,
+    def analyzeColdload(self,col,row,static_temp,sweep_temps='all', threshold=10,
                         fracRns=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                        nu=[165.75e9,224.25e9]):
-        ''' main method for analyzing cold load data '''
+                        nu=None,savePlots=False):
+        ''' Analyze set of IV curves swept through coldload temperature.
+            Produces plots:
+            1) Ro versus P with fracRns cuts shown
+            2) TES power plateau (P) versus cold load temperature (1 curve per R/Rn frac)
+            3) Delta P versus Delta T (1 curve per R/Rn frac)
+            4) \eta versus Delta T (1 curve per R/Rn frac)
+
+            Input:
+            col: column index (in EasyClient returned data array)
+            row: row index (in EasyClient returned data array)
+            static_temp: bath_temperature (K)
+            sweep_temps: list of coldload temperatures to include IVs for.  'all' is an option
+            threshold: cut data that is threshold x dVfb in the normal branch
+            fracRns: R/Rn cuts to evaluate power plateaus
+            nu: [f_start,f_end] (in GHz) used to calculate radiative power from coldload
+                if nu=None, no prediction is given, and the 4th plot is not made
+                if nu='useRowMap', the frequency range listed in self.rowMap['RowXX']['nu'] will be used.
+
+        '''
         result,v,i,r,p = self.get_virp(0,row,.13,'all','coldload') # make main data vectors
         self.findBadDataIndex(threshold=threshold,PLOT=False)      # remove bad data
         self.removeBadData(False)
         p_at_fracR = self.getFracRn(fracRns,arr=self.p,ro=self.ro) # len(fracRn) x len(sweep_temps) array
 
-        # predicted thermal power from blackbody in detector passband
-        Ptherm = []
-        for ii in range(self.n_sweeps):
-            Ptherm.append(self.thermalPower(nu1=nu[0],nu2=nu[1],T=self.sweepTemps[ii],F=None))
-        Ptherm=np.array(Ptherm)
+        plottitle = 'Row Index%02d'%row
+        if type(self.rowMap)==dict:
+            plottitle=plottitle+'; '+ self.rowMap['Row%02d'%row]['detector_name']
 
-        # P versus R/Rn
+        # FIG1: P versus R/Rn
         fig1 = plt.figure(1)
         plt.plot(self.ro,self.p,'-') # plots for all Tbath
         plt.plot(fracRns,p_at_fracR,'ro')
@@ -555,44 +570,72 @@ class ivAnalyzer(object):
         #plt.ylim((0,np.max(self.p)))
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power (%s)'%self.p_units)
-        plt.title('Row %02d'%row)
+        plt.title(plottitle)
         plt.legend((self.sweepTemps))
         plt.grid()
 
-        # TES power plateau versus T_cl
+        # FIG2: ES power plateau versus T_cl
         fig2 = plt.figure(2)
         for ii in range(len(fracRns)):
             plt.plot(self.sweepTemps,p_at_fracR[ii,:],'o-')
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau (%s)'%self.p_units)
         plt.legend((fracRns))
-        plt.title('Row %02d'%row)
+        plt.title(plottitle)
         plt.grid()
 
-        # change in saturation power relative to minimum coldload temperature
+        # FIG3: change in saturation power relative to minimum coldload temperature
         fig3 = plt.figure(3)
         min_dex = np.argmin(self.sweepTemps)
         for ii in range(len(fracRns)):
             plt.plot(self.sweepTemps-self.sweepTemps[min_dex],p_at_fracR[ii,min_dex]-p_at_fracR[ii,:],'o-')
-        dPtherm = Ptherm - Ptherm[min_dex]
-        plt.plot(self.sweepTemps-self.sweepTemps[min_dex],dPtherm,'k-')
-        plt.xlabel('T$_{cl}$ - T$_{cl,o}$ (K)')
+
+        if type(nu)==str:
+            if nu=='useRowMap':
+                if 'nu' in self.rowMap['Row%02d'%row].keys():
+                    nu1,nu2 = self.rowMap['Row%02d'%row]['nu']
+                    doPrediction=True
+                else:
+                    doPrediction=False
+        elif type(nu)==list:
+            nu1,nu2 = nu
+            doPrediction=True
+        elif type(nu)==type(None):
+            doPrediction=False
+
+        if doPrediction: # calculate the predicted power from blackbody and plot it.
+            Ptherm = []
+            for ii in range(self.n_sweeps):
+                Ptherm.append(self.thermalPower(nu1=nu1*1e9,nu2=nu2*1e9,T=self.sweepTemps[ii],F=None))
+            Ptherm=np.array(Ptherm)
+            dPtherm = Ptherm - Ptherm[min_dex]
+            plt.plot(self.sweepTemps-self.sweepTemps[min_dex],dPtherm,'k-')
+        plt.xlabel('T$_{cl}$ - %.1f K'%self.sweepTemps[min_dex])
         plt.ylabel('P$_o$ - P (%s)'%self.p_units)
         plt.legend((fracRns))
         plt.grid()
-        plt.title('Row %02d'%row)
-        plt.show()
+        plt.title(plottitle)
 
-        # efficiency versus delta T
-        fig4 = plt.figure(4)
-        for ii in range(len(fracRns)):
-            plt.plot(self.sweepTemps-self.sweepTemps[min_dex],(p_at_fracR[ii,min_dex]-p_at_fracR[ii,:])/dPtherm,'o-')
-        plt.xlabel('T$_{cl}$ - T$_{cl,o}$ (K)')
-        plt.ylabel('$\eta$')
-        plt.legend((fracRns))
-        plt.grid()
-        plt.title('Row %02d'%row)
-        plt.show()
+        # FIG4: efficiency versus delta T (only if nu provided)
+        if doPrediction:
+            fig4 = plt.figure(4)
+            for ii in range(len(fracRns)):
+                plt.plot(self.sweepTemps-self.sweepTemps[min_dex],(p_at_fracR[ii,min_dex]-p_at_fracR[ii,:])/dPtherm,'o-')
+            plt.xlabel('T$_{cl}$ - %.1f K'%self.sweepTemps[min_dex])
+            plt.ylabel('$\eta$')
+            plt.legend((fracRns))
+            plt.grid()
+            plt.title(plottitle)
+
+        if savePlots:
+            fig1.savefig('RowIndex%02d_1_rp.png'%row)
+            fig2.savefig('RowIndex%02d_2_pt.png'%row)
+            fig3.savefig('RowIndex%02d_3_dpdt.png'%row)
+            if doPrediction:
+                fig4.savefig('RowIndex%02d_4_eta.png'%row)
+        #plt.show()
+        plt.close('all')
+
 
     def Pnu_thermal(self,nu,T):
         ''' power spectral density (W/Hz) of single mode from thermal source at
