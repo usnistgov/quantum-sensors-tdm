@@ -7,17 +7,19 @@ ivdict['iv'][ii][jj]
 ii: index for cold load temperature
 jj: index for bath temperature
 
+keys w/in ivdatadict[ii][jj]: ['Treq', 'Tb_i', 'Tb_f', 'data', 'data_raw', 'autoRangeDict', 'coldload']
+
 @author: jh, late 2020 early 2021
 
 To do:
-* IV normalization - from IV turn around? forcing all in set to the same?
-* P versus T_CL
-* Compare to top-hat single mode
+* IV normalization - from IV turn around? forcing all in set to the same
+* save P versus T data for coldload sweep
+* dark substraction?
 '''
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sys, pickle
+import sys, pickle, yaml
 from scipy.constants import k,h,c
 from scipy.integrate import quad, simps
 
@@ -55,6 +57,7 @@ class ivAnalyzer(object):
         self.getNumberOfColsRows()
 
         # calibration numbers
+        print(type(calnums))
         if calnums==None:
             self.Rfb = self.config['calnums']['rfb'] +50.0 # feedback resistance from dfb card to squid 1 feedback (50 Ohm as output impedance of dfb card)
             self.Rb = self.config['calnums']['rbias'] # resistance between voltage bias source and shunt chip
@@ -65,6 +68,22 @@ class ivAnalyzer(object):
                 self.Rx = self.config['calnums']['Rx']
             else:
                 self.Rx = [0]*self.nrow
+        elif type(calnums)==str:
+            if calnums.split('.')[-1]=='config':
+                with open(calnums, 'r') as ymlfile:
+                    calConfig = yaml.load(ymlfile)
+                self.Rfb = calConfig['rfb'] +50.0 # feedback resistance from dfb card to squid 1 feedback (50 Ohm as output impedance of dfb card)
+                self.Rb = calConfig['rbias'] # resistance between voltage bias source and shunt chip
+                self.Rshunt = calConfig['rjnoise'] # shunt resistance
+                self.Mr = calConfig['mr'] # mutual inductance ratio
+                self.vfb_gain = calConfig['vfb_gain'] # fullscale voltage out of dfB
+                if 'Rx' in calConfig.keys(): # parasitic resistance in series with the TES, a list, one per row
+                    self.Rx = calConfig['Rx']
+                else:
+                    self.Rx = [0]*self.nrow
+            else:
+                print('unrecognized calibration file: calnums =',calnums,'. Aborting.')
+                sys.exit()
         else:
             self.Rfb = calnums['rfb'] +50.0 # feedback resistance from dfb card to squid 1 feedback (50 Ohm as output impedance of dfb card)
             self.Rb = calnums['calnums']['rbias'] # resistance between voltage bias source and shunt chip
@@ -94,6 +113,49 @@ class ivAnalyzer(object):
             print('Coldload Temperatures (K) = ',self.bbTemps)
 
     # helper methods -------------------------------------------------------------------------
+    def checkMeasuredTemperatures(self,tolerance=0.01,verbose=True,Tbbsensor=0):
+        ''' data consistency checks on temperatures during measurement
+            1) are the temperatures measured before and after the IV the same?
+            2) Are the measured temperatures the ones requested?
+        '''
+        Tbb_diff_warning_indicies=[]
+        Tbb_ba_warning_indicies=[]
+        Tb_diff_warning_indicies=[]
+        Tb_ba_warning_indicies=[]
+        for ii in range(len(self.ivdatadict)):
+            for jj in range(len(self.ivdatadict[ii])):
+                if 'coldload' in self.ivdatadict[ii][jj].keys():
+                    dd = self.ivdatadict[ii][jj]['coldload']
+                    Tbb_req = dd['Tbb_command']; Tbb_i = dd['Tbb_i']; Tbb_f = dd['Tbb_f']
+                    Tbb_diff = (Tbb_req - Tbb_i[Tbbsensor])/Tbb_req # fractional difference between requested and measured
+                    Tbb_before_after = (Tbb_f[Tbbsensor]-Tbb_i[Tbbsensor])/(Tbb_f[Tbbsensor]+Tbb_i[Tbbsensor])*2 # fractional difference between before/after IV
+                    if Tbb_diff > tolerance:
+                        print('WARNING: measured coldload temperature = ', Tbb_i[Tbbsensor],' differs from requested by fraction: ',Tbb_diff)
+                        print('Requested coldload temp: ',Tbb_req,'. Coldload index: ',ii,'; bath_temperature index: ',jj)
+                        Tbb_diff_warning_indicies.append((ii,jj))
+                    if Tbb_before_after > tolerance:
+                        print('WARNING: difference between coldload temperature before/after IV.  Before: ',Tbb_i[Tbbsensor], ' After: ',Tbb_i[Tbbsensor])
+                        print('Requested coldload temp: ',Tbb_req, '. Coldload index: ',ii,'; bath_temperature index: ',jj)
+                        Tbb_ba_warning_indicies.append((ii,jj))
+                    if verbose:
+                        print('Requested coldload temperature: ',dd['Tbb_command'],'K. Measured coldload temperatures before IV: ',dd['Tbb_i'],' and after IV: ',dd['Tbb_f'])
+                Tb_req=self.ivdatadict[ii][jj]['Treq']
+                Tb_i=self.ivdatadict[ii][jj]['Tb_i']
+                Tb_f=self.ivdatadict[ii][jj]['Tb_f']
+                Tb_diff = (Tb_req - Tb_i)/Tb_req
+                Tb_before_after = (Tb_f-Tb_i)/(Tb_f+Tb_i)*2
+                if Tb_diff > tolerance:
+                    print('WARNING: measured bath_temperature = ', Tb_i,' differs from requested by fraction: ',Tb_diff)
+                    print('Requested bath_temperature: ',Tb_req,'. Coldload index: ',ii,'; bath_temperature index: ',jj)
+                    Tb_diff_warning_indicies.append((ii,jj))
+                if Tbb_before_after > tolerance:
+                    print('WARNING: difference between bath temperature before/after IV.  Before: ',Tb_i, ' After: ',Tb_i)
+                    print('Requested bath_temperature: ',Tb_req,'. Coldload index: ',ii,'; bath_temperature index: ',jj)
+                    Tb_ba_warning_indicies.append((ii,jj))
+                if verbose:
+                    print('Requested T_bath: ',Tb_requested,' K. Measured Tbath before IV: ',Tb_i,' and after IV: ',Tb_f)
+        return Tb_diff_warning_indicies, Tb_ba_warning_indicies, Tbb_diff_warning_indicies, Tbb_ba_warning_indicies
+
 
     def getNumberOfColsRows(self):
         self.ncol, self.nrow, self.nsamp, err_fb = np.shape(self.ivdatadict[0][0]['data'])
@@ -185,9 +247,12 @@ class ivAnalyzer(object):
 
 
         '''
+        bbsensorIndex=0
         # preparing...
         self.getSweepTemps(sweep_temps,sweepType)
         result = np.zeros((self.n_vbias,self.n_sweeps)) #initialize result
+        self.sweepTempsMeasured = np.zeros((self.n_sweeps,2))
+        self.sweepStaticTemps = np.zeros((self.n_sweeps,2))
 
         # two cases
         if sweepType=='coldload':
@@ -201,6 +266,8 @@ class ivAnalyzer(object):
             Tb_index = self.TbTemps.index(static_temp)
             for ii in range(self.n_sweeps):
                 result[:,ii]=self.ivdatadict[self.sweepTempIndicies[ii]][Tb_index]['data'][col,row,:,1]
+                self.sweepTempsMeasured[ii,:] = np.array([self.ivdatadict[self.sweepTempIndicies[ii]][Tb_index]['coldload']['Tbb_i'][bbsensorIndex],self.ivdatadict[self.sweepTempIndicies[ii]][Tb_index]['coldload']['Tbb_f'][bbsensorIndex]])
+                self.sweepStaticTemps[ii,:] = np.array([self.ivdatadict[self.sweepTempIndicies[ii]][Tb_index]['Tb_i'],self.ivdatadict[self.sweepTempIndicies[ii]][Tb_index]['Tb_f']])
 
         elif sweepType=='bath_temperature':
             if not self.coldloadExecute:
@@ -214,6 +281,12 @@ class ivAnalyzer(object):
 
             for ii in range(self.n_sweeps):
                 result[:,ii]=self.ivdatadict[cl_index][self.sweepTempIndicies[ii]]['data'][col,row,:,1]
+                self.sweepTempsMeasured[ii,:] = np.array([self.ivdatadict[0][ii]['Tb_i'],self.ivdatadict[0][ii]['Tb_f']])
+                if 'coldload' in self.ivdatadict[0].keys():
+                    self.sweepStaticTemp[ii,:] = np.array([self.ivdatadict[0][ii]['coldload']['Tbb_i'],self.ivdatadict[0][ii]['coldload']['Tbb_f']])
+                else:
+                    self.sweepStaticTemp[ii,:] = np.array([np.nan,np.nan])
+
         self.result = result # store raw data as global variable
         return result
 
@@ -553,10 +626,13 @@ class ivAnalyzer(object):
                 if nu='useRowMap', the frequency range listed in self.rowMap['RowXX']['nu'] will be used.
 
         '''
+        A,B,C,D = self.checkMeasuredTemperatures(tolerance=0.001,verbose=False,Tbbsensor=0)
         result,v,i,r,p = self.get_virp(0,row,.13,'all','coldload') # make main data vectors
         self.findBadDataIndex(threshold=threshold,PLOT=False)      # remove bad data
         self.removeBadData(False)
         p_at_fracR = self.getFracRn(fracRns,arr=self.p,ro=self.ro) # len(fracRn) x len(sweep_temps) array
+
+        pPlot = self.getFracRn([0.999],arr=self.p,ro=self.ro)
 
         plottitle = 'Row Index%02d'%row
         if type(self.rowMap)==dict:
@@ -566,8 +642,8 @@ class ivAnalyzer(object):
         fig1 = plt.figure(1)
         plt.plot(self.ro,self.p,'-') # plots for all Tbath
         plt.plot(fracRns,p_at_fracR,'ro')
-        #plt.xlim((0,1.1))
-        #plt.ylim((0,np.max(self.p)))
+        plt.xlim((0,1.1))
+        plt.ylim((np.min(p_at_fracR[~np.isnan(p_at_fracR)])*0.9,np.max(pPlot[~np.isnan(pPlot)])))
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power (%s)'%self.p_units)
         plt.title(plottitle)
@@ -577,7 +653,7 @@ class ivAnalyzer(object):
         # FIG2: ES power plateau versus T_cl
         fig2 = plt.figure(2)
         for ii in range(len(fracRns)):
-            plt.plot(self.sweepTemps,p_at_fracR[ii,:],'o-')
+            plt.plot(self.sweepTempsMeasured[:,0],p_at_fracR[ii,:],'o-')
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau (%s)'%self.p_units)
         plt.legend((fracRns))
@@ -586,9 +662,9 @@ class ivAnalyzer(object):
 
         # FIG3: change in saturation power relative to minimum coldload temperature
         fig3 = plt.figure(3)
-        min_dex = np.argmin(self.sweepTemps)
+        min_dex = np.argmin(self.sweepTempsMeasured[:,0])
         for ii in range(len(fracRns)):
-            plt.plot(self.sweepTemps-self.sweepTemps[min_dex],p_at_fracR[ii,min_dex]-p_at_fracR[ii,:],'o-')
+            plt.plot(self.sweepTempsMeasured[:,0]-self.sweepTempsMeasured[min_dex,0],p_at_fracR[ii,min_dex]-p_at_fracR[ii,:],'o-')
 
         if type(nu)==str:
             if nu=='useRowMap':
@@ -606,10 +682,10 @@ class ivAnalyzer(object):
         if doPrediction: # calculate the predicted power from blackbody and plot it.
             Ptherm = []
             for ii in range(self.n_sweeps):
-                Ptherm.append(self.thermalPower(nu1=nu1*1e9,nu2=nu2*1e9,T=self.sweepTemps[ii],F=None))
+                Ptherm.append(self.thermalPower(nu1=nu1*1e9,nu2=nu2*1e9,T=self.sweepTempsMeasured[ii,0],F=None))
             Ptherm=np.array(Ptherm)
             dPtherm = Ptherm - Ptherm[min_dex]
-            plt.plot(self.sweepTemps-self.sweepTemps[min_dex],dPtherm,'k-')
+            plt.plot(self.sweepTempsMeasured[:,0]-self.sweepTempsMeasured[min_dex,0],dPtherm,'k-')
         plt.xlabel('T$_{cl}$ - %.1f K'%self.sweepTemps[min_dex])
         plt.ylabel('P$_o$ - P (%s)'%self.p_units)
         plt.legend((fracRns))
@@ -620,12 +696,14 @@ class ivAnalyzer(object):
         if doPrediction:
             fig4 = plt.figure(4)
             for ii in range(len(fracRns)):
-                plt.plot(self.sweepTemps-self.sweepTemps[min_dex],(p_at_fracR[ii,min_dex]-p_at_fracR[ii,:])/dPtherm,'o-')
+                eta = (p_at_fracR[ii,min_dex]-p_at_fracR[ii,:])/dPtherm
+                plt.plot(self.sweepTempsMeasured[:,0]-self.sweepTempsMeasured[min_dex,0],eta,'o-')
             plt.xlabel('T$_{cl}$ - %.1f K'%self.sweepTemps[min_dex])
             plt.ylabel('$\eta$')
             plt.legend((fracRns))
             plt.grid()
             plt.title(plottitle)
+            print(plottitle,' \eta=', eta[1])
 
         if savePlots:
             fig1.savefig('RowIndex%02d_1_rp.png'%row)
@@ -633,9 +711,10 @@ class ivAnalyzer(object):
             fig3.savefig('RowIndex%02d_3_dpdt.png'%row)
             if doPrediction:
                 fig4.savefig('RowIndex%02d_4_eta.png'%row)
+            plt.close('all')
         if displayPlots:
             plt.show()
-        plt.close('all')
+
 
 
     def Pnu_thermal(self,nu,T):
