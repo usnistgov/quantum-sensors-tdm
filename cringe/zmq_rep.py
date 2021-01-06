@@ -36,8 +36,8 @@ class ZmqRep(QtWidgets.QWidget):
         # llog.debug("start")
         try:
             message = self._zmq_sock.recv(zmq.NOBLOCK).decode()
-            self.gotMessage.emit(message)
             llog.info(f"got: {message}")
+            self.gotMessage.emit(message)
         except zmq.Again:
             pass
 

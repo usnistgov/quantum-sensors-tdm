@@ -52,7 +52,7 @@ class AdrGuiControl:
         return float(extra_info)
 
     def set_temp_k(self, setpoint_k):
-        success, extra_info = self.send_decode_reply(f"get_temp_k {float(setpoint_k)}")
+        success, extra_info = self.send_decode_reply(f"set_temp_k {float(setpoint_k)}")
         return success
 
     def get_temp_rms_uk(self):
