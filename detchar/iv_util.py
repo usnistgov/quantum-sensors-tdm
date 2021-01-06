@@ -13,7 +13,6 @@ import collections
 import os
 from instruments import bluebox
 
-
 class IVPointTaker():
     def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000), 
     easy_client=None, cringe_control=None, column_number = 0):
@@ -141,21 +140,6 @@ class IVCurveTaker():
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = 8000):
         self._was_prepped = True
         return self.pt.prep_fb_settings(ARLoff, I, fba_offset)
-
-class IVTempSweeper():
-    def __init__(self, curve_taker):
-        self.curve_taker = curve_taker
-
-    def get_sweep(self, dac_values, set_temps_k, extra_info={}):
-        datas = []
-        for set_temp_k in set_temps_k:
-            self.curve_taker.set_temp_and_settle(set_temp_k)
-            data = self.curve_taker.get_curve(dac_values, extra_info)
-            datas.append(data)
-        return IVTempSweepData(set_temps_k, datas)
-
-
-
 @dataclass_json
 @dataclass
 class IVCurveColumnData():
@@ -203,131 +187,3 @@ class IVCurveColumnData():
         fb -= fb[dac_zero_ind, :]
 
         return dac_values, fb
-
-@dataclass_json
-@dataclass
-class IVTempSweepData():
-    set_temps_k: List[float]
-    data: List[IVCurveColumnData]
-    
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())   
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
-
-    def plot_row(self, row):
-        plt.figure()
-        for curve in self.data:
-            x, y = curve.xy_arrays_zero_subtracted()
-            t_mK = curve.nominal_temp_k*1e3
-            dt_mK = (curve.post_temp_k-curve.pre_temp_k)*1e3
-            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
-        plt.xlabel("dac value (arb)")
-        plt.ylabel("feedback (arb)")
-        plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}")
-        plt.legend()
-
-def iv_to_frac_rn_single(x, y, superconducting_below_x, normal_above_x, debug_plot = False):
-    superconducting_inds = np.where(x<superconducting_below_x)[0]
-    normal_inds = np.where(x>normal_above_x)[0]
-    pfit_superconducting = np.polynomial.polynomial.Polynomial.fit(x[superconducting_inds], y[superconducting_inds], deg=1)
-    pfit_normal = np.polynomial.polynomial.Polynomial.fit(x[normal_inds], y[normal_inds], deg=1)
-    if debug_plot:
-        plt.figure()
-        plt.plot(x, y)
-        plt.plot(x[superconducting_inds], y[superconducting_inds], lw=2, label="superconducting")
-        plt.plot(x[normal_inds], y[normal_inds], lw=2, label="normal")
-        plt.plot(x[superconducting_inds], pfit_superconducting(x[superconducting_inds]), label="superconducting fit")
-        plt.plot(x[normal_inds], pfit_normal(x[normal_inds]), label="normal fit")
-        plt.legend()
-    r_frac = np.zeros_like(y)
-    r_shunt = pfit_superconducting.deriv(m=1)(0)
-    r_normal = pfit_normal.deriv(m=1)(0)-r_shunt
-    nz_ind = x!=0
-    r_frac[nz_ind] = (y[nz_ind]/x[nz_ind] - r_shunt)/r_normal
-    return r_frac
-
-def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
-    rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]
-    return np.vstack(rs).T
-
-def sparse_then_fine_dacs(a, b, c, n_ab, n_bc):
-    return np.hstack([np.linspace(a, b, n_ab), np.linspace(b, c, n_bc+1)[1:]])
-
-def tc_tickle():
-    plt.ion()
-    plt.close("all")
-    curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=0, shock_normal_dac_value=40000)
-    curve_taker.set_temp_and_settle(0.05)
-    time.sleep(0)
-    curve_taker.set_temp_and_settle(0.01)
-    t = []
-    fbs = []
-    while True:
-        try:
-            t.append(curve_taker.adr_gui_control.get_temp_k())
-            fb0 = curve_taker.pt.get_iv_pt(0)
-            fb1 = curve_taker.pt.get_iv_pt(50)
-            fbs.append(fb1-fb0)
-            plt.clf()
-            plt.plot(np.array(t)*1e3, fbs)
-            plt.xlabel("temp (mK)")
-            plt.pause(0.1)
-        except KeyboardInterrupt:
-            break
-    return t, np.vstack(fbs)
-
-
-if __name__ == "__main__":
-    plt.ion()
-    plt.close("all")
-    curve_taker = IVCurveTaker(IVPointTaker("DB", "AX"), temp_settle_delay_s=0, shock_normal_dac_value=100)
-    curve_taker.set_temp_and_settle(setpoint_k=0.21)
-    curve_taker.prep_fb_settings(I=10, fba_offset=8000)
-    dacs = np.linspace(7000,0,50)
-    data = curve_taker.get_curve(dacs, extra_info = {"magnetic field current (amps)": 1e-6})
-    data.plot()
-    data.to_file("ivtest.json", overwrite=True)
-    data2 = IVCurveColumnData.from_json(data.to_json())
-    assert data2.pre_time_epoch_s == data.pre_time_epoch_s
-    data = IVCurveColumnData.from_file("ivtest.json")
-    x, y = data.xy_arrays_zero_subtracted()
-    r = iv_to_frac_rn_array(x, y, superconducting_below_x=2000, normal_above_x=5000)
-    plt.figure()
-    plt.plot(x, r)
-    plt.xlabel("dac value")
-    plt.ylabel("fraction R_n")
-    plt.legend([f"row{i}" for i in range(r.shape[1])])
-    plt.vlines(2750, 0, 1)
-    plt.grid(True)
-
-
-
-    # t, y = tc_tickle()
-    # y = np.vstack(fbs)
-    # plt.clf()
-    # plt.plot(np.array(t)*1e3, y)
-    # plt.xlabel("temp (mK)")
-    # plt.ylabel("delta fb from 50 dac unit tickle")
-    # plt.pause(0.1)
-
-    # plt.ion()
-    # plt.close("all")
-    # curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=180, shock_normal_dac_value=40000)
-    # curve_taker.prep_fb_settings()
-    # temp_sweeper = IVTempSweeper(curve_taker)
-    # dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
-    # temps_mk = np.linspace(60,100,16)
-    # print(f"{temps_mk} mK")
-    # sweep = temp_sweeper.get_sweep(dacs, 
-    #     set_temps_k=temps_mk*1e-3, 
-    #     extra_info={"field coil current (Amps)":0})
-    # sweep.to_file("iv_sweep_test2.json", overwrite=True)
-    # sweep2 = IVTempSweepData.from_file("iv_sweep_test2.json")
-    # sweep2.plot_row(row=0)

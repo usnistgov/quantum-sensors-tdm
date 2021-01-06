@@ -236,7 +236,7 @@ class VPhiDemo(QWidget):
         tridwell, tristeps, tristepsize = 2, 9, 10
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
         self.mm.setdfball(tria=1)
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
         fba = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
         np.save(get_savepath("last_fba_vphi"), data)
@@ -246,11 +246,12 @@ class VPhiDemo(QWidget):
         return outtriangle, outsigsup, outsigsdown
 
     def FBBvphi(self):
-        tridwell, tristeps, tristepsize = 2, 9, 20
+        tridwell, tristeps, tristepsize = 2, 9, 1
+        print("FBB vphi", tridwell, tristeps, tristepsize)
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
         # Triangle feedback on FB[B], SendMode : FBB, ERR
         self.mm.setdfball(trib=1, data_packet=1)
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
         np.save(get_savepath("last_fbb_vphi"), data)
@@ -268,7 +269,7 @@ class VPhiDemo(QWidget):
         self.mm.setdfball(tria=1, ARL=1, data_packet=2,
                           FBB=1, I=I, d2aB=d2aB, a2d=a2d)
 
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
         fbb = data[0, 0, :, 0]  # triangle
         np.save(get_savepath("last_locked_fba_vphi"), data)
@@ -287,7 +288,7 @@ class VPhiDemo(QWidget):
             self.mm.setdfballrow(col, tria=1, ARL=1, data_packet=2,
                                  FBB=1, I=I[col], d2aB=d2aB[col], a2d=a2d[col])
 
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
         fbb = data[0, 0, :, 0]  # triangle
         np.save(get_savepath("last_locked_fba_vphi"), data)
@@ -380,9 +381,9 @@ class VPhiDemo(QWidget):
             for row in range(self.c.nrow):
                 self.mm.setdfbrow(col, row, trib=1,
                                   d2aA=d2aA_forfbb2[col, row], data_packet=1)
-        tridwell, tristeps, tristepsize = 2, 9, 20
+        tridwell, tristeps, tristepsize = 2, 9, 1
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
         np.save(get_savepath("last_fbb2_vphi"), data)
@@ -463,7 +464,7 @@ class VPhiDemo(QWidget):
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 self.mm.setdfbrow(col, row, tria=1, d2aB=d2aB[col, row])
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
         fba = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
         np.save(get_savepath("last_fba_vphi"), data)
@@ -602,7 +603,7 @@ class VPhiDemo(QWidget):
                     log.info(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix" % (
                         col, row, fbChan, vphistats["modDepth"][col,
                                                                 row], min_amplitude
-                    )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
+                    )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*60)
         # fba = data[0,0,:,1] #triangle
         # err = data[0,0,:,0] #signal
         # fba_std = np.std(data[:,:,:,1],axis=2)
@@ -1020,7 +1021,7 @@ class BiasSweeper(QWidget):
             self.mm.setdfballrow(col, tria=1, ARL=1, data_packet=2,
                                  FBB=1, I=I[col], d2aB=d2aB[col], a2d=a2d[col])
 
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
         fbb = data[0, 0, :, 0]  # triangle
 
@@ -1076,7 +1077,7 @@ class BiasSweeper(QWidget):
 
         # setup for vphi, ignore first datadata
         # probably there are command left in serial que after big cahnges
-        data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+        data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
         fbbtriangle, fbbsigsup, fbbsigsdown = analysis.conditionvphis(
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
 
@@ -1084,7 +1085,7 @@ class BiasSweeper(QWidget):
         for i in range(len(vals)):
             val = vals[i]
             self.setSAB(val)
-            data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
+            data = self.c.getNewData(0.1, minimumNumPoints=4096*60)
             fbbtriangle, fbbsigsup, fbbsigsdown = analysis.conditionvphis(
                 data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
             fbbstats = vphistats.vPhiStats(fbbtriangle, fbbsigsup)

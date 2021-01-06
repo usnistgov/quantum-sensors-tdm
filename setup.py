@@ -16,8 +16,6 @@ setup(
     include_package_data=True,
     keywords='tdm, tes',
     name='qsptdm',
-#   Somehow this doesn't install subpackages
-#    packages=["adr_gui", "adr_system", "cringe", "named_serial", "nasa_client"],
     packages=find_packages(),
     test_suite='tests',
     url='',
