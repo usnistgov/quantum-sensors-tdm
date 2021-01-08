@@ -18,6 +18,7 @@ from lxml import etree
 from nasa_client import JSONClient # for stopping dastard
 from cringe import zmq_rep
 from . import adr_gui_control
+import sys
 
 class MyLogger():
     def __init__(self):
@@ -494,7 +495,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 if control_mode == 'closed' and\
                 ramp_status == 'on' and\
                 0<ramp_rate<.2 and\
-                0.04<setpoint<0.2 and\
+                0.04<setpoint<0.35 and\
                 numpy.abs(temperror)<0.005:
                     print(("started with heater out %0.2f, but determined it is already in control state"%self.lastHOut))
                     print("STARTING IN CONTROL STATE")
