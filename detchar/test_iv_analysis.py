@@ -24,9 +24,9 @@ def test_horton_column_data():
 
 
     circuit = IVCircuit(rfb_ohm = 4e3, 
-    rbias_ohm = 1e3,
+    rbias_ohm = 1e3, # need to check notes for true value
     rsh_ohm = 200e-6,
-    m_ratio = -8.3,
+    m_ratio = -8.3, # copied from Hannes,need accurate value from Malcolm
     vfb_gain = 1.0/2**14,
     vbias_gain = 2.5/2**16)
 
