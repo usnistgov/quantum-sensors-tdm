@@ -57,13 +57,19 @@ class IVCurveColumnData():
 
         return dac_values, fb
 
-    def xy_arrays_zero_subtracted_at_normal_y_intersect(self, normal_above_fb):
+    def xy_arrays_zero_subtracted_at_normal_y_intercept(self, normal_above_fb):
         dac_values = np.array(self.dac_values)
         fb = self.fb_values_array()
         for i in range(fb.shape[1]):
             fb[:,i] = fit_normal_zero_subtract(dac_values, fb[:, i], normal_above_fb)
         return dac_values, fb
-
+    
+    def xy_arrays(self):
+        dac_values = np.array(self.dac_values)
+        fb = self.fb_values_array()
+        for i in range(fb.shape[1]):
+            fb[:,i] = fb[:, i]
+        return dac_values, fb       
 
 def fit_normal_zero_subtract(x, y, normal_above_x):
     normal_inds = np.where(x>normal_above_x)[0]
