@@ -7,7 +7,7 @@ class BlueBox(object):
     '''Module for controlling NIST "bluebox" voltage sources.
     They currently exist in two varieties, "mrk1", "mrk2" and "tower" which
     use different input format'''
-    def __init__(self, port='vbox', version='mrk1', 
+    def __init__(self, port='vbox', version='mrk2', 
         baud=9600, address=0, channel=0, shared=True):
         '''Return a bluebox object - parameters:
         port - a logical portname defined in namedserialrc
