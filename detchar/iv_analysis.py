@@ -1,0 +1,2 @@
+from detchar import IVCurveColumnData
+
