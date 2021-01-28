@@ -6,7 +6,7 @@ import detchar
 plt.ion()
 plt.close("all")
 curve_taker = detchar.IVCurveTaker(detchar.IVPointTaker("DB", "AX"), temp_settle_delay_s=0, shock_normal_dac_value=100)
-curve_taker.set_temp_and_settle(setpoint_k=0.21)
+curve_taker.set_temp_and_settle(setpoint_k=0.190)
 curve_taker.prep_fb_settings(I=10, fba_offset=8000)
 dacs = np.linspace(7000,0,50)
 data = curve_taker.get_curve(dacs, extra_info = {"magnetic field current (amps)": 1e-6})
