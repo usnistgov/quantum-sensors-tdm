@@ -137,7 +137,8 @@ class ivCurve:
         dfb_rowindex_locked = list(range(0,self.nrow))
         if self.dfb_rowindex_unlocked: # if there are rows to leave unlocked 
             for ii in self.dfb_rowindex_unlocked:
-                self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows, does this work with Galen's revision????
+                #self.cc.set_fb_lock(0,self.dfb_col_index,ii,a_or_b='A') # unlock these specific rows, does this work with Galen's revision????
+                print('Need to add in unlock feature in future')
             self.dfb_rowindex_locked = list(np.delete(dfb_rowindex_locked,self.dfb_rowindex_unlocked))
         else:
             self.dfb_rowindex_locked = dfb_rowindex_locked 
