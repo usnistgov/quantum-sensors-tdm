@@ -116,6 +116,42 @@ class IVCurveTaker():
         time.sleep(self.temp_settle_delay_s)
         print(f"done sleeping")
 
+    def overbias(self, overbias_temp_k, setpoint_k, dac_value, verbose=True):
+        ''' raise ADR temperature above Tc, overbias bolometer, cool back to base temperature to keep bolometer in the normal state
+        '''
+        if verbose:
+            print('Overbiasing detectors.  Raise temperature to %.1f mK, apply dac_value = %d, then cool to %.1f mK.'%(overbias_temp_k*1000,dac_value,setpoint_k*1000))
+        self.adr_gui_control.set_temp_k(float(overbias_temp_k))
+        ThighStable = self.IsTemperatureStable(overbias_temp_k,tol=0.005,time_out_s=180) # determine that it got to Thigh
+        
+        if verbose:
+            if ThighStable:
+                print('Successfully raised Tb > %.3f K.  Appling detector voltage bias and cooling back down.'%(overbias_temp_k))
+            else:
+                print('Could not get to the desired temperature above Tc.  Current temperature = ', self.adr_gui_control.get_temp_k())
+        self.pt.set_volt(dac_value) # voltage bias to stay above Tc
+        self.adr_gui_control.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
+        TlowStable = self.IsTemperatureStable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
+        if verbose:     
+            if TlowStable:
+                print('Successfully cooled back to base temperature '+str(setpoint_k)+'K')
+            else:
+                print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.adr_gui_control.get_temp_k())
+
+    def IsTemperatureStable(self, setpoint_k, tol=.005, time_out_s=180):
+        ''' determine if the servo has reached the desired temperature '''
+        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"   
+        cur_temp=self.adr_gui_control.get_temp_k()
+        it_num=0
+        while abs(cur_temp-setpoint_k)>tol:
+            time.sleep(10)
+            cur_temp=self.adr_gui_control.get_temp_k()
+            print('Current Temp: ' + str(cur_temp))
+            it_num=it_num+1
+            if it_num>round(int(time_out_s/10)):
+                print('exceeded the time required for temperature stability: %d seconds'%(round(int(10*it_num))))
+                return False
+        return True
 
     def get_curve(self, dac_values, extra_info = {}, ignore_prep_requirement=False):
         assert ignore_prep_requirement or self._was_prepped, "call prep_fb_settings before get_curve, or pass ignore_prep_requirement=True"
@@ -123,10 +159,13 @@ class IVCurveTaker():
         pre_time = time.time()
         pre_hout = self.adr_gui_control.get_hout()
         # temp_rms and slope will not be very useful if you just changed temp, so get them at end only
-        self.pt.set_tower(self.shock_normal_dac_value)
-        self.pt.set_tower(dac_values[0]) # go to the first dac value and relock all
+        self.pt.set_volt(self.shock_normal_dac_value)
+        time.sleep(0.05) # inserted because immediately commanding the lower dac value didn't take.  
+                         # was stuck at shock_normal_dac_value and this affected the first few points
+        self.pt.set_volt(dac_values[0]) # go to the first dac value and relock all
         self.pt.relock_all_locked_rows()
         print(f"shock detectors normal with dacvalue {self.shock_normal_dac_value}")
+        time.sleep(3) # wait after shock to settle
         fb_values = []
         bar = progress.bar.Bar("getting IV points",max=len(dac_values))
         for dac_value in dac_values:
@@ -140,7 +179,7 @@ class IVCurveTaker():
         post_slope_hout_per_hour = self.adr_gui_control.get_slope_hout_per_hour()
         if self.zero_tower_at_end:
             print(f"zero detector bias")
-            self.pt.set_tower(0)
+            self.pt.set_volt(0)
 
         return IVCurveColumnData(nominal_temp_k = self._last_setpoint_k, pre_temp_k=pre_temp_k, post_temp_k=post_temp_k,
         pre_time_epoch_s = pre_time, post_time_epoch_s = post_time, pre_hout = pre_hout, post_hout = post_hout,
@@ -255,10 +294,23 @@ if __name__ == "__main__":
     # sweep2 = IVTempSweepData.from_file("iv_sweep_test2.json")
     # sweep2.plot_row(row=0)
 
-    #plt.clf()
-    #plt.ion()
-    ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox')
-    dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
-    fb_values = ivpt.get_iv_pt(dacvalue)
-    plt.plot(fb_values,'o')
+    # DEMONSTRATE IV POINT TAKER WORKS
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox')
+    # dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
+    # fb_values = ivpt.get_iv_pt(dacvalue)
+    # plt.plot(fb_values,'o')
+    # plt.show()
+
+    # DEMONSTRATE IVCurveTaker works 
+    ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
+    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65535)
+    curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
+    #curve_taker.set_temp_and_settle(setpoint_k=0.13)
+    curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    v_bias = np.linspace(0.7,0.0,100)
+    dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
+    data = curve_taker.get_curve(dacs, extra_info = {"hannes is rad": "yes"})
+    data.plot()
     plt.show()
+
+    # DEMONSTRATE IVS
