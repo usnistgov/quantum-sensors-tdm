@@ -2,20 +2,17 @@ from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
 from nasa_client import EasyClient
 import time
-from dataclasses import dataclass
-import dataclasses
-from dataclasses_json import dataclass_json
-from typing import Any, List
 import numpy as np
 import pylab as plt
 import progress.bar
-import collections
 import os
-
+#from . iv_data import IVCurveColumnData, IVTempSweepData, IVColdLoadTempSweepData, IVCircuit
+from iv_data import IVCurveColumnData, IVTempSweepData, IVColdLoadTempSweepData, IVCircuit
+from instruments import BlueBox 
 
 class IVPointTaker():
     def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000), 
-    easy_client=None, cringe_control=None, column_number = 0):
+    easy_client=None, cringe_control=None, voltage_source = None, column_number = 0):
         self.ec = self._handle_easy_client_arg(easy_client)
         self.cc = self._handle_cringe_control_arg(cringe_control)
         # these should be args
@@ -27,6 +24,18 @@ class IVPointTaker():
         self.bayname = bayname
         self.col = column_number
         self._relock_offset = np.zeros(self.ec.nrow)
+        self.set_volt = self._handle_voltage_source_arg(voltage_source)
+    
+    def _handle_voltage_source_arg(self,voltage_source):
+        # set "set_volt" to either tower or bluebox
+        if voltage_source == None:
+            set_volt = self.set_tower # 0-2.5V in 2**16 steps
+            self.max_voltage = 2.5
+        elif voltage_source == 'bluebox':
+            self.bb = BlueBox(port='vbox', version='mrk2')
+            set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
+            self.max_voltage = self.bb.max_voltage
+        return set_volt
 
     def _handle_easy_client_arg(self, easy_client):
         if easy_client is not None:
@@ -41,7 +50,7 @@ class IVPointTaker():
         return CringeControl()
 
     def get_iv_pt(self, dacvalue):
-        self.set_tower(dacvalue)
+        self.set_volt(dacvalue)
         data = self.ec.getNewData(delaySeconds=self.delay_s)
         avg_col = data[self.col,:,:,1].mean(axis=-1)
         rows_relocked_hi = []
@@ -66,6 +75,9 @@ class IVPointTaker():
 
     def set_tower(self, dacvalue):
         self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
+
+    def set_bluebox(self, dacvalue):
+        self.bb.setVoltDACUnits(dacvalue)
 
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = 8000):
         if ARLoff:
@@ -152,104 +164,17 @@ class IVTempSweeper():
             datas.append(data)
         return IVTempSweepData(set_temps_k, datas)
 
+class IVColdLoadTempSweeper():
+    def __init__(self, curve_taker):
+        self.curve_taker = curve_taker
 
-
-@dataclass_json
-@dataclass
-class IVCurveColumnData():
-    nominal_temp_k: float
-    pre_temp_k: float
-    post_temp_k: float
-    pre_time_epoch_s: float
-    post_time_epoch_s: float
-    pre_hout: float
-    post_hout: float
-    post_slope_hout_per_hour: float
-    dac_values: List[float]
-    fb_values: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
-    bayname: str
-    db_cardname: str
-    column_number: int
-    extra_info: dict
-    pre_shock_dac_value: float
-
-    def plot(self):
-        plt.figure()
-        plt.plot(self.dac_values, self.fb_values)
-        plt.xlabel("dac values (arb)")
-        plt.ylabel("fb values (arb)")
-        plt.title(f"bay {self.bayname}, db_card {self.db_cardname}, nominal_temp_mk {self.nominal_temp_k*1000}")
-
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())   
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
-
-    def fb_values_array(self):
-        return np.vstack(self.fb_values)
-
-    def xy_arrays_zero_subtracted(self):
-        dac_values = np.array(self.dac_values)
-        dac_zero_ind = np.where(dac_values==0)[0][0]
-        fb = self.fb_values_array()
-        fb -= fb[dac_zero_ind, :]
-
-        return dac_values, fb
-
-@dataclass_json
-@dataclass
-class IVTempSweepData():
-    set_temps_k: List[float]
-    data: List[IVCurveColumnData]
-    
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())   
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
-
-    def plot_row(self, row):
-        plt.figure()
-        for curve in self.data:
-            x, y = curve.xy_arrays_zero_subtracted()
-            t_mK = curve.nominal_temp_k*1e3
-            dt_mK = (curve.post_temp_k-curve.pre_temp_k)*1e3
-            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
-        plt.xlabel("dac value (arb)")
-        plt.ylabel("feedback (arb)")
-        plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}")
-        plt.legend()
-
-def iv_to_frac_rn_single(x, y, superconducting_below_x, normal_above_x, debug_plot = False):
-    superconducting_inds = np.where(x<superconducting_below_x)[0]
-    normal_inds = np.where(x>normal_above_x)[0]
-    pfit_superconducting = np.polynomial.polynomial.Polynomial.fit(x[superconducting_inds], y[superconducting_inds], deg=1)
-    pfit_normal = np.polynomial.polynomial.Polynomial.fit(x[normal_inds], y[normal_inds], deg=1)
-    if debug_plot:
-        plt.figure()
-        plt.plot(x, y)
-        plt.plot(x[superconducting_inds], y[superconducting_inds], lw=2, label="superconducting")
-        plt.plot(x[normal_inds], y[normal_inds], lw=2, label="normal")
-        plt.plot(x[superconducting_inds], pfit_superconducting(x[superconducting_inds]), label="superconducting fit")
-        plt.plot(x[normal_inds], pfit_normal(x[normal_inds]), label="normal fit")
-        plt.legend()
-    r_frac = np.zeros_like(y)
-    r_shunt = pfit_superconducting.deriv(m=1)(0)
-    r_normal = pfit_normal.deriv(m=1)(0)-r_shunt
-    nz_ind = x!=0
-    r_frac[nz_ind] = (y[nz_ind]/x[nz_ind] - r_shunt)/r_normal
-    return r_frac
+    def get_sweep(self, dac_values, set_temps_k, extra_info={}):
+        datas = []
+        for set_temp_k in set_temps_k:
+            self.curve_taker.set_temp_and_settle(set_temp_k)
+            data = self.curve_taker.get_curve(dac_values, extra_info)
+            datas.append(data)
+        return IVTempSweepData(set_temps_k, datas)
 
 def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
     rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]
@@ -315,17 +240,25 @@ if __name__ == "__main__":
     # plt.ylabel("delta fb from 50 dac unit tickle")
     # plt.pause(0.1)
 
-    plt.ion()
-    plt.close("all")
-    curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=180, shock_normal_dac_value=40000)
-    curve_taker.prep_fb_settings()
-    temp_sweeper = IVTempSweeper(curve_taker)
-    dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
-    temps_mk = np.linspace(60,100,16)
-    print(f"{temps_mk} mK")
-    sweep = temp_sweeper.get_sweep(dacs, 
-        set_temps_k=temps_mk*1e-3, 
-        extra_info={"field coil current (Amps)":0})
-    sweep.to_file("iv_sweep_test2.json", overwrite=True)
-    sweep2 = IVTempSweepData.from_file("iv_sweep_test2.json")
-    sweep2.plot_row(row=0)
+    # plt.ion()
+    # plt.close("all")
+    # curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=180, shock_normal_dac_value=40000)
+    # curve_taker.prep_fb_settings()
+    # temp_sweeper = IVTempSweeper(curve_taker)
+    # dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
+    # temps_mk = np.linspace(60,100,16)
+    # print(f"{temps_mk} mK")
+    # sweep = temp_sweeper.get_sweep(dacs, 
+    #     set_temps_k=temps_mk*1e-3, 
+    #     extra_info={"field coil current (Amps)":0})
+    # sweep.to_file("iv_sweep_test2.json", overwrite=True)
+    # sweep2 = IVTempSweepData.from_file("iv_sweep_test2.json")
+    # sweep2.plot_row(row=0)
+
+    #plt.clf()
+    #plt.ion()
+    ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox')
+    dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
+    fb_values = ivpt.get_iv_pt(dacvalue)
+    plt.plot(fb_values,'o')
+    plt.show()
