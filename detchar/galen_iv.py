@@ -103,6 +103,7 @@ class IVCurveTaker():
         self.shock_normal_dac_value = shock_normal_dac_value
         self.zero_tower_at_end = zero_tower_at_end
         self._was_prepped = False
+        self.post_overbias_wait_time_s = 30.0
 
     def _handle_adr_gui_control_arg(self, adr_gui_control):
         if adr_gui_control is not None:
@@ -135,8 +136,10 @@ class IVCurveTaker():
         if verbose:     
             if TlowStable:
                 print('Successfully cooled back to base temperature '+str(setpoint_k)+'K')
+                time.sleep(self.post_overbias_wait_time_s)
             else:
                 print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.adr_gui_control.get_temp_k())
+        
 
     def IsTemperatureStable(self, setpoint_k, tol=.005, time_out_s=180):
         ''' determine if the servo has reached the desired temperature '''
@@ -192,13 +195,22 @@ class IVCurveTaker():
         return self.pt.prep_fb_settings(ARLoff, I, fba_offset)
 
 class IVTempSweeper():
-    def __init__(self, curve_taker):
+    def __init__(self, curve_taker, to_normal_method=None, overbias_temp_k=None, overbias_dac_value = None):
         self.curve_taker = curve_taker
+        self.to_normal_method = to_normal_method
+        self.overbias_temp_k = overbias_temp_k
+        self.overbias_dac_value = overbias_dac_value
+
+    def initializeTemperature(self,set_temp_k):
+        if self.to_normal_method == None:
+            self.curve_taker.set_temp_and_settle(set_temp_k)
+        elif self.to_normal_method == "overbias":
+            self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
 
     def get_sweep(self, dac_values, set_temps_k, extra_info={}):
         datas = []
         for set_temp_k in set_temps_k:
-            self.curve_taker.set_temp_and_settle(set_temp_k)
+            self.initializeTemperature(set_temp_k) 
             data = self.curve_taker.get_curve(dac_values, extra_info)
             datas.append(data)
         return IVTempSweepData(set_temps_k, datas)
@@ -301,16 +313,25 @@ if __name__ == "__main__":
     # plt.plot(fb_values,'o')
     # plt.show()
 
-    # DEMONSTRATE IVCurveTaker works 
+    # # DEMONSTRATE IVCurveTaker works 
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65535)
+    # curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
+    # #curve_taker.set_temp_and_settle(setpoint_k=0.13)
+    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    # v_bias = np.linspace(0.7,0.0,100)
+    # dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
+    # data = curve_taker.get_curve(dacs, extra_info = {"hannes is rad": "yes"})
+    # data.plot()
+    # plt.show()
+
+    # DEMONSTRATE IVTempSweeper
     ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
     curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65535)
-    curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
-    #curve_taker.set_temp_and_settle(setpoint_k=0.13)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 10000)
     v_bias = np.linspace(0.7,0.0,100)
     dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
-    data = curve_taker.get_curve(dacs, extra_info = {"hannes is rad": "yes"})
-    data.plot()
-    plt.show()
-
-    # DEMONSTRATE IVS
+    temps = [.13,.14,.15,.16,.17,.18,.19,.2]
+    data = ivsweeper.get_sweep(dacs, temps, extra_info={})
+    data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
