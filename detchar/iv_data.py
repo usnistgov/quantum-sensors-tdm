@@ -109,6 +109,24 @@ class IVTempSweepData():
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
         plt.legend()
 
+@dataclass_json
+@dataclass
+class IVColdLoadTempSweepData():
+    set_cl_temps_k: List[float]
+    set_bath_temps_k: List[float]
+    extra_info: dict
+    data: List[IVCurveColumnData]
+    
+    def to_file(self, filename, overwrite = False):
+        if not overwrite:
+            assert not os.path.isfile(filename)
+        with open(filename, "w") as f:
+            f.write(self.to_json())   
+
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, "r") as f:
+            return cls.from_json(f.read())
 
 @dataclass_json
 @dataclass

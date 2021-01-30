@@ -332,6 +332,7 @@ if __name__ == "__main__":
     ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 10000)
     v_bias = np.linspace(0.7,0.0,100)
     dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
-    temps = [.13,.14,.15,.16,.17,.18,.19,.2]
+    #temps = [.13,.14,.15,.16,.17,.18,.19,.2]
+    temps = [.19,.2]
     data = ivsweeper.get_sweep(dacs, temps, extra_info={})
     data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
