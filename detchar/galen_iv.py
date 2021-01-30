@@ -77,7 +77,7 @@ class IVPointTaker():
         self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
 
     def set_bluebox(self, dacvalue):
-        self.bb.setVoltDACUnits(dacvalue)
+        self.bb.setVoltDACUnits(int(dacvalue))
 
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = 8000):
         if ARLoff:
@@ -158,6 +158,9 @@ class IVCurveTaker():
 
     def get_curve(self, dac_values, extra_info = {}, ignore_prep_requirement=False):
         assert ignore_prep_requirement or self._was_prepped, "call prep_fb_settings before get_curve, or pass ignore_prep_requirement=True"
+        print(dac_values)
+        dac_values = self._handle_dac_values_int(dac_values)
+        print(dac_values)
         pre_temp_k = self.adr_gui_control.get_temp_k()
         pre_time = time.time()
         pre_hout = self.adr_gui_control.get_hout()
@@ -189,6 +192,15 @@ class IVCurveTaker():
         post_slope_hout_per_hour = post_slope_hout_per_hour, dac_values = dac_values, bayname = self.pt.bayname,
         db_cardname = self.pt.db_cardname, column_number = self.pt.col, extra_info = extra_info, fb_values = fb_values, 
         pre_shock_dac_value=self.shock_normal_dac_value)
+
+    def _handle_dac_values_int(self,dac_values):
+        '''ensure values passed to set_volt are integers, and recorded as such '''
+        dac_values_int = []
+        for dac_value in dac_values:
+            dac_values_int.append(int(round(dac_value)))
+        #dv = list(np.round(np.array(dac_values)).astype(int))
+        #dac_values_int = getattr(dv, "tolist", lambda: dv)() # tried to be fancy, but didn't work.  Reverted to good old for loop.
+        return dac_values_int
 
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = 8000):
         self._was_prepped = True
@@ -293,46 +305,49 @@ if __name__ == "__main__":
 
     # plt.ion()
     # plt.close("all")
-    # curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=180, shock_normal_dac_value=40000)
+    # curve_taker = IVCurveTaker(IVPointTaker("dfb_card","A"), temp_settle_delay_s=0, shock_normal_dac_value=0)
     # curve_taker.prep_fb_settings()
     # temp_sweeper = IVTempSweeper(curve_taker)
-    # dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
-    # temps_mk = np.linspace(60,100,16)
+    # #dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
+    # dacs = np.linspace(100,0,10)#; dacs = list(dacs.astype(int))
+    # #print(type(dacs))
+    # temps_mk = np.linspace(190,200,2)
     # print(f"{temps_mk} mK")
     # sweep = temp_sweeper.get_sweep(dacs, 
     #     set_temps_k=temps_mk*1e-3, 
     #     extra_info={"field coil current (Amps)":0})
-    # sweep.to_file("iv_sweep_test2.json", overwrite=True)
-    # sweep2 = IVTempSweepData.from_file("iv_sweep_test2.json")
+    # sweep.to_file("iv_sweep_test_galen.json", overwrite=True)
+    # sweep2 = IVTempSweepData.from_file("iv_sweep_test_galen.json")
     # sweep2.plot_row(row=0)
 
     # DEMONSTRATE IV POINT TAKER WORKS
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox')
-    # dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
+    # #dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
+    # dacvalue = 10000
     # fb_values = ivpt.get_iv_pt(dacvalue)
     # plt.plot(fb_values,'o')
     # plt.show()
 
     # # DEMONSTRATE IVCurveTaker works 
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
-    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65535)
-    # curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=0)
+    # #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
     # #curve_taker.set_temp_and_settle(setpoint_k=0.13)
     # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    # v_bias = np.linspace(0.7,0.0,100)
-    # dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
+    # v_bias = np.linspace(1.0,0.0,10)
+    # dacs = v_bias/ivpt.max_voltage*(2**16-1)#; dacs = dacs.astype(int)
     # data = curve_taker.get_curve(dacs, extra_info = {"hannes is rad": "yes"})
     # data.plot()
     # plt.show()
+    # data.to_file('iv_curve_test.json',True)
 
     # DEMONSTRATE IVTempSweeper
     ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
-    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65535)
+    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=7000)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 10000)
+    ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 7000)
     v_bias = np.linspace(0.7,0.0,100)
     dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
-    #temps = [.13,.14,.15,.16,.17,.18,.19,.2]
-    temps = [.19,.2]
-    data = ivsweeper.get_sweep(dacs, temps, extra_info={})
+    temps = np.linspace(0.1,0.2,10)
+    data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
     data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)

@@ -99,7 +99,7 @@ def test_horton_column_data():
     # plot all rows at one temp with physical units
     plt.figure()
     q = 0
-    for row in range(nrows):
+    for row in range(5):
         x = vtess_by_temp[q][:, row]
         y = vtess_by_temp[q][:, row]/itess_by_temp[q][:, row]
         y[np.logical_or(y<0, y>ymax)] = np.nan
@@ -117,7 +117,7 @@ def test_horton_column_data():
     # plot all rows at one temp with experimental units
     plt.figure()
     q = 0
-    for row in range(nrows):
+    for row in range(5):
         # x = vtess_by_temp[q][:, row]
         x = vbias_arbs
         y = vtess_by_temp[q][:, row]/itess_by_temp[q][:, row]

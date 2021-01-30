@@ -8,7 +8,6 @@ import collections
 import os
 from numpy.polynomial.polynomial import Polynomial
 
-
 @dataclass_json
 @dataclass
 class IVCurveColumnData():
@@ -20,7 +19,7 @@ class IVCurveColumnData():
     pre_hout: float
     post_hout: float
     post_slope_hout_per_hour: float
-    dac_values: List[float]
+    dac_values: List[int]
     fb_values: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
     bayname: str
     db_cardname: str
