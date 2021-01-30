@@ -213,7 +213,7 @@ class IVTempSweeper():
         self.overbias_temp_k = overbias_temp_k
         self.overbias_dac_value = overbias_dac_value
 
-    def initializeTemperature(self,set_temp_k):
+    def initialize_bath_temp(self,set_temp_k):
         if self.to_normal_method == None:
             self.curve_taker.set_temp_and_settle(set_temp_k)
         elif self.to_normal_method == "overbias":
@@ -222,22 +222,80 @@ class IVTempSweeper():
     def get_sweep(self, dac_values, set_temps_k, extra_info={}):
         datas = []
         for set_temp_k in set_temps_k:
-            self.initializeTemperature(set_temp_k) 
+            self.initialize_bath_temp(set_temp_k) 
             data = self.curve_taker.get_curve(dac_values, extra_info)
             datas.append(data)
         return IVTempSweepData(set_temps_k, datas)
 
-class IVColdLoadTempSweeper():
-    def __init__(self, curve_taker):
-        self.curve_taker = curve_taker
+class IVColdloadSweeper():
+    def __init__(self, ivsweeper, loop_channel=1):
+        self.ivsweeper = ivsweeper # instance of IVTempSweeper
+        from instruments import Cryocon22
+        self.ccon = Cryocon22()  
+        self.loop_channel = loop_channel
+        
 
-    def get_sweep(self, dac_values, set_temps_k, extra_info={}):
-        datas = []
-        for set_temp_k in set_temps_k:
+    def initialize_bath_temp(self,set_temp_k):
+        if self.to_normal_method == None:
             self.curve_taker.set_temp_and_settle(set_temp_k)
-            data = self.curve_taker.get_curve(dac_values, extra_info)
-            datas.append(data)
-        return IVTempSweepData(set_temps_k, datas)
+        elif self.to_normal_method == "overbias":
+            self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
+
+    def set_coldload_temp_and_settle(self, set_coldload_temp_k, tolerance_k=0.001, 
+                                   setpoint_timeout_m=5, post_setpoint_waittime_m=20, 
+                                   verbose=True):
+        ''' servo coldload to temperature T and wait for temperature to stabilize '''
+        assert set_coldload_temp_k>50.0, "Coldload temperature setpoint may not exceed 50K"        
+        if verbose: print('Setting BB temperature to '+str(set_coldload_temp_k)+'K')
+        self.ccon.setControlTemperature(temp=set_coldload_temp_k,loop_channel=self.loop_channel)
+                    
+        # wait for thermometer on coldload to reach set_coldload_temp_k --------------------------------------------
+        is_stable = self.ccon.isTemperatureStable(self.loop_channel,tolerance_k)
+        stable_num=0
+        while not is_stable:
+            time.sleep(5)
+            is_stable = self.ccon.isTemperatureStable(self.loop_channel,tolerance_k)
+            stable_num += 1
+            if stable_num*5/60. > setpoint_timeout_m:
+                break
+        
+        # settle at set_coldload_temp_k
+        bar = progress.bar.Bar("Cold load thermalizing to %d minutes"%post_setpoint_waittime_m,max=100)
+        for ii in range(100):
+            time.sleep(60*post_setpoint_waittime_m/100)
+            bar.next()
+        bar.finish()
+
+    def _prepareColdload(self):
+        control_state = self.ccon.getControlLoopState() 
+        if control_state == 'OFF': self.ccon.setControlTemperature(3.0,self.loop_channel) # set to temperature below achievable
+        self.ccon.setControlState(state='on')
+
+    def get_sweep(self, dac_values, set_cl_temps_k, cl_temp_tolerance_k=0.001, 
+                  cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20, 
+                  skip_first_settle = True, 
+                  cool_upon_finish = True, extra_info={}):
+        
+        self._prepareColdload() # control enabled after this point
+        datas = []; pre_cl_temps_k = []; post_cl_temps_k
+        for ii, set_cl_temp_k in enumerate(set_cl_temps_k):
+            if ii==0 and skip_first_settle: pass
+            self.set_coldload_temp_and_settle(set_cl_temp,  
+                                              tolerance_k=cl_temp_tolerance_k 
+                                              setpoint_timeout_m=cl_settemp_timeout_m, 
+                                              post_setpoint_waittime_m=cl_post_setpoint_waittime_m, 
+                                              verbose=True)
+            pre_cl_temp_k = self.ccon.getTemperature()
+            data = self.ivsweeper.get_sweep(dac_values, set_temps_k, 
+                                            extra_info={'coldload_temp_setpoint':set_cl_temp_k,'pre_coldload_temp':pre_cl_temp_k})
+            post_cl_temp_k = self.ccon.getTemperature()
+            datas.append(data); pre_cl_temps_k.append(pre_cl_temp_k); post_cl_temps_k.append(post_cl_temp_k)  
+        extra_info = {'pre_cl_temps_k':pre_cl_temps_k,'post_cl_temps_k':post_cl_temps_k}
+        if cool_upon_finish:
+            self.ccon.setControlTemperature(3.0)
+            self.ccon.setControlState('off')
+        return IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
+
 
 def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
     rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]

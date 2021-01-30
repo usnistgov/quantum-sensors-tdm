@@ -110,11 +110,10 @@ class IVTempSweepData():
 
 @dataclass_json
 @dataclass
-class IVColdLoadTempSweepData():
+class IVColdLoadTempSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
     set_cl_temps_k: List[float]
-    set_bath_temps_k: List[float]
+    data: List[IVTempSweepData]
     extra_info: dict
-    data: List[IVCurveColumnData]
     
     def to_file(self, filename, overwrite = False):
         if not overwrite:
@@ -126,6 +125,19 @@ class IVColdLoadTempSweepData():
     def from_file(cls, filename):
         with open(filename, "r") as f:
             return cls.from_json(f.read())
+
+    def plot_row(self, row):
+        #n=len(set_cl_temps_k)
+        plt.figure()
+        for ii, tempSweep in enumerate(self.data): # loop over IVTempSweepData instances (ie coldload temperature settings)
+            for jj, set_temp_k in enumerate(tempSweep.set_temps_k): # loop over bath temperatures
+                data = tempSweep.data[jj]
+                x = data.dac_values ; y=data.fb_values_array() 
+                plt.plot(x,y[:,row],label='T_cl = %.1fK; T_b = %.1f'%(self.set_cl_temps_k[ii],data.nominal_temp_k))
+        plt.xlabel("dac value (arb)")
+        plt.ylabel("feedback (arb)")
+        plt.title(f"row={row} bayname {data.bayname}, db_card {data.db_cardname}")
+        plt.legend()
 
 @dataclass_json
 @dataclass
