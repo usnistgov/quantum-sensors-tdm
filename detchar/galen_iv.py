@@ -6,8 +6,8 @@ import numpy as np
 import pylab as plt
 import progress.bar
 import os
-#from . iv_data import IVCurveColumnData, IVTempSweepData, IVColdLoadTempSweepData, IVCircuit
-from iv_data import IVCurveColumnData, IVTempSweepData, IVColdLoadTempSweepData, IVCircuit
+#from . iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadTempSweepData, IVCircuit
+from iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
 from instruments import BlueBox 
 
 class IVPointTaker():
@@ -158,9 +158,7 @@ class IVCurveTaker():
 
     def get_curve(self, dac_values, extra_info = {}, ignore_prep_requirement=False):
         assert ignore_prep_requirement or self._was_prepped, "call prep_fb_settings before get_curve, or pass ignore_prep_requirement=True"
-        print(dac_values)
         dac_values = self._handle_dac_values_int(dac_values)
-        print(dac_values)
         pre_temp_k = self.adr_gui_control.get_temp_k()
         pre_time = time.time()
         pre_hout = self.adr_gui_control.get_hout()
@@ -245,7 +243,7 @@ class IVColdloadSweeper():
                                    setpoint_timeout_m=5, post_setpoint_waittime_m=20, 
                                    verbose=True):
         ''' servo coldload to temperature T and wait for temperature to stabilize '''
-        assert set_coldload_temp_k>50.0, "Coldload temperature setpoint may not exceed 50K"        
+        assert set_coldload_temp_k<50.0, "Coldload temperature setpoint may not exceed 50K"        
         if verbose: print('Setting BB temperature to '+str(set_coldload_temp_k)+'K')
         self.ccon.setControlTemperature(temp=set_coldload_temp_k,loop_channel=self.loop_channel)
                     
@@ -260,7 +258,7 @@ class IVColdloadSweeper():
                 break
         
         # settle at set_coldload_temp_k
-        bar = progress.bar.Bar("Cold load thermalizing to %d minutes"%post_setpoint_waittime_m,max=100)
+        bar = progress.bar.Bar("Cold load thermalizing over %d minutes"%post_setpoint_waittime_m,max=100)
         for ii in range(100):
             time.sleep(60*post_setpoint_waittime_m/100)
             bar.next()
@@ -271,17 +269,17 @@ class IVColdloadSweeper():
         if control_state == 'OFF': self.ccon.setControlTemperature(3.0,self.loop_channel) # set to temperature below achievable
         self.ccon.setControlState(state='on')
 
-    def get_sweep(self, dac_values, set_cl_temps_k, cl_temp_tolerance_k=0.001, 
+    def get_sweep(self, dac_values, set_cl_temps_k, set_temps_k, cl_temp_tolerance_k=0.001, 
                   cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20, 
                   skip_first_settle = True, 
                   cool_upon_finish = True, extra_info={}):
         
         self._prepareColdload() # control enabled after this point
-        datas = []; pre_cl_temps_k = []; post_cl_temps_k
+        datas = []; pre_cl_temps_k = []; post_cl_temps_k =[]
         for ii, set_cl_temp_k in enumerate(set_cl_temps_k):
             if ii==0 and skip_first_settle: pass
-            self.set_coldload_temp_and_settle(set_cl_temp,  
-                                              tolerance_k=cl_temp_tolerance_k 
+            self.set_coldload_temp_and_settle(set_cl_temp_k,  
+                                              tolerance_k=cl_temp_tolerance_k, 
                                               setpoint_timeout_m=cl_settemp_timeout_m, 
                                               post_setpoint_waittime_m=cl_post_setpoint_waittime_m, 
                                               verbose=True)
@@ -290,8 +288,10 @@ class IVColdloadSweeper():
                                             extra_info={'coldload_temp_setpoint':set_cl_temp_k,'pre_coldload_temp':pre_cl_temp_k})
             post_cl_temp_k = self.ccon.getTemperature()
             datas.append(data); pre_cl_temps_k.append(pre_cl_temp_k); post_cl_temps_k.append(post_cl_temp_k)  
-        extra_info = {'pre_cl_temps_k':pre_cl_temps_k,'post_cl_temps_k':post_cl_temps_k}
+        extra_info['pre_cl_temps_k']=pre_cl_temps_k
+        extra_info['post_cl_temps_k']=post_cl_temps_k
         if cool_upon_finish:
+            print('Setting coldload to base temperature')
             self.ccon.setControlTemperature(3.0)
             self.ccon.setControlState('off')
         return IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
@@ -399,13 +399,31 @@ if __name__ == "__main__":
     # plt.show()
     # data.to_file('iv_curve_test.json',True)
 
-    # DEMONSTRATE IVTempSweeper
-    ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
-    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=7000)
+    # # DEMONSTRATE IVTempSweeper
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=7000)
+    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    # ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 7000)
+    # v_bias = np.linspace(0.7,0.0,100)
+    # dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
+    # temps = np.linspace(0.1,0.2,10)
+    # data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
+    # data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
+
+    # DEMONSTRATE IVColdloadSweeper
+    pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox') 
+    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=0, shock_normal_dac_value=60000, zero_tower_at_end=True, adr_gui_control=None)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 7000)
-    v_bias = np.linspace(0.7,0.0,100)
-    dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
-    temps = np.linspace(0.1,0.2,10)
-    data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
-    data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
+    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=None, overbias_dac_value = None)
+    clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
+
+    dacs = np.linspace(7000,6000,10)
+    cl_temps = [4,5]
+    bath_temps = [0.15,.16]
+    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.1, 
+                  cl_settemp_timeout_m=0, cl_post_setpoint_waittime_m=0.5, 
+                  skip_first_settle = True, 
+                  cool_upon_finish = True, extra_info={'message':'this is a test'})
+    data.to_file('coldload_sweep_test.json',overwrite=True)
+    plt.clf()
+    data.plot_row(1)

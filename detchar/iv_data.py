@@ -110,7 +110,7 @@ class IVTempSweepData():
 
 @dataclass_json
 @dataclass
-class IVColdLoadTempSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
+class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
     set_cl_temps_k: List[float]
     data: List[IVTempSweepData]
     extra_info: dict

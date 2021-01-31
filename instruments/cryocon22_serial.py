@@ -121,6 +121,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         else:
             raise ValueError
     def getControlLoopState(self):
+        self.serial.flushInput()
         result = self.ask('control?')
         result = self.parseAsk(result)
         return result
