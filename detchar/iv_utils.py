@@ -1,3 +1,8 @@
+''' iv_util.py 
+    @author Galen O'Neal and Hannes Hubmayr
+
+    was previously "galen_iv.py"
+'''
 from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
 from nasa_client import EasyClient
@@ -103,7 +108,7 @@ class IVCurveTaker():
         self.shock_normal_dac_value = shock_normal_dac_value
         self.zero_tower_at_end = zero_tower_at_end
         self._was_prepped = False
-        self.post_overbias_wait_time_s = 30.0
+        self.post_overbias_settle_s = 30.0
 
     def _handle_adr_gui_control_arg(self, adr_gui_control):
         if adr_gui_control is not None:
@@ -123,7 +128,7 @@ class IVCurveTaker():
         if verbose:
             print('Overbiasing detectors.  Raise temperature to %.1f mK, apply dac_value = %d, then cool to %.1f mK.'%(overbias_temp_k*1000,dac_value,setpoint_k*1000))
         self.adr_gui_control.set_temp_k(float(overbias_temp_k))
-        ThighStable = self.IsTemperatureStable(overbias_temp_k,tol=0.005,time_out_s=180) # determine that it got to Thigh
+        ThighStable = self.is_temp_stable(overbias_temp_k,tol=0.005,time_out_s=180) # determine that it got to Thigh
         
         if verbose:
             if ThighStable:
@@ -132,16 +137,20 @@ class IVCurveTaker():
                 print('Could not get to the desired temperature above Tc.  Current temperature = ', self.adr_gui_control.get_temp_k())
         self.pt.set_volt(dac_value) # voltage bias to stay above Tc
         self.adr_gui_control.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
-        TlowStable = self.IsTemperatureStable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
+        TlowStable = self.is_temp_stable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
         if verbose:     
             if TlowStable:
                 print('Successfully cooled back to base temperature '+str(setpoint_k)+'K')
-                time.sleep(self.post_overbias_wait_time_s)
+                # settle after overbias 
+                bar = progress.bar.Bar("Wait for temp to settle after over bias, %d seconds"%self.post_overbias_settle_s,max=100)
+                for ii in range(100):
+                    time.sleep(self.post_overbias_settle_s/100)
+                    bar.next()
+                bar.finish() 
             else:
                 print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.adr_gui_control.get_temp_k())
         
-
-    def IsTemperatureStable(self, setpoint_k, tol=.005, time_out_s=180):
+    def is_temp_stable(self, setpoint_k, tol=.005, time_out_s=180):
         ''' determine if the servo has reached the desired temperature '''
         assert time_out_s > 10, "time_out_s must be greater than 10 seconds"   
         cur_temp=self.adr_gui_control.get_temp_k()
@@ -412,18 +421,20 @@ if __name__ == "__main__":
 
     # DEMONSTRATE IVColdloadSweeper
     pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox') 
-    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=0, shock_normal_dac_value=60000, zero_tower_at_end=True, adr_gui_control=None)
+    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=0, shock_normal_dac_value=10000, zero_tower_at_end=True, adr_gui_control=None)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=None, overbias_dac_value = None)
+    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=.21, overbias_dac_value = 7000)
     clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
 
     dacs = np.linspace(7000,6000,10)
     cl_temps = [4,5]
     bath_temps = [0.15,.16]
     data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.1, 
-                  cl_settemp_timeout_m=0, cl_post_setpoint_waittime_m=0.5, 
+                  cl_settemp_timeout_m=0, cl_post_setpoint_waittime_m=0, 
                   skip_first_settle = True, 
                   cool_upon_finish = True, extra_info={'message':'this is a test'})
     data.to_file('coldload_sweep_test.json',overwrite=True)
     plt.clf()
+    plt.ion()
     data.plot_row(1)
+    plt.show()

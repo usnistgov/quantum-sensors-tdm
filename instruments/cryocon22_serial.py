@@ -141,6 +141,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         return float(result.split('K')[0])
     
     def getControlSource(self,loop_channel):
+        self.serial.flushInput()
         result = self.ask('loop '+str(loop_channel)+':source?')
         result = self.parseAsk(result)
         return result
