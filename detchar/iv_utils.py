@@ -225,6 +225,7 @@ class IVTempSweeper():
             self.curve_taker.set_temp_and_settle(set_temp_k)
         elif self.to_normal_method == "overbias":
             self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
+            self.curve_taker.set_temp_and_settle(set_temp_k)
 
     def get_sweep(self, dac_values, set_temps_k, extra_info={}):
         datas = []
@@ -287,7 +288,8 @@ class IVColdloadSweeper():
         datas = []; pre_cl_temps_k = []; post_cl_temps_k =[]
         for ii, set_cl_temp_k in enumerate(set_cl_temps_k):
             if ii==0 and skip_first_settle: pass
-            self.set_coldload_temp_and_settle(set_cl_temp_k,  
+            else: 
+                self.set_coldload_temp_and_settle(set_cl_temp_k,  
                                               tolerance_k=cl_temp_tolerance_k, 
                                               setpoint_timeout_m=cl_settemp_timeout_m, 
                                               post_setpoint_waittime_m=cl_post_setpoint_waittime_m, 
@@ -338,55 +340,6 @@ def tc_tickle():
 
 
 if __name__ == "__main__":
-    # plt.ion()
-    # plt.close("all")
-    # curve_taker = IVCurveTaker(IVPointTaker("DB1", "BX"), temp_settle_delay_s=0, shock_normal_dac_value=40000)
-    # curve_taker.set_temp_and_settle(setpoint_k=0.075)
-    # curve_taker.pt.prep_fb_settings(I=10, fba_offset=3000)
-    # dacs = sparse_then_fine_dacs(a=40000, b = 4000, c=0, n_ab=40, n_bc=250)
-    # data = curve_taker.get_curve(dacs, extra_info = {"magnetic field current (amps)": 1e-6})
-    # data.plot()
-    # data.to_file("ivtest.json", overwrite=True)
-    # data2 = IVCurveColumnData.from_json(data.to_json())
-    # assert data2.pre_time_epoch_s == data.pre_time_epoch_s
-    # data = IVCurveColumnData.from_file("ivtest.json")
-    # x, y = data.xy_arrays_zero_subtracted()
-    # r = iv_to_frac_rn_array(x, y, superconducting_below_x=2000, normal_above_x=24000)
-    # plt.figure()
-    # plt.plot(x, r)
-    # plt.xlabel("dac value")
-    # plt.ylabel("fraction R_n")
-    # plt.legend([f"row{i}" for i in range(r.shape[1])])
-    # plt.vlines(2750, 0, 1)
-    # plt.grid(True)
-
-
-
-    # t, y = tc_tickle()
-    # y = np.vstack(fbs)
-    # plt.clf()
-    # plt.plot(np.array(t)*1e3, y)
-    # plt.xlabel("temp (mK)")
-    # plt.ylabel("delta fb from 50 dac unit tickle")
-    # plt.pause(0.1)
-
-    # plt.ion()
-    # plt.close("all")
-    # curve_taker = IVCurveTaker(IVPointTaker("dfb_card","A"), temp_settle_delay_s=0, shock_normal_dac_value=0)
-    # curve_taker.prep_fb_settings()
-    # temp_sweeper = IVTempSweeper(curve_taker)
-    # #dacs = sparse_then_fine_dacs(a=40000, b = 10000, c=0, n_ab=20, n_bc=100)
-    # dacs = np.linspace(100,0,10)#; dacs = list(dacs.astype(int))
-    # #print(type(dacs))
-    # temps_mk = np.linspace(190,200,2)
-    # print(f"{temps_mk} mK")
-    # sweep = temp_sweeper.get_sweep(dacs, 
-    #     set_temps_k=temps_mk*1e-3, 
-    #     extra_info={"field coil current (Amps)":0})
-    # sweep.to_file("iv_sweep_test_galen.json", overwrite=True)
-    # sweep2 = IVTempSweepData.from_file("iv_sweep_test_galen.json")
-    # sweep2.plot_row(row=0)
-
     # DEMONSTRATE IV POINT TAKER WORKS
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox')
     # #dacvalue = int(0.7/ivpt.max_voltage*(2**16-1))
@@ -397,16 +350,16 @@ if __name__ == "__main__":
 
     # # DEMONSTRATE IVCurveTaker works 
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
-    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=0)
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=5000)
     # #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
-    # #curve_taker.set_temp_and_settle(setpoint_k=0.13)
+    # curve_taker.set_temp_and_settle(setpoint_k=0.1)
     # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    # v_bias = np.linspace(1.0,0.0,10)
+    # v_bias = np.linspace(.5,0.0,100)
     # dacs = v_bias/ivpt.max_voltage*(2**16-1)#; dacs = dacs.astype(int)
-    # data = curve_taker.get_curve(dacs, extra_info = {"hannes is rad": "yes"})
+    # data = curve_taker.get_curve(dacs, extra_info = {"state": "normal branch"})
     # data.plot()
     # plt.show()
-    # data.to_file('iv_curve_test.json',True)
+    # data.to_file('lbird_iv_100mk_20210130.json',True)
 
     # # DEMONSTRATE IVTempSweeper
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
@@ -421,19 +374,19 @@ if __name__ == "__main__":
 
     # DEMONSTRATE IVColdloadSweeper
     pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox') 
-    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=0, shock_normal_dac_value=10000, zero_tower_at_end=True, adr_gui_control=None)
+    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=5, shock_normal_dac_value=10000, zero_tower_at_end=True, adr_gui_control=None)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
     btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=.21, overbias_dac_value = 7000)
     clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
 
-    dacs = np.linspace(7000,6000,10)
-    cl_temps = [4,5]
-    bath_temps = [0.15,.16]
-    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.1, 
-                  cl_settemp_timeout_m=0, cl_post_setpoint_waittime_m=0, 
+    dacs = np.linspace(7000,0,100)
+    cl_temps = [4,5,6,7,8,9,10,11,12,12,11,10,9,8,7,6,5,4]
+    bath_temps = [0.12,.13,.17]
+    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01, 
+                  cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20.0, 
                   skip_first_settle = True, 
                   cool_upon_finish = True, extra_info={'message':'this is a test'})
-    data.to_file('coldload_sweep_test.json',overwrite=True)
+    data.to_file('lbird_hftv0_coldload_sweep.json',overwrite=True)
     plt.clf()
     plt.ion()
     data.plot_row(1)
