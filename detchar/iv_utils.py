@@ -282,7 +282,8 @@ class IVColdloadSweeper():
     def get_sweep(self, dac_values, set_cl_temps_k, set_temps_k, cl_temp_tolerance_k=0.001, 
                   cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20, 
                   skip_first_settle = True, 
-                  cool_upon_finish = True, extra_info={}):
+                  cool_upon_finish = True, extra_info={}
+                  write_while_acquire = False, filename=None):
         
         self._prepareColdload() # control enabled after this point
         datas = []; pre_cl_temps_k = []; post_cl_temps_k =[]
@@ -298,15 +299,34 @@ class IVColdloadSweeper():
             data = self.ivsweeper.get_sweep(dac_values, set_temps_k, 
                                             extra_info={'coldload_temp_setpoint':set_cl_temp_k,'pre_coldload_temp':pre_cl_temp_k})
             post_cl_temp_k = self.ccon.getTemperature()
-            datas.append(data); pre_cl_temps_k.append(pre_cl_temp_k); post_cl_temps_k.append(post_cl_temp_k)  
-        extra_info['pre_cl_temps_k']=pre_cl_temps_k
-        extra_info['post_cl_temps_k']=post_cl_temps_k
+            datas.append(data); pre_cl_temps_k.append(pre_cl_temp_k); post_cl_temps_k.append(post_cl_temp_k)
+            extra_info['pre_cl_temps_k']=pre_cl_temps_k
+            extra_info['post_cl_temps_k']=post_cl_temps_k
+            if write_while_acquire:
+                temp_filename = _handle_file_extension(filename)
+                temp_df = IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
+                temp_df.to_file(temp_filename,overwrite=True)
+                
         if cool_upon_finish:
             print('Setting coldload to base temperature')
             self.ccon.setControlTemperature(3.0)
             self.ccon.setControlState('off')
         return IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
 
+def _handle_file_extension(filename, suffix='.json'):
+    if filename==None:
+        new_filename='tempfile'+suffix
+    else:
+        fname_split = filename.split('.')
+        if len(fname_split)==1:
+            new_filename = filename+suffix
+        elif len(fname_split)==2:
+            fext = fname_split[1]
+            if fext != suffix:
+                new_filename = filename + suffix 
+            else:
+                new_filename = filename
+    return new_filename 
 
 def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
     rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]
