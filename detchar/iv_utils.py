@@ -1,5 +1,5 @@
 ''' iv_util.py 
-    @author Galen O'Neal and Hannes Hubmayr
+    @author Galen O'Neil and Hannes Hubmayr
 
     was previously "galen_iv.py"
 '''
