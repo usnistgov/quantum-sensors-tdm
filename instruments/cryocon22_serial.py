@@ -47,13 +47,6 @@ Therefore never want to use the high range, and this software forbids it.
 
 from . import serial_instrument
 import serial
-from time import sleep
-import numpy as np
-import cmath
-from tkinter.simpledialog import askfloat
-import pickle
-import pylab
-import math
 
 class Cryocon22(serial_instrument.SerialInstrument):
     '''
@@ -64,26 +57,35 @@ class Cryocon22(serial_instrument.SerialInstrument):
         '''Constructor  port is the only required parameter '''
 
         super(Cryocon22, self).__init__(port, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.15, readtimeout=0.05, lineend = b"\r\n")
-        # Empirically found that min_time_between_writes >=0.15
+        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.3, readtimeout=0.5, lineend = b"\r\n")
+        # Empirically found that readoutout must = None (port just waits as long as it needs to get a response), then things work.  
 
         # identity string of the instrument
         self.id_string = "Cryocon22C SNo:205346"
         self.manufacturer = 'Cryocon'
         self.model_number = '22'
-        self.description  = 'Temperature Controller'
+        self.description  = 'Temperature Controller' 
     
     def parseAsk(self,result):
         return result.decode().split(self.lineend.decode())[0]
 
-    def writeAndflush(self,thestring):
-        # this is cludge because I find that after any write command a read command gives \r\n, the lineend.
-        # This caused problems when subsequent commands asked for a response, did a single read command
-        # which reads only one line, and returned only \r\n.  Thus the solution is to just read all after 
-        # every write.  
+    def writeAndFlush(self,thestring,verbose=False):
+        # This method is a cludge used for all write commands that do not receive a response 
+        # (all "sets" that do not return floats.
+        # The problem: after any write command, a read command gives \r\n, the lineend.
+        # This causes problems when subsequent "get" commands, which need a response. 
+        # The "get" response only returns \r\n.  Thus the solution is to readline() after every write.  
+        # Note: read_all() doesn't work!
         self.write(thestring)
-        sleep(0.15)
-        self.serial.read_all()
+        result = self.serial.readline()
+        if verbose: print(result)
+
+    def myAsk(self,command):
+        # currently not used.
+        self.write(command.encode())
+        result = self.serial.read_until(self.lineend)
+        result = self.parseAsk(result)
+        return result
     
     # The gets ------------------------------------------------
     def getTemperature(self, channel='both'):
@@ -127,7 +129,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
         return result
     
     def getControlLoopMode(self,loop_channel=1):
-        # NOTE if PID is returned there are two extra spaces.
+        # note if PID is returned there are two extra spaces.
         result = self.ask('loop '+str(loop_channel)+':type?')
         result = self.parseAsk(result)
         return result
@@ -141,11 +143,10 @@ class Cryocon22(serial_instrument.SerialInstrument):
         return float(result.split('K')[0])
     
     def getControlSource(self,loop_channel):
-        self.serial.flushInput()
         result = self.ask('loop '+str(loop_channel)+':source?')
         result = self.parseAsk(result)
         return result
-
+        
     def getHeaterRange(self,loop_channel):
         result = self.ask('loop '+str(loop_channel)+':range?')
         result = self.parseAsk(result)
@@ -172,7 +173,7 @@ class Cryocon22(serial_instrument.SerialInstrument):
     def setUnits(self,channel='a',unit='k'): #
         if channel in ['a','b','A','B']:
             if unit in ['k','K','s','S']:
-                self.writeAndflush('inp '+channel+':unit '+ unit)
+                self.writeAndFlush('inp '+channel+':unit '+ unit)
             else:
                 print('ValueError: unit can only be \'k\' or \'s\'')
                 raise ValueError
@@ -180,36 +181,36 @@ class Cryocon22(serial_instrument.SerialInstrument):
             print('ValueError: channel can only be \'a\' or \'b\'')
     
     def setControlTemperature(self,temp,loop_channel=1): #
-        self.writeAndflush('loop '+str(loop_channel)+ ':setpt '+str(temp))
+        self.writeAndFlush('loop '+str(loop_channel)+ ':setpt '+str(temp))
     
     def setControlState(self,state='off'): #
         if state == 'off' or state == 'OFF':
-            self.writeAndflush('stop')
+            self.writeAndFlush('stop')
         elif state == 'on' or state == 'ON':
-            self.writeAndflush('control')
+            self.writeAndFlush('control')
     
     def setTemperatureUnitsToKelvin(self,channel='A'): #
         if channel in ['A','B','a','b']:
-            self.writeAndflush('Input '+channel+':units k')
+            self.writeAndFlush('Input '+channel+':units k')
     
     def setControlLoopMode(self,loop_channel,mode='off'): #
         if loop_channel not in [1,2,3,4]:
             print('Invalid loop_channel: '+str(loop_channel)+'. Must be 1,2,3, or 4')
             raise ValueError
         if mode in ['off','man','pid','table','rampt','rampp','OFF','MAN','PID','TABLE','RAMPT','RAMPP']:
-            self.writeAndflush('loop '+str(loop_channel)+':type '+mode)
+            self.writeAndFlush('loop '+str(loop_channel)+':type '+mode)
         else:
             print('Invalid mode: '+mode+'. Only off, man, pid, table, rampt, rampp allowed.')
             raise ValueError
 
     def setControlSource(self,loop_channel=1, t_channel='a'): #
-        self.writeAndflush('loop '+str(loop_channel)+':source '+t_channel)
+        self.writeAndFlush('loop '+str(loop_channel)+':source '+t_channel)
     
     def setPID(self,loop_channel,P,I,D):
         loop_channel_string=str(loop_channel)
-        self.writeAndflush('loop '+loop_channel_string+':pgain '+str(P)) 
-        self.writeAndflush('loop '+loop_channel_string+':igain '+str(I)) 
-        self.writeAndflush('loop '+loop_channel_string+':dgain '+str(D))
+        self.writeAndFlush('loop '+loop_channel_string+':pgain '+str(P)) 
+        self.writeAndFlush('loop '+loop_channel_string+':igain '+str(I)) 
+        self.writeAndFlush('loop '+loop_channel_string+':dgain '+str(D))
     
     def setHeaterRange(self,loop_channel,heater_range='low'):
         if loop_channel not in [1,2,3,4]:
@@ -218,23 +219,23 @@ class Cryocon22(serial_instrument.SerialInstrument):
         if heater_range not in ['low', 'mid', 'LOW','MID']:
             print('Invalid heater range: '+range+'. Only low and mid ranges allowed')
             raise ValueError
-        self.writeAndflush('loop '+str(loop_channel)+':range '+heater_range)
-        return self.getHeaterRange(loop_channel) 
+        self.writeAndFlush('loop '+str(loop_channel)+':range '+heater_range)
+        #return self.getHeaterRange(loop_channel) # commented out because it is different than all the other "sets"
 
     def setSensorToCurve(self,t_channel='a', curve_number=2):
         ''' Assign a calibration curve to a temperature sensor.  
             curve_number2 is the factory installed LS DT-670 curve
         '''
         thestring = 'input '+str(t_channel)+':sensorix '+str(curve_number)
-        #print(thestring) 
-        self.writeAndflush(thestring)
+        self.writeAndFlush(thestring)
         
     def disableControlLoops(self):
-        self.writeAndflush('stop')
+        self.writeAndFlush('stop')
     
-    def controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',PID=[1,1,1],heater_range='low'):
+    def controlLoopSetup(self,loop_channel=1,control_temp=3.0,t_channel='a',PID=[1,5,0],heater_range='low'):
         ''' initialize the control loop setup '''
         loop_channel_string=str(loop_channel)
+        
         self.setControlSource(loop_channel,t_channel) # links control loop to thermometer t_channel 
         self.setTemperatureUnitsToKelvin(t_channel) 
         self.setHeaterRange(loop_channel, heater_range) 
@@ -242,20 +243,23 @@ class Cryocon22(serial_instrument.SerialInstrument):
         self.setControlLoopMode(loop_channel,'PID') 
         self.setControlTemperature(control_temp, loop_channel)
         for ii in [1,2,3,4]: # turn all other loops off
-            if ii != loop_channel:
-                self.setControlLoopMode(ii,'off') 
+             if ii != loop_channel:
+                 self.setControlLoopMode(ii,'off') 
+
         print('loop channel '+loop_channel_string+' control loop config:')
-        print('source:' + str(self.getControlSource(loop_channel)))
+        print('source: '+ self.getControlSource(loop_channel))
         print('Heater range: ' + self.getHeaterRange(loop_channel))
         print('PID = ',self.getPID(loop_channel))
         print('Control mode: ' + self.getControlLoopMode(loop_channel))
         print('Control temperature: ', self.getControlTemperature(loop_channel))
         print('Control status: ' + self.getControlLoopState())
         
-    def isTemperatureStable(self,loop_channel,tolerance=0.1):
-        t_channel=self.getControlSource(loop_channel).split('CH')[1] # have this as input to method to save one read/write?
+    def isTemperatureStable(self,loop_channel,tolerance=0.1,control_channel=None,control_temp=None):
+        if control_channel==None: t_channel=self.getControlSource(loop_channel).split('CH')[1]
+        else: t_channel = control_channel
+        if control_temp==None: t_c = self.getControlTemperature(loop_channel)
+        else: t_c = control_temp
         t_m = self.getTemperature(t_channel)
-        t_c = self.getControlTemperature(loop_channel)
         t_error = t_m - t_c
         print(t_m, t_c, t_error)
         if abs(t_error)<tolerance:

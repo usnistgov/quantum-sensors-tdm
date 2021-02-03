@@ -241,7 +241,6 @@ class IVColdloadSweeper():
         from instruments import Cryocon22
         self.ccon = Cryocon22()  
         self.loop_channel = loop_channel
-        
 
     def initialize_bath_temp(self,set_temp_k):
         if self.to_normal_method == None:
@@ -274,18 +273,20 @@ class IVColdloadSweeper():
             bar.next()
         bar.finish()
 
-    def _prepareColdload(self):
-        control_state = self.ccon.getControlLoopState() 
-        if control_state == 'OFF': self.ccon.setControlTemperature(3.0,self.loop_channel) # set to temperature below achievable
+    def _prepareColdload(self,set_cl_temp_k):
+        self.ccon.controlLoopSetup(loop_channel=self.loop_channel, control_temp=set_cl_temp_k,
+                                t_channel='a',PID=[1,5,0], heater_range='low') # setup BB control
+        #control_state = self.ccon.getControlLoopState() 
+        #if control_state == 'OFF': self.ccon.setControlTemperature(3.0,self.loop_channel) # set to temperature below achievable
         self.ccon.setControlState(state='on')
 
     def get_sweep(self, dac_values, set_cl_temps_k, set_temps_k, cl_temp_tolerance_k=0.001, 
                   cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20, 
                   skip_first_settle = True, 
-                  cool_upon_finish = True, extra_info={}
+                  cool_upon_finish = True, extra_info={},
                   write_while_acquire = False, filename=None):
         
-        self._prepareColdload() # control enabled after this point
+        self._prepareColdload(set_cl_temps_k[0]) # control enabled after this point
         datas = []; pre_cl_temps_k = []; post_cl_temps_k =[]
         for ii, set_cl_temp_k in enumerate(set_cl_temps_k):
             if ii==0 and skip_first_settle: pass
@@ -306,7 +307,7 @@ class IVColdloadSweeper():
                 temp_filename = _handle_file_extension(filename)
                 temp_df = IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
                 temp_df.to_file(temp_filename,overwrite=True)
-                
+
         if cool_upon_finish:
             print('Setting coldload to base temperature')
             self.ccon.setControlTemperature(3.0)
@@ -370,16 +371,16 @@ if __name__ == "__main__":
 
     # # DEMONSTRATE IVCurveTaker works 
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
-    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=5000)
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65000)
     # #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
     # curve_taker.set_temp_and_settle(setpoint_k=0.1)
     # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    # v_bias = np.linspace(.5,0.0,100)
+    # v_bias = np.linspace(1.0,0.0,100)
     # dacs = v_bias/ivpt.max_voltage*(2**16-1)#; dacs = dacs.astype(int)
-    # data = curve_taker.get_curve(dacs, extra_info = {"state": "normal branch"})
+    # data = curve_taker.get_curve(dacs, extra_info = {})
     # data.plot()
     # plt.show()
-    # data.to_file('lbird_iv_100mk_20210130.json',True)
+    # data.to_file('lbird_iv_100mk_20210202_2.json',True)
 
     # # DEMONSTRATE IVTempSweeper
     # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
@@ -393,20 +394,22 @@ if __name__ == "__main__":
     # data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
 
     # DEMONSTRATE IVColdloadSweeper
+    filename = 'lbird_hftv0_coldload_sweep.json'
     pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox') 
-    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=5, shock_normal_dac_value=10000, zero_tower_at_end=True, adr_gui_control=None)
+    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=True, adr_gui_control=None)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=.21, overbias_dac_value = 7000)
+    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=.21, overbias_dac_value = 7000)
     clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
 
-    dacs = np.linspace(7000,0,100)
-    cl_temps = [4,5,6,7,8,9,10,11,12,12,11,10,9,8,7,6,5,4]
-    bath_temps = [0.12,.13,.17]
+    dacs = np.linspace(10000,0,100)
+    cl_temps = [4,5,6,7,8,9,10,9,8,7,6,5,4]
+    bath_temps = [0.11,.13,.17]
     data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01, 
-                  cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20.0, 
+                  cl_settemp_timeout_m=10.0, cl_post_setpoint_waittime_m=20.0, 
                   skip_first_settle = True, 
-                  cool_upon_finish = True, extra_info={'message':'this is a test'})
-    data.to_file('lbird_hftv0_coldload_sweep.json',overwrite=True)
+                  cool_upon_finish = True, extra_info={'message':'this is a test'},
+                  write_while_acquire = True, filename=filename)
+    data.to_file(filename,overwrite=True)
     plt.clf()
     plt.ion()
     data.plot_row(1)
