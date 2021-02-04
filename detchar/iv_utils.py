@@ -1,4 +1,4 @@
-''' iv_util.py 
+''' iv_util.py
     @author Galen O'Neil and Hannes Hubmayr
 
     was previously "galen_iv.py"
@@ -13,10 +13,10 @@ import progress.bar
 import os
 #from . iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadTempSweepData, IVCircuit
 from iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
-from instruments import BlueBox 
+from instruments import BlueBox
 
 class IVPointTaker():
-    def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000), 
+    def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000),
     easy_client=None, cringe_control=None, voltage_source = None, column_number = 0):
         self.ec = self._handle_easy_client_arg(easy_client)
         self.cc = self._handle_cringe_control_arg(cringe_control)
@@ -30,7 +30,7 @@ class IVPointTaker():
         self.col = column_number
         self._relock_offset = np.zeros(self.ec.nrow)
         self.set_volt = self._handle_voltage_source_arg(voltage_source)
-    
+
     def _handle_voltage_source_arg(self,voltage_source):
         # set "set_volt" to either tower or bluebox
         if voltage_source == None:
@@ -47,7 +47,7 @@ class IVPointTaker():
             return easy_client
         easy_client = EasyClient()
         easy_client.setupAndChooseChannels()
-        return easy_client           
+        return easy_client
 
     def _handle_cringe_control_arg(self, cringe_control):
         if cringe_control is not None:
@@ -93,7 +93,7 @@ class IVPointTaker():
             self.cc.set_fb_i(self.col, I)
         if fba_offset is not None:
             print(f"setting fba offset to {fba_offset}")
-            self.cc.set_fba_offset(self.col, fba_offset)    
+            self.cc.set_fba_offset(self.col, fba_offset)
 
     def relock_all_locked_rows(self):
         print("relock all locked rows")
@@ -129,7 +129,7 @@ class IVCurveTaker():
             print('Overbiasing detectors.  Raise temperature to %.1f mK, apply dac_value = %d, then cool to %.1f mK.'%(overbias_temp_k*1000,dac_value,setpoint_k*1000))
         self.adr_gui_control.set_temp_k(float(overbias_temp_k))
         ThighStable = self.is_temp_stable(overbias_temp_k,tol=0.005,time_out_s=180) # determine that it got to Thigh
-        
+
         if verbose:
             if ThighStable:
                 print('Successfully raised Tb > %.3f K.  Appling detector voltage bias and cooling back down.'%(overbias_temp_k))
@@ -138,21 +138,21 @@ class IVCurveTaker():
         self.pt.set_volt(dac_value) # voltage bias to stay above Tc
         self.adr_gui_control.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
         TlowStable = self.is_temp_stable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
-        if verbose:     
+        if verbose:
             if TlowStable:
                 print('Successfully cooled back to base temperature '+str(setpoint_k)+'K')
-                # settle after overbias 
+                # settle after overbias
                 bar = progress.bar.Bar("Wait for temp to settle after over bias, %d seconds"%self.post_overbias_settle_s,max=100)
                 for ii in range(100):
                     time.sleep(self.post_overbias_settle_s/100)
                     bar.next()
-                bar.finish() 
+                bar.finish()
             else:
                 print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.adr_gui_control.get_temp_k())
-        
+
     def is_temp_stable(self, setpoint_k, tol=.005, time_out_s=180):
         ''' determine if the servo has reached the desired temperature '''
-        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"   
+        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"
         cur_temp=self.adr_gui_control.get_temp_k()
         it_num=0
         while abs(cur_temp-setpoint_k)>tol:
@@ -173,7 +173,7 @@ class IVCurveTaker():
         pre_hout = self.adr_gui_control.get_hout()
         # temp_rms and slope will not be very useful if you just changed temp, so get them at end only
         self.pt.set_volt(self.shock_normal_dac_value)
-        time.sleep(0.05) # inserted because immediately commanding the lower dac value didn't take.  
+        time.sleep(0.05) # inserted because immediately commanding the lower dac value didn't take.
                          # was stuck at shock_normal_dac_value and this affected the first few points
         self.pt.set_volt(dac_values[0]) # go to the first dac value and relock all
         self.pt.relock_all_locked_rows()
@@ -197,7 +197,7 @@ class IVCurveTaker():
         return IVCurveColumnData(nominal_temp_k = self._last_setpoint_k, pre_temp_k=pre_temp_k, post_temp_k=post_temp_k,
         pre_time_epoch_s = pre_time, post_time_epoch_s = post_time, pre_hout = pre_hout, post_hout = post_hout,
         post_slope_hout_per_hour = post_slope_hout_per_hour, dac_values = dac_values, bayname = self.pt.bayname,
-        db_cardname = self.pt.db_cardname, column_number = self.pt.col, extra_info = extra_info, fb_values = fb_values, 
+        db_cardname = self.pt.db_cardname, column_number = self.pt.col, extra_info = extra_info, fb_values = fb_values,
         pre_shock_dac_value=self.shock_normal_dac_value)
 
     def _handle_dac_values_int(self,dac_values):
@@ -222,6 +222,7 @@ class IVTempSweeper():
 
     def initialize_bath_temp(self,set_temp_k):
         if self.to_normal_method == None:
+            self.curve_taker.is_temp_stable(set_temp_k, tol=.001, time_out_s=180)
             self.curve_taker.set_temp_and_settle(set_temp_k)
         elif self.to_normal_method == "overbias":
             self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
@@ -230,7 +231,7 @@ class IVTempSweeper():
     def get_sweep(self, dac_values, set_temps_k, extra_info={}):
         datas = []
         for set_temp_k in set_temps_k:
-            self.initialize_bath_temp(set_temp_k) 
+            self.initialize_bath_temp(set_temp_k)
             data = self.curve_taker.get_curve(dac_values, extra_info)
             datas.append(data)
         return IVTempSweepData(set_temps_k, datas)
@@ -239,7 +240,7 @@ class IVColdloadSweeper():
     def __init__(self, ivsweeper, loop_channel=1):
         self.ivsweeper = ivsweeper # instance of IVTempSweeper
         from instruments import Cryocon22
-        self.ccon = Cryocon22()  
+        self.ccon = Cryocon22()
         self.loop_channel = loop_channel
 
     def initialize_bath_temp(self,set_temp_k):
@@ -248,14 +249,14 @@ class IVColdloadSweeper():
         elif self.to_normal_method == "overbias":
             self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
 
-    def set_coldload_temp_and_settle(self, set_coldload_temp_k, tolerance_k=0.001, 
-                                   setpoint_timeout_m=5, post_setpoint_waittime_m=20, 
+    def set_coldload_temp_and_settle(self, set_coldload_temp_k, tolerance_k=0.001,
+                                   setpoint_timeout_m=5, post_setpoint_waittime_m=20,
                                    verbose=True):
         ''' servo coldload to temperature T and wait for temperature to stabilize '''
-        assert set_coldload_temp_k<50.0, "Coldload temperature setpoint may not exceed 50K"        
+        assert set_coldload_temp_k<50.0, "Coldload temperature setpoint may not exceed 50K"
         if verbose: print('Setting BB temperature to '+str(set_coldload_temp_k)+'K')
         self.ccon.setControlTemperature(temp=set_coldload_temp_k,loop_channel=self.loop_channel)
-                    
+
         # wait for thermometer on coldload to reach set_coldload_temp_k --------------------------------------------
         is_stable = self.ccon.isTemperatureStable(self.loop_channel,tolerance_k)
         stable_num=0
@@ -265,7 +266,7 @@ class IVColdloadSweeper():
             stable_num += 1
             if stable_num*5/60. > setpoint_timeout_m:
                 break
-        
+
         # settle at set_coldload_temp_k
         bar = progress.bar.Bar("Cold load thermalizing over %d minutes"%post_setpoint_waittime_m,max=100)
         for ii in range(100):
@@ -276,28 +277,28 @@ class IVColdloadSweeper():
     def _prepareColdload(self,set_cl_temp_k):
         self.ccon.controlLoopSetup(loop_channel=self.loop_channel, control_temp=set_cl_temp_k,
                                 t_channel='a',PID=[1,5,0], heater_range='low') # setup BB control
-        #control_state = self.ccon.getControlLoopState() 
+        #control_state = self.ccon.getControlLoopState()
         #if control_state == 'OFF': self.ccon.setControlTemperature(3.0,self.loop_channel) # set to temperature below achievable
         self.ccon.setControlState(state='on')
 
-    def get_sweep(self, dac_values, set_cl_temps_k, set_temps_k, cl_temp_tolerance_k=0.001, 
-                  cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20, 
-                  skip_first_settle = True, 
+    def get_sweep(self, dac_values, set_cl_temps_k, set_temps_k, cl_temp_tolerance_k=0.001,
+                  cl_settemp_timeout_m=5, cl_post_setpoint_waittime_m=20,
+                  skip_first_settle = True,
                   cool_upon_finish = True, extra_info={},
                   write_while_acquire = False, filename=None):
-        
+
         self._prepareColdload(set_cl_temps_k[0]) # control enabled after this point
         datas = []; pre_cl_temps_k = []; post_cl_temps_k =[]
         for ii, set_cl_temp_k in enumerate(set_cl_temps_k):
             if ii==0 and skip_first_settle: pass
-            else: 
-                self.set_coldload_temp_and_settle(set_cl_temp_k,  
-                                              tolerance_k=cl_temp_tolerance_k, 
-                                              setpoint_timeout_m=cl_settemp_timeout_m, 
-                                              post_setpoint_waittime_m=cl_post_setpoint_waittime_m, 
+            else:
+                self.set_coldload_temp_and_settle(set_cl_temp_k,
+                                              tolerance_k=cl_temp_tolerance_k,
+                                              setpoint_timeout_m=cl_settemp_timeout_m,
+                                              post_setpoint_waittime_m=cl_post_setpoint_waittime_m,
                                               verbose=True)
             pre_cl_temp_k = self.ccon.getTemperature()
-            data = self.ivsweeper.get_sweep(dac_values, set_temps_k, 
+            data = self.ivsweeper.get_sweep(dac_values, set_temps_k,
                                             extra_info={'coldload_temp_setpoint':set_cl_temp_k,'pre_coldload_temp':pre_cl_temp_k})
             post_cl_temp_k = self.ccon.getTemperature()
             datas.append(data); pre_cl_temps_k.append(pre_cl_temp_k); post_cl_temps_k.append(post_cl_temp_k)
@@ -324,10 +325,10 @@ def _handle_file_extension(filename, suffix='.json'):
         elif len(fname_split)==2:
             fext = fname_split[1]
             if fext != suffix:
-                new_filename = filename + suffix 
+                new_filename = filename + suffix
             else:
                 new_filename = filename
-    return new_filename 
+    return new_filename
 
 def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
     rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]
@@ -369,8 +370,8 @@ if __name__ == "__main__":
     # plt.plot(fb_values,'o')
     # plt.show()
 
-    # # DEMONSTRATE IVCurveTaker works 
-    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
+    # # DEMONSTRATE IVCurveTaker works
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
     # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65000)
     # #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
     # curve_taker.set_temp_and_settle(setpoint_k=0.1)
@@ -383,7 +384,7 @@ if __name__ == "__main__":
     # data.to_file('lbird_iv_100mk_20210202_2.json',True)
 
     # # DEMONSTRATE IVTempSweeper
-    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class 
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
     # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=7000)
     # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
     # ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 7000)
@@ -395,7 +396,7 @@ if __name__ == "__main__":
 
     # DEMONSTRATE IVColdloadSweeper
     filename = 'lbird_hftv0_coldload_sweep.json'
-    pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox') 
+    pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox')
     curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=True, adr_gui_control=None)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
     btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=.21, overbias_dac_value = 7000)
@@ -404,9 +405,9 @@ if __name__ == "__main__":
     dacs = np.linspace(10000,0,100)
     cl_temps = [4,5,6,7,8,9,10,9,8,7,6,5,4]
     bath_temps = [0.11,.13,.17]
-    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01, 
-                  cl_settemp_timeout_m=10.0, cl_post_setpoint_waittime_m=20.0, 
-                  skip_first_settle = True, 
+    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01,
+                  cl_settemp_timeout_m=10.0, cl_post_setpoint_waittime_m=20.0,
+                  skip_first_settle = True,
                   cool_upon_finish = True, extra_info={'message':'this is a test'},
                   write_while_acquire = True, filename=filename)
     data.to_file(filename,overwrite=True)
