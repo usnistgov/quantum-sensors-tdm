@@ -38,7 +38,7 @@ class IVCurveColumnData():
         if not overwrite:
             assert not os.path.isfile(filename)
         with open(filename, "w") as f:
-            f.write(self.to_json())   
+            f.write(self.to_json())
 
     @classmethod
     def from_file(cls, filename):
@@ -62,13 +62,13 @@ class IVCurveColumnData():
         for i in range(fb.shape[1]):
             fb[:,i] = fit_normal_zero_subtract(dac_values, fb[:, i], normal_above_fb)
         return dac_values, fb
-    
+
     def xy_arrays(self):
         dac_values = np.array(self.dac_values)
         fb = self.fb_values_array()
         for i in range(fb.shape[1]):
             fb[:,i] = fb[:, i]
-        return dac_values, fb       
+        return dac_values, fb
 
 def fit_normal_zero_subtract(x, y, normal_above_x):
     normal_inds = np.where(x>normal_above_x)[0]
@@ -81,12 +81,12 @@ def fit_normal_zero_subtract(x, y, normal_above_x):
 class IVTempSweepData():
     set_temps_k: List[float]
     data: List[IVCurveColumnData]
-    
+
     def to_file(self, filename, overwrite = False):
         if not overwrite:
             assert not os.path.isfile(filename)
         with open(filename, "w") as f:
-            f.write(self.to_json())   
+            f.write(self.to_json())
 
     @classmethod
     def from_file(cls, filename):
@@ -114,12 +114,12 @@ class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, d
     set_cl_temps_k: List[float]
     data: List[IVTempSweepData]
     extra_info: dict
-    
+
     def to_file(self, filename, overwrite = False):
         if not overwrite:
             assert not os.path.isfile(filename)
         with open(filename, "w") as f:
-            f.write(self.to_json())   
+            f.write(self.to_json())
 
     @classmethod
     def from_file(cls, filename):
@@ -132,7 +132,7 @@ class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, d
         for ii, tempSweep in enumerate(self.data): # loop over IVTempSweepData instances (ie coldload temperature settings)
             for jj, set_temp_k in enumerate(tempSweep.set_temps_k): # loop over bath temperatures
                 data = tempSweep.data[jj]
-                x = data.dac_values ; y=data.fb_values_array() 
+                x = data.dac_values ; y=data.fb_values_array()
                 plt.plot(x,y[:,row],label='T_cl = %.1fK; T_b = %.1f'%(self.set_cl_temps_k[ii],data.nominal_temp_k))
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
@@ -145,6 +145,7 @@ class IVCircuit():
     rfb_ohm: float # feedback resistor
     rbias_ohm: float # bias resistor
     rsh_ohm: float # shunt resistor
+    rx_ohm: float # parasitic resistance in series with TES
     m_ratio: float # ratio of feedback mutual inductance to input mutual inductance
     vfb_gain: float # volts/arbs of feeback
     vbias_gain: float # volts/arbs of bias
@@ -156,7 +157,7 @@ class IVCircuit():
         rpar_ohm = pfit_sc.deriv(m=1)(0)
         return ites0, vtes0-ites0*rpar_ohm, rpar_ohm
 
-    def iv_raw_to_physical(self, vbias_arbs, vfb_arbs, rpar_ohm):
+    def iv_raw_to_physical_simple(self, vbias_arbs, vfb_arbs, rpar_ohm):
         #assume rbias >> rshunt
         ifb = vfb_arbs*self.vfb_gain / self.rfb_ohm # feedback current
         ites = ifb / self.m_ratio # tes current
@@ -164,3 +165,13 @@ class IVCircuit():
         # rtes = rsh_ohm + rpar_ohm - ibias*rsh_ohm/ites
         vtes = (ibias-ites)*self.rsh_ohm-ites*rpar_ohm
         return ites, vtes
+
+    def to_physical_units(self,dac_values,fb_array):
+        y = fb_array*self.vfb_gain *(self.rfb_ohm*self.m_ratio)**-1
+        I = dac_values*self.vbias_gain/self.rbias_ohm # current sent to TES bias network
+        n,m = np.shape(y)
+        x = np.zeros((n,m))
+        for ii in range(m):
+            #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm[ii]) # for future for unique rx per sensor
+            x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
+        return x,y

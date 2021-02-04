@@ -2,6 +2,8 @@
 
 # IVTempSweepData ought to have the coldload setpoint.
 
+import detchar
+from detchar.iv_data import IVCircuit
 from detchar import IVColdloadSweepData
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,7 +38,6 @@ class IVColdloadSweepAnalyzer():
         self.dac_values = np.array(self.data[0].data[0].dac_values)
         self.n_dac_values, self.n_rows = np.shape(self.data[0].data[0].fb_values)
 
-
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))
@@ -46,14 +47,14 @@ class IVColdloadSweepAnalyzer():
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
 
-    def get_fb_cl_sweep_for_row(self,row_index,bath_temp_index=0,cl_indicies=None):
+    def get_cl_sweep_dataset_for_row(self,row_index,bath_temp_index=0,cl_indicies=None):
         if cl_indicies==None:
             cl_indicies = list(range(self.n_cl_temps))
         n_cl = len(cl_indicies)
         fb = np.zeros((self.n_dac_values,n_cl))
         for ii in range(n_cl):
             fb[:,ii] = self.data[ii].data[bath_temp_index].fb_values_array()[:,row_index]
-        return fb
+        return self.dac_values, fb
 
     def plot_measured_cl_temps(self):
         plt.figure(1)
@@ -109,7 +110,7 @@ class IVColdloadSweepAnalyzer():
     def plot_cl_temp_sweep_for_row(self,row_index,bath_temp_index,cl_indicies=None):
         if cl_indicies==None:
             cl_indicies = list(range(self.n_cl_temps))
-        fb_arr = self.get_fb_cl_sweep_for_row(row_index,bath_temp_index,cl_indicies)
+        x,fb_arr = self.get_cl_sweep_dataset_for_row(row_index,bath_temp_index,cl_indicies)
         plt.figure(1)
         for ii in range(len(cl_indicies)):
             dy = fb_arr[0,ii]-fb_arr[0,0]
@@ -126,11 +127,124 @@ class IVColdloadSweepAnalyzer():
         plt.xlabel('DAC values')
         plt.ylabel('Feedback values')
         plt.title('Row index = %d, Tb = %d mK'%(row_index,self.set_bath_temps_k[bath_temp_index]*1000))
-        plt.legend((np.array(self.set_cl_temps_k)[cl_indicies]))
+        plt.legend((np.array(self.set_cl_temps_k)[cl_indicies]),loc='upper right')
         plt.show()
 
     def get_cl_temp_index(self,cl_temp):
         print('to be written')
+
+class IVColdloadAnalyzeOneRow():
+    ''' Analyze a set of IV curves for a single detector taken at multiple
+        coldload temperatures and a single bath temperature
+    '''
+
+    def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,device_name=None,iv_circuit=None):
+        self.dacs = dac_values
+        self.n_dac_values = len(self.dacs)
+        self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
+        self.fb_align = None
+        self.cl_temps_k = cl_temps_k
+        self.bath_temp_k = bath_temp_k
+        self.det_name, self.row_name = self._handle_device_name(device_name)
+        self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
+
+        # details
+        self.n_normal_pts=10 # number of points for normal branch fit
+        self.use_ave_offset=True # use a global offset to align fb, not individual per curve
+        if iv_circuit==None:
+            self.to_physical_units = False
+        else:
+            self.to_physical_units = True
+
+
+    def _handle_device_name(self,device_name):
+        if device_name==None:
+            det_name = 'unknown'; row_name = 'unknown'
+        else:
+            row_name = device_name.keys()[0]; det_name = device_name[row_name]
+        return det_name, row_name
+
+    def fb_align_and_remove_offset(self,showplot=False):
+        fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
+        for ii in range(self.n_cl_temps): # align fb DC levels to a common value
+            dy = self.fb[0,ii]-self.fb[0,0]
+            fb_align[:,ii] = self.fb[:,ii]-dy
+
+        # remove offset
+        x = self.dacs[::-1][-self.n_normal_pts:]
+        y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
+        m, b = np.polyfit(x,y,deg=1)
+        print('Offset fit: ',np.mean(b),'+/-',np.std(b))
+        if self.use_ave_offset: b = np.mean(b)
+        fb_align = fb_align - b
+        if m[0]<0: fb_align = fb_align*-1
+        #self.fb_align = fb_align
+        if showplot:
+            for ii in range(self.n_cl_temps):
+                plt.plot(self.dacs,fb_align[:,ii])
+            plt.show()
+        return fb_align
+
+    def plot_raw(self,fb_align_dc_level=True):
+        for ii, cl_temp in enumerate(self.cl_temps_k):
+            if fb_align_dc_level:
+                dy = self.fb[0,ii]-self.fb[0,0]
+            else: dy=0
+            plt.plot(self.dacs, self.fb[:,ii]-dy)
+        plt.xlabel('DAC values')
+        plt.ylabel('Feedback values')
+        plt.title(self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000))
+        plt.legend((self.cl_temps_k),loc='upper right')
+
+    def plot_results(self,to_physical_units=False):
+        ''' Plot results IV, PV, RP, RoP '''
+        if self.fb_align ==None:
+            self.fb_align = self.fb_align_and_remove_offset(showplot=False)
+
+        if self.to_physical_units:
+            v,i = iv_circuit.to_physical_units(self.dacs,self.fb_align)
+        else:
+            v = np.zeros((self.n_dac_values,self.n_cl_temps))
+            for ii in range(self.n_cl_temps):
+                v[:,ii] = self.dacs
+            i=self.fb_align
+        p=v*i; r=v/i
+
+        # fig 0: raw IV
+        fig0 = plt.figure(1)
+        self.plot_raw(True)
+
+        # fig 1, 2x2 of converted IV
+        fig1, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+        for ii in range(self.n_cl_temps):
+            ax[0].plot(v[:,ii],i[:,ii])
+            ax[1].plot(v[:,ii],p[:,ii])
+            ax[2].plot(p[:,ii],r[:,ii])
+            #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
+            ax[3].plot(v[:,ii],r[:,ii])
+        xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','V ($\mu$V)']
+        ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R (m$\Omega$)']
+        for ii in range(4):
+            ax[ii].set_xlabel(xlabels[ii])
+            ax[ii].set_ylabel(ylabels[ii])
+            ax[ii].grid()
+
+        # plot ranges
+        ax[0].set_xlim((0,np.max(v)*1.1))
+        ax[0].set_ylim((0,np.max(i)*1.1))
+        ax[1].set_xlim((0,np.max(v)*1.1))
+        ax[1].set_ylim((0,np.max(p)*1.1))
+        ax[2].set_xlim((0,np.max(p)*1.1))
+        ax[2].set_ylim((0,np.max(r[0,:])*1.1))
+        ax[3].set_xlim((0,np.max(v)*1.1))
+        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
+        #ax[3].set_xlim((0,np.max(p)*1.1))
+        #ax[3].set_ylim((0,1.1))
+
+        fig1.suptitle(self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000))
+        ax[3].legend(tuple(self.cl_temps_k))
+        #plt.show()
 
 if __name__ == "__main__":
     #filename_json = '/home/pcuser/data/lbird/20201202/lbird_hftv0_coldload_sweep.json'
@@ -139,5 +253,16 @@ if __name__ == "__main__":
     #df.plot_single_iv(1,1,0)
     #df.plot_cl_temp_sweep_for_row(2,0)
     #df.plot_measured_bath_temps()
-    for ii in range(df.n_rows):
-        df.plot_cl_temp_sweep_for_row(row_index=ii,bath_temp_index=1)
+    dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=2,bath_temp_index=1,cl_indicies=list(range(df.n_cl_temps-1)))
+    iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
+                           rbias_ohm=10068.0,
+                           rsh_ohm=0.0662,
+                           rx_ohm=0,
+                           m_ratio=8.259,
+                           vfb_gain=1.017/(2**14-1),
+                           vbias_gain=6.5/(2**16-1))
+    IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:-1],df.set_bath_temps_k[1],None,iv_circuit).plot_results()
+    plt.show()
+
+    # for ii in range(df.n_rows):
+    #     df.plot_cl_temp_sweep_for_row(row_index=ii,bath_temp_index=1)
