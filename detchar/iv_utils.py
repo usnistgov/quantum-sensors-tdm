@@ -35,11 +35,9 @@ class IVPointTaker():
         # set "set_volt" to either tower or bluebox
         if voltage_source == None:
             set_volt = self.set_tower # 0-2.5V in 2**16 steps
-            self.max_voltage = 2.5
         elif voltage_source == 'bluebox':
             self.bb = BlueBox(port='vbox', version='mrk2')
             set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
-            self.max_voltage = self.bb.max_voltage
         return set_volt
 
     def _handle_easy_client_arg(self, easy_client):
@@ -100,7 +98,7 @@ class IVPointTaker():
         self.cc.relock_all_locked_fba(self.col)
 
 class IVCurveTaker():
-    def __init__(self, point_taker, temp_settle_delay_s, shock_normal_dac_value, zero_tower_at_end=True, adr_gui_control=None):
+    def __init__(self, point_taker, temp_settle_delay_s=60, shock_normal_dac_value=2**16-1, zero_tower_at_end=True, adr_gui_control=None):
         self.pt = point_taker
         self.adr_gui_control = self._handle_adr_gui_control_arg(adr_gui_control)
         self.temp_settle_delay_s = temp_settle_delay_s
@@ -384,34 +382,33 @@ if __name__ == "__main__":
     # plt.show()
     # data.to_file('lbird_iv_100mk_20210202_2.json',True)
 
-    # # DEMONSTRATE IVTempSweeper
-    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
-    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=7000)
-    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    # ivsweeper = IVTempSweeper(curve_taker, to_normal_method="overbias", overbias_temp_k=0.2, overbias_dac_value = 7000)
-    # v_bias = np.linspace(0.7,0.0,100)
-    # dacs = v_bias/ivpt.max_voltage*(2**16-1); dacs = dacs.astype(int)
-    # temps = np.linspace(0.1,0.2,10)
-    # data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
-    # data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
-
-    # DEMONSTRATE IVColdloadSweeper
-    filename = 'lbird_hftv0_coldload_sweep_20210203.json'
-    pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox')
-    curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=True, adr_gui_control=None)
+    # DEMONSTRATE IVTempSweeper
+    ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
+    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=2**16-1)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=.21, overbias_dac_value = 7000)
-    clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
+    ivsweeper = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=0.2, overbias_dac_value = 7000)
     dacs = np.linspace(10000,0,100)
-    cl_temps = [4,5,6,7,8,9,10,11,12,11,10,9,8,7,6,5,4]
-    bath_temps = [0.1,.13,.17]
-    data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01,
-                  cl_settemp_timeout_m=10.0, cl_post_setpoint_waittime_m=20.0,
-                  skip_first_settle = True,
-                  cool_upon_finish = True, extra_info={'message':'this is a test'},
-                  write_while_acquire = True, filename=filename)
-    data.to_file(filename,overwrite=True)
-    plt.clf()
-    plt.ion()
-    data.plot_row(1)
-    plt.show()
+    temps = np.linspace(0.1,0.2,11)
+    data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
+    data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
+
+    # # DEMONSTRATE IVColdloadSweeper
+    # filename = 'lbird_hftv0_coldload_sweep_20210203.json'
+    # pt_taker = IVPointTaker(db_cardname='dfb_card', bayname='A', voltage_source = 'bluebox')
+    # curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=True, adr_gui_control=None)
+    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    # btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=.21, overbias_dac_value = 7000)
+    # clsweep_taker = IVColdloadSweeper(btemp_sweep_taker)
+    # dacs = np.linspace(10000,0,100)
+    # cl_temps = [4,5,6,7,8,9,10,11,12,11,10,9,8,7,6,5,4]
+    # bath_temps = [0.1,.13,.17]
+    # data = clsweep_taker.get_sweep(dacs, cl_temps, bath_temps, cl_temp_tolerance_k=0.01,
+    #               cl_settemp_timeout_m=10.0, cl_post_setpoint_waittime_m=20.0,
+    #               skip_first_settle = True,
+    #               cool_upon_finish = True, extra_info={'message':'this is a test'},
+    #               write_while_acquire = True, filename=filename)
+    # data.to_file(filename,overwrite=True)
+    # plt.clf()
+    # plt.ion()
+    # data.plot_row(1)
+    # plt.show()
