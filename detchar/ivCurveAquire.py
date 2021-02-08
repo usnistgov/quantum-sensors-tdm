@@ -45,7 +45,7 @@ dacs = np.linspace(int(cfg['voltage_bias']['v_start_dac']),int(cfg['voltage_bias
 
 #############
 pt_taker = IVPointTaker(db_cardname=cfg['dfb']['dfb_cardname'], bayname=cfg['detectors']['Column'], voltage_source = voltage_source)
-curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=True, adr_gui_control=None)
+curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV'], adr_gui_control=None)
 curve_taker.prep_fb_settings(I=cfg['dfb']['i'], fba_offset=cfg['dfb']['dac_a_offset'])
 btemp_sweep_taker = IVTempSweeper(curve_taker, to_normal_method=to_normal_method, overbias_temp_k=overbias_temp_k, overbias_dac_value = cfg['voltage_bias']['v_start_dac'])
 
