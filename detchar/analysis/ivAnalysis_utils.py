@@ -1,6 +1,8 @@
 ''' ivAnalysis_utils.py '''
 
 # NOTES
+# dark subtraction
+# Determine some metric for efficiency and report that one number.  what rn_frac?  What cl_temp?
 # IVTempSweepData ought to have the coldload setpoint.
 # column name for IVColdloadAnalzyeOneRow?
 # units for plots?
@@ -60,11 +62,13 @@ class IVColdloadAnalyzeOneRow():
         # fixed globals
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
-        self.rn_fracs = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
+        self.rn_fracs = [0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
         if iv_circuit==None:
             self.to_physical_units = False
         else:
             self.to_physical_units = True
+
+        self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
 
         # do analysis, place main results as globals to class
         self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
@@ -72,23 +76,31 @@ class IVColdloadAnalyzeOneRow():
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro)
         self.cl_dT_k, self.dP_w, self.T_cl_index = self.get_delta_pt()
         # predicted power
-        self.freq_edges_ghz, self.passband_sim_ghz = self._handle_passband(passband_dict)
-        self.power_cl_tophat, self.power_cl_sim_passband = self.get_predicted_thermal_power()
-        self.power_cl_tophat_delta, self.power_cl_sim_passband_delta = self.get_predicted_coldload_power_delta(self.T_cl_index)
-        if self.freq_edges_ghz != None:
-            self.eta_tophat = self.get_efficiency(self.power_cl_tophat_delta, self.dP_w)
-        if self.passband_sim_ghz != None:
-            self.eta_passband_sim = self.get_efficiency(self.power_cl_sim_passband_delta, self.dP_w)
+        self.freq_edges_ghz=self.passband_sim_ghz=None
+        self.power_cl_tophat=self.power_cl_sim_passband=self.power_cl_tophat_delta=self.power_cl_sim_passband_delta=self.eta_tophat=self.eta_passband_sim=None
+        self._handle_prediction(passband_dict)
 
     def _handle_device_dict(self,device_dict):
         if device_dict==None:
             det_name = 'unknown'; row_name = 'unknown'; f_edges = None
         else:
             assert type(device_dict)==dict, ('device_dict either None or must be of type dictionary')
-            row_name = [*device_name][0]; det_name = device_dict[row_name]
+            row_name = [*device_dict][0]; det_name = device_dict[row_name]
         return det_name, row_name
 
+    def _handle_prediction(self,passband_dict):
+        self.prediction, self.frequency_edges_ghz, self.passband_sim_ghz = self._handle_passband(passband_dict)
+        if self.prediction[0] !=0:
+            self.power_cl_tophat = self.get_predicted_thermal_power_tophat(self.cl_temps_k,f_edges_ghz=self.frequency_edges_ghz)
+            self.power_cl_tophat_delta = np.array(self.power_cl_tophat) - self.power_cl_tophat[self.T_cl_index]
+            self.eta_tophat = self.get_efficiency(self.power_cl_tophat_delta, self.dP_w)
+        if self.prediction[1] !=0:
+            self.power_cl_sim_passband = self.get_predicted_thermal_power_simpassband(self.cl_temps_k,passband_ghz=self.passband_sim_ghz)
+            self.self.power_cl_sim_passband_delta = np.array(self.power_cl_sim_passband) - self.power_cl_sim_passband[self.T_cl_index]
+            self.eta_passband_sim = self.get_efficiency(self.power_cl_sim_passband_delta, self.dP_w)
+
     def _handle_passband(self,passband_dict):
+        prediction=[0,0]
         if passband_dict==None:
             freq_edges_ghz = None ; passband_sim_ghz = None
         else:
@@ -96,42 +108,38 @@ class IVColdloadAnalyzeOneRow():
             keys = passband_dict.keys()
             if 'freq_edges_ghz' in keys:
                 freq_edges_ghz = passband_dict['freq_edges_ghz']
+                if freq_edges_ghz != None: prediction[0]=1
             else:
                 freq_edges_ghz = None
             if 'passband_sim_ghz' in keys:
                 passband_sim_ghz = passband_dict['passband_sim_ghz']
+                prediction[1]=1
             else:
                 passband_sim_ghz = None
+        return prediction, freq_edges_ghz, passband_sim_ghz
 
-        return freq_edges_ghz, passband_sim_ghz
+    # def get_predicted_coldload_power_delta(self,cl_index):
+    #     if self.power_cl_tophat != None:
+    #         dP_tophat = np.array(self.power_cl_tophat) - self.power_cl_tophat[cl_index]
+    #     else: dP_tophat=None
+    #     if self.power_cl_sim_passband != None:
+    #         dP_sim = self.power_cl_sim_passband - self.power_cl_sim_passband[cl_index]
+    #     else: dP_sim = None
+    #     return dP_tophat, dP_sim
 
-    def get_predicted_coldload_power_delta(self,cl_index):
-        if self.power_cl_tophat != None:
-            dP_tophat = np.array(self.power_cl_tophat) - self.power_cl_tophat[cl_index]
-        else: dP_tophat=None
-        if self.power_cl_sim_passband != None:
-            dP_sim = self.power_cl_sim_passband - self.power_cl_sim_passband[cl_index]
-        else: dP_sim = None
-        return dP_tophat, dP_sim
+    def get_predicted_thermal_power_tophat(self,cl_temps_k,f_edges_ghz):
+        ''' calculate thermal power at cl_temps assuming a tophat passband from f1 to f2 (ghz) '''
+        p_tophat = []
+        for cl_temp_k in cl_temps_k:
+            p_tophat.append(thermalPower(f_edges_ghz[0]*1e9,f_edges_ghz[1]*1e9,T=cl_temp_k,F=None))
+        return p_tophat
 
-    def get_predicted_thermal_power(self):
-        ''' calculate thermal power from coldload in two cases.
-            1) relative to tophat passband response between f1 and f2 defined in self.freq_edges_ghz
-            2) relative to simulated absolute bandpass response defined in self.passband.ghz
-        '''
-        if self.freq_edges_ghz != None:
-            p_tophat = []
-            for ii in range(self.n_cl_temps):
-                p_tophat.append(thermalPower(self.freq_edges_ghz[0]*1e9,self.freq_edges_ghz[1]*1e9,T=self.cl_temps_k[ii],F=None))
-        else:
-            p_tophat = None
-        if self.passband_sim_ghz != None:
-            p_sim = []
-            for ii in range(self.n_cl_temps):
-                p_sim.append(thermalPower(1,10e12,T=self.cl_temps_k[ii],F=self.passband_sim_ghz))
-        else:
-            p_sim = None
-        return p_tophat, p_sim
+    def get_predicted_thermal_power_simpassband(self,cl_temps,passband_ghz):
+        ''' calculate thermal power at cl_temps assuming the normalized passband supplied passband_ghz '''
+        p = []
+        for cl_temp_k in cl_temps_k:
+            p.append(thermalPower(1,10e12,T=cl_temp_k,F=passband_sim_ghz))
+        return p
 
     def removeNaN(self,arr):
         ''' only works on 1d vector, not array '''
@@ -228,7 +236,7 @@ class IVColdloadAnalyzeOneRow():
         return dP_m/dP
 
     def plot_raw(self,fb_align_dc_level=True,fig_num=1):
-        plt.figure(fig_num)
+        fig = plt.figure(fig_num)
         for ii, cl_temp in enumerate(self.cl_temps_k):
             if fb_align_dc_level:
                 dy = self.fb[0,ii]-self.fb[0,0]
@@ -236,8 +244,9 @@ class IVColdloadAnalyzeOneRow():
             plt.plot(self.dacs, self.fb[:,ii]-dy)
         plt.xlabel('DAC values')
         plt.ylabel('Feedback values')
-        plt.title(self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000))
+        plt.title(self.figtitle)
         plt.legend((self.cl_temps_k),loc='upper right')
+        return fig
 
     def plot_vipr(self,data_list=None,fig_num=1):
         if data_list==None:
@@ -246,7 +255,7 @@ class IVColdloadAnalyzeOneRow():
             v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
 
         # fig 1, 2x2 of converted IV
-        fig1, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
             ax[0].plot(v[:,ii],i[:,ii])
@@ -276,15 +285,15 @@ class IVColdloadAnalyzeOneRow():
         #ax[3].set_xlim((0,np.max(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
-        fig1.suptitle(self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000))
+        fig.suptitle(self.figtitle)
         ax[3].legend(tuple(self.cl_temps_k))
-        #plt.show()
+        return fig
 
     def plot_pr(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
         pPlot = self.get_value_at_rn_frac([0.999],arr=p,ro=ro)
 
         # FIG1: P versus R/Rn
-        fig1 = plt.figure(fig_num)
+        fig = plt.figure(fig_num)
         plt.plot(ro, p,'-') # plots for all Tbath
         plt.plot(rn_fracs,p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
@@ -294,26 +303,29 @@ class IVColdloadAnalyzeOneRow():
         #plt.title(plottitle)
         plt.legend((self.cl_temps_k))
         plt.grid()
+        plt.title(self.figtitle)
+        return fig
 
     def plot_pt(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
         # power plateau (evaluated at each rn_frac) versus T_cl
-        fig1 = plt.figure(fig_num)
+        fig = plt.figure(fig_num)
         for ii in range(len(rn_fracs)):
             plt.plot(self.cl_temps_k,p_at_rnfrac[ii,:],'o-')
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau')
         plt.legend((rn_fracs))
-        #plt.title(plottitle)
+        plt.title(self.figtitle)
         plt.grid()
+        return fig
 
     def plot_pt_delta(self,cl_dT_k, dp_at_rnfrac, rn_fracs, fig_num=1):
         ''' plot change in saturation power relative to minimum coldload temperature '''
-        fig1 = plt.figure(fig_num)
+        fig = plt.figure(fig_num)
         legend_vals = []
-        if self.power_cl_tophat != None:
+        if self.prediction[0]==1: # include tophat passband prediction
             plt.plot(self.cl_dT_k,self.power_cl_tophat_delta,'k-')
             legend_vals.append('$\Delta{P}_{calc}$ (top hat)')
-        if self.power_cl_sim_passband != None:
+        if self.prediction[1]==1: # include simulated passband prediction
             plt.plot(self.cl_dT_k,self.power_cl_sim_passband_delta,'k--')
             legend_vals.append('$\Delta{P}_{calc}$ (sim passband)')
         for ii in range(len(rn_fracs)):
@@ -323,23 +335,42 @@ class IVColdloadAnalyzeOneRow():
         plt.ylabel('P$_o$ - P')
         plt.legend((legend_vals))
         plt.grid()
+        plt.title(self.figtitle)
+        return fig
 
     def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1):
-        fig1 = plt.figure(fig_num)
+        fig = plt.figure(fig_num)
+        legend_vals = []
         for ii in range(len(rn_fracs)):
             plt.plot(cl_dT_k,eta[ii,:],'o-')
+            legend_vals.append(str(rn_fracs[ii]))
+        plt.errorbar(cl_dT_k,np.mean(eta,axis=0),np.std(eta,axis=0),color='k',linewidth=4,ecolor='k',elinewidth=4)
+        legend_vals.append('mean')
         plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
         plt.ylabel('Efficiency')
-        plt.legend((rn_fracs))
+        plt.legend((legend_vals))
         plt.grid()
+        plt.title(self.figtitle)
+        return fig
 
-    def plot_full_analysis(self):
-        self.plot_raw(True,fig_num=1) # raw
-        self.plot_vipr(data_list=None,fig_num=2) # 2x2 of converted data
-        self.plot_pt(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=3)
-        self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=4)
-        self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=5)
-        plt.show()
+    def plot_full_analysis(self,showfigs=False,savefigs=False):
+        figs = []
+        figs.append(self.plot_raw(True,fig_num=1)) # raw
+        figs.append(self.plot_vipr(data_list=None,fig_num=2)) # 2x2 of converted data
+        figs.append(self.plot_pr(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=3))
+        figs.append(self.plot_pt(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=4))
+        figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5))
+        if self.prediction[0]==1:
+            figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6))
+        if self.prediction[1]==1:
+            figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7))
+        if savefigs:
+            fig_appendix=['raw','vipr','pr','pt','dpt','eta_top','eta_sim']
+            for ii,fig in enumerate(figs):
+                fig.savefig(self.row_name+'_%d_'%ii+fig_appendix[ii]+'.png')
+        if showfigs: plt.show()
+        for fig in figs:
+            fig.clf()
 
 class IVColdloadSweepAnalyzer():
     ''' Class to assess data quality of coldload sweep '''
@@ -454,19 +485,59 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indicies]),loc='upper right')
         plt.show()
 
-    def get_cl_temp_index(self,cl_temp):
-        print('to be written')
+class DetectorMap():
+    ''' Class to map readout channels to detector characteristics '''
+    def __init__(self,filename=None):
+        self.filename = filename
+        self.map_dict = self.from_file(self.filename)
+        #self.keys = self.map_dict.keys()
+
+    def from_file(self,filename):
+        return self._parse_csv_file(filename)
+
+    def _parse_csv_file(self,filename):
+        f=open(filename,'r')
+        lines = f.readlines()
+        header = lines.pop(0)
+        header = header.split(',')[0:-1]
+        #print(header)
+        ncol = len(header)
+        map_dict = {}
+        for ii, line in enumerate(lines):
+            line = line.split(',')[0:-1]
+            map_dict['Row%02d'%(int(line[0]))] = {}
+            for jj in range(1,ncol):
+                map_dict['Row%02d'%(int(line[0]))][str(header[jj])] = str(line[jj])
+        map_dict = self._clean_map_dict(map_dict)
+        return map_dict
+
+    def _clean_map_dict(self,map_dict):
+        for key, val in map_dict.items():
+            f_low = map_dict[key].pop('f_low',None)
+            f_high = map_dict[key].pop('f_high',None)
+            f_low = self._handle_input(f_low,float)
+            f_high = self._handle_input(f_high,float)
+            if f_low == None or f_high == None:
+                map_dict[key]['freq_edges_ghz'] = None
+            else:
+                map_dict[key]['freq_edges_ghz'] = [f_low,f_high]
+            map_dict[key]['position'] = self._handle_input(map_dict[key]['position'],int)
+        return map_dict
+
+    def _handle_input(self,val,thetype=int):
+        if val=='None':
+            val = None
+        else: val = thetype(val)
+        return val
 
 if __name__ == "__main__":
-    #filename_json = '/home/pcuser/data/lbird/20201202/lbird_hftv0_coldload_sweep.json'
-    filename_json = 'lbird_hftv0_coldload_sweep.json'
-    df = IVColdloadSweepAnalyzer(filename_json) #df is the main "data format" of the coldload temperature sweep
-    #df.plot_measured_bath_temps() # first check if all measurements taken at intended temperatures
-    #plt.show()
 
-    # band edges of HFT_v0
-    f_hft1_1 = [165.75, 224.25]; f_hft1_2 = [238, 322]
-    f_hft2_1 = [199.75, 269.75]; f_hft2_2 = [286.45, 387.55]
+    filename_json = 'lbird_hftv0_coldload_sweep.json'
+    dm = DetectorMap('detector_map.csv')
+    cl_indicies = [0,1,2,3,4,5,6]
+    row_indicies = list(range(24))
+    bath_temp_index=1
+
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
                            rbias_ohm=10068.0,
@@ -475,15 +546,18 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    # analyze one row, one bath temperature of IV coldload sweep
-    row_index=2
-    device_name = {'Row%02d'%row_index: 'HFT1 (6,14,1) 280A'}
-    passband_dict = {'freq_edges_ghz':f_hft1_2}
-    dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=1,cl_indicies=list(range(df.n_cl_temps-1)))
-    ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:-1],df.set_bath_temps_k[1],device_name,iv_circuit,passband_dict)
-    ivcl_onerow.plot_full_analysis()
-    #ivcl_onerow.plot_p_vs_r(rn_fracs)
+    df = IVColdloadSweepAnalyzer(filename_json) #df is the main "data format" of the coldload temperature sweep
+    #df.plot_measured_bath_temps() # first check if all measurements taken at intended temperatures
     #plt.show()
 
-    # for ii in range(df.n_rows):
-    #     df.plot_cl_temp_sweep_for_row(row_index=ii,bath_temp_index=1)
+    # analyze all rows
+    for row in row_indicies:
+        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+        #dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None)
+        ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:7],df.set_bath_temps_k[bath_temp_index],
+                                              device_dict={'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']},
+                                              iv_circuit=iv_circuit,
+                                              passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']})
+        ivcl_onerow.plot_full_analysis(savefigs=True)
+        #plt.cla()
+        #plt.clf()
