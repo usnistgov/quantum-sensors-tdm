@@ -1401,7 +1401,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         pylab.figure()
         pylab.plot(Rs,Temps,'o')
 
-    def MagDown(self,magdowntime=25,channel=1,heater_resistance=100.0,pausetime=5.0):
+    def MagDown(self,magdowntime=25,channel=2,heater_resistance=100.0,pausetime=5.0):
         ''' read the current heater output and mag down in magdowntime (minutes) 
             magdowntime: time in min over which to ramp down to 0 heater output 
             channel: thermometer channel to read
