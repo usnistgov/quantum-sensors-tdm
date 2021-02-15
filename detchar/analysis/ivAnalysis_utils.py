@@ -402,6 +402,12 @@ class IVColdloadSweepAnalyzer():
         self.dac_values = np.array(self.data[0].data[0].dac_values)
         self.n_dac_values, self.n_rows = np.shape(self.data[0].data[0].fb_values)
 
+    def print_info(self):
+        # start/stop of data 
+        # Did data complete?
+        # Cold load temperatures 
+        # Bath temperatures 
+    
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))

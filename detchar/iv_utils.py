@@ -369,28 +369,27 @@ if __name__ == "__main__":
     # plt.plot(fb_values,'o')
     # plt.show()
 
-    # # DEMONSTRATE IVCurveTaker works
-    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
-    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65000)
-    # #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
-    # curve_taker.set_temp_and_settle(setpoint_k=0.1)
-    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    # v_bias = np.linspace(1.0,0.0,100)
-    # dacs = v_bias/ivpt.max_voltage*(2**16-1)#; dacs = dacs.astype(int)
-    # data = curve_taker.get_curve(dacs, extra_info = {})
-    # data.plot()
-    # plt.show()
-    # data.to_file('lbird_iv_100mk_20210202_2.json',True)
-
-    # DEMONSTRATE IVTempSweeper
+    # DEMONSTRATE IVCurveTaker works
     ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
-    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=2**16-1)
+    curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=65000)
+    #curve_taker.overbias(overbias_temp_k=0.2, setpoint_k=0.19, dac_value=10000, verbose=True)
+    curve_taker.set_temp_and_settle(setpoint_k=0.1)
     curve_taker.prep_fb_settings(I=16, fba_offset=8192)
-    ivsweeper = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=0.2, overbias_dac_value = 7000)
     dacs = np.linspace(10000,0,100)
-    temps = np.linspace(0.1,0.2,11)
-    data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
-    data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
+    data = curve_taker.get_curve(dacs, extra_info = {})
+    data.plot()
+    plt.show()
+    #data.to_file('lbird_iv_100mk_20210202_2.json',True)
+
+    # # DEMONSTRATE IVTempSweeper
+    # ivpt = IVPointTaker('dfb_card','A',voltage_source='bluebox') # instance of point taker class
+    # curve_taker = IVCurveTaker(ivpt, temp_settle_delay_s=0, shock_normal_dac_value=2**16-1)
+    # curve_taker.prep_fb_settings(I=16, fba_offset=8192)
+    # ivsweeper = IVTempSweeper(curve_taker, to_normal_method=None, overbias_temp_k=0.2, overbias_dac_value = 7000)
+    # dacs = np.linspace(10000,0,100)
+    # temps = np.linspace(0.1,0.2,11)
+    # data = ivsweeper.get_sweep(dacs, temps, extra_info={"state": "data used to develop IV versus temp sweep analysis class"})
+    # data.to_file("lbird_hftv0_ivsweep_test.json", overwrite=True)
 
     # # DEMONSTRATE IVColdloadSweeper
     # filename = 'lbird_hftv0_coldload_sweep_20210203.json'
