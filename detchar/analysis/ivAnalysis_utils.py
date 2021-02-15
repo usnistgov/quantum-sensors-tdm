@@ -378,6 +378,7 @@ class IVColdloadSweepAnalyzer():
     # plot measured bath temperatures
     def __init__(self,filename_json):
         self.df = IVColdloadSweepData.from_file(filename_json)
+        self.filename = filename_json
         self.data = self.df.data
         #self.data is a list of IVTempSweepData, one per coldload temperature setpoint
         #self.data[0].data is a list of IVCurveColumnData, one per bath temperature setpoint
@@ -407,7 +408,10 @@ class IVColdloadSweepAnalyzer():
         # Did data complete?
         # Cold load temperatures 
         # Bath temperatures 
-    
+        print('Coldload set temperatures: ',self.set_cl_temps_k)
+        print('Measured coldload temperatures: ',self.measured_cl_temps_k)
+        print('ADR set temperatures: ',self.set_bath_temps_k)
+            
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))
@@ -430,7 +434,7 @@ class IVColdloadSweepAnalyzer():
         plt.figure(1)
         plt.xlabel('Setpoint Temperature (K)')
         plt.ylabel('Measured Temperature (K)')
-        cl_temp_list = self._package_cl_temp_to_list()
+        #cl_temp_list = self._package_cl_temp_to_list()
         plt.plot(self.set_cl_temps_k,self.pre_cl_temps_k,'*')
         plt.plot(self.set_cl_temps_k,self.post_cl_temps_k,'*')
         plt.plot(list(range(self.max_cl_temp_k+1)),'b--')
@@ -537,10 +541,12 @@ class DetectorMap():
         return val
 
 if __name__ == "__main__":
-
-    filename_json = 'lbird_hftv0_coldload_sweep.json'
+    path = '/home/pcuser/data/lbird/20201202/'
+    #filename_json = 'lbird_hftv0_coldload_sweep.json'
+    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json' 
+    filename = path+filename_json
     dm = DetectorMap('detector_map.csv')
-    cl_indicies = [0,1,2,3,4,5,6]
+    cl_indicies = [0,1,2,3,4,5,6,7,8]
     row_indicies = list(range(24))
     bath_temp_index=1
 
@@ -552,7 +558,7 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    df = IVColdloadSweepAnalyzer(filename_json) #df is the main "data format" of the coldload temperature sweep
+    df = IVColdloadSweepAnalyzer(filename) #df is the main "data format" of the coldload temperature sweep
     #df.plot_measured_bath_temps() # first check if all measurements taken at intended temperatures
     #plt.show()
 
@@ -560,7 +566,7 @@ if __name__ == "__main__":
     for row in row_indicies:
         dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
         #dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None)
-        ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:7],df.set_bath_temps_k[bath_temp_index],
+        ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:9],df.set_bath_temps_k[bath_temp_index],
                                               device_dict={'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']},
                                               iv_circuit=iv_circuit,
                                               passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']})
