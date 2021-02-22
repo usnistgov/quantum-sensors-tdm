@@ -22,6 +22,7 @@ curve_taker.prep_fb_settings(I=60, fba_offset=3500, ARLoff=True)
 dacs = (
     detchar.sparse_then_fine_dacs(a=0, b=900, c=4000, n_ab=50, n_bc=150) * 2.5 / 6.5535
 )
+dacs = np.linspace(0, 6000, 600)
 data = curve_taker.get_curve(dacs, extra_info={"field coil (amps)": 0})
 data.plot()
 data.to_file("latest_single_iv.json", overwrite=True)

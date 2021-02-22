@@ -38,8 +38,23 @@ class ICVboxSweepData:
             ic_dacs[row] = data.dac_values[ind]
         return ic_dacs
 
+    def get_ics_at_set_volt_ind_2(self, i):
+        data = self.data[i]
+        fb_values = data.fb_values_array()
+        slope = np.diff(fb_values, axis=0) / 10  # hard coded cuz I suck
+        inds, rows = np.nonzero(np.abs(np.diff(slope, axis=0)) > 5)  # arb cutoff
+        inds += 1
+        ic_dacs = np.zeros(fb_values.shape[1]) * np.nan
+        for ind, row in zip(inds, rows):
+            ic_dacs[row] = data.dac_values[ind]
+        return ic_dacs
+
     def get_ics_vs_set_volt_v(self):
         ics = [self.get_ics_at_set_volt_ind(i) for i in range(len(self.data))]
+        return np.vstack(ics)
+
+    def get_ics_vs_set_volt_v_2(self):
+        ics = [self.get_ics_at_set_volt_ind_2(i) for i in range(len(self.data))]
         return np.vstack(ics)
 
 
