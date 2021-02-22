@@ -50,7 +50,6 @@ import serial
 from time import sleep
 import numpy as np
 import cmath
-from tkinter.simpledialog import askfloat
 import pickle
 import pylab
 import math
