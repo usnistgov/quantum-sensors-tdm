@@ -66,6 +66,7 @@ class IVColdloadAnalyzeOneRow():
         if iv_circuit==None:
             self.to_physical_units = False
         else:
+            self.iv_circuit = iv_circuit
             self.to_physical_units = True
 
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
@@ -101,7 +102,7 @@ class IVColdloadAnalyzeOneRow():
 
     def _handle_passband(self,passband_dict):
         prediction=[0,0]
-        if passband_dict==None:
+        if passband_dict==None or passband_dict=={}:
             freq_edges_ghz = None ; passband_sim_ghz = None
         else:
             assert type(passband_dict) == dict, ('passband_dict must be of type dictionary')
@@ -117,15 +118,6 @@ class IVColdloadAnalyzeOneRow():
             else:
                 passband_sim_ghz = None
         return prediction, freq_edges_ghz, passband_sim_ghz
-
-    # def get_predicted_coldload_power_delta(self,cl_index):
-    #     if self.power_cl_tophat != None:
-    #         dP_tophat = np.array(self.power_cl_tophat) - self.power_cl_tophat[cl_index]
-    #     else: dP_tophat=None
-    #     if self.power_cl_sim_passband != None:
-    #         dP_sim = self.power_cl_sim_passband - self.power_cl_sim_passband[cl_index]
-    #     else: dP_sim = None
-    #     return dP_tophat, dP_sim
 
     def get_predicted_thermal_power_tophat(self,cl_temps_k,f_edges_ghz):
         ''' calculate thermal power at cl_temps assuming a tophat passband from f1 to f2 (ghz) '''
@@ -175,7 +167,7 @@ class IVColdloadAnalyzeOneRow():
             self.fb_align = self.fb_align_and_remove_offset(showplot=False)
 
         if self.to_physical_units:
-            v,i = iv_circuit.to_physical_units(self.dacs,self.fb_align)
+            v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
         else:
             v = np.zeros((self.n_dac_values,self.n_cl_temps))
             for ii in range(self.n_cl_temps):
@@ -376,10 +368,12 @@ class IVColdloadSweepAnalyzer():
     ''' Class to assess data quality of coldload sweep '''
     # plot cold load measured temperatures
     # plot measured bath temperatures
-    def __init__(self,filename_json):
+    def __init__(self,filename_json,detector_map=None,iv_circuit=None):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
         self.data = self.df.data
+        self.det_map = detector_map
+        self.iv_circuit = iv_circuit
         #self.data is a list of IVTempSweepData, one per coldload temperature setpoint
         #self.data[0].data is a list of IVCurveColumnData, one per bath temperature setpoint
         #self.data[ii].data[jj], ii is the coldload setpoint temperature index
@@ -404,14 +398,14 @@ class IVColdloadSweepAnalyzer():
         self.n_dac_values, self.n_rows = np.shape(self.data[0].data[0].fb_values)
 
     def print_info(self):
-        # start/stop of data 
-        # Did data complete?
-        # Cold load temperatures 
-        # Bath temperatures 
+        # Too add in future:
+        # 1) date/time of start/end of data
+        # 2) Did data complete?
         print('Coldload set temperatures: ',self.set_cl_temps_k)
         print('Measured coldload temperatures: ',self.measured_cl_temps_k)
         print('ADR set temperatures: ',self.set_bath_temps_k)
-            
+        print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
+
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))
@@ -495,6 +489,28 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indicies]),loc='upper right')
         plt.show()
 
+    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indicies,showfigs=True,savefigs=False):
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+        if self.det_map != None:
+
+            device_dict = {'Row%02d'%row_index: self.det_map['Row%02d'%row_index]['devname']}
+            keys = self.det_map['Row%02d'%row_index].keys()
+            passband_dict = {}
+            if 'freq_edges_ghz' in keys:
+                passband_dict['freq_edges_ghz']=self.det_map['Row%02d'%row_index]['freq_edges_ghz']
+            if 'passband_ghz' in keys:
+                passband_dict['passband_ghz']=self.det_map['Row%02d'%row_index]['passband_ghz']
+        else:
+            device_dict=None ; passband_dict = {}
+
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indicies]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=device_dict,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=passband_dict)
+        iva.plot_full_analysis(showfigs,savefigs)
+
 class DetectorMap():
     ''' Class to map readout channels to detector characteristics '''
     def __init__(self,filename=None):
@@ -543,11 +559,11 @@ class DetectorMap():
 if __name__ == "__main__":
     path = '/home/pcuser/data/lbird/20201202/'
     #filename_json = 'lbird_hftv0_coldload_sweep.json'
-    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json' 
+    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
     filename = path+filename_json
     dm = DetectorMap('detector_map.csv')
     cl_indicies = [0,1,2,3,4,5,6,7,8]
-    row_indicies = list(range(24))
+    row_indicies = [2] #list(range(24))
     bath_temp_index=1
 
     # circuit parameters
