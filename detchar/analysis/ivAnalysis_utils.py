@@ -1,6 +1,8 @@
 ''' ivAnalysis_utils.py '''
 
 # NOTES
+# cutting bad data in IV
+# error handle if there is no IV turn-around
 # dark subtraction
 # Determine some metric for efficiency and report that one number.  what rn_frac?  What cl_temp?
 # IVTempSweepData ought to have the coldload setpoint.
@@ -18,6 +20,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
 from scipy.integrate import quad, simps
+
+def smooth(y, box_pts=5):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
 
 def Pnu_thermal(nu,T):
     ''' power spectral density (W/Hz) of single mode from thermal source at
@@ -43,6 +50,182 @@ def thermalPower(nu1,nu2,T,F=None):
         integrand = self.Pnu_thermal(nu,T)*F
         P = simps(integrand,nu)
     return P
+
+class IVClean():
+    ''' Data cleaning methods relevant for IV curves '''
+    def is_dac_descending(self,dac):
+        result = False
+        if dac[1] - dac[0] < 0 :
+            result = True
+        return result
+
+    def is_iv_inverted(self,dac,fb):
+        result = False
+        dac_descending = self.is_dac_descending(dac)
+        if dac_descending:
+            pt1_idx = 1
+            pt2_idx = 0
+        else:
+            pt1_idx = -2
+            pt2_idx = -1
+        if fb[pt1_idx]-fb[pt2_idx]>0:
+            result = True
+        return result
+
+    def find_first_zero(self,vec,verbose=False):
+        ''' single vector, return index and value where vec crosses zero '''
+        ii=0; val = vec[ii]
+        while val > 0:
+            if ii==len(vec)-1:
+                if verbose: print('zero crossing not found')
+                ii = None; val == None
+                break
+            ii=ii+1
+            val=vec[ii]
+        return ii, val
+
+    def get_turn_index(self,dac,fb,showplot=False):
+        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+        '''
+
+        dfb = np.diff(fb,axis=0)
+        if not self.is_iv_inverted(dac,fb):
+            dfb=-1*dfb
+        dex, val = self.find_first_zero(dfb)
+        if showplot:
+            fig1 = plt.figure(1) # plot of delta i
+            plt.plot(dfb,'o-')
+            if dex != None: plt.plot(dex,val,'ro')
+
+            fig2 = plt.figure(2)
+            plt.plot(fb,'o-')
+            if dex != None: plt.plot(dex,fb[dex],'ro')
+            plt.show()
+        return dex#,val
+
+    def find_bad_data_index(self,dac,fb,showplot=False):
+        ''' Return the index where IV curve misbehaves.
+            ASSUME dac and fb(dac) are in descending order
+        '''
+        # find IV turn
+        # at lower voltage bias than IV turn, make sure second derivative is < 0.
+
+        turn_dex = self.get_turn_index(dac,fb,showplot=False)
+        if turn_dex == None: return len(dac)
+        dfb = np.diff(fb,axis=0)
+        if self.is_dac_descending(dac):
+            norm_dfb = np.mean(dfb[0:10],axis=0)
+        else:
+            norm_dfb = np.mean(dfb[::-1][0:10],axis=0)
+        x = dfb/norm_dfb
+        ddfb = smooth(np.diff(x,axis=0),3)
+        ii = turn_dex; val = ddfb[ii]
+        while val < 0.5:
+            ii+=1
+            if ii==len(ddfb): break
+            val=ddfb[ii]
+        dex = ii+1
+        if showplot:
+            plt.figure(1)
+            plt.xlabel('index')
+            plt.ylabel('fb (arb)')
+            plt.plot(fb,'bo-')
+            plt.plot([turn_dex],[fb[turn_dex]],'ro')
+            plt.plot([dex],[fb[dex]],'go')
+            plt.plot(fb[0:dex],'r*')
+
+            # plt.figure(2)
+            # plt.xlabel('index')
+            # plt.ylabel('$\Delta$fb')
+            # plt.plot(x,'bo-')
+            # plt.plot([dex],[x[dex]],'go')
+            #
+            # plt.figure(3)
+            # plt.xlabel('index')
+            # plt.ylabel('$\Delta$ $\Delta$ fb')
+            # plt.plot(ddfb,'bo-')
+            # plt.plot(smooth(ddfb,3))
+            # plt.plot([dex-1],[ddfb[dex-1]],'go')
+            plt.show()
+        return dex
+
+    def remove_NaN(self,arr):
+        ''' only works on 1d vector, not array '''
+        return arr[~np.isnan(arr)]
+
+    def get_turn_index_arr(self,fb_arr,showplot=False):
+        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+            Assumes fb_arr is ordered from highest voltage bias setting to lowest
+        '''
+
+        di = np.diff(fb_arr,axis=0) # difference of current array
+        #di_rev = di[::-1] # reverse order di_rev[0] corresponse to highest v_bias
+        n,m = np.shape(di)
+        ivTurnDex = []
+        for ii in range(m):
+            dex, val = self.find_first_zero(di[:,ii])
+            print(dex)
+            ivTurnDex.append(dex)
+
+        if showplot:
+            fig1 = plt.figure(1) # plot of delta i
+            plt.plot(di,'o-')
+            for ii in range(m):
+                plt.plot(ivTurnDex[ii],fb_arr[ivTurnDex[ii],ii],'ro')
+
+            fig2 = plt.figure(2)
+            plt.plot(fb_arr,'o-')
+            for ii in range(m):
+                plt.plot(ivTurnDex[ii],fb_arr[ivTurnDex[ii],ii],'ro')
+            plt.show()
+
+        return ivTurnDex
+
+    def find_bad_data_index_arr(self,fb_array, threshold=50,showplot=False):
+        ''' Return the index where IV curve misbehaves.  '''
+        #    often times when TES latches, the data is not useful, and
+        #    in fact problematic when trying to determine P at fracRn, since
+        #    power at fracRn can be erroneously double valued.  This method
+        #    finds the index where this happens
+
+        # first find indicies where delta i is larger than some threshold
+        di = np.diff(fb_array,axis=0)
+        norm_di = np.mean(di[-10:,:],axis=0) # positive definite
+        n,m = np.shape(di)
+        dexs=[]
+        for ii in range(m):
+            alldexs = np.where(abs(di[:,ii])>threshold*norm_di[ii])
+            if len(alldexs[0]) == 0:
+                dexs.append(None)
+            else:
+                dexs.append(np.max(alldexs[0])) # assume the highest vbias is what we want
+        self.badDataIndicies = dexs
+
+        if showplot: #for debuggin purposes
+            plt.xlabel('index')
+            plt.ylabel('current (%s)'%self.i_units)
+            for ii in range(m):
+                plt.plot(self.i[:,ii],'*-')
+                plt.plot(dexs[ii],self.i[dexs[ii],ii],'ro')
+                plt.show()
+                input('%d'%ii)
+
+    def remove_bad_data(self,PLOT=False):
+        ''' fill bad data with np.nan '''
+        i_orig = self.i.copy()
+        for ii in range(self.n_sweeps):
+            if self.badDataIndicies[ii] != None:
+                self.v[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.i[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.p[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.r[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+                self.ro[0:self.badDataIndicies[ii]+1,ii] = np.ones(self.badDataIndicies[ii]+1)*np.nan
+        if PLOT:
+            plt.plot(i_orig,'b*')
+            plt.plot(self.i,'ro')
+            plt.show()
+
+
 
 class IVColdloadAnalyzeOneRow():
     ''' Analyze a set of IV curves for a single detector taken at multiple
@@ -557,14 +740,11 @@ class DetectorMap():
         return val
 
 if __name__ == "__main__":
-    path = '/home/pcuser/data/lbird/20201202/'
-    #filename_json = 'lbird_hftv0_coldload_sweep.json'
     filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
-    filename = path+filename_json
     dm = DetectorMap('detector_map.csv')
     cl_indicies = [0,1,2,3,4,5,6,7,8]
-    row_indicies = [2] #list(range(24))
-    bath_temp_index=1
+    row_index = 2 # list(range(24))
+    bath_temp_index=0
 
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
@@ -574,18 +754,23 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    df = IVColdloadSweepAnalyzer(filename) #df is the main "data format" of the coldload temperature sweep
-    #df.plot_measured_bath_temps() # first check if all measurements taken at intended temperatures
-    #plt.show()
-
-    # analyze all rows
-    for row in row_indicies:
-        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
-        #dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None)
-        ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:9],df.set_bath_temps_k[bath_temp_index],
-                                              device_dict={'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']},
-                                              iv_circuit=iv_circuit,
-                                              passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']})
-        ivcl_onerow.plot_full_analysis(savefigs=True)
-        #plt.cla()
-        #plt.clf()
+    df = IVColdloadSweepAnalyzer(filename_json,dm.map_dict,iv_circuit) #df is the main "data format" of the coldload temperature sweep
+    dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+    iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                  cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indicies]),# put in measured values here!
+                                  bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+                                  device_dict=None,
+                                  iv_circuit=None,
+                                  passband_dict=None)
+    x = iva.dacs
+    n,m = np.shape(iva.fb)
+    ivc = IVClean()
+    for ii in range(m):
+        y = iva.fb[:,ii]
+        #y_smooth = smooth(y)
+        #plt.plot(x,y)
+        #plt.plot(x,y_smooth)
+        #plt.show()
+        dex = IVClean().find_bad_data_index(x,y,showplot=True)
+    #y=y*-1
+    #x=x[::-1];y=y[::-1]
