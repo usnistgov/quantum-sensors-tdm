@@ -189,7 +189,8 @@ class IVColdloadAnalyzeOneRow():
         coldload temperatures and a single bath temperature
     '''
 
-    def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None):
+    def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
+                device_dict=None,iv_circuit=None,passband_dict=None):
         self.dacs = dac_values
         self.n_dac_values = len(self.dacs)
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
@@ -202,7 +203,7 @@ class IVColdloadAnalyzeOneRow():
         # fixed globals
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
-        self.rn_fracs = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
+        self.rn_fracs = [0.7,0.8,0.9] # slices in Rn space to compute delta Ps
         if iv_circuit==None:
             self.to_physical_units = False
         else:
@@ -456,10 +457,11 @@ class IVColdloadAnalyzeOneRow():
         plt.plot(ro, p,'-') # plots for all Tbath
         plt.plot(rn_fracs,p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
-        # try:
-        #     plt.ylim((np.min(p_at_rnfrac[~np.isnan(p_at_rnfrac)])*0.9,1.25*np.max(pPlot[~np.isnan(pPlot)])))
-        # except:
-        #     pass
+        try:
+            #plt.ylim((np.min(p_at_rnfrac[~np.isnan(p_at_rnfrac)])*0.9,1.25*np.max(pPlot[~np.isnan(pPlot)])))
+            plt.ylim((0,1.25*np.max(pPlot[~np.isnan(pPlot)])))
+        except:
+            pass
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power')
         #plt.title(plottitle)
@@ -700,6 +702,37 @@ class IVColdloadSweepAnalyzer():
                                       passband_dict=passband_dict)
         iva.plot_full_analysis(showfigs,savefigs)
 
+    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indicies):
+        ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
+            This is often useful for dark subtraction
+        '''
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+        dacs,fb_dark = self.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indicies]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=None,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=None)
+
+        iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indicies]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=None,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=None)
+
+        n_rfrac, n_clTemps = np.shape(iva.dP_w)
+        for ii in range(n_rfrac):
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indicies],iva.dP_w[ii,:],'bo-')
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indicies],iva_dark.dP_w[ii,:],'ko-')
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indicies],iva.dP_w[ii,:]-iva_dark.dP_w[ii,:],'bo--')
+
+        plt.show()
+
+
+
 class DetectorMap():
     ''' Class to map readout channels to detector characteristics '''
     def __init__(self,filename=None):
@@ -761,24 +794,26 @@ if __name__ == "__main__":
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
     df = IVColdloadSweepAnalyzer(filename_json,dm.map_dict,iv_circuit) #df is the main "data format" of the coldload temperature sweep
-    for row in row_indicies:
-        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+    df.plot_pt_delta_diff(2,1,bath_temp_index,cl_indicies)
 
-        device_dict = {'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']}
-        keys = dm.map_dict['Row%02d'%row].keys()
-        passband_dict = {}
-        if 'freq_edges_ghz' in keys:
-            passband_dict['freq_edges_ghz']=dm.map_dict['Row%02d'%row]['freq_edges_ghz']
-        if 'passband_ghz' in keys:
-            passband_dict['passband_ghz']=dm.map_dict['Row%02d'%row]['passband_ghz']
-
-        iva = IVColdloadAnalyzeOneRow(dacs,fb,
-                                      cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indicies]),# put in measured values here!
-                                      bath_temp_k=df.set_bath_temps_k[bath_temp_index],
-                                      device_dict=device_dict,
-                                      iv_circuit=iv_circuit,
-                                      passband_dict=passband_dict)
-        iva.plot_full_analysis(showfigs=True,savefigs=False)
+    # for row in row_indicies:
+    #     dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
+    #
+    #     device_dict = {'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']}
+    #     keys = dm.map_dict['Row%02d'%row].keys()
+    #     passband_dict = {}
+    #     if 'freq_edges_ghz' in keys:
+    #         passband_dict['freq_edges_ghz']=dm.map_dict['Row%02d'%row]['freq_edges_ghz']
+    #     if 'passband_ghz' in keys:
+    #         passband_dict['passband_ghz']=dm.map_dict['Row%02d'%row]['passband_ghz']
+    #
+    #     iva = IVColdloadAnalyzeOneRow(dacs,fb,
+    #                                   cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indicies]),# put in measured values here!
+    #                                   bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+    #                                   device_dict=device_dict,
+    #                                   iv_circuit=iv_circuit,
+    #                                   passband_dict=passband_dict)
+    #     iva.plot_full_analysis(showfigs=True,savefigs=False)
         #iva.remove_bad_data()
         # x = iva.dacs
         # n,m = np.shape(iva.fb)
