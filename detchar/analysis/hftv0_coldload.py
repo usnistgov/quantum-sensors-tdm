@@ -9,7 +9,7 @@ import ivAnalysis_utils as iva
 filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
 dm = iva.DetectorMap('detector_map.csv')
 cl_indicies = [0,1,2,3,4,5,6,7,8]
-row_indicies = [1] # list(range(24))
+row_indicies = [0,1,2]#list(range(24))
 bath_temp_index=0
 
 # circuit parameters
