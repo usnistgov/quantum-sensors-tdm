@@ -608,8 +608,6 @@ class IVColdloadAnalyzeOneRow():
 
 class IVColdloadSweepAnalyzer():
     ''' Class to assess data quality of coldload sweep '''
-    # plot cold load measured temperatures
-    # plot measured bath temperatures
     def __init__(self,filename_json,detector_map=None,iv_circuit=None):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
@@ -638,6 +636,10 @@ class IVColdloadSweepAnalyzer():
         # globals about IV
         self.dac_values = np.array(self.data[0].data[0].dac_values)
         self.n_dac_values, self.n_rows = np.shape(self.data[0].data[0].fb_values)
+
+        # devices
+        foo, self.n_rows = np.shape(self.data[0].data[0].fb_values_array())
+        self.row_index_list = list(range(self.n_rows))
 
     def print_info(self):
         # Too add in future:
@@ -782,7 +784,40 @@ class IVColdloadSweepAnalyzer():
 
         plt.show()
 
+    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,dark_rnfrac=0.7):
+        if self.det_map != None:
+            # first collect dark responses for each pixel
+            dark_keys, dark_indices = self.det_map.get_keys_and_indices_of_type(type_str='dark')
+            dark_dPs = {}
+            for idx in dark_indices:
+                row_dict = self.det_map.map_dict['Row%02d'%idx]
+                dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=idx,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+                iva_dark = IVColdloadAnalyzeOneRow(dacs,fb,
+                                                   cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                                   bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                                   device_dict=self.det_map.get_onerow_device_dict(idx),
+                                                   iv_circuit=self.iv_circuit,
+                                                   passband_dict=None)
+                dark_dPs[str(row_dict['position'])]=iva_dark.get_pt_delta_for_rnfrac(dark_rnfrac)
 
+            # now loop over all rows
+            for row in self.row_index_list:
+                row_dict = self.det_map.map_dict['Row%02d'%(row)]
+                print(row_dict)
+                dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+                if row_dict['type']=='optical':
+                    dark_dP = dark_dPs[str(row_dict['position'])]
+                    passband_dict={'freq_edges_ghz':self.det_map.map_dict['Row%02d'%row]['freq_edges_ghz']}
+                else:
+                    dark_dP = None; passband_dict=None
+                iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                              cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                              bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                              device_dict=self.det_map.get_onerow_device_dict(row),
+                                              iv_circuit=self.iv_circuit,
+                                              passband_dict=passband_dict,
+                                              dark_dP_w=dark_dP)
+                iva.plot_full_analysis(showfigs,savefigs)
 
 class DetectorMap():
     ''' Class to map readout channels to detector characteristics '''
@@ -831,6 +866,17 @@ class DetectorMap():
 
     def get_onerow_device_dict(self,row_index):
         return {'Row%02d'%row_index:self.map_dict['Row%02d'%row_index]['devname']}
+
+    def get_keys_and_indices_of_type(self,type_str='dark'):
+        print('Warning.  Direct row to index mapping assumed (ie index of Row02 is 2)')
+        idx=[]; keys=[]
+        for key in self.map_dict.keys():
+            if self.map_dict[key]['type']==type_str:
+                keys.append(key)
+                idx.append(int(key.split('Row')[1]))
+        return keys, idx
+
+
 
 if __name__ == "__main__":
     filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
