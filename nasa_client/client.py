@@ -20,6 +20,7 @@ import struct
 from . import network_pipe
 from . import xcaldaq_commands
 import zmq
+import zmq_prevent_hang_hack
 
 class NoMorePackets(StopIteration): pass
 
@@ -368,7 +369,7 @@ class ZMQClient(NDFBClient):
         # Find out the geometry, because we basically always want to know this
         self.nchan = self.get('CHANNELS', 0)
         self.ncol = self.get('BOARDS', 0)
-        self.nrow = self.nchan / (2 * self.ncol)
+        self.nrow = self.nchan // (2 * self.ncol)
         self.npixels = self.ncol * self.nrow
         self.sample_rate = self.get('SAMPLERATE', 0)
         self.num_of_samples = self.get('SAMPLES', 0)
@@ -405,7 +406,6 @@ class ZMQClient(NDFBClient):
         packets = []
         total_bytes = 0
         # first wait for a message
-        
         while total_bytes < max_bytes:
             try: # dont know why things need different blocking types
                 if self.noblock: # sweeper needs blocking
@@ -665,3 +665,5 @@ def Client(*args, **kwargs):
     except Exception as e:
         c = ZMQClient(*args, **kwargs)
         return c
+
+

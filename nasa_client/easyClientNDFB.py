@@ -19,7 +19,7 @@ import zmq
 class EasyClientNDFB(nasa_client.client.ZMQClient):
     """This client will connect to a server's summary channels."""
     def __init__(self, host='localhost', port=2011, clockmhz=50):
-        nasa_client.client.ZMQClient.__init__(self, host=host, port=port,clockmhz=clockmhz,noblock=False)
+        nasa_client.client.ZMQClient.__init__(self, host=host, port=port,clockmhz=clockmhz,noblock=True)
         self.debug = False
 
 
@@ -72,10 +72,14 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
 
     def clearSocket(self):
         # i think this will throw away old data
+        i = 0
         while True:
             try:
                 self.dataPort.recv(zmq.NOBLOCK)
             except zmq.ZMQError:
+                break
+            i+=1
+            if i > 10000:
                 break
         return
 
@@ -85,6 +89,8 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         self.clearSocket()
         while True:
             payloads, headers = self.get_data_packets(max_bytes=1)
+            if len(payloads) == 0:
+                continue
             servertime_usec = headers[-1]["packet_timestamp"]
             if servertime_usec - mytime_usec > delay_usec:
                 return headers[-1]["count_of_last_sample"]
@@ -93,6 +99,7 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
     def reshapeDataToColRowFrame(self, dataIn):
         if len(self.stream_channels)<self.ncol*self.nrow*2:
             raise ValueError('will not work unless streaming all possible channels')
+        print(f"ncol {self.ncol} nrow {self.nrow} shape {dataIn.shape}")
         dataOut = numpy.zeros((self.ncol, self.nrow, dataIn.shape[1], 2),dtype="int32")
         for col in range(self.ncol):
             for row in range(self.nrow):
@@ -140,7 +147,6 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         sendMode corresponds to dfb07_card setting (or "raw" for diagnostic mode from server")
         returned data is probably time continuous, there will be printed warning statements if it is not
         '''
-
         count_of_last_sample_to_avoid = self.clearWithLatencyCheck(delaySeconds) # works best on same computer, use bigger latency on different computers
         headers, payloads = [],[]
         firstSampleCount = [-1]*len(self.stream_channels)
@@ -148,7 +154,6 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
         numPoints = [0]*len(self.stream_channels)
         while True:
             newpayloads, newheaders = self.get_data_packets(max_bytes=1) # this is done out here so we can find out the number of samples, so we can preallocate dataOut
-
             for payload, header in zip(newpayloads, newheaders):
                 if not header['chan'] in self.stream_channels:
                     continue
@@ -156,19 +161,19 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
                 countOfFirstSample = header['count_of_last_sample']-header['record_samples']
                 if header['count_of_last_sample'] <= count_of_last_sample_to_avoid:
                     continue
-#                    print('rejected channel %d count_of_last_sample %d <= max_count_of_last_sample %d'%(header['chan'], header['count_of_last_sample'], throw_away_last_count))
+                    # print('rejected channel %d count_of_last_sample %d <= max_count_of_last_sample %d'%(header['chan'], header['count_of_last_sample'], throw_away_last_count))
                 elif numPoints[payloadChannelIndex] > minimumNumPoints:
                     continue
-#                    print('rejected chann %d numPoints %d > minimumNumPoints %d'%(header['chan'],numPoints[payloadChannelIndex],minimumNumPoints ))
+                    # print('rejected chann %d numPoints %d > minimumNumPoints %d'%(header['chan'],numPoints[payloadChannelIndex],minimumNumPoints ))
                 else:
                     if lastSampleCount[payloadChannelIndex] < header['count_of_last_sample']:
                         if header['count_of_last_sample']-header['record_samples'] != lastSampleCount[payloadChannelIndex] and lastSampleCount[payloadChannelIndex]>0:
                             print('WARNING: getNewData is not getting continuous data')
                         lastSampleCount[payloadChannelIndex] = header['count_of_last_sample']
-#                        print('channel %d lastSampleCount = %d'%(header['chan'],header['count_of_last_sample']))
+                        # print('channel %d lastSampleCount = %d'%(header['chan'],header['count_of_last_sample']))
                     if firstSampleCount[payloadChannelIndex] < 0:
                         firstSampleCount[payloadChannelIndex] = countOfFirstSample
-#                        print('channel %d firstSampleCount = %d'%(header['chan'],countOfFirstSample))
+                        # print('channel %d firstSampleCount = %d'%(header['chan'],countOfFirstSample))
                     payloads.extend([payload])
                     headers.extend([header])
 
@@ -176,13 +181,11 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
             #print 'numPoints',numPoints
             if all(numPoints>minimumNumPoints):
                 break
-
         if numpy.diff(firstSampleCount).sum()>0:
             print('WARNING: getNewData does not have all time aligned data')
 
         dataOut = self.sortPackets(payloads, headers, numPoints, firstSampleCount)
         dataOut = self.reshapeDataToColRowFrame(dataOut)
-
         if sendMode != "raw":
             dataOut[:,:,:,1]=dataOut[:,:,:,1]>>2 # ignore 2 lsbs (frame bit and trigger)
         if sendMode == 2:
