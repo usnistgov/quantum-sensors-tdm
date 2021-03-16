@@ -1,7 +1,8 @@
 ''' ivAnalysis_utils.py '''
 
-# NOTES
+# TO DO / NOTES
 # dark subtraction
+# efficiency relative to simulated passband
 # Determine some metric for efficiency and report that one number.  what rn_frac?  What cl_temp?
 # IVTempSweepData ought to have the coldload setpoint.
 # column name for IVColdloadAnalzyeOneRow?
@@ -18,6 +19,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
 from scipy.integrate import quad, simps
+
+def smooth(y, box_pts=5):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
 
 def Pnu_thermal(nu,T):
     ''' power spectral density (W/Hz) of single mode from thermal source at
@@ -44,14 +50,149 @@ def thermalPower(nu1,nu2,T,F=None):
         P = simps(integrand,nu)
     return P
 
+class IVClean():
+    ''' Data cleaning methods relevant for IV curves '''
+    def is_dac_descending(self,dac):
+        result = False
+        if dac[1] - dac[0] < 0 :
+            result = True
+        return result
+
+    def is_iv_inverted(self,dac,fb):
+        result = False
+        dac_descending = self.is_dac_descending(dac)
+        if dac_descending:
+            pt1_idx = 1
+            pt2_idx = 0
+        else:
+            pt1_idx = -2
+            pt2_idx = -1
+        if fb[pt1_idx]-fb[pt2_idx]>0:
+            result = True
+        return result
+
+    def find_first_zero(self,vec,verbose=False):
+        ''' single vector, return index and value where vec crosses zero '''
+        ii=0; val = vec[ii]
+        while val > 0:
+            if ii==len(vec)-1:
+                if verbose: print('zero crossing not found')
+                ii = None; val == None
+                break
+            ii=ii+1
+            val=vec[ii]
+        return ii, val
+
+    def get_turn_index(self,dac,fb,showplot=False):
+        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+        '''
+
+        dfb = np.diff(fb,axis=0)
+        if not self.is_iv_inverted(dac,fb):
+            dfb=-1*dfb
+        dex, val = self.find_first_zero(dfb)
+        if showplot:
+            fig1 = plt.figure(1) # plot of delta i
+            plt.plot(dfb,'o-')
+            if dex != None: plt.plot(dex,val,'ro')
+
+            fig2 = plt.figure(2)
+            plt.plot(fb,'o-')
+            if dex != None: plt.plot(dex,fb[dex],'ro')
+            plt.show()
+        return dex#,val
+
+    def find_bad_data_index(self,dac,fb,threshold=0.5,showplot=False):
+        ''' Return the index where IV curve misbehaves.
+            dac and fb(dac) must be in descending order
+
+            Algorithm is to look at fb(dac) for dac values lower than the IV turnaround.
+            If the second derivative is positive (ie the slope of the IV curve in transition changes sign),
+            the index is flagged and returned.
+        '''
+        assert dac[1]-dac[0] < 0, ('dac values must be in descending order')
+
+        turn_dex = self.get_turn_index(dac,fb,showplot=False)
+        if turn_dex == None: return len(dac)
+
+        dfb = np.diff(fb,axis=0)
+        norm_dfb = np.mean(dfb[0:10],axis=0)
+        x = dfb/norm_dfb # normalize to slope in the normal branch
+        ddfb = smooth(np.diff(x,axis=0),3)
+
+        ii = turn_dex; val = ddfb[ii]
+        while val < threshold:
+            ii+=1
+            if ii==len(ddfb): break
+            val=ddfb[ii]
+        dex = ii+1
+
+        if showplot:
+            plt.figure(1)
+            plt.xlabel('index')
+            plt.ylabel('fb (arb)')
+            plt.plot(fb,'bo-')
+            plt.plot([turn_dex],[fb[turn_dex]],'ro')
+            plt.plot([dex],[fb[dex]],'go')
+            plt.plot(fb[0:dex+1],'r*')
+
+            # plt.figure(2)
+            # plt.xlabel('index')
+            # plt.ylabel('$\Delta$fb')
+            # plt.plot(x,'bo-')
+            # plt.plot([dex],[x[dex]],'go')
+            #
+            # plt.figure(3)
+            # plt.xlabel('index')
+            # plt.ylabel('$\Delta$ $\Delta$ fb')
+            # plt.plot(ddfb,'bo-')
+            # plt.plot(smooth(ddfb,3))
+            # plt.plot([dex-1],[ddfb[dex-1]],'go')
+            plt.show()
+        return dex
+
+    def remove_NaN(self,arr):
+        ''' only works on 1d vector, not array '''
+        return arr[~np.isnan(arr)]
+
+    def get_turn_index_arr(self,fb_arr,showplot=False):
+        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+            Assumes fb_arr is ordered from highest voltage bias setting to lowest
+        '''
+
+        di = np.diff(fb_arr,axis=0) # difference of current array
+        #di_rev = di[::-1] # reverse order di_rev[0] corresponse to highest v_bias
+        n,m = np.shape(di)
+        ivTurnDex = []
+        for ii in range(m):
+            dex, val = self.find_first_zero(di[:,ii])
+            print(dex)
+            ivTurnDex.append(dex)
+
+        if showplot:
+            fig1 = plt.figure(1) # plot of delta i
+            plt.plot(di,'o-')
+            for ii in range(m):
+                plt.plot(ivTurnDex[ii],fb_arr[ivTurnDex[ii],ii],'ro')
+
+            fig2 = plt.figure(2)
+            plt.plot(fb_arr,'o-')
+            for ii in range(m):
+                plt.plot(ivTurnDex[ii],fb_arr[ivTurnDex[ii],ii],'ro')
+            plt.show()
+
+        return ivTurnDex
+
+
 class IVColdloadAnalyzeOneRow():
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
     '''
 
-    def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None):
+    def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
+                device_dict=None,iv_circuit=None,passband_dict=None,
+                dark_dP_w=None):
         self.dacs = dac_values
-        self.n_dac_values = len(self.dacs)
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.fb_align = None
         self.cl_temps_k = cl_temps_k
@@ -62,10 +203,11 @@ class IVColdloadAnalyzeOneRow():
         # fixed globals
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
-        self.rn_fracs = [0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
+        self.rn_fracs = [0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
         if iv_circuit==None:
             self.to_physical_units = False
         else:
+            self.iv_circuit = iv_circuit
             self.to_physical_units = True
 
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
@@ -73,12 +215,42 @@ class IVColdloadAnalyzeOneRow():
         # do analysis, place main results as globals to class
         self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
         self.ro = self.r / self.r[0,:]
-        self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro)
+        self.remove_bad_data()
+        self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_cl,self.ro_cl)
+        self.dark_dP_w = self._handle_dark(dark_dP_w) # a vector (not 2D array)
         self.cl_dT_k, self.dP_w, self.T_cl_index = self.get_delta_pt()
+        if self.do_dark_analysis: self.dP_w_darksubtracted = self.power_subtraction(self.dP_w,self.dark_dP_w)
+
         # predicted power
         self.freq_edges_ghz=self.passband_sim_ghz=None
         self.power_cl_tophat=self.power_cl_sim_passband=self.power_cl_tophat_delta=self.power_cl_sim_passband_delta=self.eta_tophat=self.eta_passband_sim=None
         self._handle_prediction(passband_dict)
+
+        # plotting stuff
+        self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
+
+    def power_subtraction(self,dP_w,dP_w_vec):
+        ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
+            dP_w_vec (typically a dark detector response) is a 1 x M array
+        '''
+        return dP_w - dP_w_vec
+
+    def get_pt_delta_for_rnfrac(self,rnfrac):
+        assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
+        dex = self.rn_fracs.index(rnfrac)
+        return self.dP_w[dex]
+
+    def _handle_dark(self, dark_dP_w):
+        self.dP_w_darksubtracted = None
+        self.do_dark_analysis = False
+        try:
+            if dark_dP_w == None:
+                ddp_w = None
+        except:
+            assert len(dark_dP_w) == self.n_cl_temps, ('Length of dark_dP_w must equal number of cold load temperatures')
+            ddp_w = dark_dP_w
+            self.do_dark_analysis = True
+        return ddp_w
 
     def _handle_device_dict(self,device_dict):
         if device_dict==None:
@@ -90,18 +262,22 @@ class IVColdloadAnalyzeOneRow():
 
     def _handle_prediction(self,passband_dict):
         self.prediction, self.frequency_edges_ghz, self.passband_sim_ghz = self._handle_passband(passband_dict)
-        if self.prediction[0] !=0:
+        if self.prediction[0] != 0:
             self.power_cl_tophat = self.get_predicted_thermal_power_tophat(self.cl_temps_k,f_edges_ghz=self.frequency_edges_ghz)
             self.power_cl_tophat_delta = np.array(self.power_cl_tophat) - self.power_cl_tophat[self.T_cl_index]
             self.eta_tophat = self.get_efficiency(self.power_cl_tophat_delta, self.dP_w)
-        if self.prediction[1] !=0:
+            if self.do_dark_analysis:
+                self.eta_tophat_ds = self.get_efficiency(self.power_cl_tophat_delta, self.dP_w_darksubtracted)
+        if self.prediction[1] != 0:
             self.power_cl_sim_passband = self.get_predicted_thermal_power_simpassband(self.cl_temps_k,passband_ghz=self.passband_sim_ghz)
             self.self.power_cl_sim_passband_delta = np.array(self.power_cl_sim_passband) - self.power_cl_sim_passband[self.T_cl_index]
             self.eta_passband_sim = self.get_efficiency(self.power_cl_sim_passband_delta, self.dP_w)
+            if self.do_dark_analysis:
+                self.eta_passband_sim_ds = self.get_efficiency(self.power_cl_sim_passband_delta, self.dP_w_darksubtracted)
 
     def _handle_passband(self,passband_dict):
         prediction=[0,0]
-        if passband_dict==None:
+        if passband_dict==None or passband_dict=={}:
             freq_edges_ghz = None ; passband_sim_ghz = None
         else:
             assert type(passband_dict) == dict, ('passband_dict must be of type dictionary')
@@ -117,15 +293,6 @@ class IVColdloadAnalyzeOneRow():
             else:
                 passband_sim_ghz = None
         return prediction, freq_edges_ghz, passband_sim_ghz
-
-    # def get_predicted_coldload_power_delta(self,cl_index):
-    #     if self.power_cl_tophat != None:
-    #         dP_tophat = np.array(self.power_cl_tophat) - self.power_cl_tophat[cl_index]
-    #     else: dP_tophat=None
-    #     if self.power_cl_sim_passband != None:
-    #         dP_sim = self.power_cl_sim_passband - self.power_cl_sim_passband[cl_index]
-    #     else: dP_sim = None
-    #     return dP_tophat, dP_sim
 
     def get_predicted_thermal_power_tophat(self,cl_temps_k,f_edges_ghz):
         ''' calculate thermal power at cl_temps assuming a tophat passband from f1 to f2 (ghz) '''
@@ -175,7 +342,7 @@ class IVColdloadAnalyzeOneRow():
             self.fb_align = self.fb_align_and_remove_offset(showplot=False)
 
         if self.to_physical_units:
-            v,i = iv_circuit.to_physical_units(self.dacs,self.fb_align)
+            v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
         else:
             v = np.zeros((self.n_dac_values,self.n_cl_temps))
             for ii in range(self.n_cl_temps):
@@ -186,6 +353,25 @@ class IVColdloadAnalyzeOneRow():
         if showplot:
             self.plot_vipr([v,i,p,r])
         return v,i,p,r
+
+    def remove_bad_data(self):
+        def cut(arr,dexs):
+            n,m=np.shape(arr)
+            arr_copy = arr.copy()
+            for ii in range(m):
+                if dexs[ii]==self.n_dac_values: pass
+                else: arr_copy[dexs[ii]+1:,ii] = np.ones(self.n_dac_values-dexs[ii]-1)*np.nan
+            return arr_copy
+
+        dexs=[]
+        for ii in range(self.n_cl_temps):
+            dexs.append(IVClean().find_bad_data_index(self.dacs,self.fb[:,ii],threshold=0.5,showplot=False))
+        self.bad_data_idx = dexs
+        self.v_cl = cut(self.v,dexs)
+        self.i_cl = cut(self.i,dexs)
+        self.r_cl = cut(self.r,dexs)
+        self.ro_cl = cut(self.ro,dexs)
+        self.p_cl = cut(self.p,dexs)
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
         '''
@@ -233,7 +419,14 @@ class IVColdloadAnalyzeOneRow():
         return dT_k, dP_w, dex
 
     def get_efficiency(self,dP,dP_m):
+        # dexs = [i for i, dP in enumerate(dP) if dP == 0]
+        # eta = np.ones(len(dP))*np.nan
+        # for ii in range(len(dP)):
+        #     if ii in dexs:
+        #         pass
+        #     else: eta[ii]==dP_m[ii]/dP[ii]
         return dP_m/dP
+
 
     def plot_raw(self,fb_align_dc_level=True,fig_num=1):
         fig = plt.figure(fig_num)
@@ -290,14 +483,18 @@ class IVColdloadAnalyzeOneRow():
         return fig
 
     def plot_pr(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
-        pPlot = self.get_value_at_rn_frac([0.999],arr=p,ro=ro)
+        pPlot = self.get_value_at_rn_frac([0.995],arr=p,ro=ro)
 
         # FIG1: P versus R/Rn
         fig = plt.figure(fig_num)
         plt.plot(ro, p,'-') # plots for all Tbath
         plt.plot(rn_fracs,p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
-        plt.ylim((np.min(p_at_rnfrac[~np.isnan(p_at_rnfrac)])*0.9,1.25*np.max(pPlot[~np.isnan(pPlot)])))
+        try:
+            #plt.ylim((np.min(p_at_rnfrac[~np.isnan(p_at_rnfrac)])*0.9,1.25*np.max(pPlot[~np.isnan(pPlot)])))
+            plt.ylim((0,1.25*np.max(pPlot[~np.isnan(pPlot)])))
+        except:
+            pass
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power')
         #plt.title(plottitle)
@@ -309,46 +506,73 @@ class IVColdloadAnalyzeOneRow():
     def plot_pt(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
         # power plateau (evaluated at each rn_frac) versus T_cl
         fig = plt.figure(fig_num)
+        llabels=[]
         for ii in range(len(rn_fracs)):
-            plt.plot(self.cl_temps_k,p_at_rnfrac[ii,:],'o-')
+            if not np.isnan(p_at_rnfrac[ii,:]).any():
+                plt.plot(self.cl_temps_k,p_at_rnfrac[ii,:],'o-')
+                llabels.append(rn_fracs[ii])
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau')
-        plt.legend((rn_fracs))
+        plt.legend((llabels))
         plt.title(self.figtitle)
         plt.grid()
         return fig
 
-    def plot_pt_delta(self,cl_dT_k, dp_at_rnfrac, rn_fracs, fig_num=1):
+    def plot_pt_delta(self,cl_dT_k, dp_at_rnfrac, rn_fracs, fig_num=1, dp_at_rnfrac_dark_subtracted=None):
         ''' plot change in saturation power relative to minimum coldload temperature '''
         fig = plt.figure(fig_num)
         legend_vals = []
         if self.prediction[0]==1: # include tophat passband prediction
-            plt.plot(self.cl_dT_k,self.power_cl_tophat_delta,'k-')
-            legend_vals.append('$\Delta{P}_{calc}$ (top hat)')
+            plt.plot(self.cl_dT_k,self.power_cl_tophat_delta,'k-',label='$\Delta{P}_{calc}$ (top hat)')
         if self.prediction[1]==1: # include simulated passband prediction
-            plt.plot(self.cl_dT_k,self.power_cl_sim_passband_delta,'k--')
-            legend_vals.append('$\Delta{P}_{calc}$ (sim passband)')
+            plt.plot(self.cl_dT_k,self.power_cl_sim_passband_delta,'k--',label='$\Delta{P}_{calc}$ (sim passband)')
+        jj=0
         for ii in range(len(rn_fracs)):
-            plt.plot(cl_dT_k,dp_at_rnfrac[ii,:],'o-')
-            legend_vals.append(str(rn_fracs[ii]))
+            if not np.isnan(dp_at_rnfrac[ii,:]).any():
+                plt.plot(cl_dT_k,dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(rn_fracs[ii]))
+                try:
+                    if len(dp_at_rnfrac_dark_subtracted) > 0:
+                        plt.plot(cl_dT_k,dp_at_rnfrac_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                except:
+                    pass
+                jj+=1
         plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
         plt.ylabel('P$_o$ - P')
-        plt.legend((legend_vals))
+        plt.legend()
         plt.grid()
         plt.title(self.figtitle)
         return fig
 
-    def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1):
+    def get_eta_mean_std(self,eta):
+        n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
+        dexs=[] # rn cuts w/out np.nan entries
+        for ii in range(n):
+            if not np.isnan(eta[ii,1:]).any():
+                dexs.append(ii)
+
+        eta_m = np.mean(eta[dexs,1:],axis=0)
+        eta_std = np.std(eta[dexs,1:],axis=0)
+        return eta_m, eta_std
+
+    def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
         fig = plt.figure(fig_num)
-        legend_vals = []
+        jj=0
         for ii in range(len(rn_fracs)):
-            plt.plot(cl_dT_k,eta[ii,:],'o-')
-            legend_vals.append(str(rn_fracs[ii]))
-        plt.errorbar(cl_dT_k,np.mean(eta,axis=0),np.std(eta,axis=0),color='k',linewidth=4,ecolor='k',elinewidth=4)
-        legend_vals.append('mean')
+            if not np.isnan(eta[ii,1:]).any():
+                plt.plot(cl_dT_k,eta[ii,:],'o-',color=self.colors[jj], label=str(rn_fracs[ii]))
+                try:
+                    if len(eta_dark_subtracted) > 0:
+                        plt.plot(cl_dT_k,eta_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                except:
+                    pass
+                jj+=1
+        eta_m, eta_std = self.get_eta_mean_std(eta)
+        eta_m_ds, eta_std_ds = self.get_eta_mean_std(eta_dark_subtracted)
+        plt.errorbar(cl_dT_k[1:],eta_m,eta_std,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
+        plt.errorbar(cl_dT_k[1:],eta_m_ds,eta_std_ds,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean ds',linestyle='--')
         plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
         plt.ylabel('Efficiency')
-        plt.legend((legend_vals))
+        plt.legend()
         plt.grid()
         plt.title(self.figtitle)
         return fig
@@ -358,12 +582,22 @@ class IVColdloadAnalyzeOneRow():
         figs.append(self.plot_raw(True,fig_num=1)) # raw
         figs.append(self.plot_vipr(data_list=None,fig_num=2)) # 2x2 of converted data
         figs.append(self.plot_pr(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=3))
-        figs.append(self.plot_pt(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=4))
-        figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5))
+        if not np.isnan(self.p_at_rnfrac).all():
+            figs.append(self.plot_pt(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=4))
+            if self.do_dark_analysis:
+                figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5, dp_at_rnfrac_dark_subtracted=self.dP_w_darksubtracted))
+            else:
+                figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5))
         if self.prediction[0]==1:
-            figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6))
+            if self.do_dark_analysis:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6, eta_dark_subtracted=self.eta_tophat_ds))
+            else:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6))
         if self.prediction[1]==1:
-            figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7))
+            if self.do_dark_analysis:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7, eta_dark_subtracted=self.eta_passband_sim_ds))
+            else:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7))
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta_top','eta_sim']
             for ii,fig in enumerate(figs):
@@ -374,12 +608,12 @@ class IVColdloadAnalyzeOneRow():
 
 class IVColdloadSweepAnalyzer():
     ''' Class to assess data quality of coldload sweep '''
-    # plot cold load measured temperatures
-    # plot measured bath temperatures
-    def __init__(self,filename_json):
+    def __init__(self,filename_json,detector_map=None,iv_circuit=None):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
         self.data = self.df.data
+        self.det_map = detector_map
+        self.iv_circuit = iv_circuit
         #self.data is a list of IVTempSweepData, one per coldload temperature setpoint
         #self.data[0].data is a list of IVCurveColumnData, one per bath temperature setpoint
         #self.data[ii].data[jj], ii is the coldload setpoint temperature index
@@ -403,15 +637,19 @@ class IVColdloadSweepAnalyzer():
         self.dac_values = np.array(self.data[0].data[0].dac_values)
         self.n_dac_values, self.n_rows = np.shape(self.data[0].data[0].fb_values)
 
+        # devices
+        foo, self.n_rows = np.shape(self.data[0].data[0].fb_values_array())
+        self.row_index_list = list(range(self.n_rows))
+
     def print_info(self):
-        # start/stop of data 
-        # Did data complete?
-        # Cold load temperatures 
-        # Bath temperatures 
+        # Too add in future:
+        # 1) date/time of start/end of data
+        # 2) Did data complete?
         print('Coldload set temperatures: ',self.set_cl_temps_k)
         print('Measured coldload temperatures: ',self.measured_cl_temps_k)
         print('ADR set temperatures: ',self.set_bath_temps_k)
-            
+        print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
+
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))
@@ -421,10 +659,10 @@ class IVColdloadSweepAnalyzer():
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
 
-    def get_cl_sweep_dataset_for_row(self,row_index,bath_temp_index=0,cl_indicies=None):
-        if cl_indicies==None:
-            cl_indicies = list(range(self.n_cl_temps))
-        n_cl = len(cl_indicies)
+    def get_cl_sweep_dataset_for_row(self,row_index,bath_temp_index=0,cl_indices=None):
+        if cl_indices==None:
+            cl_indices = list(range(self.n_cl_temps))
+        n_cl = len(cl_indices)
         fb = np.zeros((self.n_dac_values,n_cl))
         for ii in range(n_cl):
             fb[:,ii] = self.data[ii].data[bath_temp_index].fb_values_array()[:,row_index]
@@ -481,19 +719,105 @@ class IVColdloadSweepAnalyzer():
         plt.title('Row index = %d, CL_temp_index = %.1f K, Tb_index = %d mK'%(row_index,cl_temp_index,bath_temp_index))
         plt.show()
 
-    def plot_cl_temp_sweep_for_row(self,row_index,bath_temp_index,cl_indicies=None):
-        if cl_indicies==None:
-            cl_indicies = list(range(self.n_cl_temps))
-        x,fb_arr = self.get_cl_sweep_dataset_for_row(row_index,bath_temp_index,cl_indicies)
+    def plot_cl_temp_sweep_for_row(self,row_index,bath_temp_index,cl_indices=None):
+        if cl_indices==None:
+            cl_indices = list(range(self.n_cl_temps))
+        x,fb_arr = self.get_cl_sweep_dataset_for_row(row_index,bath_temp_index,cl_indices)
         plt.figure(1)
-        for ii in range(len(cl_indicies)):
+        for ii in range(len(cl_indices)):
             dy = fb_arr[0,ii]-fb_arr[0,0]
             plt.plot(self.dac_values, fb_arr[:,ii]-dy)
         plt.xlabel('DAC values')
         plt.ylabel('Feedback values')
         plt.title('Row index = %d, Tb = %d mK'%(row_index,self.set_bath_temps_k[bath_temp_index]*1000))
-        plt.legend((np.array(self.set_cl_temps_k)[cl_indicies]),loc='upper right')
+        plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
+
+    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices,showfigs=True,savefigs=False):
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+        if self.det_map != None:
+
+            device_dict = {'Row%02d'%row_index: self.det_map['Row%02d'%row_index]['devname']}
+            keys = self.det_map['Row%02d'%row_index].keys()
+            passband_dict = {}
+            if 'freq_edges_ghz' in keys:
+                passband_dict['freq_edges_ghz']=self.det_map['Row%02d'%row_index]['freq_edges_ghz']
+            if 'passband_ghz' in keys:
+                passband_dict['passband_ghz']=self.det_map['Row%02d'%row_index]['passband_ghz']
+        else:
+            device_dict=None ; passband_dict = {}
+
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=device_dict,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=passband_dict)
+        iva.plot_full_analysis(showfigs,savefigs)
+
+    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices):
+        ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
+            This is often useful for dark subtraction
+        '''
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+        dacs,fb_dark = self.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=None,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=None)
+
+        iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
+                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      device_dict=None,
+                                      iv_circuit=self.iv_circuit,
+                                      passband_dict=None)
+
+        n_rfrac, n_clTemps = np.shape(iva.dP_w)
+        for ii in range(n_rfrac):
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:],'bo-')
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva_dark.dP_w[ii,:],'ko-')
+            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:]-iva_dark.dP_w[ii,:],'bo--')
+
+        plt.show()
+
+    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,dark_rnfrac=0.7):
+        if self.det_map != None:
+            # first collect dark responses for each pixel
+            dark_keys, dark_indices = self.det_map.get_keys_and_indices_of_type(type_str='dark')
+            dark_dPs = {}
+            for idx in dark_indices:
+                row_dict = self.det_map.map_dict['Row%02d'%idx]
+                dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=idx,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+                iva_dark = IVColdloadAnalyzeOneRow(dacs,fb,
+                                                   cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                                   bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                                   device_dict=self.det_map.get_onerow_device_dict(idx),
+                                                   iv_circuit=self.iv_circuit,
+                                                   passband_dict=None)
+                dark_dPs[str(row_dict['position'])]=iva_dark.get_pt_delta_for_rnfrac(dark_rnfrac)
+
+            # now loop over all rows
+            for row in self.row_index_list:
+                row_dict = self.det_map.map_dict['Row%02d'%(row)]
+                print(row_dict)
+                dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+                if row_dict['type']=='optical':
+                    dark_dP = dark_dPs[str(row_dict['position'])]
+                    passband_dict={'freq_edges_ghz':self.det_map.map_dict['Row%02d'%row]['freq_edges_ghz']}
+                else:
+                    dark_dP = None; passband_dict=None
+                iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                              cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                              bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                              device_dict=self.det_map.get_onerow_device_dict(row),
+                                              iv_circuit=self.iv_circuit,
+                                              passband_dict=passband_dict,
+                                              dark_dP_w=dark_dP)
+                iva.plot_full_analysis(showfigs,savefigs)
 
 class DetectorMap():
     ''' Class to map readout channels to detector characteristics '''
@@ -540,15 +864,27 @@ class DetectorMap():
         else: val = thetype(val)
         return val
 
+    def get_onerow_device_dict(self,row_index):
+        return {'Row%02d'%row_index:self.map_dict['Row%02d'%row_index]['devname']}
+
+    def get_keys_and_indices_of_type(self,type_str='dark'):
+        print('Warning.  Direct row to index mapping assumed (ie index of Row02 is 2)')
+        idx=[]; keys=[]
+        for key in self.map_dict.keys():
+            if self.map_dict[key]['type']==type_str:
+                keys.append(key)
+                idx.append(int(key.split('Row')[1]))
+        return keys, idx
+
+
+
 if __name__ == "__main__":
-    path = '/home/pcuser/data/lbird/20201202/'
-    #filename_json = 'lbird_hftv0_coldload_sweep.json'
-    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json' 
-    filename = path+filename_json
+    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
     dm = DetectorMap('detector_map.csv')
-    cl_indicies = [0,1,2,3,4,5,6,7,8]
-    row_indicies = list(range(24))
-    bath_temp_index=1
+    cl_indices = [0,1,2,3,4,5,6,7,8]
+    row_indices = [2,3] #list(range(24))
+    dark_row_index = 1
+    bath_temp_index=0
 
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
@@ -558,18 +894,26 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    df = IVColdloadSweepAnalyzer(filename) #df is the main "data format" of the coldload temperature sweep
-    #df.plot_measured_bath_temps() # first check if all measurements taken at intended temperatures
-    #plt.show()
+    df = IVColdloadSweepAnalyzer(filename_json,dm.map_dict,iv_circuit) #df is the main "data format" of the coldload temperature sweep
 
-    # analyze all rows
-    for row in row_indicies:
-        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indicies=cl_indicies)
-        #dac_values,fb_array,cl_temps_k,bath_temp_k,device_dict=None,iv_circuit=None,passband_dict=None)
-        ivcl_onerow = IVColdloadAnalyzeOneRow(dacs,fb,df.set_cl_temps_k[0:9],df.set_bath_temps_k[bath_temp_index],
-                                              device_dict={'Row%02d'%row: dm.map_dict['Row%02d'%row]['devname']},
-                                              iv_circuit=iv_circuit,
-                                              passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']})
-        ivcl_onerow.plot_full_analysis(savefigs=True)
-        #plt.cla()
-        #plt.clf()
+    # get dP versus T coldload for dark bolometer
+    dacs,fb_dark = df.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+    iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
+                                  cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
+                                  bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+                                  device_dict=None,
+                                  iv_circuit=df.iv_circuit,
+                                  passband_dict=None)
+    dark_dP = iva_dark.get_pt_delta_for_rnfrac(0.8)
+
+    # do dark subtracted data analysis on optical bolo
+    for row in row_indices:
+        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
+                                      bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+                                      device_dict=dm.get_onerow_device_dict(row),
+                                      iv_circuit=df.iv_circuit,
+                                      passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']},
+                                      dark_dP_w=dark_dP)
+        iva.plot_full_analysis(showfigs=True,savefigs=False)
