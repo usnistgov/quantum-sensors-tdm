@@ -174,8 +174,8 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         self.num_therms = self.N_ls370_channels + self.N_cc_channels
         
         # define some globals, initialize
-        self.waitBeforeLSsample = 7 # seconds to wait before grabing temperature reading (the LS is slow)
-        self.loopPeriod = self.waitBeforeLSsample*self.N_ls370_channels+5 
+        self.waitBeforeLSsample = 10 # seconds to wait before grabing temperature reading (the LS is slow)
+        self.loopPeriod = self.waitBeforeLSsample*self.N_ls370_channels+10 
         self.temp = np.zeros(self.num_therms) 
 
         # error handling on allowed channels
@@ -281,7 +281,7 @@ def main():
     #     min_mag_time=20
 
     app = PyQt5.QtWidgets.QApplication(sys.argv)
-    mainWin = adrTempMonitorGui()
+    mainWin = adrTempMonitorGui(cc_channels=None)
     mainWin.show()
     sys.exit(app.exec_())
 

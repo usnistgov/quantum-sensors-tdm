@@ -3,7 +3,7 @@
 
 top-level script to acquire an iv curve data set.
 usage:
-./ivCurveAquire.py <config_file>
+./ivCurveAquire.py <config_file> <description>
 
 @author JH 2/2021
 '''
@@ -11,7 +11,13 @@ usage:
 import yaml, sys, os
 from iv_utils import *
 
+n_args = len(sys.argv)
 config_filename = str(sys.argv[1])
+if n_args > 2:
+    desc = str(sys.argv[2])
+else:
+    desc=''
+
 
 
 # open config file
@@ -62,11 +68,11 @@ if 'coldload' in cfg.keys():
                                        cl_settemp_timeout_m=10.0,
                                        cl_post_setpoint_waittime_m=cfg['coldload']['cl_post_setpoint_waittime_m'],
                                        skip_first_settle = cfg['coldload']['immediateFirstMeasurement'],
-                                       cool_upon_finish = True, extra_info={'config': cfg},
+                                       cool_upon_finish = True, extra_info={'config': cfg, 'exp_status':desc},
                                        write_while_acquire = True, filename=write_filename)
-    else: data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg})
+    else: data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc})
 else:
-    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg})
+    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc})
 
 data.to_file(write_filename,overwrite=True)
 print('data aquistion finished.\nWrote to file:',write_filename)
