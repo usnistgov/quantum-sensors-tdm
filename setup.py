@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     keywords='tdm, tes',
     name='qsptdm',
-    packages=find_packages(),
+    packages=find_packages(exclude=["cringe.*"]),
     test_suite='tests',
     url='',
     version='0.1.0',
