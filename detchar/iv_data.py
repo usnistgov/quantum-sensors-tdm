@@ -63,6 +63,12 @@ class IVCurveColumnData():
             fb[:,i] = fit_normal_zero_subtract(dac_values, fb[:, i], normal_above_fb)
         return dac_values, fb
 
+    def xy_arrays_zero_subtracted_at_dac_high(self):
+        dac_values = np.array(self.dac_values)
+        fb = self.fb_values_array()
+        fb = fb - fb[0,:]
+        return dac_values, fb
+    
     def xy_arrays(self):
         dac_values = np.array(self.dac_values)
         fb = self.fb_values_array()
@@ -99,7 +105,9 @@ class IVTempSweepData():
             if zero == "origin":
                 x, y = curve.xy_arrays_zero_subtracted_at_origin()
             elif zero == "fit normal":
-                x, y = curve.xy_arrays_zero_subtracted_at_normal_y_intersect(normal_above_fb=25000)
+                x, y = curve.xy_arrays_zero_subtracted_at_normal_y_intercept(normal_above_fb=25000)
+            elif zero == "dac high":
+                x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
             t_mK = curve.nominal_temp_k*1e3
             dt_mK = (curve.post_temp_k-curve.pre_temp_k)*1e3
             plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
