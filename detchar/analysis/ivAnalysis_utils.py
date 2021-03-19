@@ -84,7 +84,7 @@ class IVClean():
         return ii, val
 
     def get_turn_index(self,dac,fb,showplot=False):
-        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+        ''' return the index corresponding to the IV turnaround for a single IV curve.
         '''
 
         dfb = np.diff(fb,axis=0)
@@ -109,6 +109,8 @@ class IVClean():
             Algorithm is to look at fb(dac) for dac values lower than the IV turnaround.
             If the second derivative is positive (ie the slope of the IV curve in transition changes sign),
             the index is flagged and returned.
+
+            If no bad data found, return the last index (such that subsequent method includes all data points)
         '''
         assert dac[1]-dac[0] < 0, ('dac values must be in descending order')
 
@@ -120,35 +122,40 @@ class IVClean():
         x = dfb/norm_dfb # normalize to slope in the normal branch
         ddfb = smooth(np.diff(x,axis=0),3)
 
-        ii = turn_dex; val = ddfb[ii]
-        while val < threshold:
-            ii+=1
-            if ii==len(ddfb): break
-            val=ddfb[ii]
-        dex = ii+1
+        if len(dac)-turn_dex <= 2: # case were IV turn is close to end of data range
+            dex = len(dac)
+        else:
+            ii = turn_dex
+            val = ddfb[ii]
 
-        if showplot:
-            plt.figure(1)
-            plt.xlabel('index')
-            plt.ylabel('fb (arb)')
-            plt.plot(fb,'bo-')
-            plt.plot([turn_dex],[fb[turn_dex]],'ro')
-            plt.plot([dex],[fb[dex]],'go')
-            plt.plot(fb[0:dex+1],'r*')
+            while val < threshold:
+                ii+=1
+                if ii==len(ddfb): break
+                val=ddfb[ii]
+            dex = ii+1
 
-            # plt.figure(2)
-            # plt.xlabel('index')
-            # plt.ylabel('$\Delta$fb')
-            # plt.plot(x,'bo-')
-            # plt.plot([dex],[x[dex]],'go')
-            #
-            # plt.figure(3)
-            # plt.xlabel('index')
-            # plt.ylabel('$\Delta$ $\Delta$ fb')
-            # plt.plot(ddfb,'bo-')
-            # plt.plot(smooth(ddfb,3))
-            # plt.plot([dex-1],[ddfb[dex-1]],'go')
-            plt.show()
+            if showplot:
+                plt.figure(1)
+                plt.xlabel('index')
+                plt.ylabel('fb (arb)')
+                plt.plot(fb,'bo-')
+                plt.plot([turn_dex],[fb[turn_dex]],'ro')
+                plt.plot([dex],[fb[dex]],'go')
+                plt.plot(fb[0:dex+1],'r*')
+
+                # plt.figure(2)
+                # plt.xlabel('index')
+                # plt.ylabel('$\Delta$fb')
+                # plt.plot(x,'bo-')
+                # plt.plot([dex],[x[dex]],'go')
+                #
+                # plt.figure(3)
+                # plt.xlabel('index')
+                # plt.ylabel('$\Delta$ $\Delta$ fb')
+                # plt.plot(ddfb,'bo-')
+                # plt.plot(smooth(ddfb,3))
+                # plt.plot([dex-1],[ddfb[dex-1]],'go')
+                plt.show()
         return dex
 
     def remove_NaN(self,arr):
@@ -156,7 +163,7 @@ class IVClean():
         return arr[~np.isnan(arr)]
 
     def get_turn_index_arr(self,fb_arr,showplot=False):
-        ''' return the indicies corresponding to the IV turnaround for a set of IV curves.
+        ''' return the indices corresponding to the IV turnaround for a set of IV curves.
             Assumes fb_arr is ordered from highest voltage bias setting to lowest
         '''
 
@@ -442,13 +449,15 @@ class IVColdloadAnalyzeOneRow():
         return fig
 
     def plot_vipr(self,data_list=None,fig_num=1):
+
         if data_list==None:
             v=self.v; i=self.i; p=self.p; r=self.r
         else:
             v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
 
         # fig 1, 2x2 of converted IV
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        #fig = plt.figure(fig_num)
+        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
             ax[0].plot(v[:,ii],i[:,ii])
@@ -478,9 +487,9 @@ class IVColdloadAnalyzeOneRow():
         #ax[3].set_xlim((0,np.max(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
-        fig.suptitle(self.figtitle)
+        figXX.suptitle(self.figtitle)
         ax[3].legend(tuple(self.cl_temps_k))
-        return fig
+        return figXX
 
     def plot_pr(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
         pPlot = self.get_value_at_rn_frac([0.995],arr=p,ro=ro)
@@ -604,7 +613,8 @@ class IVColdloadAnalyzeOneRow():
                 fig.savefig(self.row_name+'_%d_'%ii+fig_appendix[ii]+'.png')
         if showfigs: plt.show()
         for fig in figs:
-            fig.clf()
+            plt.close(fig)
+            #fig.clf()
 
 class IVColdloadSweepAnalyzer():
     ''' Class to assess data quality of coldload sweep '''
@@ -803,7 +813,7 @@ class IVColdloadSweepAnalyzer():
             # now loop over all rows
             for row in self.row_index_list:
                 row_dict = self.det_map.map_dict['Row%02d'%(row)]
-                print(row_dict)
+                print('Row%02d'%(row),': ',row_dict)
                 dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
                 if row_dict['type']=='optical':
                     dark_dP = dark_dPs[str(row_dict['position'])]
