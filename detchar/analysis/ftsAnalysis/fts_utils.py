@@ -64,7 +64,7 @@ def load_fts_scan_fromfile(filename):
     source = str(header['SOURCE'])
     comment = str(header['COMMENT'])
     return FtsData(x,y,file,version,file_prefix,file_number,num_scans,current_scan,resolution,nyquist,
-                   speed, num_samples,zpd,buffer_size,date,juldate,source,comment,'OPD (cm)','Signal (V)')
+                   num_samples,speed,zpd,buffer_size,date,juldate,source,comment,'OPD (cm)','Signal (V)')
 
 #@dataclass_json
 @dataclass
@@ -337,6 +337,62 @@ class IfgToSpectrum():
             plt.show()
         return f,B,B_apod
 
+class FtsMeasurement():
+    def __init__(self,scan_list):
+        self.scan_list = scan_list
+        self.x = self.scan_list[0].x
+        self.num_scans = self.scan_list[0].num_scans
+        self.num_samples = self.scan_list[0].num_samples
+        self.y_mean, self.y_std = self.get_ifg_mean_and_std()
+        self.f, self.S, self.S_mean, self.S_std = self.get_spectra_mean_and_std()
+
+    def plot_ifgs(self,fig_num=1):
+        plt.figure(fig_num)
+        plt.errorbar(self.x, self.y_mean, self.y_std, color='k',linewidth=1,ecolor='k',elinewidth=1,label='mean')
+        for scan in self.scan_list:
+            plt.plot(self.x,scan.y,'.-',linewidth=0.5,label=scan.current_scan)
+        plt.legend()
+        plt.xlabel(scan.x_label)
+        plt.ylabel(scan.y_label)
+        plt.show()
+
+    def plot_spectra(self,fig_num=2):
+        plt.figure(fig_num)
+        plt.errorbar(self.f, self.S_mean, self.S_std, color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
+        for ii in range(self.num_scans):
+            plt.plot(self.f,self.S[:,ii],'.-',linewidth=0.5,label=self.scan_list[ii].current_scan)
+
+        plt.axvline(165.75)
+        plt.axvline(224.25)
+        plt.legend()
+        plt.xlabel('Frequency (GHz)')
+        plt.ylabel('Response (arb)')
+        plt.show()
+
+    def get_ifg_mean_and_std(self):
+        ys = np.zeros((self.num_samples,self.num_scans))
+        for ii in range(self.num_scans):
+            ys[:,ii] = self.scan_list[ii].y
+        y_mean = np.mean(ys,axis=1)
+        y_std = np.std(ys,axis=1)
+        return y_mean, y_std
+
+    def get_spectra_mean_and_std(self,poly_filter_deg=1,window=None):
+        Ss = []
+        for ii in range(self.num_scans):
+            scan = self.scan_list[ii]
+            f,S,S_apod = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,window=window,PLOT=False)
+            Ss.append(S)
+        N = len(Ss[0])
+        S = np.zeros((N,self.num_scans))
+        for ii in range(self.num_scans):
+            S[:,ii] = Ss[ii]
+        f = f
+        S_mean = np.mean(S,axis=1)
+        S_std = np.std(S,axis=1)
+        return f, S, S_mean, S_std
+
+
 class FtsMeasurementSet():
     ''' class for analysis of an FTS measurement set.
         Data files are stored in a single directory with filename structure:
@@ -344,19 +400,27 @@ class FtsMeasurementSet():
         The prefix is typically the readout channel row select.
         Example: rs03_210318_0002.csv is row select 3, measurement taken
         on March 18, 2021 and is the 3nd scan (zero indexed)
+
+        Nomenclature:
+        Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
+        Measurement: N scans for a given detector
+        scan: one sweep of the FTS
     '''
     def __init__(self, path):
         self.path = path
         if path[-1] != '/':
             self.path = path+'/'
         self.filename_list = self.get_filenames(path)
-        self.all_scans = self.get_scans()
+        self.all_scans = self.get_all_scans()
 
-    def get_scans(self):
+    def get_all_scans(self):
         scans = []
         for file in self.filename_list:
-            scans.append(load_fts_scan_fromfile(self.path+file)
+            scans.append(load_fts_scan_fromfile(self.path+file))
         return scans
+
+    def group_scans_to_measurements(self):
+        print('to be written!!!')
 
     def get_filenames(self,path):
         files = self.gather_csv(path)
@@ -436,8 +500,13 @@ class FtsMeasurementSet():
 
 if __name__ == "__main__":
     path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/d3/'
-    fm = FtsMeasurementSet(path)
-    print(fm.filename_list)
-    filename = 'rs03_210318_0043_avg_4_ifg.csv'
-    df = load_fts_scan_fromfile(path+filename)
-    df.get_spectrum()
+    fname_prefix = 'rs03_210318'
+    filenames = []
+    for ii in range(4):
+        filenames.append(fname_prefix+'_%04d_ifg.csv'%ii)
+    scans = []
+    for file in filenames:
+        scans.append(load_fts_scan_fromfile(path+file))
+    fts_m = FtsMeasurement(scans)
+    fts_m.plot_ifgs()
+    fts_m.plot_spectra()
