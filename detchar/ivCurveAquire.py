@@ -3,7 +3,7 @@
 
 top-level script to acquire an iv curve data set.
 usage:
-./ivCurveAquire.py <config_file>
+./ivCurveAquire.py <config_file> <description>
 
 @author JH 2/2021
 '''
@@ -11,13 +11,16 @@ usage:
 import yaml, sys, os
 from iv_utils import *
 
+n_args = len(sys.argv)
 config_filename = str(sys.argv[1])
-
+if n_args > 2:
+    desc = str(sys.argv[2])
+else:
+    desc=''
 
 # open config file
 with open(config_filename, 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
-
 
 def create_filename():
     baystring = 'Column' + cfg['detectors']['Column']
@@ -49,8 +52,8 @@ dacs = np.linspace(int(cfg['voltage_bias']['v_start_dac']),int(cfg['voltage_bias
 
 #############
 pt_taker = IVPointTaker(db_cardname=cfg['dfb']['dfb_cardname'], bayname=cfg['detectors']['Column'], voltage_source = voltage_source)
-curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=60, shock_normal_dac_value=65000, zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV'], adr_gui_control=None)
-curve_taker.prep_fb_settings(I=cfg['dfb']['i'], fba_offset=cfg['dfb']['dac_a_offset'])
+curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=cfg['runconfig']['temp_settle_delay_s'], shock_normal_dac_value=65000, zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV'], adr_gui_control=None)
+curve_taker.prep_fb_settings(I=cfg['dfb']['i'], fba_offset=cfg['dfb']['dac_a_offset'], ARLoff=True)
 ivsweeper = IVTempSweeper(curve_taker, to_normal_method=to_normal_method, overbias_temp_k=overbias_temp_k, overbias_dac_value = cfg['voltage_bias']['v_start_dac'])
 
 if 'coldload' in cfg.keys():
@@ -62,11 +65,11 @@ if 'coldload' in cfg.keys():
                                        cl_settemp_timeout_m=10.0,
                                        cl_post_setpoint_waittime_m=cfg['coldload']['cl_post_setpoint_waittime_m'],
                                        skip_first_settle = cfg['coldload']['immediateFirstMeasurement'],
-                                       cool_upon_finish = True, extra_info={'config': cfg},
+                                       cool_upon_finish = True, extra_info={'config': cfg, 'exp_status':desc},
                                        write_while_acquire = True, filename=write_filename)
-    else: data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg})
+    else: data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc})
 else:
-    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg})
+    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc})
 
 data.to_file(write_filename,overwrite=True)
 print('data aquistion finished.\nWrote to file:',write_filename)

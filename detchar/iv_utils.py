@@ -82,7 +82,7 @@ class IVPointTaker():
     def set_bluebox(self, dacvalue):
         self.bb.setVoltDACUnits(int(dacvalue))
 
-    def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = 8000):
+    def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = None):
         if ARLoff:
             print("setting ARL (autorelock) off")
             self.cc.set_arl_off(self.col)
