@@ -63,6 +63,7 @@ def load_fts_scan_fromfile(filename):
     juldate = float(header['JULDATE'])
     source = str(header['SOURCE'])
     comment = str(header['COMMENT'])
+
     return FtsData(x,y,file,version,file_prefix,file_number,num_scans,current_scan,resolution,nyquist,
                    num_samples,speed,zpd,buffer_size,date,juldate,source,comment,'OPD (cm)','Signal (V)')
 
@@ -191,9 +192,12 @@ class IfgToSpectrum():
             plt.show()
         return f,ffty
 
-    def make_high_res_symmetric_ifg(self,x,y,PLOT=False):
+    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,PLOT=False):
         ''' force a symmetric IFG from the single sided IFG by mirroring the IFG '''
-        zpd_index, ZPD = self.find_zero_path_difference(x,y,PLOT=False)
+        if zpd_index==None:
+            zpd_index, ZPD = self.find_zero_path_difference(x,y,PLOT=False)
+        else:
+            ZPD = x[zpd_index]
         x_cat = np.concatenate((-x[2*zpd_index+1:][::-1]+ZPD,x-ZPD))
         y_cat = np.concatenate((y[2*zpd_index+1:][::-1],y)) # just mirror the -delta portion not measured
 
@@ -321,24 +325,42 @@ class IfgToSpectrum():
 
         return f,B
 
-    def to_spectrum_simple(self,x,y,poly_filter_deg=1,window="hanning",PLOT=False):
+    def to_spectrum_simple(self,x,y,poly_filter_deg=1,PLOT=False):
         tddp = TimeDomainDataProcessing()
         samp_int=x[1]-x[0]
         N=len(y)
         f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
-        B_apod = np.abs(scipy.fftpack.fft(y_filt*np.hanning(N))[0:N//2])
         if PLOT:
             plt.plot(f,B,'b-',label='no window')
-            #plt.plot(f,B_apod,'r-',label='hanning')
             plt.xlabel('Frequency (GHz)')
             plt.ylabel('Response (arb)')
-            plt.show()
-        return f,B,B_apod
+            #plt.show()
+        return f,B
+
+    def to_spectrum_alt(self,x,y,poly_filter_deg=1,zpd_index=None,PLOT=False):
+        tddp = TimeDomainDataProcessing()
+        y_filt = tddp.remove_poly(x,y,poly_filter_deg)
+        x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,zpd_index,PLOT=False)
+        samp_int=x[1]-x[0]
+        N = len(x_highres)
+        f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
+        B=np.abs(scipy.fftpack.fft(y_highres*np.hanning(N))[0:N//2])
+        if PLOT:
+            plt.plot(f,B,'b-',label='no window')
+            plt.xlabel('Frequency (GHz)')
+            plt.ylabel('Response (arb)')
+            #plt.show()
+        return f,B
 
 class FtsMeasurement():
     def __init__(self,scan_list):
+        self.file_prefix = scan_list[0].file_prefix
+        self.first_file_number = scan_list[0].file_number
+        self.last_file_number = scan_list[-1].file_number
+        self.comment = scan_list[0].comment
+
         self.scan_list = scan_list
         self.x = self.scan_list[0].x
         self.num_scans = self.scan_list[0].num_scans
@@ -354,7 +376,7 @@ class FtsMeasurement():
         plt.legend()
         plt.xlabel(scan.x_label)
         plt.ylabel(scan.y_label)
-        plt.show()
+        plt.title('Interferograms for %s'%(self.file_prefix))
 
     def plot_spectra(self,fig_num=2):
         plt.figure(fig_num)
@@ -362,12 +384,12 @@ class FtsMeasurement():
         for ii in range(self.num_scans):
             plt.plot(self.f,self.S[:,ii],'.-',linewidth=0.5,label=self.scan_list[ii].current_scan)
 
-        plt.axvline(165.75)
-        plt.axvline(224.25)
+        #plt.axvline(165.75)
+        #plt.axvline(224.25)
         plt.legend()
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
-        plt.show()
+        plt.title('Spectra for %s, file numbers %s - %s'%(self.file_prefix,self.first_file_number,self.last_file_number))
 
     def get_ifg_mean_and_std(self):
         ys = np.zeros((self.num_samples,self.num_scans))
@@ -381,8 +403,10 @@ class FtsMeasurement():
         Ss = []
         for ii in range(self.num_scans):
             scan = self.scan_list[ii]
-            f,S,S_apod = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,window=window,PLOT=False)
+            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,PLOT=False)
+            #f,S = IfgToSpectrum().to_spectrum_alt(scan.x,scan.y,poly_filter_deg=1,zpd_index=None,PLOT=False)
             Ss.append(S)
+
         N = len(Ss[0])
         S = np.zeros((N,self.num_scans))
         for ii in range(self.num_scans):
@@ -403,7 +427,7 @@ class FtsMeasurementSet():
 
         Nomenclature:
         Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
-        Measurement: N scans for a given detector
+        Measurement: N repeat scans for a given detector
         scan: one sweep of the FTS
     '''
     def __init__(self, path):
@@ -413,14 +437,49 @@ class FtsMeasurementSet():
         self.filename_list = self.get_filenames(path)
         self.all_scans = self.get_all_scans()
 
+    def plot_all_measurements(self,showfig=True,savefig=False):
+        ''' plot/save all measurement ifgs and spectra '''
+        ii = 0
+        while ii < len(self.filename_list):
+            scan = self.all_scans[ii]
+            print(scan.file_prefix,ii)
+            fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
+            fm.plot_ifgs(fig_num=1)
+            fm.plot_spectra(fig_num=2)
+            plt.show()
+            num_scans = scan.num_scans
+            ii = ii + num_scans
+
     def get_all_scans(self):
         scans = []
         for file in self.filename_list:
             scans.append(load_fts_scan_fromfile(self.path+file))
         return scans
 
-    def group_scans_to_measurements(self):
-        print('to be written!!!')
+    def isSingleDate(self):
+        ''' returns boolean if the folder has scans taken on more than
+            one date
+        '''
+        result = True
+        date = self.filename_list[0].split('_')[1]
+        for fname in self.filename_list:
+            if fname.split('_')[1] != date:
+                result = False
+                break
+        return result
+
+    def get_scans_from_prefix_and_filenumber(self,prefix,num):
+        assert self.isSingleDate(), "The measurement set contains data from more than one day"
+        filename = prefix+'_'+self.filename_list[0].split('_')[1]+'_'+num+'_ifg.csv'
+        assert filename in self.filename_list, 'filename %s does not exist in the measurement set'%filename
+        dex=self.filename_list.index(filename)
+        scan = self.all_scans[dex]
+        num_scans = scan.num_scans
+        file_number_list = list(np.arange(scan.num_scans) + scan.file_number - scan.current_scan)
+        scan_list=[]
+        for ii in file_number_list:
+            scan_list.append(self.all_scans[ii])
+        return scan_list
 
     def get_filenames(self,path):
         files = self.gather_csv(path)
@@ -500,13 +559,11 @@ class FtsMeasurementSet():
 
 if __name__ == "__main__":
     path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/d3/'
-    fname_prefix = 'rs03_210318'
-    filenames = []
-    for ii in range(4):
-        filenames.append(fname_prefix+'_%04d_ifg.csv'%ii)
-    scans = []
-    for file in filenames:
-        scans.append(load_fts_scan_fromfile(path+file))
-    fts_m = FtsMeasurement(scans)
-    fts_m.plot_ifgs()
-    fts_m.plot_spectra()
+    fms = FtsMeasurementSet(path)
+    fms.plot_all_measurements()
+    # prefix = 'rs03'
+    # scans = fms.get_scans_from_prefix_and_filenumber(prefix,'0004')
+    # fm = FtsMeasurement(scans)
+    # fm.plot_ifgs(fig_num=1)
+    # fm.plot_spectra(fig_num=2)
+    # plt.show()
