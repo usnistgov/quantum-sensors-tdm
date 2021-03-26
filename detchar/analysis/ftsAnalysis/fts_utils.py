@@ -98,8 +98,8 @@ class FtsData():
         plt.ylabel(self.y_label)
         plt.title(f"Interferogram for file: {self.file}")
 
-    def get_spectrum(self,poly_filter_deg=1,PLOT=False):
-        f,B,B_apod = IfgToSpectrum().to_spectrum_simple(self.x,self.y,poly_filter_deg=1,window="hanning",PLOT=True)
+    def get_spectrum(self,poly_filter_deg=1,plotfig=False):
+        f,B,B_apod = IfgToSpectrum().to_spectrum_simple(self.x,self.y,poly_filter_deg=1,window="hanning",plotfig=True)
         return f,B
 
 
@@ -112,32 +112,55 @@ class TimeDomainDataProcessing():
         return y
 
     def notch_frequencies(self,x,y,v,filter_freqs_hz=[60.0,120.0,180.0,240.0,300.0,420.0,480.0,540.0],
-                          filter_width_hz=.1,PLOT=False):
+                          filter_width_hz=.1,plotfig=False):
         ''' remove power at discrete frequencies '''
         t = x/v # timestream
         samp_int=t[1]-t[0]
         y=y-y.mean()
-        f,ffty = IfgToSpectrum().get_fft(t,y,PLOT=False)
-        if PLOT:
-            plt.plot(f,abs(ffty))
+        f,ffty = IfgToSpectrum().get_fft(t,y,plotfig=False)
 
-        for i in freqs:
-            js1 = f[(f>(i-df/2.0)) & (f<(i+df/2.0))] # positive frequencies
-            js2 = f[(f<-1*(i-df/2.0)) & (f>-1*(i+df/2.0))] # positive frequencies
+        ffty_filt = np.copy(ffty)
+        for i in filter_freqs_hz:
+            js1 = f[(f>(i-filter_width_hz/2.0)) & (f<(i+filter_width_hz/2.0))] # positive frequencies
+            js2 = f[(f<-1*(i-filter_width_hz/2.0)) & (f>-1*(i+filter_width_hz/2.0))] # positive frequencies
             js=np.concatenate((js1,js2))
             for j in js:
-                ffty[list(f).index(j)]=0
+                ffty_filt[list(f).index(j)]=0
 
-        if PLOT:
+        y_filt = scipy.fftpack.ifft(ffty_filt)
+        if plotfig:
+            plt.figure(1)
             plt.plot(f,abs(ffty))
+            plt.plot(f,abs(ffty_filt))
             plt.xlabel('Frequency (Hz)')
-            plt.show()
+            plt.ylabel('Response (arb)')
+            plt.legend(('orig','notched'))
 
-        y = scipy.fftpack.ifft(ffty)
-        return y
+            plt.figure(2)
+            plt.plot(x,y)
+            plt.plot(x,y_filt)
+            plt.xlabel('OPD')
+            plt.ylabel('Response (V)')
+            plt.legend(('orig','notched'))
+            plt.show()
+        return y_filt
+
+    def standardProcessing(self,x,y,v,filter_freqs_hz=[60],filter_with_hz=0.5,poly_filter_deg=1,plotfig=False):
+        y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz)
+        y_filt = self.remove_poly(x,y,deg=poly_filter_deg)
+        if plotfig:
+            plt.figure(1)
+            plt.plot(x,y-np.mean(y))
+            plt.plot(x,y_filt)
+            plt.xlabel('OPD (cm)')
+            plt.ylabel('Response (V)')
+            plt.legend(('orig','filtered'))
+            plt.show()
+        return y_filt
+
 
 class IfgToSpectrum():
-    def find_zero_path_difference(self,x,y,PLOT=False):
+    def find_zero_path_difference(self,x,y,plotfig=False):
         ''' find the zero path difference from the maximum intensity of the IFG '''
         z=(y-y.mean())**2
         ZPD=x[z==z.max()]
@@ -145,7 +168,7 @@ class IfgToSpectrum():
             print('warning, more than one maximum found.  Estimated ZPD not single valued!  Using first index')
             ZPD = ZPD[0]
         dex=list(x).index(ZPD)
-        if PLOT:
+        if plotfig:
             plt.figure(1,figsize = (12,6))
             plt.plot(x,y,'b.-')
             plt.plot(x[dex],y[dex],'ro')
@@ -155,14 +178,14 @@ class IfgToSpectrum():
             plt.show()
         return dex,ZPD
 
-    def get_symmetric_ifg(self,x,y,zpd_index,PLOT=False):
+    def get_symmetric_ifg(self,x,y,zpd_index,plotfig=False):
         ''' return only the symmetric portion of an asymmetric IFG given the index of the
             zero path difference (zpd_index)
         '''
         N=zpd_index*2
         xsym=x[0:N+1]
         ysym=y[0:N+1]
-        if PLOT:
+        if plotfig:
             plt.figure(1,figsize = (12,6))
             plt.plot(x,y,label = "Entire interferogram")
             plt.plot(xsym,ysym,label = "Symmetric interferogram")
@@ -173,13 +196,13 @@ class IfgToSpectrum():
             plt.show()
         return xsym,ysym
 
-    def get_fft(self,x,y,PLOT=False):
+    def get_fft(self,x,y,plotfig=False):
         ''' return the FFT of y and the frequencies sampled assuming equally spaced samples in x '''
         samp_int = x[1]-x[0]
         ffty=scipy.fftpack.fft(y)
         f=scipy.fftpack.fftfreq(len(x),samp_int)
 
-        if PLOT:
+        if plotfig:
             plt.figure(1,figsize = (12,6))
             plt.subplot(211)
             plt.title('Time and FFT space')
@@ -192,16 +215,16 @@ class IfgToSpectrum():
             plt.show()
         return f,ffty
 
-    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,PLOT=False):
+    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,plotfig=False):
         ''' force a symmetric IFG from the single sided IFG by mirroring the IFG '''
         if zpd_index==None:
-            zpd_index, ZPD = self.find_zero_path_difference(x,y,PLOT=False)
+            zpd_index, ZPD = self.find_zero_path_difference(x,y,plotfig=False)
         else:
             ZPD = x[zpd_index]
         x_cat = np.concatenate((-x[2*zpd_index+1:][::-1]+ZPD,x-ZPD))
         y_cat = np.concatenate((y[2*zpd_index+1:][::-1],y)) # just mirror the -delta portion not measured
 
-        if PLOT:
+        if plotfig:
              plt.plot(x,y,color= "b",linewidth=0.5,label = "raw data")
              plt.plot(x_cat,y_cat,color= "k",linewidth=0.5,label = "concatenated")
              plt.legend()
@@ -265,11 +288,11 @@ class IfgToSpectrum():
             count = count+1
         return theta_interpolated
 
-    def phase_correction_mertz(self,x,y,theta,window="hanning",PLOT=False):
+    def phase_correction_mertz(self,x,y,theta,window="hanning",plotfig=False):
         f,S=self.get_fft(x,y)
         return np.real(S)*np.cos(theta) + np.imag(S)*np.sin(theta)
 
-    def phase_correction_richards(self,x,y,theta,window="hanning",PLOT=False):
+    def phase_correction_richards(self,x,y,theta,window="hanning",plotfig=False):
         samp_int = x[1]-x[0]
 
         # frequency filter here first?
@@ -284,7 +307,7 @@ class IfgToSpectrum():
         else:
             y_corr = y_corr
 
-        if PLOT:
+        if plotfig:
             plt.figure(-3,figsize = (12,6))
             plt.subplot(211)
             plt.plot(np.arange(-N//2+1,N//2+1)*samp_int,scipy.fftpack.fftshift(y),label = "raw interferogram")
@@ -300,7 +323,7 @@ class IfgToSpectrum():
             plt.show()
 
         # Do the Fourier Transform
-        f, B = self. get_fft(x,scipy.fftpack.ifftshift(y_corr),PLOT=False)
+        f, B = self. get_fft(x,scipy.fftpack.ifftshift(y_corr),plotfig=False)
         return f,B
 
     def to_spectrum(self,x,y,poly_filter_deg=1,window="hanning"):
@@ -308,16 +331,16 @@ class IfgToSpectrum():
 
         # get phase from low res, double-sided IFG
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
-        zpd_index, zpd = self.find_zero_path_difference(x,y_filt,PLOT=False)
-        x_sym, y_sym = self.get_symmetric_ifg(x,y_filt,zpd_index,PLOT=False)
+        zpd_index, zpd = self.find_zero_path_difference(x,y_filt,plotfig=False)
+        x_sym, y_sym = self.get_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
         x_sym, y_sym = self.window_and_shift(x,y_filt,window)
-        f_sym, S_sym = self.get_fft(x_sym, y_sym,PLOT=False)
+        f_sym, S_sym = self.get_fft(x_sym, y_sym,plotfig=False)
         theta_lowres=np.angle(S_sym)
 
         # get high res spectrum
-        x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,PLOT=False)
+        x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,plotfig=False)
         x_highres, y_highres = self.window_and_shift(x_highres,y_highres,window)
-        f,S = self.get_fft(x_highres,y_highres,PLOT=False)
+        f,S = self.get_fft(x_highres,y_highres,plotfig=False)
 
         # do phase correction
         theta = self.interp_angle(f,f_sym,theta_lowres,debug = False)
@@ -325,29 +348,29 @@ class IfgToSpectrum():
 
         return f,B
 
-    def to_spectrum_simple(self,x,y,poly_filter_deg=1,PLOT=False):
+    def to_spectrum_simple(self,x,y,poly_filter_deg=1,plotfig=False):
         tddp = TimeDomainDataProcessing()
         samp_int=x[1]-x[0]
         N=len(y)
         f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
-        if PLOT:
+        if plotfig:
             plt.plot(f,B,'b-',label='no window')
             plt.xlabel('Frequency (GHz)')
             plt.ylabel('Response (arb)')
             #plt.show()
         return f,B
 
-    def to_spectrum_alt(self,x,y,poly_filter_deg=1,zpd_index=None,PLOT=False):
+    def to_spectrum_alt(self,x,y,poly_filter_deg=1,zpd_index=None,plotfig=False):
         tddp = TimeDomainDataProcessing()
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
-        x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,zpd_index,PLOT=False)
+        x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
         samp_int=x[1]-x[0]
         N = len(x_highres)
         f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
         B=np.abs(scipy.fftpack.fft(y_highres*np.hanning(N))[0:N//2])
-        if PLOT:
+        if plotfig:
             plt.plot(f,B,'b-',label='no window')
             plt.xlabel('Frequency (GHz)')
             plt.ylabel('Response (arb)')
@@ -403,8 +426,8 @@ class FtsMeasurement():
         Ss = []
         for ii in range(self.num_scans):
             scan = self.scan_list[ii]
-            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,PLOT=False)
-            #f,S = IfgToSpectrum().to_spectrum_alt(scan.x,scan.y,poly_filter_deg=1,zpd_index=None,PLOT=False)
+            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,plotfig=False)
+            #f,S = IfgToSpectrum().to_spectrum_alt(scan.x,scan.y,poly_filter_deg=1,zpd_index=None,plotfig=False)
             Ss.append(S)
 
         N = len(Ss[0])
@@ -521,14 +544,14 @@ class FtsMeasurementSet():
                     orderedfiles.append(file)
         return orderedfiles
 
-    def average_ifgs(self, filenames,v=5.0,deg=3, notch_freqs=[60.0,120.0,180.0,240.0,300.0,420.0,480.0,540.0], PLOT=False):
+    def average_ifgs(self, filenames,v=5.0,deg=3, notch_freqs=[60.0,120.0,180.0,240.0,300.0,420.0,480.0,540.0], plotfig=False):
         ''' remove drift and noise pickup from several IFG and then average together '''
 
         for ii in range(len(filenames)):
             df = load_fts_scan_fromfile(filenames[ii])
-            y = NotchFrequencies(df.x,df.y,v=df.speed,freqs=notch_freqs,df=.2,PLOT=False) # remove noise pickup
-            y=RemoveDrift(x,y,deg=deg,PLOT=False) # remove detector drift
-            if PLOT:
+            y = NotchFrequencies(df.x,df.y,v=df.speed,freqs=notch_freqs,df=.2,plotfig=False) # remove noise pickup
+            y=RemoveDrift(x,y,deg=deg,plotfig=False) # remove detector drift
+            if plotfig:
                 ax1 = plt.subplot(211)
                 plt.plot(x,y,label=str(i))
                 plt.title('Individual IFGs post processing')
@@ -544,7 +567,7 @@ class FtsMeasurementSet():
             m = np.mean(y_all,axis=0)
             s = np.std(y_all,axis=0)
 
-        if PLOT:
+        if plotfig:
 
             plt.figure(1,figsize = (12,6))
             plt.legend()
@@ -560,10 +583,11 @@ class FtsMeasurementSet():
 if __name__ == "__main__":
     path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/d3/'
     fms = FtsMeasurementSet(path)
-    fms.plot_all_measurements()
-    # prefix = 'rs03'
-    # scans = fms.get_scans_from_prefix_and_filenumber(prefix,'0004')
-    # fm = FtsMeasurement(scans)
-    # fm.plot_ifgs(fig_num=1)
-    # fm.plot_spectra(fig_num=2)
-    # plt.show()
+    #fms.plot_all_measurements()
+    df = fms.all_scans[0]
+    tddp = TimeDomainDataProcessing()
+    #tddp.notch_frequencies(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],
+    #                      filter_width_hz=0.5,plotfig=True)
+    tddp.standardProcessing(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],filter_with_hz=0.5,
+                            poly_filter_deg=1,plotfig=True)
+    plt.show()
