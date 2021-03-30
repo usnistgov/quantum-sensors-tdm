@@ -99,7 +99,7 @@ class EasyClientNDFB(nasa_client.client.ZMQClient):
     def reshapeDataToColRowFrame(self, dataIn):
         if len(self.stream_channels)<self.ncol*self.nrow*2:
             raise ValueError('will not work unless streaming all possible channels')
-        print(f"ncol {self.ncol} nrow {self.nrow} shape {dataIn.shape}")
+        # print(f"ncol {self.ncol} nrow {self.nrow} shape {dataIn.shape}")
         dataOut = numpy.zeros((self.ncol, self.nrow, dataIn.shape[1], 2),dtype="int32")
         for col in range(self.ncol):
             for row in range(self.nrow):

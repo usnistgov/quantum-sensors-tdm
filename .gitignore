@@ -4,4 +4,4 @@ __pycache__
 *.npy
 last_fbastats
 .build
-.json
+*.json

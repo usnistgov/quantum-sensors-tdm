@@ -4,6 +4,7 @@ Helper for talking to cringe remotely
 G Hilton 2020-12
 '''
 import zmq
+import zmq_prevent_hang_hack
 
 CRINGE_PORT = 5509
 

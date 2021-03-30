@@ -4,6 +4,7 @@ Helper for talking to adr_gui remotely
 Based on cringe_control.py by G Hilton 2020-12
 '''
 import zmq
+import zmq_prevent_hang_hack
 
 ADR_GUI_PORT = 5020
 
