@@ -285,7 +285,7 @@ class IfgToSpectrum():
         return f,ffty
 
     # medium level methods --------------------------------------------------------------
-    def get_double_sided_ifg(self,x,y,zpd_index=None,zpd_value=None,x_to_opd=True,
+    def get_double_sided_ifg(self,x,y,zpd_index=None,x_to_opd=True,
                              fftpacking=True,plotfig=False):
         ''' return only the symmetric portion of an asymmetric IFG given the index of the
             zero path difference (zpd_index).  This algorithm always returns an even number of
@@ -294,8 +294,7 @@ class IfgToSpectrum():
         if zpd_index == None:
             zpd_index, zpd_val = self.get_zpd(x,y)
         else:
-            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
-            zpd_val = zpd_value
+            zpd_val = x[zpd_index]
         N=zpd_index*2
         xsym=x[0:N]
         ysym=y[0:N] # length of xsym, ysym always odd by construction
@@ -318,15 +317,13 @@ class IfgToSpectrum():
             plt.show()
         return xsym,ysym
 
-    def get_zero_padded_high_res_ifg(self, x, y, zpd_index=None, zpd_value=None, add_linear_weight=True,
+    def get_zero_padded_high_res_ifg(self, x, y, zpd_index=None, add_linear_weight=True,
                                      fftpacking=True, plotfig=False, debug=False):
         ''' return zero padded ifg in ascending order (from - retardation to +) '''
         if zpd_index == None:
             zpd_index, zpd_val = self.get_zpd(x,y)
         else:
-            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
-            zpd_val = zpd_value
-
+            zpd_val = x[zpd_index]
         N = len(x)
         xp = x - zpd_val # define x-axis as optical path length difference (ie 0 = 0 path length difference)
         dex1 = 2*zpd_index+1 # first index after double-sided ifg
@@ -357,14 +354,13 @@ class IfgToSpectrum():
             plt.show()
         return xpp,yp
 
-    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,zpd_value=None,
-                                    x_to_opd=True,fftpacking=True,plotfig=False):
+    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,x_to_opd=True,
+                                    fftpacking=True,plotfig=False):
         ''' force a symmetric IFG from the single sided IFG by mirroring the IFG '''
         if zpd_index == None:
             zpd_index, zpd_val = self.get_zpd(x,y)
         else:
-            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
-            zpd_val = zpd_value
+            zpd_val = x[zpd_index]
         x_cat = np.concatenate((-x[2*zpd_index+1:][::-1],x))
         y_cat = np.concatenate((y[2*zpd_index+1:][::-1],y)) # just mirror the -delta portion not measured
         if fftpacking:
@@ -378,24 +374,36 @@ class IfgToSpectrum():
              plt.show()
         return x_cat,y_cat
 
+    def get_phase_spectrum(self,x,y,zpd_index):
+        ''' return frequency and phase spectrum from double sided IFG in fft standard packing '''
+        x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,x_to_opd=True,
+                                             fftpacking=True,plotfig=False) # packing is "standard"
+        f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
+        phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
+        return f_ds, phi_ds
+
     # high-level methods -------------------------------------------------------------------
-    def phase_correction_mertz(self,x,y,plotfig=False):
-        ''' method of L. Mertz. Rapid scanning fourier transform spectroscopy.
+    def phase_correction_mertz(self,x,y,zpd_index=None,plotfig=False):
+        ''' Generate phase corrected spectrum using method from
+            L. Mertz. Rapid scanning fourier transform spectroscopy.
             J. Phys. Coll. C2, Suppl. 3-4, 28:88, 1967.
 
             return f,B (phase corrected) in stardard fft packing
         '''
         print('WARNING. MERTZ PHASE CORRECTION NOT FULLY TESTED!!!!')
         # Get phase info from double sided IFG
-        zpd_index, zpd_val = self.get_zpd(x, y, plotfig=False)
-        x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,zpd_val,x_to_opd=True,
-                                             fftpacking=True,plotfig=False) # packing is "standard"
-        f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
-        phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
+        if zpd_index == None:
+            zpd_index, zpd_val = self.get_zpd(x, y, plotfig=False)
+        f_ds, phi_ds = self.get_phase_spectrum(x,y,zpd_index)
+
+        # x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,x_to_opd=True,
+        #                                      fftpacking=True,plotfig=False) # packing is "standard"
+        # f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
+        # phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
         #phi_ds = np.angle(B_ds,deg=False) # output between -pi and pi
 
         # Get multiplicative phase correction for high res spectrum
-        xp,yp = self.get_zero_padded_high_res_ifg(x, y, zpd_index,zpd_val, add_linear_weight=True,
+        xp,yp = self.get_zero_padded_high_res_ifg(x, y, zpd_index, add_linear_weight=True,
                                                   fftpacking=True,plotfig=False, debug=False)
         f,B = self.get_fft(xp, yp*fftshift(np.hanning(len(yp))), plotfig=False)
         phi = fftshift(self.interp_angle(f_for_interpolation=ifftshift(f), f_to_interp_from=ifftshift(f_ds), theta_to_interp_from=ifftshift(phi_ds), debug = False))
@@ -427,7 +435,29 @@ class IfgToSpectrum():
             plt.show()
         return f,B_corr
 
+    def phase_correction_forman(self,x,y,zpd_index=None,plotfig=False):
+        ''' generate phase corrected spectrum using method in:
+
+            Michael L. Forman, W. Howard Steel, and George A. Vanasse.
+            Correction of Asymmetric Interferograms Obtained in Fourier Spectroscopy.
+            Journal of the Optical Society of America, 56(1):59–63, 1966.
+
+        '''
+        print('FORMAN PHASE CORRECTION METHOD IS UNFINISHED')
+        if zpd_index == None:
+            zpd_index, zpd_val = self.get_zpd(x, y, plotfig=False)
+        f_ds, phi_ds = self.get_phase_spectrum(x,y,zpd_index)
+        pcf = scipy.fftpack.ifft(np.exp(-1j*phi_ds))
+        Isym = np.real(signal.convolve(fftshift(y),pcf))[N//2:3*N//2]
+
+        if plotfig:
+            plt.plot(x,y,label='orig')
+            plt.plot(x,Isym,label='phase corr')
+            plt.legend()
+            plt.show()
+
     def to_spectrum(self,x,y,poly_filter_deg=1,window="hanning"):
+        print('UNFINISHED')
         tddp = TimeDomainDataProcessing()
 
         # get phase from low res, double-sided IFG
@@ -464,6 +494,7 @@ class IfgToSpectrum():
         return f,B
 
     def to_spectrum_alt(self,x,y,poly_filter_deg=1,zpd_index=None,plotfig=False):
+
         tddp = TimeDomainDataProcessing()
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
         x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
@@ -693,4 +724,5 @@ if __name__ == "__main__":
 
     y = tddp.standardProcessing(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],filter_width_hz=0.5,
                             poly_filter_deg=1,plotfig=False)
-    i2s.phase_correction_mertz(df.x,y,plotfig=True)
+    #i2s.phase_correction_mertz(df.x,y,zpd_index=None,plotfig=True)
+    i2s.phase_correction_forman(df.x,y,zpd_index=None,plotfig=True)
