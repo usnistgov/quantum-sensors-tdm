@@ -5,16 +5,30 @@ everything one should need to analyze data taken with the NIST FTS system
 @author JH, 03/2021
 
 Notes:
-1) data format of x,y np.array or list?
+1) phase correction for individual scans or for average?
+2) should phase correction only be applied where there is signal?
+3) Definition of "standard" fft packing from scipy.fftpack.fft:
+
+The packing of the result is "standard": If ``A = fft(a, n)``, then
+``A[0]`` contains the zero-frequency term, ``A[1:n/2]`` contains the
+positive-frequency terms, and ``A[n/2:]`` contains the negative-frequency
+terms, in order of decreasingly negative frequency. So ,for an 8-point
+transform, the frequencies of the result are [0, 1, 2, 3, -4, -3, -2, -1].
+To rearrange the fft output so that the zero-frequency component is
+centered, like [-4, -3, -2, -1,  0,  1,  2,  3], use `fftshift`.
+
+4) np.arctan and np.arctan2 give same behavior
 '''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
-import dataclasses
+#import dataclasses
 #from dataclasses_json import dataclass_json
-from typing import Any, List
+#from typing import Any, List
 import scipy
 import scipy.fftpack
+from scipy.fftpack import fftshift, ifftshift
 from scipy import signal
 import scipy.constants
 import os
@@ -145,7 +159,7 @@ class TimeDomainDataProcessing():
             plt.show()
         return y_filt
 
-    def standardProcessing(self,x,y,v,filter_freqs_hz=[60],filter_with_hz=0.5,poly_filter_deg=1,plotfig=False):
+    def standardProcessing(self,x,y,v,filter_freqs_hz=[60],filter_width_hz=0.5,poly_filter_deg=1,plotfig=False):
         y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz)
         y_filt = self.remove_poly(x,y,deg=poly_filter_deg)
         if plotfig:
@@ -158,9 +172,10 @@ class TimeDomainDataProcessing():
             plt.show()
         return y_filt
 
-
 class IfgToSpectrum():
-    def find_zero_path_difference(self,x,y,plotfig=False):
+
+    # lower level methods ----------------------------------------------------------
+    def get_zpd(self,x,y,plotfig=False):
         ''' find the zero path difference from the maximum intensity of the IFG '''
         z=(y-y.mean())**2
         ZPD=x[z==z.max()]
@@ -178,66 +193,21 @@ class IfgToSpectrum():
             plt.show()
         return dex,ZPD
 
-    def get_symmetric_ifg(self,x,y,zpd_index,plotfig=False):
-        ''' return only the symmetric portion of an asymmetric IFG given the index of the
-            zero path difference (zpd_index)
-        '''
-        N=zpd_index*2
-        xsym=x[0:N+1]
-        ysym=y[0:N+1]
-        if plotfig:
-            plt.figure(1,figsize = (12,6))
-            plt.plot(x,y,label = "Entire interferogram")
-            plt.plot(xsym,ysym,label = "Symmetric interferogram")
-            plt.xlabel('OPD (cm)')
-            plt.ylabel('Detector response (arb)')
-            plt.title('Symmetric portion of IFG')
-            plt.legend()
-            plt.show()
-        return xsym,ysym
-
-    def get_fft(self,x,y,plotfig=False):
-        ''' return the FFT of y and the frequencies sampled assuming equally spaced samples in x '''
-        samp_int = x[1]-x[0]
-        ffty=scipy.fftpack.fft(y)
-        f=scipy.fftpack.fftfreq(len(x),samp_int)
-
-        if plotfig:
-            plt.figure(1,figsize = (12,6))
-            plt.subplot(211)
-            plt.title('Time and FFT space')
-            plt.plot(x,y)
-            plt.subplot(212)
-            plt.plot(f,np.abs(ffty))
-            plt.plot(f,np.real(ffty))
-            plt.plot(f,np.imag(ffty))
-            plt.legend(('abs','real','imag'))
-            plt.show()
-        return f,ffty
-
-    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,plotfig=False):
-        ''' force a symmetric IFG from the single sided IFG by mirroring the IFG '''
+    def ascending_to_standard_fftpacking(self,x,y,zpd_index=None):
         if zpd_index==None:
-            zpd_index, ZPD = self.find_zero_path_difference(x,y,plotfig=False)
+            zpd_dex, zpd_val = self.get_zpd(x,y)
         else:
-            ZPD = x[zpd_index]
-        x_cat = np.concatenate((-x[2*zpd_index+1:][::-1]+ZPD,x-ZPD))
-        y_cat = np.concatenate((y[2*zpd_index+1:][::-1],y)) # just mirror the -delta portion not measured
-
-        if plotfig:
-             plt.plot(x,y,color= "b",linewidth=0.5,label = "raw data")
-             plt.plot(x_cat,y_cat,color= "k",linewidth=0.5,label = "concatenated")
-             plt.legend()
-             plt.show()
-
-        return x_cat,y_cat
+            zpd_dex = zpd_index
+        x_std = np.concatenate((x[zpd_dex:],x[0:zpd_dex][::-1]))
+        y_std = np.concatenate((y[zpd_dex:],y[0:zpd_dex][::-1]))
+        return x_std, y_std
 
     def window_and_shift(self,x,y,window="hanning"):
-        x = scipy.fftpack.ifftshift(x) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
+        x = scipy.fftpack.fftshift(x) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
         if window == "hanning":
-            y = scipy.fftpack.ifftshift(y*np.hanning(len(y))) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
+            y = scipy.fftpack.fftshift(y*np.hanning(len(y))) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
         else:
-            y = scipy.fftpack.ifftshift(y)
+            y = scipy.fftpack.fftshift(y)
         return x,y
 
     def interp_angle(self, f_for_interpolation,f_to_interp_from,theta_to_interp_from,debug = False):
@@ -288,51 +258,182 @@ class IfgToSpectrum():
             count = count+1
         return theta_interpolated
 
-    def phase_correction_mertz(self,x,y,theta,window="hanning",plotfig=False):
-        f,S=self.get_fft(x,y)
-        return np.real(S)*np.cos(theta) + np.imag(S)*np.sin(theta)
-
-    def phase_correction_richards(self,x,y,theta,window="hanning",plotfig=False):
+    def get_fft(self,x,y,plotfig=False):
+        ''' return the FFT of y and the frequencies sampled assuming equally spaced samples in x.
+            Packing of return is "standard", i.e. [0, 1, 2, 3, -4, -3, -2, -1] for 8 point transform.
+        '''
         samp_int = x[1]-x[0]
+        ffty=scipy.fftpack.fft(y)
+        f=scipy.fftpack.fftfreq(len(x),samp_int)
 
-        # frequency filter here first?
-        boxcar = np.ones(len(y)) # built in for future filtering
-        phase_ifft = np.fft.ifft(np.exp(-1j*theta)*boxcar)
-        N=len(phase_ifft)
+        if plotfig:
+            plt.figure(1,figsize = (12,6))
+            plt.subplot(211)
+            plt.title('Time and FFT space')
+            plt.plot(x,y)
+            plt.subplot(212)
+            plt.plot(f,np.abs(ffty))
+            plt.plot(f,np.real(ffty))
+            plt.plot(f,np.imag(ffty))
+            plt.legend(('abs','real','imag'))
+            plt.figure(2)
+            plt.title('phase')
+            plt.plot(f,np.arctan(np.imag(ffty)/np.real(ffty)))
+            plt.xlabel('Frequency')
+            plt.ylabel('Phase (rad)')
+            plt.show()
+        return f,ffty
 
-        # convolve in interferogram space and trim extra stuff from convolution
-        y_corr = np.real(signal.convolve(scipy.fftpack.fftshift(y),scipy.fftpack.fftshift(phase_ifft)))[N//2:3*N//2]
-        if window == "hanning":
-            y_corr = y_corr*np.hanning(len(y_corr)) #appodize should be made into option
+    # medium level methods --------------------------------------------------------------
+    def get_double_sided_ifg(self,x,y,zpd_index=None,zpd_value=None,x_to_opd=True,
+                             fftpacking=True,plotfig=False):
+        ''' return only the symmetric portion of an asymmetric IFG given the index of the
+            zero path difference (zpd_index).  This algorithm always returns an even number of
+            data points.  It returns -\delta_max -> +\delta_max - \delta_res.
+        '''
+        if zpd_index == None:
+            zpd_index, zpd_val = self.get_zpd(x,y)
         else:
-            y_corr = y_corr
+            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
+            zpd_val = zpd_value
+        N=zpd_index*2
+        xsym=x[0:N]
+        ysym=y[0:N] # length of xsym, ysym always odd by construction
+        if fftpacking:
+            #xsym,ysym = self.ascending_to_standard_fftpacking(xsym,ysym,zpd_index)
+            xsym = fftshift(xsym) ; ysym = fftshift(ysym)
+        if x_to_opd:
+            xsym = xsym - zpd_val
+            x=x-zpd_val
+
+        if plotfig:
+            plt.figure(1,figsize = (12,6))
+            plt.plot(x,y,label = "Entire interferogram")
+            plt.plot(x[zpd_index],y[zpd_index],'ro',label='ZPD')
+            plt.plot(xsym,ysym,label = "Double-sided interferogram")
+            plt.xlabel('OPD (cm)')
+            plt.ylabel('Detector response (arb)')
+            plt.title('IFG')
+            plt.legend()
+            plt.show()
+        return xsym,ysym
+
+    def get_zero_padded_high_res_ifg(self, x, y, zpd_index=None, zpd_value=None, add_linear_weight=True,
+                                     fftpacking=True, plotfig=False, debug=False):
+        ''' return zero padded ifg in ascending order (from - retardation to +) '''
+        if zpd_index == None:
+            zpd_index, zpd_val = self.get_zpd(x,y)
+        else:
+            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
+            zpd_val = zpd_value
+
+        N = len(x)
+        xp = x - zpd_val # define x-axis as optical path length difference (ie 0 = 0 path length difference)
+        dex1 = 2*zpd_index+1 # first index after double-sided ifg
+        xpp = np.array(list(xp[dex1:][::-1]*-1) + list(xp))
+        if add_linear_weight:
+            weight = np.linspace(0,1,dex1)
+        else:
+            weight = np.ones(dex1)
+        yp = np.array([0]*(N-dex1) + list(y[0:dex1]*weight) + list(y[dex1:])) # zero pad LHS of ifg
+        if fftpacking:
+            xp = fftshift(xp); xpp=fftshift(xpp); yp=fftshift(yp)
+        if debug:
+            #print(len(xp[0:dex1]), dex1)
+            plt.plot(xp,y,'-')
+            plt.plot(xp[0:dex1], y[0:dex1],'bo')
+            plt.plot(xp[dex1:], y[dex1:],'go')
+            plt.axvline(xp[dex1],label='1st pt after dsifg')
+            plt.xlabel('OPD (cm)'); plt.ylabel('Response (arb)')
+            plt.legend()
+            plt.show()
+
+        if plotfig:
+            plt.plot(xpp,yp,'b*-')
+            dex = np.where(xpp==0)[0]
+            plt.plot(xpp[dex],yp[dex],'ro')
+            plt.xlabel('OPD (cm)')
+            plt.ylabel('Response (arb)')
+            plt.show()
+        return xpp,yp
+
+    def make_high_res_symmetric_ifg(self,x,y,zpd_index=None,zpd_value=None,
+                                    x_to_opd=True,fftpacking=True,plotfig=False):
+        ''' force a symmetric IFG from the single sided IFG by mirroring the IFG '''
+        if zpd_index == None:
+            zpd_index, zpd_val = self.get_zpd(x,y)
+        else:
+            assert zpd_value != None, 'if zpd_index supplied, you must also supply zpd_val'
+            zpd_val = zpd_value
+        x_cat = np.concatenate((-x[2*zpd_index+1:][::-1],x))
+        y_cat = np.concatenate((y[2*zpd_index+1:][::-1],y)) # just mirror the -delta portion not measured
+        if fftpacking:
+            x_cat = fftshift(x_cat); y_cat = fftshift(y_cat)
+        if x_to_opd:
+            x_cat = x-zpd_val
+        if plotfig:
+             plt.plot(x,y,color= "b",linewidth=0.5,label = "raw data")
+             plt.plot(x_cat,y_cat,color= "k",linewidth=0.5,label = "concatenated")
+             plt.legend()
+             plt.show()
+        return x_cat,y_cat
+
+    # high-level methods -------------------------------------------------------------------
+    def phase_correction_mertz(self,x,y,plotfig=False):
+        ''' method of L. Mertz. Rapid scanning fourier transform spectroscopy.
+            J. Phys. Coll. C2, Suppl. 3-4, 28:88, 1967.
+
+            return f,B (phase corrected) in stardard fft packing
+        '''
+        print('WARNING. MERTZ PHASE CORRECTION NOT FULLY TESTED!!!!')
+        # Get phase info from double sided IFG
+        zpd_index, zpd_val = self.get_zpd(x, y, plotfig=False)
+        x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,zpd_val,x_to_opd=True,
+                                             fftpacking=True,plotfig=False) # packing is "standard"
+        f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
+        phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
+        #phi_ds = np.angle(B_ds,deg=False) # output between -pi and pi
+
+        # Get multiplicative phase correction for high res spectrum
+        xp,yp = self.get_zero_padded_high_res_ifg(x, y, zpd_index,zpd_val, add_linear_weight=True,
+                                                  fftpacking=True,plotfig=False, debug=False)
+        f,B = self.get_fft(xp, yp*fftshift(np.hanning(len(yp))), plotfig=False)
+        phi = fftshift(self.interp_angle(f_for_interpolation=ifftshift(f), f_to_interp_from=ifftshift(f_ds), theta_to_interp_from=ifftshift(phi_ds), debug = False))
+        plt.plot(phi,'o-')
+        plt.show()
+        # phase correct
+        B_corr = B*np.exp(-1j*phi)
 
         if plotfig:
             plt.figure(-3,figsize = (12,6))
             plt.subplot(211)
-            plt.plot(np.arange(-N//2+1,N//2+1)*samp_int,scipy.fftpack.fftshift(y),label = "raw interferogram")
-            plt.plot(np.arange(-N//2+1,N//2+1)*samp_int,y_corr, label = "phase corrected/filtered interferogram")
-            plt.xlabel("Path length (cm)")
+            plt.plot(f,np.real(B_corr),'b-',label='corr real')
+            plt.plot(f,np.imag(B_corr),'g-',label='corr imag')
+            plt.plot(f,np.real(B),'b--',label='orig real')
+            plt.plot(f,np.imag(B),'g--',label='orig imag')
+            plt.xlabel('Frequency (icm)')
+            plt.ylabel('Spectrum (arb)')
             plt.legend()
-            plt.subplot(212)
-            plt.plot(np.arange(-N//2+1,N//2+1)*samp_int,scipy.fftpack.fftshift(y),label = "raw interferogram")
-            plt.plot(np.arange(-N//2+1,N//2+1)*samp_int,y_corr, label = "phase corrected/filtered interferogram")
-            plt.xlabel("Path length (cm)")
-            plt.xlim(-samp_int*100,samp_int*100)
-            plt.legend()
-            plt.show()
 
-        # Do the Fourier Transform
-        f, B = self. get_fft(x,scipy.fftpack.ifftshift(y_corr),plotfig=False)
-        return f,B
+            plt.subplot(212)
+            plt.plot(f_ds,phi_ds,'b*-')
+            plt.plot(f, phi,'g*-')
+            plt.plot(f, np.arctan(np.imag(B)/np.real(B)),'c-')
+            plt.plot(f, np.arctan(np.imag(B_corr)/np.real(B_corr)),'g-')
+            #plt.plot(f, np.angle(S_corr),'ro')#np.arctan(np.imag(S_corr)/np.real(S_corr)),'ro-')
+            plt.xlabel('Frequency (icm)')
+            plt.ylabel('phase')
+            plt.legend(('ds','interp', 'raw', 'corrected'))
+            plt.show()
+        return f,B_corr
 
     def to_spectrum(self,x,y,poly_filter_deg=1,window="hanning"):
         tddp = TimeDomainDataProcessing()
 
         # get phase from low res, double-sided IFG
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
-        zpd_index, zpd = self.find_zero_path_difference(x,y_filt,plotfig=False)
-        x_sym, y_sym = self.get_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
+        zpd_index, zpd = self.get_zpd(x,y_filt,plotfig=False)
+        x_sym, y_sym = self.get_double_sided_ifg(x,y_filt,zpd_index,plotfig=False)
         x_sym, y_sym = self.window_and_shift(x,y_filt,window)
         f_sym, S_sym = self.get_fft(x_sym, y_sym,plotfig=False)
         theta_lowres=np.angle(S_sym)
@@ -352,7 +453,7 @@ class IfgToSpectrum():
         tddp = TimeDomainDataProcessing()
         samp_int=x[1]-x[0]
         N=len(y)
-        f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
+        f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]#*icm2ghz
         y_filt = tddp.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
         if plotfig:
@@ -585,9 +686,11 @@ if __name__ == "__main__":
     fms = FtsMeasurementSet(path)
     #fms.plot_all_measurements()
     df = fms.all_scans[0]
+    # filename = 'rs03_210318_0000_ifg.csv'
+    # df = load_fts_scan_fromfile(filename)
     tddp = TimeDomainDataProcessing()
-    #tddp.notch_frequencies(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],
-    #                      filter_width_hz=0.5,plotfig=True)
-    tddp.standardProcessing(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],filter_with_hz=0.5,
-                            poly_filter_deg=1,plotfig=True)
-    plt.show()
+    i2s = IfgToSpectrum()
+
+    y = tddp.standardProcessing(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],filter_width_hz=0.5,
+                            poly_filter_deg=1,plotfig=False)
+    i2s.phase_correction_mertz(df.x,y,plotfig=True)
