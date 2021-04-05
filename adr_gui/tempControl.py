@@ -79,6 +79,9 @@ class TempControl():
 
     def safeAutorange(self):
         resistance = self.a.temperature_controller.getResistance(channel=self.controlChannel)
+        if resistance == 0: # VMIX overload, do not change resistance range
+            print("got resistance=0.0, which is indicative of VMIX OVL, which should actually correspond to a large resistance")
+            resistance=1e5
         newstring = self.resistanceToResistanceRangeString(resistance).encode()
         nowstring = self.getCurrentResistanceRangeString()
         # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
