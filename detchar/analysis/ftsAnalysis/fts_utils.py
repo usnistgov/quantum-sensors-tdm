@@ -32,6 +32,7 @@ from scipy.fftpack import fftshift, ifftshift
 from scipy import signal
 import scipy.constants
 import os
+from scipy.integrate import quad, simps
 
 icm2ghz = scipy.constants.c/1e7
 
@@ -113,7 +114,7 @@ class FtsData():
         plt.title(f"Interferogram for file: {self.file}")
 
     def get_spectrum(self,poly_filter_deg=1,plotfig=False):
-        f,B,B_apod = IfgToSpectrum().to_spectrum_simple(self.x,self.y,poly_filter_deg=1,window="hanning",plotfig=True)
+        f,B = IfgToSpectrum().to_spectrum_simple(self.x,self.y,self.speed,poly_filter_deg=1,plotfig=True)
         return f,B
 
 
@@ -159,9 +160,9 @@ class TimeDomainDataProcessing():
             plt.show()
         return y_filt
 
-    def standardProcessing(self,x,y,v,filter_freqs_hz=[60],filter_width_hz=0.5,poly_filter_deg=1,plotfig=False):
-        y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz)
-        y_filt = self.remove_poly(x,y,deg=poly_filter_deg)
+    def standardProcessing(self,x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=1,plotfig=False):
+        y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz,filter_width_hz,plotfig=False)
+        y_filt = self.remove_poly(x,y_filt,deg=poly_filter_deg)
         if plotfig:
             plt.figure(1)
             plt.plot(x,y-np.mean(y))
@@ -479,12 +480,13 @@ class IfgToSpectrum():
 
         return f,B
 
-    def to_spectrum_simple(self,x,y,poly_filter_deg=1,plotfig=False):
+    def to_spectrum_simple(self,x,y,v,poly_filter_deg=1,plotfig=False):
         tddp = TimeDomainDataProcessing()
         samp_int=x[1]-x[0]
         N=len(y)
-        f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]#*icm2ghz
-        y_filt = tddp.remove_poly(x,y,poly_filter_deg)
+        f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
+        y_filt = tddp.standardProcessing(x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=poly_filter_deg,plotfig=False)
+        #y_filt = tddp.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
         if plotfig:
             plt.plot(f,B,'b-',label='no window')
@@ -515,9 +517,11 @@ class FtsMeasurement():
         self.first_file_number = scan_list[0].file_number
         self.last_file_number = scan_list[-1].file_number
         self.comment = scan_list[0].comment
+        self.source = scan_list[0].source
 
         self.scan_list = scan_list
         self.x = self.scan_list[0].x
+        self.speed = self.scan_list[0].speed
         self.num_scans = self.scan_list[0].num_scans
         self.num_samples = self.scan_list[0].num_samples
         self.y_mean, self.y_std = self.get_ifg_mean_and_std()
@@ -527,7 +531,7 @@ class FtsMeasurement():
         plt.figure(fig_num)
         plt.errorbar(self.x, self.y_mean, self.y_std, color='k',linewidth=1,ecolor='k',elinewidth=1,label='mean')
         for scan in self.scan_list:
-            plt.plot(self.x,scan.y,'.-',linewidth=0.5,label=scan.current_scan)
+            plt.plot(self.x,scan.y,'.',linewidth=0.5,label=scan.current_scan)
         plt.legend()
         plt.xlabel(scan.x_label)
         plt.ylabel(scan.y_label)
@@ -537,7 +541,7 @@ class FtsMeasurement():
         plt.figure(fig_num)
         plt.errorbar(self.f, self.S_mean, self.S_std, color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
         for ii in range(self.num_scans):
-            plt.plot(self.f,self.S[:,ii],'.-',linewidth=0.5,label=self.scan_list[ii].current_scan)
+            plt.plot(self.f,self.S[:,ii],'.',linewidth=0.5,label=self.scan_list[ii].current_scan)
 
         #plt.axvline(165.75)
         #plt.axvline(224.25)
@@ -558,7 +562,7 @@ class FtsMeasurement():
         Ss = []
         for ii in range(self.num_scans):
             scan = self.scan_list[ii]
-            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,poly_filter_deg=1,plotfig=False)
+            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,self.speed,poly_filter_deg=1,plotfig=False)
             #f,S = IfgToSpectrum().to_spectrum_alt(scan.x,scan.y,poly_filter_deg=1,zpd_index=None,plotfig=False)
             Ss.append(S)
 
@@ -597,8 +601,8 @@ class FtsMeasurementSet():
         ii = 0
         while ii < len(self.filename_list):
             scan = self.all_scans[ii]
-            print(scan.file_prefix,ii)
             fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
+            print(ii, fm.file_prefix, fm.num_scans, fm.source, fm.speed, fm.comment)
             fm.plot_ifgs(fig_num=1)
             fm.plot_spectra(fig_num=2)
             plt.show()
@@ -712,17 +716,104 @@ class FtsMeasurementSet():
             plt.show()
         return x,m,s
 
+class PassbandModel():
+    def __init__(self,txtfilename):
+        self.txtfilename = txtfilename
+        self.n_freqs, self.n_cols, self.header, self.model = self.from_file(self.txtfilename)
+        self.f_ghz = self.model[:,0]
+
+    def from_file(self, txtfilename):
+        model = np.loadtxt(txtfilename,skiprows=1)
+        f=open(txtfilename,'r')
+        header_raw = f.readline()
+        f.close()
+        header = header_raw[0:-1].split('\t')
+        n_freqs, n_cols = np.shape(model)
+        return n_freqs, n_cols, header, model
+
+    def get_bandwidth(self,B,f_range_ghz):
+        return PassbandMetrics().calc_bandwidth(self.f_ghz,B,f_range_ghz)
+
+    def get_center_frequency(self,B,f_range_ghz,source_index=0):
+        return PassbandMetrics().calc_center_frequency(self.f_ghz,B,f_range_ghz,source_index)
+
+    def plot_model(self,fig_num=1):
+        plt.figure(fig_num)
+        for ii in range(1,self.n_cols):
+            plt.plot(self.model[:,0],self.model[:,ii],label=self.header[ii])
+        plt.xlabel(self.header[0])
+        plt.ylabel('Response')
+        plt.legend()
+        plt.show()
+
+class PassbandMetrics():
+    def __cull_range(self,x,y,x_range):
+        indices = np.where((x >= x_range[0]) & (x <= x_range[1]))
+        return x[indices], y[indices]
+
+    def calc_bandwidth(self,f_ghz,B,f_range_ghz=None):
+        ''' calculate bandwidth of passband from equation:
+            bw = [ \int_f1^f2 B(f_ghz) df ] ^2 / [ \int_f1^f2 B(f_ghz)^2 df ]
+        '''
+        if f_range_ghz != None:
+            f_ghz, B = self.__cull_range(f_ghz,B,f_range_ghz)
+
+        integral_numerator = simps(y=B, x=f_ghz) #simps(y, x=None, dx=1, axis=-1, even='avg')
+        integral_denom = simps(y=B**2,x=f_ghz)
+        return integral_numerator**2 / integral_denom
+
+    def calc_center_frequency(self,f_ghz,B,f_range_ghz=None,source_index=0):
+        ''' calculate the center frequency of the passband as
+
+            fc = \int_f1^f2 f B(f) S(f) f / \int_f1^f2 B(f) S(f) df
+
+            where B(f) is the spectrum, f is the frequency, S(f) is the the frequency
+            dependance of the source = f^-0.7, 3.6, and 1 for synchrotron, dust, and thermal BB
+        '''
+        if f_range_ghz != None:
+            f_ghz, B = self.__cull_range(f_ghz,B,f_range_ghz)
+
+        fc = simps(y=B*f_ghz*f_ghz**source_index,x=f_ghz) / simps(y=B*f_ghz**source_index,x=f_ghz)
+        return fc
+
 if __name__ == "__main__":
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/d3/'
+    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210320/d3/'
     fms = FtsMeasurementSet(path)
     #fms.plot_all_measurements()
-    df = fms.all_scans[0]
-    # filename = 'rs03_210318_0000_ifg.csv'
-    # df = load_fts_scan_fromfile(filename)
-    tddp = TimeDomainDataProcessing()
-    i2s = IfgToSpectrum()
+    scan_num_list = []
+    # start_dex = 88
+    # n_repeat_scans = 4
+    # for ii in range(2):
+    #     scan_num_list.append(list(range(start_dex+n_repeat_scans*ii,(start_dex+n_repeat_scans)+n_repeat_scans*ii)))
+    scan_num_list = [[24,25,26,27],[92,93,94,95]]
+    f_lims = [[175,280],[260,400]]
+    for ii in range(len(scan_num_list)):
+        scan_indices = scan_num_list[ii]
+        scans = []
+        for scan_ii in scan_indices:
+            scans.append(fms.all_scans[scan_ii])
+        fm = FtsMeasurement(scans)
+        dex1 = np.argmin(abs(fm.f-f_lims[ii][0]))
+        dex2 = np.argmin(abs(fm.f-f_lims[ii][1]))
+        norm = np.max(fm.S_mean[dex1:dex2])
+        plt.errorbar(fm.f, fm.S_mean/norm, fm.S_std,linewidth=1,elinewidth=1,label=ii)
+        fc = PassbandMetrics().calc_center_frequency(fm.f,fm.S_mean,f_range_ghz=f_lims[ii],source_index=0)
+        bw = PassbandMetrics().calc_bandwidth(fm.f,fm.S_mean,f_range_ghz=f_lims[ii])
+        print(fc,bw)
+        plt.xlabel('Frequency (GHz)')
+        plt.ylabel('Response (arb)')
+        plt.legend()
+    #plt.show()
 
-    y = tddp.standardProcessing(x=df.x,y=df.y,v=df.speed,filter_freqs_hz=[60.0,180.0],filter_width_hz=0.5,
-                            poly_filter_deg=1,plotfig=False)
-    #i2s.phase_correction_mertz(df.x,y,zpd_index=None,plotfig=True)
-    i2s.phase_correction_forman(df.x,y,zpd_index=None,plotfig=True)
+    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/modeled_response/'
+    filename='hftv0_hft2_diplexer_model.txt'
+    pb = PassbandModel(path+filename)
+    plt.plot(pb.model[:,0],pb.model[:,2],'k--')
+    plt.plot(pb.model[:,0],pb.model[:,3],'k--')
+    plt.show()
+
+    bw1 = pb.get_bandwidth(B=pb.model[:,2],f_range_ghz=None)
+    fc1 = pb.get_center_frequency(B=pb.model[:,2],f_range_ghz=None)
+    bw2 = pb.get_bandwidth(B=pb.model[:,3],f_range_ghz=None)
+    fc2 = pb.get_center_frequency(B=pb.model[:,3],f_range_ghz=None)
+    print(fc1,bw1,fc2,bw2)
