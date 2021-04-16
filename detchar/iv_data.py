@@ -99,7 +99,7 @@ class IVTempSweepData():
         with open(filename, "r") as f:
             return cls.from_json(f.read())
 
-    def plot_row(self, row, zero="origin"):
+    def plot_row(self, row, zero="dac high"):
         plt.figure()
         for curve in self.data:
             if zero == "origin":
