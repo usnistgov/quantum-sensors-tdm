@@ -14,7 +14,7 @@
 
 import detchar
 from detchar.iv_data import IVCircuit
-from detchar import IVColdloadSweepData
+from detchar import IVColdloadSweepData, IVTempSweepData
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
@@ -48,7 +48,172 @@ def thermalPower(nu1,nu2,T,F=None):
         nu = np.linspace(nu1,nu2,N)
         integrand = self.Pnu_thermal(nu,T)*F
         P = simps(integrand,nu)
-    return P
+    return 
+
+
+class IVSetRowAnalyze():
+    def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None):
+        ''' Analyze IV set at different physical conditions for one row.  
+
+            dac_values: np_array of dac_values (corresponding to voltage bias across TES),
+                        a common dac_value for all IVs is required 
+            fb_values_arr: N_dac_val x N_sweep numpy array, column ordered 
+            state_list: list in which items are strings, 
+                        description of the state of the system for that IV curve
+                        used in the legend of plots
+        '''
+        # options
+        self.n_normal_pts = 10 
+        self.use_ave_offset = True
+        self.figtitle=None
+        
+        # 
+        self.dacs = dac_values
+        self.fb_raw = fb_values_arr 
+        self.state_list = state_list
+        self.n_dac_values, self.n_sweeps = np.shape(self.fb_raw) 
+        if iv_circuit==None:
+            self.to_physical_units = False
+        else:
+            self.iv_circuit = iv_circuit
+            self.to_physical_units = True
+
+        # do conversion to physical units
+        self.v,self.i,self.p,self.r = self.get_vipr()
+        
+    def plot_raw(self,fig_num=1):
+        plt.figure(fig_num)
+        for ii in range(self.n_sweeps):
+            plt.plot(self.dacs, self.fb_raw[:,ii])
+        #plt.plot(self.dacs,self.fb_raw)
+        plt.xlabel("dac values (arb)")
+        plt.ylabel("fb values (arb)")
+        plt.legend(tuple(self.state_list))
+
+    def fb_align_and_remove_offset(self,showplot=False):
+        fb_align = np.zeros((self.n_dac_values,self.n_sweeps))
+        for ii in range(self.n_sweeps): # align fb DC levels to a common value
+            dy = self.fb_raw[0,ii]-self.fb_raw[0,0]
+            fb_align[:,ii] = self.fb_raw[:,ii]-dy
+
+        # remove offset
+        x = self.dacs[::-1][-self.n_normal_pts:]
+        y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
+        m, b = np.polyfit(x,y,deg=1)
+
+        if self.use_ave_offset:
+            if np.std(b)/np.mean(b) > 0.01:
+                print('Warning DC offset of curves differs by > 1\%')
+                print('Offset fit: ',np.mean(b),'+/-',np.std(b))
+            b = np.mean(b)
+        fb_align = fb_align - b
+        if m[0]<0: fb_align = fb_align*-1
+        
+        if showplot:
+            for ii in range(self.n_cl_temps):
+                plt.plot(self.dacs,fb_align[:,ii])
+            plt.show()
+
+        return fb_align
+
+    def get_vipr(self,showplot=False):
+        ''' returns the voltage, current, power, and resistance vectors '''
+        self.fb_align = self.fb_align_and_remove_offset(showplot=False)
+
+        if self.to_physical_units:
+            v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
+        else:
+            v = np.zeros((self.n_dac_values,self.n_sweeps))
+            for ii in range(self.n_sweeps):
+                v[:,ii] = self.dacs
+            i=self.fb_align
+        p=v*i; r=v/i
+
+        if showplot:
+            self.plot_vipr([v,i,p,r])
+        return v,i,p,r
+
+    def plot_vipr(self,data_list=None,fig_num=1):
+
+        if data_list==None:
+            v=self.v; i=self.i; p=self.p; r=self.r
+        else:
+            v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
+
+        # fig 1, 2x2 of converted IV
+        #fig = plt.figure(fig_num)
+        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+        for ii in range(self.n_sweeps):
+            ax[0].plot(v[:,ii],i[:,ii])
+            ax[1].plot(v[:,ii],p[:,ii])
+            ax[2].plot(p[:,ii],r[:,ii])
+            #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
+            ax[3].plot(v[:,ii],r[:,ii])
+        # xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','V ($\mu$V)']
+        # ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R (m$\Omega$)']
+        xlabels = ['V (V)','V (V)','P (W)','V (V)']
+        ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
+
+        for ii in range(4):
+            ax[ii].set_xlabel(xlabels[ii])
+            ax[ii].set_ylabel(ylabels[ii])
+            ax[ii].grid()
+
+        # plot ranges
+        ax[0].set_xlim((0,np.max(v)*1.1))
+        ax[0].set_ylim((0,np.max(i)*1.1))
+        ax[1].set_xlim((0,np.max(v)*1.1))
+        ax[1].set_ylim((0,np.max(p)*1.1))
+        ax[2].set_xlim((0,np.max(p)*1.1))
+        ax[2].set_ylim((0,np.max(r[0,:])*1.1))
+        ax[3].set_xlim((0,np.max(v)*1.1))
+        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
+        #ax[3].set_xlim((0,np.max(p)*1.1))
+        #ax[3].set_ylim((0,1.1))
+
+        if self.figtitle != None:
+            figXX.suptitle(self.figtitle)
+        if self.state_list != None:
+            ax[3].legend(tuple(self.state_list))
+        return figXX
+
+class IVSetColumnAnalyze():
+    ''' analyze IV curves taken under different physical conditions. 
+    '''
+    def __init__(self,ivcurve_column_data_list,state_list=None,iv_circuit=None):
+        ''' ivcurve_column_data_list is a list of IVCurveColumnData instances '''
+        self.data_list = ivcurve_column_data_list
+        self.state_list = state_list
+        self.iv_circuit = iv_circuit
+        assert type(self.data_list) == list, 'ivcurve_column_data_list must be of type List'
+        self.n_sweeps = len(ivcurve_column_data_list)
+        self.dacs, self.fb_raw = self.get_raw_iv()
+        self.n_pts = len(self.dacs[0])
+
+    def get_raw_iv(self):
+        ''' returns raw dac and feedback values with fb(max(dac))==0 '''
+        dacs=[];fbs=[]
+        for iv in self.data_list:
+            d,f = iv.xy_arrays_zero_subtracted_at_dac_high()
+            dacs.append(d) ; fbs.append(f)
+        return dacs, fbs
+
+    def get_data_for_row(self,row_index):
+        ''' return the raw data for row_index '''
+        dac = self.dacs[0] # a cludge for now, might want to allow different dac ranges per IV in future?
+        fb_arr = np.zeros((self.n_pts,self.n_sweeps))
+        for ii in range(self.n_sweeps):
+            fb_arr[:,ii] = self.fb_raw[ii][:,row_index]
+        return dac, fb_arr
+        
+    def plot_row(self,row_index,to_physical_units=True):
+        dac, fb = self.get_data_for_row(row_index)
+        iv_set = IVSetRowAnalyze(dac,fb,state_list=self.state_list,iv_circuit=self.iv_circuit)
+        iv_set.plot_raw(fig_num=1)
+        iv_set.plot_vipr(fig_num=2)
+        plt.show()
+                
 
 class IVClean():
     ''' Data cleaning methods relevant for IV curves '''
@@ -617,7 +782,7 @@ class IVColdloadAnalyzeOneRow():
             #fig.clf()
 
 class IVColdloadSweepAnalyzer():
-    ''' Class to assess data quality of coldload sweep '''
+    ''' Class to analyze a coldload IV sweep '''
     def __init__(self,filename_json,detector_map=None,iv_circuit=None):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
@@ -889,13 +1054,22 @@ class DetectorMap():
 
 
 if __name__ == "__main__":
-    filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
-    dm = DetectorMap('detector_map.csv')
-    cl_indices = [0,1,2,3,4,5,6,7,8]
-    row_indices = [2,3] #list(range(24))
-    dark_row_index = 1
-    bath_temp_index=0
-
+    
+    fnames = ['/home/pcuser/data/lbird/20210320/lbird_hftv0_ColumnA_ivs_20210413_1618344868.json',\
+          '/home/pcuser/data/lbird/20210320/lbird_hftv0_ColumnA_ivs_20210413_1618345154.json',\
+          '/home/pcuser/data/lbird/20210320/lbird_hftv0_ColumnA_ivs_20210413_1618346022.json']
+    
+    fb = []
+    row_index =23
+    ivs=[]
+    state_list = []
+    for fname in fnames:
+        iv = IVTempSweepData.from_file(fname).data[0]
+        state_list.append(iv.extra_info['exp_status'])
+        ivs.append(iv)
+    #     fb.append(iv.fb_values_array()[:,row_index])
+    # fb = np.vstack(fb).transpose()
+   
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
                            rbias_ohm=10068.0,
@@ -904,26 +1078,53 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    df = IVColdloadSweepAnalyzer(filename_json,dm.map_dict,iv_circuit) #df is the main "data format" of the coldload temperature sweep
 
-    # get dP versus T coldload for dark bolometer
-    dacs,fb_dark = df.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-    iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
-                                  cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
-                                  bath_temp_k=df.set_bath_temps_k[bath_temp_index],
-                                  device_dict=None,
-                                  iv_circuit=df.iv_circuit,
-                                  passband_dict=None)
-    dark_dP = iva_dark.get_pt_delta_for_rnfrac(0.8)
+    iv_col_set = IVSetColumnAnalyze(ivs,state_list,iv_circuit)
+    iv_col_set.plot_row(4)
+    plt.show()
 
-    # do dark subtracted data analysis on optical bolo
-    for row in row_indices:
-        dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-        iva = IVColdloadAnalyzeOneRow(dacs,fb,
-                                      cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
-                                      bath_temp_k=df.set_bath_temps_k[bath_temp_index],
-                                      device_dict=dm.get_onerow_device_dict(row),
-                                      iv_circuit=df.iv_circuit,
-                                      passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']},
-                                      dark_dP_w=dark_dP)
-        iva.plot_full_analysis(showfigs=True,savefigs=False)
+    # iv_set = IVSetAnalyzeOneRow(np.array(iv.dac_values),fb,['lens cap on','300K','77K'],iv_circuit)
+    # iv_set.plot_raw()
+    # plt.show()
+    # iv_set.plot_vipr()
+    # plt.show()
+
+
+    # filename_json = 'lbird_hftv0_coldload_sweep_20210203.json'
+    # dm = DetectorMap('detector_map.csv')
+    # cl_indices = [0,1,2,3,4,5,6,7,8]
+    # row_indices = [2,3] #list(range(24))
+    # dark_row_index = 1
+    # bath_temp_index=0
+
+    # # circuit parameters
+    # iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
+    #                        rbias_ohm=10068.0,
+    #                        rsh_ohm=0.0662,
+    #                        rx_ohm=0,
+    #                        m_ratio=8.259,
+    #                        vfb_gain=1.017/(2**14-1),
+    #                        vbias_gain=6.5/(2**16-1))
+    # df = IVColdloadSweepAnalyzer(filename_json,dm.map_dict,iv_circuit) #df is the main "data format" of the coldload temperature sweep
+
+    # # get dP versus T coldload for dark bolometer
+    # dacs,fb_dark = df.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+    # iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
+    #                               cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
+    #                               bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+    #                               device_dict=None,
+    #                               iv_circuit=df.iv_circuit,
+    #                               passband_dict=None)
+    # dark_dP = iva_dark.get_pt_delta_for_rnfrac(0.8)
+
+    # # do dark subtracted data analysis on optical bolo
+    # for row in row_indices:
+    #     dacs,fb = df.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+    #     iva = IVColdloadAnalyzeOneRow(dacs,fb,
+    #                                   cl_temps_k=list(np.array(df.set_cl_temps_k)[cl_indices]),
+    #                                   bath_temp_k=df.set_bath_temps_k[bath_temp_index],
+    #                                   device_dict=dm.get_onerow_device_dict(row),
+    #                                   iv_circuit=df.iv_circuit,
+    #                                   passband_dict={'freq_edges_ghz':dm.map_dict['Row%02d'%row]['freq_edges_ghz']},
+    #                                   dark_dP_w=dark_dP)
+    #     iva.plot_full_analysis(showfigs=True,savefigs=False)
