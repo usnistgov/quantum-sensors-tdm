@@ -66,6 +66,8 @@ class IVSetRowAnalyze():
         self.n_normal_pts = 10 
         self.use_ave_offset = True
         self.figtitle=None
+        self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
+        self.vipr_scaling = [1e6,1e6,1e12,1e3]
         
         # 
         self.dacs = dac_values
@@ -139,6 +141,7 @@ class IVSetRowAnalyze():
             v=self.v; i=self.i; p=self.p; r=self.r
         else:
             v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
+        v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]    
 
         # fig 1, 2x2 of converted IV
         #fig = plt.figure(fig_num)
@@ -150,10 +153,12 @@ class IVSetRowAnalyze():
             ax[2].plot(p[:,ii],r[:,ii])
             #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
             ax[3].plot(v[:,ii],r[:,ii])
-        # xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','V ($\mu$V)']
-        # ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R (m$\Omega$)']
-        xlabels = ['V (V)','V (V)','P (W)','V (V)']
-        ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
+        
+        xlabels = ['V %s'%self.vipr_unit_labels[0],'V %s'%self.vipr_unit_labels[0],'P %s'%self.vipr_unit_labels[2],'V %s'%self.vipr_unit_labels[0]]
+        ylabels = ['I %s'%self.vipr_unit_labels[1],'P %s'%self.vipr_unit_labels[2], 'R %s'%self.vipr_unit_labels[3],'R %s'%self.vipr_unit_labels[3]]
+
+        #xlabels = ['V (V)','V (V)','P (W)','V (V)']
+        #ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
 
         for ii in range(4):
             ax[ii].set_xlabel(xlabels[ii])
@@ -1059,16 +1064,12 @@ if __name__ == "__main__":
           '/home/pcuser/data/lbird/20210320/lbird_hftv0_ColumnA_ivs_20210413_1618345154.json',\
           '/home/pcuser/data/lbird/20210320/lbird_hftv0_ColumnA_ivs_20210413_1618346022.json']
     
-    fb = []
-    row_index =23
     ivs=[]
     state_list = []
     for fname in fnames:
         iv = IVTempSweepData.from_file(fname).data[0]
         state_list.append(iv.extra_info['exp_status'])
         ivs.append(iv)
-    #     fb.append(iv.fb_values_array()[:,row_index])
-    # fb = np.vstack(fb).transpose()
    
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
