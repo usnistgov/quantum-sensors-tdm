@@ -599,10 +599,11 @@ class FtsMeasurementSet():
     def plot_all_measurements(self,showfig=True,savefig=False):
         ''' plot/save all measurement ifgs and spectra '''
         ii = 0
+        print('\n## scan_num; prefix; n_repeat_scan; source; speed; comment ##')
         while ii < len(self.filename_list):
             scan = self.all_scans[ii]
             fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
-            print(ii, fm.file_prefix, fm.num_scans, fm.source, fm.speed, fm.comment)
+            print(ii, ';', fm.file_prefix, ';',fm.num_scans, ';',fm.source, ';',fm.speed, ';',fm.comment)
             fm.plot_ifgs(fig_num=1)
             fm.plot_spectra(fig_num=2)
             plt.show()
