@@ -347,6 +347,42 @@ class IVSetAnalyzeOneRow(IVClean):
         p_clean = cut(self.p,dexs)
         return v_clean, i_clean, r_clean, p_clean, ro_clean 
 
+class IVSetAnalyzeColumn():
+    ''' analyze IV curves taken under different physical conditions. 
+    '''
+    def __init__(self,ivcurve_column_data_list,state_list=None,iv_circuit=None):
+        ''' ivcurve_column_data_list is a list of IVCurveColumnData instances '''
+        self.data_list = ivcurve_column_data_list
+        self.state_list = state_list
+        self.iv_circuit = iv_circuit
+        assert type(self.data_list) == list, 'ivcurve_column_data_list must be of type List'
+        self.num_sweeps = len(ivcurve_column_data_list)
+        self.dacs, self.fb_raw = self.get_raw_iv()
+        self.n_pts = len(self.dacs[0])
+
+    def get_raw_iv(self):
+        ''' returns raw dac and feedback values with fb(max(dac))==0 '''
+        dacs=[];fbs=[]
+        for iv in self.data_list:
+            d,f = iv.xy_arrays_zero_subtracted_at_dac_high()
+            dacs.append(d) ; fbs.append(f)
+        return dacs, fbs
+
+    def get_data_for_row(self,row_index):
+        ''' return the raw data for row_index '''
+        dac = self.dacs[0] # a cludge for now, might want to allow different dac ranges per IV in future?
+        fb_arr = np.zeros((self.n_pts,self.num_sweeps))
+        for ii in range(self.num_sweeps):
+            fb_arr[:,ii] = self.fb_raw[ii][:,row_index]
+        return dac, fb_arr
+        
+    def plot_row(self,row_index,to_physical_units=True):
+        dac, fb = self.get_data_for_row(row_index)
+        iv_set = IVSetAnalyzeOneRow(dac,fb,state_list=self.state_list,iv_circuit=self.iv_circuit)
+        iv_set.plot_raw(fig_num=1)
+        iv_set.plot_vipr(fig_num=2)
+        plt.show()
+
 class IVversusADRTempOneRow(IVSetAnalyzeOneRow):
     ''' analyze thermal transport from IV curve set from one row in which ADR temperature is varied '''
     def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None):
@@ -475,57 +511,21 @@ class IVversusADRTempOneRow(IVSetAnalyzeOneRow):
             print('Least squares fit failed.  Success index of algorithm > 4 means failure.  Success index = %d'%success)
             print('Error message: ', errmsg)
             # print('Here is a plot of the data:')
-            # pylab.figure(50)
-            # pylab.plot(t,p,'bo')
-            # pylab.plot(t,fitfunc(pfit,t),'k-')
-            # pylab.plot(t,fitfunc(pfit,t),'r-')
-            # pylab.legend(('data','fit','init guess'))
-            # pylab.xlabel('Bath Temperature (K)')
-            # pylab.ylabel('power (W)')
-            # pylab.show()
+            # plt.figure(50)
+            # plt.plot(t,p,'bo')
+            # plt.plot(t,fitfunc(pfit,t),'k-')
+            # plt.plot(t,fitfunc(pfit,t),'r-')
+            # plt.legend(('data','fit','init guess'))
+            # plt.xlabel('Bath Temperature (K)')
+            # plt.ylabel('power (W)')
+            # plt.show()
             pcov=np.ones((len(pfit),len(pfit)))
         for ii in range(len(pfit)):
             pfit[ii]=abs(pfit[ii])
         s_sq = (infodict['fvec']**2).sum()/(len(p)-len(init_guess))
         pcov=pcov*s_sq
         return pfit,pcov
-
-# class IVSetColumnAnalyze():
-#     ''' analyze IV curves taken under different physical conditions. 
-#     '''
-#     def __init__(self,ivcurve_column_data_list,state_list=None,iv_circuit=None):
-#         ''' ivcurve_column_data_list is a list of IVCurveColumnData instances '''
-#         self.data_list = ivcurve_column_data_list
-#         self.state_list = state_list
-#         self.iv_circuit = iv_circuit
-#         assert type(self.data_list) == list, 'ivcurve_column_data_list must be of type List'
-#         self.num_sweeps = len(ivcurve_column_data_list)
-#         self.dacs, self.fb_raw = self.get_raw_iv()
-#         self.n_pts = len(self.dacs[0])
-
-#     def get_raw_iv(self):
-#         ''' returns raw dac and feedback values with fb(max(dac))==0 '''
-#         dacs=[];fbs=[]
-#         for iv in self.data_list:
-#             d,f = iv.xy_arrays_zero_subtracted_at_dac_high()
-#             dacs.append(d) ; fbs.append(f)
-#         return dacs, fbs
-
-#     def get_data_for_row(self,row_index):
-#         ''' return the raw data for row_index '''
-#         dac = self.dacs[0] # a cludge for now, might want to allow different dac ranges per IV in future?
-#         fb_arr = np.zeros((self.n_pts,self.num_sweeps))
-#         for ii in range(self.num_sweeps):
-#             fb_arr[:,ii] = self.fb_raw[ii][:,row_index]
-#         return dac, fb_arr
-        
-#     def plot_row(self,row_index,to_physical_units=True):
-#         dac, fb = self.get_data_for_row(row_index)
-#         iv_set = IVSetAnalyzeOneRow(dac,fb,state_list=self.state_list,iv_circuit=self.iv_circuit)
-#         iv_set.plot_raw(fig_num=1)
-#         iv_set.plot_vipr(fig_num=2)
-#         plt.show()
-                
+                        
 class IVColdloadAnalyzeOneRow():
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
