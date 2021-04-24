@@ -777,7 +777,7 @@ class PassbandMetrics():
         return fc
 
 if __name__ == "__main__":
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210320/d3/'
+    path = '/home/pcuser/data/lbird/20210320/fts_raw/d3/'
     fms = FtsMeasurementSet(path)
     #fms.plot_all_measurements()
     scan_num_list = []
@@ -805,7 +805,7 @@ if __name__ == "__main__":
         plt.legend()
     #plt.show()
 
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/modeled_response/'
+    path = '/home/pcuser/data/lbird/20210320/fts_raw/modeled_response/'
     filename='hftv0_hft2_diplexer_model.txt'
     pb = PassbandModel(path+filename)
     plt.plot(pb.model[:,0],pb.model[:,2],'k--')
