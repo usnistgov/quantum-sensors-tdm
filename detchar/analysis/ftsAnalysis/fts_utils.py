@@ -785,7 +785,8 @@ if __name__ == "__main__":
     # n_repeat_scans = 4
     # for ii in range(2):
     #     scan_num_list.append(list(range(start_dex+n_repeat_scans*ii,(start_dex+n_repeat_scans)+n_repeat_scans*ii)))
-    scan_num_list = [[24,25,26,27],[92,93,94,95]]
+    A=52
+    scan_num_list = [[25+A,26+A,27+A,28+A],[92,93,94,95]]
     f_lims = [[175,280],[260,400]]
     for ii in range(len(scan_num_list)):
         scan_indices = scan_num_list[ii]
