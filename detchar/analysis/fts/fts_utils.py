@@ -599,10 +599,11 @@ class FtsMeasurementSet():
     def plot_all_measurements(self,showfig=True,savefig=False):
         ''' plot/save all measurement ifgs and spectra '''
         ii = 0
+        print('\n## scan_num; prefix; n_repeat_scan; source; speed; comment ##')
         while ii < len(self.filename_list):
             scan = self.all_scans[ii]
             fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
-            print(ii, fm.file_prefix, fm.num_scans, fm.source, fm.speed, fm.comment)
+            print(ii, ';', fm.file_prefix, ';',fm.num_scans, ';',fm.source, ';',fm.speed, ';',fm.comment)
             fm.plot_ifgs(fig_num=1)
             fm.plot_spectra(fig_num=2)
             plt.show()
@@ -777,7 +778,7 @@ class PassbandMetrics():
         return fc
 
 if __name__ == "__main__":
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210320/d3/'
+    path = '/home/pcuser/data/lbird/20210320/fts_raw/d3/'
     fms = FtsMeasurementSet(path)
     #fms.plot_all_measurements()
     scan_num_list = []
@@ -806,7 +807,7 @@ if __name__ == "__main__":
         plt.legend()
     #plt.show()
 
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/modeled_response/'
+    path = '/home/pcuser/data/lbird/20210320/fts_raw/modeled_response/'
     filename='hftv0_hft2_diplexer_model.txt'
     pb = PassbandModel(path+filename)
     plt.plot(pb.model[:,0],pb.model[:,2],'k--')
