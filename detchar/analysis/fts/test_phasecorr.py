@@ -20,8 +20,8 @@ z = scipy.fftpack.fftfreq(len(B),samp_int)
 z = scipy.fftpack.ifftshift(z)
 I = scipy.fftpack.ifftshift(I)
 I = I + np.random.normal(size=len(I),scale=1) # add noise
-phi_err = 0
-dzdphi_err = np.pi/10.
+phi_err = np.pi/2.0*0.5
+dzdphi_err = 0.
 I = I*np.exp(1j*(phi_err+dzdphi_err*z)) # add a phase error
 #I = I*np.sin(np.pi/4*z)
 dexs=np.where(z>-2)[0]
@@ -41,7 +41,9 @@ def test1():
     plt.ylabel('Response (arb)')
 
     # work on double sided ifg
-    z_ds,I_ds = i2s.get_double_sided_ifg(z,I,zpd_index=None,zpd_value=None,x_to_opd=True,
+    zpd_index, zpd_val = i2s.get_zpd(z,I,plotfig=False)
+    print(zpd_index, zpd_val)
+    z_ds,I_ds = i2s.get_double_sided_ifg(z,I,zpd_index=41,x_to_opd=True,
                              fftpacking=True,plotfig=False)
     f_ds, B_ds = i2s.get_fft(z_ds,I_ds,plotfig=False)
     phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds))
@@ -94,4 +96,4 @@ def test2():
     plt.show()
 
 test1()
-test2()
+#test2()

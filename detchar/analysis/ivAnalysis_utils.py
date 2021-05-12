@@ -51,7 +51,7 @@ def thermalPower(nu1,nu2,T,F=None):
         nu = np.linspace(nu1,nu2,N)
         integrand = self.Pnu_thermal(nu,T)*F
         P = simps(integrand,nu)
-    return 
+    return
 
 class IVClean():
     ''' Data cleaning methods relevant for IV curves '''
@@ -196,28 +196,28 @@ class IVClean():
 
 class IVSetAnalyzeRow(IVClean):
     def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
-        ''' Analyze IV set at different physical conditions for one row.  
+        ''' Analyze IV set at different physical conditions for one row.
 
             dac_values: np_array of dac_values (corresponding to voltage bias across TES),
-                        a common dac_value for all IVs is required 
-            fb_values_arr: N_dac_val x N_sweep numpy array, column ordered 
-            state_list: list in which items are strings, 
+                        a common dac_value for all IVs is required
+            fb_values_arr: N_dac_val x N_sweep numpy array, column ordered
+            state_list: list in which items are strings,
                         description of the state of the system for that IV curve
                         used in the legend of plots
         '''
         # options
-        self.n_normal_pts = 10 
+        self.n_normal_pts = 10
         self.use_ave_offset = True
         self.figtitle=None
         self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
         self.vipr_scaling = [1e6,1e6,1e12,1e3]
-        
-        # 
+
+        #
         self.figtitle = figtitle
         self.dacs = dac_values
-        self.fb_raw = fb_values_arr 
+        self.fb_raw = fb_values_arr
         self.state_list = state_list
-        self.n_dac_values, self.num_sweeps = np.shape(self.fb_raw) 
+        self.n_dac_values, self.num_sweeps = np.shape(self.fb_raw)
         if iv_circuit==None:
             self.to_physical_units = False
         else:
@@ -227,7 +227,7 @@ class IVSetAnalyzeRow(IVClean):
         # do conversion to physical units
         self.v,self.i,self.p,self.r = self.get_vipr()
         self.ro = self.r / self.r[0,:]
-        
+
     def plot_raw(self,fig_num=1):
         figXX = plt.figure(fig_num)
         for ii in range(self.num_sweeps):
@@ -257,7 +257,7 @@ class IVSetAnalyzeRow(IVClean):
             b = np.mean(b)
         fb_align = fb_align - b
         if m[0]<0: fb_align = fb_align*-1
-        
+
         if showplot:
             for ii in range(self.n_cl_temps):
                 plt.plot(self.dacs,fb_align[:,ii])
@@ -281,14 +281,14 @@ class IVSetAnalyzeRow(IVClean):
         if showplot:
             self.plot_vipr([v,i,p,r])
         return v,i,p,r
-        
+
     def plot_vipr(self,data_list=None,fig_num=1):
 
         if data_list==None:
             v=self.v; i=self.i; p=self.p; r=self.r
         else:
             v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
-        v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]    
+        v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]
 
         # fig 1, 2x2 of converted IV
         #fig = plt.figure(fig_num)
@@ -300,7 +300,7 @@ class IVSetAnalyzeRow(IVClean):
             ax[2].plot(p[:,ii],r[:,ii])
             #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
             ax[3].plot(v[:,ii],r[:,ii])
-        
+
         xlabels = ['V %s'%self.vipr_unit_labels[0],'V %s'%self.vipr_unit_labels[0],'P %s'%self.vipr_unit_labels[2],'V %s'%self.vipr_unit_labels[0]]
         ylabels = ['I %s'%self.vipr_unit_labels[1],'P %s'%self.vipr_unit_labels[2], 'R %s'%self.vipr_unit_labels[3],'R %s'%self.vipr_unit_labels[3]]
 
@@ -348,10 +348,10 @@ class IVSetAnalyzeRow(IVClean):
         r_clean = cut(self.r,dexs)
         ro_clean = cut(self.ro,dexs)
         p_clean = cut(self.p,dexs)
-        return v_clean, i_clean, r_clean, p_clean, ro_clean 
+        return v_clean, i_clean, r_clean, p_clean, ro_clean
 
 class IVSetAnalyzeColumn():
-    ''' analyze IV curves taken under different physical conditions. 
+    ''' analyze IV curves taken under different physical conditions.
     '''
     def __init__(self,ivcurve_column_data_list,state_list=None,iv_circuit=None):
         ''' ivcurve_column_data_list is a list of IVCurveColumnData instances '''
@@ -378,7 +378,7 @@ class IVSetAnalyzeColumn():
         for ii in range(self.num_sweeps):
             fb_arr[:,ii] = self.fb_raw[ii][:,row_index]
         return dac, fb_arr
-        
+
     def plot_row(self,row_index,to_physical_units=True):
         dac, fb = self.get_data_for_row(row_index)
         iv_set = IVSetAnalyzeRow(dac,fb,state_list=self.state_list,iv_circuit=self.iv_circuit,figtitle='Row%02d'%row_index)
@@ -390,11 +390,11 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
     ''' analyze thermal transport from IV curve set from one row in which ADR temperature is varied '''
     def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None):
         ''' dac_values: np_array of dac_values (corresponding to voltage bias across TES),
-                        a common dac_value for all IVs is required 
-            fb_values_arr: N_dac_val x N_sweep numpy array, column ordered in which columns are for different adr temperatures 
+                        a common dac_value for all IVs is required
+            fb_values_arr: N_dac_val x N_sweep numpy array, column ordered in which columns are for different adr temperatures
             temp_list_k: adr temperature list in K, must match column order
         '''
-        
+
         self.temp_list_k = temp_list_k
         self.rn_fracs = normal_resistance_fractions
         self.num_rn_fracs = len(self.rn_fracs)
@@ -406,7 +406,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_clean,self.ro_clean)
         print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
-        
+
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
         '''
@@ -439,7 +439,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
                 YY[0:N] = np.zeros(N)*np.NaN
             result[:,ii] = YY
         return result
-        
+
     def plot_pr(self,fig_num=1):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
@@ -494,20 +494,20 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
 
     def fit_pvt(self,t,p,init_guess=[20.e-9,.2,4.0]):
         ''' fits saturation power versus temperature to recover fit parameters K, T and n
-            
+
             fit function is P = K(T^n-t^n)
-            
+
             input:
             t: vector of bath temperatures
             p: vector of saturation powers
             init_guess: initial guess parameters for K,T,n in that order
-            
+
             output:
             fit coefficients
             covarience matrix (diagonals are variance of fit parameters)
         '''
         fitfunc = lambda v,x: v[0]*(v[1]**v[2]-x**v[2])
-        errfunc = lambda v,t,p: v[0]*(v[1]**v[2]-t**v[2])-p 
+        errfunc = lambda v,t,p: v[0]*(v[1]**v[2]-t**v[2])-p
         lsq = leastsq(errfunc,init_guess, args=(t,p),full_output=1)
         pfit, pcov, infodict, errmsg, success = lsq
         if success > 4:
@@ -1225,7 +1225,7 @@ class DetectorMap():
         return keys, idx
 
 if __name__ == "__main__":
-    
+
     # circuit parameters
     iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
                            rbias_ohm=10068.0,
@@ -1234,7 +1234,7 @@ if __name__ == "__main__":
                            m_ratio=8.259,
                            vfb_gain=1.017/(2**14-1),
                            vbias_gain=6.5/(2**16-1))
-    
+
     path = '/home/pcuser/data/lbird/20210320/'
     fname = 'lbird_hftv0_ColumnA_ivs_20210413_1618354151.json'
     row_index = 23
@@ -1245,9 +1245,9 @@ if __name__ == "__main__":
     n_sweeps = len(df.set_temps_k)
     fb_arr = np.zeros((len(dac),n_sweeps))
     for ii in range(n_sweeps):
-        dac, fb = df.data[ii].xy_arrays() 
+        dac, fb = df.data[ii].xy_arrays()
         fb_arr[:,ii] = fb[:,row_index]
-    
+
     iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.985,0.99],iv_circuit=iv_circuit)
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(None,2)
@@ -1255,6 +1255,3 @@ if __name__ == "__main__":
     iv_tsweep.plot_pt(fig_num=4)
     print(iv_tsweep.pfits[0])
     plt.show()
-    
-
-    
