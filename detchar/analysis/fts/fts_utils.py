@@ -17,7 +17,6 @@ transform, the frequencies of the result are [0, 1, 2, 3, -4, -3, -2, -1].
 To rearrange the fft output so that the zero-frequency component is
 centered, like [-4, -3, -2, -1,  0,  1,  2,  3], use `fftshift`.
 
-4) np.arctan and np.arctan2 give same behavior
 '''
 
 import numpy as np
@@ -116,7 +115,6 @@ class FtsData():
     def get_spectrum(self,poly_filter_deg=1,plotfig=False):
         f,B = IfgToSpectrum().to_spectrum_simple(self.x,self.y,self.speed,poly_filter_deg=1,plotfig=True)
         return f,B
-
 
 class TimeDomainDataProcessing():
     def remove_poly(self,x,y,deg=1):
@@ -574,7 +572,6 @@ class FtsMeasurement():
         S_mean = np.mean(S,axis=1)
         S_std = np.std(S,axis=1)
         return f, S, S_mean, S_std
-
 
 class FtsMeasurementSet():
     ''' class for analysis of an FTS measurement set.
