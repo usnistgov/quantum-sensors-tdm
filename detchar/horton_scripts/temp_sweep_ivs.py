@@ -6,26 +6,27 @@ import detchar
 plt.ion()
 plt.close("all")
 curve_taker = detchar.IVCurveTaker(
-    detchar.IVPointTaker("DB1", "BX", column_number=6),
+    detchar.IVPointTaker("DB1", "AX", column_number=0),
     temp_settle_time_out_s=180,
-    temp_settle_tolerance_k=0.15 * 1e-3,
+    temp_settle_tolerance_k=0.05 * 1e-3,
     shock_normal_dac_value=40000,
 )
 curve_taker.prep_fb_settings(I=10, fba_offset=8000)
 temp_sweeper = detchar.IVTempSweeper(curve_taker)
-dacs = detchar.sparse_then_fine_dacs(a=10000, b=2500, c=0, n_ab=30, n_bc=200)
-temps_mk = np.linspace(45, 90, 20)
+dacs = detchar.sparse_then_fine_dacs(a=10000, b=5000, c=0, n_ab=20, n_bc=150)
+# temps_mk = np.arange(85,40,-5)
+temps_mk = np.arange(45,90,5)
 print(f"{temps_mk} mK")
 sweep = temp_sweeper.get_sweep(
     dacs, set_temps_k=temps_mk * 1e-3, extra_info={"field coil current (Amps)": 0}
 )
-sweep.to_file("latest_temp_sweep_ivs.json", overwrite=True)
+sweep.to_file("20210514_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json", overwrite=True)
 sweep.plot_row(row=0)
 sweep.data[0].plot()
 
 
 plt.ion()
-sdata = detchar.IVTempSweepData.from_file("latest_temp_sweep_ivs.json")
+sdata = detchar.IVTempSweepData.from_file("20210514_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
 circuit = detchar.IVCircuit(
     rfb_ohm=4e3,
     rbias_ohm=1e3,  # need to check notes for true value
@@ -100,6 +101,28 @@ plt.tight_layout()
 ymax = y[0]
 plt.ylim(0, ymax)  # set the ylim to the maximum r value
 
+# plot a row vs temperature (experimental units)
+plt.figure()
+ntemps = len(sdata.data)
+row = 1
+cm = plt.get_cmap("cool")
+for q in range(ntemps):
+    x = vtess_by_temp[q][:, row]
+    y = vtess_by_temp[q][:, row] / itess_by_temp[q][:, row]
+    d = sdata.data[q]
+    f = q/(ntemps-1)
+    color = cm(f)
+    fmt = ["-","--","-."][q%3]
+    temp_mk = (d.pre_temp_k + d.post_temp_k) * 1e3 / 2
+    plt.plot(vbias_arbs, y,fmt, label=f"{temp_mk:.2f} mK", color=color)
+plt.xlabel("vbias / Dac Units")
+plt.ylabel("R tes / Ohm")
+plt.title(f"row = {row} r vs v_tes vs temp")
+plt.legend()
+plt.tight_layout()
+ymax = y[0]
+plt.ylim(0, ymax)  # set the ylim to the maximum r value
+
 
 # plot all rows at one temp with physical units
 plt.figure()
@@ -119,7 +142,7 @@ plt.tight_layout()
 plt.ylim(0, ymax)  # set the ylim to the maximum r value
 plt.grid(True, which="both")
 
-# plot all rows at one temp with physical units
+# plot all rows at one temp with experimental units
 plt.figure()
 q = 0
 for row in range(nrows):

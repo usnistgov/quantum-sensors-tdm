@@ -27,6 +27,7 @@ class IVCurveColumnData:
     column_number: int
     extra_info: dict
     pre_shock_dac_value: float
+    zero_bias_fb: List[int]
 
     def plot(self):
         plt.figure()

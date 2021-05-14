@@ -8,16 +8,16 @@ import time
 plt.ion()
 plt.close("all")
 curve_taker = IVCurveTaker(
-    IVPointTaker("DB1", "BX", column_number=7),
+    IVPointTaker("DB1", "BX", column_number=6),
     shock_normal_dac_value=0,
     temp_settle_time_out_s=0,
     temp_settle_tolerance_k=0.05 * 1e-3,
 )
-curve_taker.prep_fb_settings(I=16, fba_offset=8192, ARLoff=False)
+curve_taker.prep_fb_settings(I=8, fba_offset=8192, ARLoff=False)
 t = []
 fbs = []
 dac_lo = 0
-dac_hi = 50
+dac_hi = 5
 while True:
     try:
         print(f"n={len(t)}")
@@ -36,7 +36,7 @@ while True:
             f"tc tickle for bay {curve_taker.pt.bayname}, col {curve_taker.pt.col}"
         )
         plt.pause(0.1)
-        curve_taker.set_temp_and_settle(0.068 + len(t) * 1e-3 / 20)
+        curve_taker.set_temp_and_settle(0.066 + len(t) * 1e-3 / 4)
 
     except KeyboardInterrupt:
         break
@@ -46,6 +46,6 @@ fbs_out = np.vstack(fbs)
 plt.figure()
 chs = np.arange(32)
 
-plt.plot(np.array(t)*1e3, fbs_out[:,chs!=28])
+plt.plot(np.array(t[:-1])*1e3, fbs_out[:,chs!=28])
 plt.ylabel(f"fb change when DB dac from {dac_lo} to {dac_hi}")
 plt.xlabel("temp (mK)")

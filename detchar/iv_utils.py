@@ -121,7 +121,7 @@ class IVCurveTaker:
         temp_settle_time_out_s=180,
         temp_settle_tolerance_k=0.0002,
         shock_normal_dac_value=2 ** 16 - 1,
-        zero_tower_at_end=True,
+        zero_bias_and_relock_and_record_fb_at_end=True,
         adr_gui_control=None,
     ):
         self.pt = point_taker
@@ -130,7 +130,7 @@ class IVCurveTaker:
         self.temp_settle_time_out_s = temp_settle_time_out_s
         self.temp_settle_tolerance_k = temp_settle_tolerance_k
         self.shock_normal_dac_value = shock_normal_dac_value
-        self.zero_tower_at_end = zero_tower_at_end
+        self.zero_bias_and_relock_and_record_fb_at_end = zero_bias_and_relock_and_record_fb_at_end
         self._was_prepped = False
         self.post_overbias_settle_s = 30.0
 
@@ -258,9 +258,12 @@ class IVCurveTaker:
         post_hout = self.adr_gui_control.get_hout()
         post_temp_rms_uk = self.adr_gui_control.get_temp_rms_uk()
         post_slope_hout_per_hour = self.adr_gui_control.get_slope_hout_per_hour()
-        if self.zero_tower_at_end:
-            print(f"zero detector bias")
-            self.pt.set_volt(0)
+        if self.zero_bias_and_relock_and_record_fb_at_end:
+            print(f"zero detector bias, relock, and record fb")
+            self.pt.relock_all_locked_rows()
+            zero_bias_fb = self.pt.get_iv_pt(0)
+        else:
+            zero_bias_fb = None
 
         return IVCurveColumnData(
             nominal_temp_k=self._last_setpoint_k,
@@ -278,6 +281,7 @@ class IVCurveTaker:
             extra_info=extra_info,
             fb_values=fb_values,
             pre_shock_dac_value=self.shock_normal_dac_value,
+            zero_bias_fb=zero_bias_fb
         )
 
     def _handle_dac_values_int(self, dac_values):
