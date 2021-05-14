@@ -82,6 +82,8 @@ class TempControl():
         if resistance == 0: # VMIX overload, do not change resistance range
             print("got resistance=0.0, which is indicative of VMIX OVL, which should actually correspond to a large resistance")
             resistance=1e5
+            # a better way to deal with this would be to read the reading status query with
+            # RDGST? 
         newstring = self.resistanceToResistanceRangeString(resistance).encode()
         nowstring = self.getCurrentResistanceRangeString()
         # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))

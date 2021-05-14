@@ -26,6 +26,7 @@ class AdrGuiControl:
     def __init__(self, host='localhost'):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
+        self.socket.LINGER=3000 #ms
         self.socket.connect(build_zmq_addr(host))
 
     def send(self, message):
