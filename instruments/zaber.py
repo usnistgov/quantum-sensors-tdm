@@ -188,6 +188,8 @@ class Zaber(serial_instrument.SerialInstrument):
         if SlowRevs is None:
             SlowRevs = self.SlowRevs
 
+        self.serial.readall() # read and discard from the serial socket in case there is an error waiting for us?
+
         # high torque low speed
         self.SetRunningCurrent(self.OpeningCurrent)
         self.SetTargetVelocity(self.OpeningSpeed)
