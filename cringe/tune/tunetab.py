@@ -563,11 +563,13 @@ class VPhiDemo(QWidget):
         log.info(("This value was set for you, your previous value was %g" %
                   oldfluxjumpthreshold))
         self.mm.setFluxJumpThreshold(goodfluxjumpthreshold)
+        
+        Mix[np.isnan(Mix)] = 0  # don't send NaN, its invalid for mix
+        self.mix_afer_full_tune = Mix
 
         if self.shouldSendMixAfterFullTune():
             log.info("sending mix values after full tune")
             log.debug("mix before nan check", Mix)
-            Mix[np.isnan(Mix)] = 0  # don't send NaN, its invalid for mix
             log.debug("mix before divide by 100", Mix)
             log.debug(Mix/100.0)
             self.c.client.setMix(Mix/100.0)
@@ -575,12 +577,22 @@ class VPhiDemo(QWidget):
     def prune_bad_channels(self):
         log.info("prune_bad_channels")
         min_amplitude = 600
-        max_noise_std = 1
+        max_noise_std = 15
         with open("last_fbastats", "rb") as f:
             vphistats = pickle.load(f)
         # log.info([k for k in vphistats.keys()])
         log.info((vphistats["modDepth"]))
         assert(vphistats["modDepth"].shape == (self.c.ncol, self.c.nrow))
+        mix = self.mix_afer_full_tune.copy()
+        data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
+        fba = data[0,0,:,1] #triangle
+        err = data[0,0,:,0] #signal
+        fba_std = np.std(data[:,:,:,1],axis=2)
+        err_std = np.std(data[:,:,:,0],axis=2)
+        log.info("fba_std")
+        log.info(fba_std)
+        log.info("err_std")
+        log.info(err_std)
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 errorChan = col*2*self.c.nrow+row*2
@@ -590,25 +602,21 @@ class VPhiDemo(QWidget):
                     # turn off fb on row
                     # d2aA and d2aB should match next row? unless that row is bad?
                     self.mm.setdfbrow(col, row)
-                    self.c.client.setMixChannel(fbChan, 0)
-        time.sleep(1)
-        # do the loop twice, so you can actually see this output despite all the
-        # crap cringe prints
-        for col in range(self.c.ncol):
-            for row in range(self.c.nrow):
-                errorChan = col*2*self.c.nrow+row*2
-                fbChan = errorChan+1
-                if vphistats["modDepth"][col, row] < min_amplitude:
+                    mix[col,row]=0
                     log.info(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix" % (
                         col, row, fbChan, vphistats["modDepth"][col,
                                                                 row], min_amplitude
-                    )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
-        # fba = data[0,0,:,1] #triangle
-        # err = data[0,0,:,0] #signal
-        # fba_std = np.std(data[:,:,:,1],axis=2)
-        # err_std = np.std(data[:,:,:,0],axis=2)
-        # log.info(fba_std)
-        # log.info(err_std)
+                    )))   
+                fba_std_cr = fba_std[col,row]
+                if fba_std_cr > max_noise_std:
+                    log.info(f"c{col}r{row} chan{fbChan} has fba_std {fba_std_cr} > max_noise_std {max_noise_std} turning off feedback and mix")
+                    self.mm.setdfbrow(col, row)
+                    mix[col,row]=0
+        log.info(f"sending updated mix {mix}")
+        self.c.client.setMix(mix/100)
+
+
+
 
     def grab_and_set_d2aA_values(self):
         # assume feedback is on

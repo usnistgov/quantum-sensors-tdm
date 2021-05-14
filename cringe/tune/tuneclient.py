@@ -42,9 +42,9 @@ class TuneClient(QWidget):
     def startclient(self):
         self.statustext.setText("connecting...")
         QtCore.QCoreApplication.processEvents() # allows text change to actually happen before blocking
-        self.client = nasa_client.EasyClient(clockmhz=125)
-        self.getNewData = self.client.getNewData
         try: # blocks for 1 second if server isn't there
+            self.client = nasa_client.EasyClient(clockmhz=125)
+            self.getNewData = self.client.getNewData
             self.client.setupAndChooseChannels()
             self.statustext.setText("connected to server, lysnc=%g, ncol=%g, nrow=%g, nsamp=%g"%(self.lsync, self.ncol, self.nrow, self.nsamp))
             return True
