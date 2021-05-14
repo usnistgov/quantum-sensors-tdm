@@ -234,7 +234,7 @@ class EasyClientDastard():
         # tstart = time.time()
         while True:
             i+=1
-            if i>40*self.numChannels:
+            if i>400*self.numChannels:
                 raise Exception("couldn't get the data you wantd")
             header, data = self.getMessage()
             dastardNano = header["unixnano"]
