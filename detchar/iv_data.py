@@ -75,8 +75,25 @@ class IVCurveColumnData:
         dac_values = np.array(self.dac_values)
         fb = self.fb_values_array()
         fb -= np.array(self.zero_bias_fb)
-
         return dac_values, fb       
+
+    def xyarrays_zero_subtracted_and_sc_branch_fixed(self):
+        x, y = self.xyarrays_zero_subtracted_with_post_iv_zero_fb_value()
+        out = np.zeros_like(y)
+        for row in range(self.get_nrows()):
+            z = y[:, row]
+            # assume we started a high db, and moved down, the sc branch should be the last few points
+            zz = np.diff(z)/np.diff(x)
+            zzz = (zz/zz[-1])-1 # slope relative to potential sc zone, where sc zone = 0
+            # and deviations are in units of the sc zone slope
+            inds = np.where(np.abs(zzz)>2)[0]
+            if len(inds) > 1:
+                ind = inds[-1]
+                z[ind:]-=z[-1]
+            out[:, row] = z
+        # can't actually do this here, because I don't know where the origin is!!
+        return x, out
+
 
     def xy_arrays(self):
         dac_values = np.array(self.dac_values)
@@ -111,6 +128,33 @@ class IVCurveColumnData:
         return rpar_ohm_by_row
         
 
+def fix_sc_branch(x, y):
+    """
+    locate the superconducting branch based on the fact that it's slope is very different from all other slopes
+    force it to end at the origin
+    x - detector bias dac units
+    y - feedback dac units that has already been set to have 0 correspond to zero current"""
+    # assume we started a high db, and moved down, the sc branch should be the last few points
+    dfb_dbias = np.diff(y)/np.diff(x)
+    z = (dfb_dbias/dfb_dbias[-1])-1 # slope relative to potential sc zone, where sc zone = 0
+    # and deviations are in units of the sc zone slope
+    inds = np.where(np.abs(z)>2)[0]
+    yout = y[:]
+    if len(inds) > 1:
+        ind = inds[-1]
+        yout[ind:] -= yout[-1]
+    return yout
+
+def fix_sc_branch_array(x, y):
+    """
+    locate the superconducting branch based on the fact that it's slope is very different from all other slopes
+    force it to end at the origin
+    do it for an array of y[i,j] values where i indexes detector bias and j indexes row or temperature
+    """
+    yout = np.zeros_like(y)
+    for i in range(y.shape[1]):
+        yout[:, i] = fix_sc_branch(x, y[:,i])
+    return yout
 
 def fit_normal_zero_subtract(x, y, normal_above_x):
     normal_inds = np.where(x > normal_above_x)[0]
@@ -136,7 +180,7 @@ class IVTempSweepData:
         with open(filename, "r") as f:
             return cls.from_json(f.read())
 
-    def xyarrays_zero_subtracted_temp_fb_row(self):
+    def xyarrays_zero_subtracted_temp_fb_row(self, fix_sc=True):
         last_curves = self.data[-1]
         xlast, ylast = last_curves.xyarrays_zero_subtracted_with_post_iv_zero_fb_value()        
         out = np.zeros( (len(self.data), len(ylast), self.get_nrows()) )        
@@ -145,7 +189,11 @@ class IVTempSweepData:
                 y -= ylast[-1, :] 
                 # assume the last (highest temp) iv curve kept lock 
                 # and it's last point has zero detector bias, so it can define current zero
-                out[temp_index, :, :] = y[:, :]
+                if fix_sc:
+                    y_sc_fixed = fix_sc_branch_array(x, y)
+                    out[temp_index, :, :] = y_sc_fixed[:, :]
+                else:
+                    out[temp_index, :, :] = y[:, :]
         return xlast, out
 
     def xyarrays_zero_subtracted_all_temps_for_one_row(self, row):
