@@ -7,7 +7,7 @@ import pylab as plt
 import collections
 import os
 from numpy.polynomial.polynomial import Polynomial
-
+import lmfit
 
 @dataclass_json
 @dataclass
@@ -316,6 +316,33 @@ class IVTempSweepData:
         )
         plt.legend()        
 
+    def get_power_at_r(self, r_ohm, row, circuit, rpar_ohm_by_row=None, sc_below_vbias_arb=None,
+    plot=False):
+        i, v = self.iv_temp_val_row(circuit, rpar_ohm_by_row, sc_below_vbias_arb)
+        r = v/i
+        p = i*v
+        p_out = np.zeros(len(self.data))
+        for temp_index in range(len(self.data)):
+            # not quite sure why the ::-1 helps get better interp results, but without it
+            # I get the same power for all temp_index values
+            p_out[temp_index] = np.interp(r_ohm, r[temp_index, ::-1, row], p[temp_index, ::-1, row])
+        if plot:
+            plt.figure()
+            for temp_index in range(len(self.data)):
+                curves = self.data[temp_index]
+                t_mK = curves.nominal_temp_k * 1e3
+                dt_mK = (curves.post_temp_k - curves.pre_temp_k) * 1e3
+                plt.plot(p[temp_index, :, row], r[temp_index, :, row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
+            plt.plot(p_out, r_ohm*np.ones(len(p_out)), "o", label="interpolated powers")
+            plt.xlabel("tes power (W)")
+            plt.ylabel("tes resistance (ohm)")
+            plt.title(
+                f"row={row} bayname {curves.bayname}, db_card {curves.db_cardname}"
+            )
+            plt.legend()       
+        
+        return p_out
+
 
 
 @dataclass_json
@@ -397,3 +424,33 @@ class IVCircuit:
         # rtes = rsh_ohm + rpar_ohm - ibias*rsh_ohm/ites
         vtes = (ibias - ites) * self.rsh_ohm - ites * rpar_ohm
         return ites, vtes
+
+def g_fit(tb_k, p_w, k_guess_w_per_t_to_n=1e-9, tc_guess_k=0.01, n_guess=3, prune_nan=True, plot=False):
+    if prune_nan:
+        inds = ~np.isnan(p_w)
+        tb_k = np.array(tb_k)[inds] # swith to array to allow indexing with bool vector
+        p_w = p_w[inds]
+    def p_model(tb_k, tc_k, gigak, n):
+            return 1e-9*gigak*(tc_k**n-tb_k**n)*np.greater(tc_k, tb_k)
+    model = lmfit.model.Model(p_model)
+    params = model.make_params()
+    params["tc_k"].set(70e-3, vary=True)
+    params["gigak"].set(1, min=1e-18)
+    params["n"].set(3, min=0.5)
+    result = model.fit(data=p_w, tb_k=tb_k, params=params)
+    p_model_out = result.eval()
+    print(result.fit_report())
+    result.params.pretty_print()
+    k = result.params["gigak"].value*1e-9
+    n = result.params["n"].value
+    tc_k = result.params["tc_k"].value
+    G_W_per_K = n*k*tc_k**(n-1)
+    if plot:
+        plt.figure()
+        plt.plot(tb_k, p_w, "o")
+        plt.plot(tb_k, p_model_out, label=f"tc={tc_k:.4f} K, k={k:.2g} W/K^n, n={n:.2f}, G={G_W_per_K*1e12:.2f} pW/K")
+        plt.xlabel("temp (K)")
+        plt.ylabel("power (W)")
+        plt.legend()
+
+    return result, k, tc_k, n, G_W_per_K
