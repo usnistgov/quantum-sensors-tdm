@@ -439,8 +439,8 @@ def g_fit(tb_k, p_w, k_guess_w_per_t_to_n=1e-9, tc_guess_k=0.01, n_guess=3, prun
     params["n"].set(3, min=0.5)
     result = model.fit(data=p_w, tb_k=tb_k, params=params)
     p_model_out = result.eval()
-    print(result.fit_report())
-    result.params.pretty_print()
+    # print(result.fit_report())
+    # result.params.pretty_print()
     k = result.params["gigak"].value*1e-9
     n = result.params["n"].value
     tc_k = result.params["tc_k"].value

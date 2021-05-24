@@ -55,6 +55,11 @@ def test_g_from_temp_sweep():
     powers = sdata.get_power_at_r(r_ohm=0.005, row=2, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, 
     sc_below_vbias_arb=None, plot=True)
     result, k, tc_k, n, G_W_per_k = detchar.g_fit(sdata.set_temps_k, powers, plot=True)
-  
+
+    for row in range(16):
+        powers = sdata.get_power_at_r(r_ohm=0.005, row=row, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, 
+        sc_below_vbias_arb=None, plot=False)
+        result, k, tc_k, n, G_W_per_k = detchar.g_fit(sdata.set_temps_k, powers, plot=False)        
+        print(f"{row=} {k=:.2g} {n=:.2f} {G_W_per_k=:.3g}")
 
     pause_ci_safe(60)
