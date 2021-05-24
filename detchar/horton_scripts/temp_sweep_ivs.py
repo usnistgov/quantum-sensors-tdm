@@ -15,18 +15,18 @@ curve_taker.prep_fb_settings(I=10, fba_offset=8000)
 temp_sweeper = detchar.IVTempSweeper(curve_taker)
 dacs = detchar.sparse_then_fine_dacs(a=10000, b=5000, c=0, n_ab=20, n_bc=150)
 # temps_mk = np.arange(85,40,-5)
-temps_mk = np.arange(45,90,5)
+temps_mk = np.arange(50,85,5)
 print(f"{temps_mk} mK")
 sweep = temp_sweeper.get_sweep(
     dacs, set_temps_k=temps_mk * 1e-3, extra_info={"field coil current (Amps)": 0}
 )
-sweep.to_file("20210514_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json", overwrite=True)
+sweep.to_file("20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json", overwrite=True)
 sweep.plot_row(row=0)
 sweep.data[0].plot()
 
 
 plt.ion()
-sdata = detchar.IVTempSweepData.from_file("20210514_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
+sdata = detchar.IVTempSweepData.from_file("20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
 circuit = detchar.IVCircuit(
     rfb_ohm=4e3,
     rbias_ohm=1e3,  # need to check notes for true value

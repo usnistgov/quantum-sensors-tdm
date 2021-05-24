@@ -66,10 +66,14 @@ class IVPointTaker:
             return cringe_control
         return CringeControl()
 
-    def get_iv_pt(self, dacvalue):
-        self.set_volt(dacvalue)
+    def get_fb_raw(self):
         data = self.ec.getNewData(delaySeconds=self.delay_s)
         avg_col = data[self.col, :, :, 1].mean(axis=-1)
+        return np.array(avg_col,dtype="float64") # we can't json serialize np.float32, which is the element type of avg_col
+
+    def get_iv_pt(self, dacvalue):
+        self.set_volt(dacvalue)
+        avg_col = self.get_fb_raw()
         rows_relocked_hi = []
         rows_relocked_lo = []
         for row, fb in enumerate(avg_col):
@@ -92,6 +96,7 @@ class IVPointTaker:
                 avg_col_out[row] = avg_col_after[row]
         return avg_col_out - self._relock_offset
 
+
     def set_tower(self, dacvalue):
         self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
 
@@ -112,6 +117,9 @@ class IVPointTaker:
     def relock_all_locked_rows(self):
         print("relock all locked rows")
         self.cc.relock_all_locked_fba(self.col)
+
+    def reset_for_new_curve(self):
+        self._relock_offset = np.zeros(self.ec.nrow)
 
 
 class IVCurveTaker:
@@ -240,12 +248,14 @@ class IVCurveTaker:
         pre_time = time.time()
         pre_hout = self.adr_gui_control.get_hout()
         # temp_rms and slope will not be very useful if you just changed temp, so get them at end only
+        self.pt.reset_for_new_curve()
         self.pt.set_volt(self.shock_normal_dac_value)
         time.sleep(
             0.05
         )  # inserted because immediately commanding the lower dac value didn't take.
         # was stuck at shock_normal_dac_value and this affected the first few points
         self.pt.set_volt(dac_values[0])  # go to the first dac value and relock all
+        time.sleep(0.05)
         self.pt.relock_all_locked_rows()
         fb_values = []
         bar = progress.bar.Bar("getting IV points", max=len(dac_values))
@@ -260,8 +270,10 @@ class IVCurveTaker:
         post_slope_hout_per_hour = self.adr_gui_control.get_slope_hout_per_hour()
         if self.zero_bias_and_relock_and_record_fb_at_end:
             print(f"zero detector bias, relock, and record fb")
+            self.pt.set_volt(0)
+            time.sleep(0.05)
             self.pt.relock_all_locked_rows()
-            zero_bias_fb = self.pt.get_iv_pt(0)
+            zero_bias_fb = self.pt.get_fb_raw()
         else:
             zero_bias_fb = None
 

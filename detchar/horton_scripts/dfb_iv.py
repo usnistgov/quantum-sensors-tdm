@@ -3,16 +3,16 @@ import pylab as plt
 import numpy as np
 
 plt.ion()
-plt.close("all")
+# plt.close("all")
 
-# c = nasa_client.EasyClient()
-# N=2**20
-# data = c.getNewData(minimumNumPoints=N, exactNumPoints=True)
+c = nasa_client.EasyClient()
+N=10000
+data = c.getNewData(minimumNumPoints=N, exactNumPoints=True)
 
 
 plt.figure()
-plt.plot(data[1,1,:,1], label="ivdata")
-plt.plot(data[0,2,:,1], label="triangle")
+plt.plot(data[1,1,::2,1], label="ivdata")
+plt.plot(data[0,2,::2,1], label="triangle")
 plt.xlabel("point num")
 plt.ylabel("iv data")
 plt.legend("20210507_SSRL_AX_56p6_DFB_IV.npy")
@@ -27,6 +27,6 @@ fb = data[1,1,:,1]
 # plt.ylabel("iv fb")
 
 
-for i in range(0,20,2):
-    plt.plot(tri[i::2**10], fb[i::2**10], label=f"{i}")
-plt.legend()
+# for i in range(0,20,2):
+#     plt.plot(tri[i::2**10], fb[i::2**10], label=f"{i}")
+# plt.legend()

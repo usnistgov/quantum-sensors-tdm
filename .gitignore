@@ -5,3 +5,4 @@ __pycache__
 last_fbastats
 .build
 *.json
+*.hdf5
