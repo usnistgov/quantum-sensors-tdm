@@ -6,21 +6,22 @@ plt.ion()
 # plt.close("all")
 
 c = nasa_client.EasyClient()
-N=10000
+N=2**20
 data = c.getNewData(minimumNumPoints=N, exactNumPoints=True)
 
+tri = data[1,0,:,1]
+fb = data[0,0,:,1]
 
 plt.figure()
-plt.plot(data[1,1,::2,1], label="ivdata")
-plt.plot(data[0,2,::2,1], label="triangle")
+plt.plot(fb, label="ivdata")
+plt.plot(tri, label="triangle")
 plt.xlabel("point num")
 plt.ylabel("iv data")
-plt.legend("20210507_SSRL_AX_56p6_DFB_IV.npy")
+plt.legend()
 
-tri = data[0,2,:,1]
-fb = data[1,1,:,1]
 
-# np.save("20210507_SSRL_AX_56p6_DFB_IV.npy", data)
+
+np.save("latest.npy", data)
 # plt.figure()
 # plt.plot(data[0,0,:,1]+np.arange(N)/100,data[1,0,:,1])
 # plt.xlabel("triangle")

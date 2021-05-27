@@ -3,8 +3,8 @@ import numpy as np
 from cringe.tune.analysis import conditionvphi
 plt.ion()
 plt.close("all")
-data = np.load("20210507_SSRL_AX_56p6_DFB_IV.npy")
-
+# data = np.load("20210507_SSRL_AX_56p6_DFB_IV.npy")
+iv = np.load("latest_dfb_iv.npy")
 upstart = 164830
 upend = 690141
 _tri = data[0,2,:,1]

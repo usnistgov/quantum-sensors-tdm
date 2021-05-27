@@ -302,7 +302,7 @@ class IVTempSweepData:
             ylabel = "tes power (W)"
         else: 
             raise Exception(f"y_quantity = {y_quantity} is invalid")
-        print(f"{i.shape=} {v.shape=}")
+        print(f"i.shape={i.shape} v.shape={v.shape}")
         plt.figure()
         for temp_index in range(len(self.data)):
             curves = self.data[temp_index]

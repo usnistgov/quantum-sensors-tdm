@@ -21,7 +21,7 @@ def pause_ci_safe(t):
 
 
 def test_g_from_temp_sweep():
-    sdata = IVTempSweepData.from_file(test_data.horton_temp_sweep_with_zero_tracking_filename)
+    sdata = IVTempSweepData.from_file("/home/pcuser/qsp/src/nistqsptdm/detchar/horton_scripts/20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
 
 
     circuit = IVCircuit(rfb_ohm = 4e3, 
@@ -37,8 +37,8 @@ def test_g_from_temp_sweep():
     sc_below_vbias_arb=500, #db value in dac units below which he device is superconducting
     temp_index=0) # do fits at the lowest temp
 
-    print(f"{1e6*rpar_ohm_by_row=}")
-    print(f"{sdata.data[-1]=}")
+    print(f"1e6*rpar_ohm_by_row{1e6*rpar_ohm_by_row}")
+    print(f"sdata.data[-1]={sdata.data[-1]}")
 
     for row in range(sdata.get_nrows()//16):
         sdata.plot_row(row=row)
@@ -52,7 +52,7 @@ def test_g_from_temp_sweep():
         sdata.plot_row_iv(row=row, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, y_quantity="resistance")
         sdata.plot_row_iv(row=row, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, y_quantity="power")
 
-    powers = sdata.get_power_at_r(r_ohm=0.005, row=2, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, 
+    powers = sdata.get_power_at_r(r_ohm=0.005, row=0, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, 
     sc_below_vbias_arb=None, plot=True)
     result, k, tc_k, n, G_W_per_k = detchar.g_fit(sdata.set_temps_k, powers, plot=True)
 
@@ -60,6 +60,6 @@ def test_g_from_temp_sweep():
         powers = sdata.get_power_at_r(r_ohm=0.005, row=row, circuit=circuit, rpar_ohm_by_row=rpar_ohm_by_row, 
         sc_below_vbias_arb=None, plot=False)
         result, k, tc_k, n, G_W_per_k = detchar.g_fit(sdata.set_temps_k, powers, plot=False)        
-        print(f"{row=} {k=:.2g} {n=:.2f} {G_W_per_k=:.3g}")
+        print(f"row={row} k={k:.2g} n={n:.2f} G_W_per_k={G_W_per_k:.3g}")
 
     pause_ci_safe(60)
