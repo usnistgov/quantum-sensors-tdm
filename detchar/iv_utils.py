@@ -137,10 +137,10 @@ class IVCurveTaker():
         self.adr_gui_control.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
         TlowStable = self.is_temp_stable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
         if verbose:
+            bar = progress.bar.Bar("Wait for temp to settle after over bias, %d seconds"%self.post_overbias_settle_s,max=100)
             if TlowStable:
                 print('Successfully cooled back to base temperature '+str(setpoint_k)+'K')
                 # settle after overbias
-                bar = progress.bar.Bar("Wait for temp to settle after over bias, %d seconds"%self.post_overbias_settle_s,max=100)
                 for ii in range(100):
                     time.sleep(self.post_overbias_settle_s/100)
                     bar.next()
