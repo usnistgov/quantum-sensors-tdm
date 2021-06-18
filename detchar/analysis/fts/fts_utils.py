@@ -2,7 +2,7 @@
 fts_utils.py
 
 everything one should need to analyze data taken with the NIST FTS system
-@author JH, 03/2021
+@author JH, started 03/2021
 
 Notes:
 1) phase correction for individual scans or for average?
@@ -117,13 +117,26 @@ class FtsData():
         f,B = IfgToSpectrum().to_spectrum_simple(self.x,self.y,self.speed,poly_filter_deg=1,plotfig=True)
         return f,B
 
+    def print_metadata(self):
+        attrs = vars(self)
+        # del attrs['x']
+        # del attrs['y']
+        for key in attrs:
+            if key not in ['x','y']:
+                print(key, '::', attrs[key])
+        #print(', '.join("%s: %s" % item for item in attrs.items()))
+        # meta_list = [file,version,file_prefix,file_number,num_scans,current_scan,resolution,nyquist,num_smaples,speed,zpd,buffer_size,date,juldate,source,comment,x_label,y_label]
+        # print('file: ', self.file)
+
 
 class TimeDomainDataProcessing():
     def remove_poly(self,x,y,deg=1):
         ''' remove polynomial from detector response
         '''
-        p = scipy.polyfit(x,y,deg)
-        y=y-scipy.polyval(p,x)
+        # p = scipy.polyfit(x,y,deg)
+        # y=y-scipy.polyval(p,x)
+        p = np.polyfit(x,y,deg)
+        y=y-np.polyval(p,x)
         return y
 
     def notch_frequencies(self,x,y,v,filter_freqs_hz=[60.0,120.0,180.0,240.0,300.0,420.0,480.0,540.0],
@@ -599,16 +612,18 @@ class FtsMeasurementSet():
     def plot_all_measurements(self,showfig=True,savefig=False):
         ''' plot/save all measurement ifgs and spectra '''
         ii = 0
-        print('\n## scan_num; prefix; n_repeat_scan; source; speed; comment ##')
+        print('\n## scan index; file_number; prefix; n_repeat_scan; source; speed; comment ##')
         while ii < len(self.filename_list):
             scan = self.all_scans[ii]
-            fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
-            print(ii, ';', fm.file_prefix, ';',fm.num_scans, ';',fm.source, ';',fm.speed, ';',fm.comment)
+            #fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
+            fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(scan.file_number)))
+            print(ii, ';', scan.file_number, ';', fm.file_prefix, ';',fm.num_scans, ';',fm.source, ';',fm.speed, ';',fm.comment)
             fm.plot_ifgs(fig_num=1)
             fm.plot_spectra(fig_num=2)
             plt.show()
             num_scans = scan.num_scans
             ii = ii + num_scans
+            #ii = scan.file_number + num_scans
 
     def get_all_scans(self):
         scans = []
@@ -633,12 +648,16 @@ class FtsMeasurementSet():
         filename = prefix+'_'+self.filename_list[0].split('_')[1]+'_'+num+'_ifg.csv'
         assert filename in self.filename_list, 'filename %s does not exist in the measurement set'%filename
         dex=self.filename_list.index(filename)
-        scan = self.all_scans[dex]
-        num_scans = scan.num_scans
+        scan = self.all_scans[dex] # get the scan for the file in question
+
+        # now find all scans for this measurement
         file_number_list = list(np.arange(scan.num_scans) + scan.file_number - scan.current_scan)
-        scan_list=[]
-        for ii in file_number_list:
-            scan_list.append(self.all_scans[ii])
+        file_names = []
+        scan_list = []
+        for file_number in file_number_list:
+            fname = prefix+'_'+self.filename_list[0].split('_')[1]+'_%04d'%file_number+'_ifg.csv'
+            file_names.append(fname)
+            scan_list.append(self.all_scans[self.filename_list.index(fname)])
         return scan_list
 
     def get_filenames(self,path):
@@ -778,44 +797,48 @@ class PassbandMetrics():
         return fc
 
 if __name__ == "__main__":
-    path = '/home/pcuser/data/lbird/20210320/fts_raw/d3/'
+    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210607/20210617/'
     fms = FtsMeasurementSet(path)
-    #fms.plot_all_measurements()
-    scan_num_list = []
-    # start_dex = 88
-    # n_repeat_scans = 4
-    # for ii in range(2):
-    #     scan_num_list.append(list(range(start_dex+n_repeat_scans*ii,(start_dex+n_repeat_scans)+n_repeat_scans*ii)))
-    A=52
-    scan_num_list = [[25+A,26+A,27+A,28+A],[92,93,94,95]]
-    f_lims = [[175,280],[260,400]]
-    for ii in range(len(scan_num_list)):
-        scan_indices = scan_num_list[ii]
-        scans = []
-        for scan_ii in scan_indices:
-            scans.append(fms.all_scans[scan_ii])
-        fm = FtsMeasurement(scans)
-        dex1 = np.argmin(abs(fm.f-f_lims[ii][0]))
-        dex2 = np.argmin(abs(fm.f-f_lims[ii][1]))
-        norm = np.max(fm.S_mean[dex1:dex2])
-        plt.errorbar(fm.f, fm.S_mean/norm, fm.S_std,linewidth=1,elinewidth=1,label=ii)
-        fc = PassbandMetrics().calc_center_frequency(fm.f,fm.S_mean,f_range_ghz=f_lims[ii],source_index=0)
-        bw = PassbandMetrics().calc_bandwidth(fm.f,fm.S_mean,f_range_ghz=f_lims[ii])
-        print(fc,bw)
-        plt.xlabel('Frequency (GHz)')
-        plt.ylabel('Response (arb)')
-        plt.legend()
-    #plt.show()
+    fms.plot_all_measurements()
 
-    path = '/home/pcuser/data/lbird/20210320/fts_raw/modeled_response/'
-    filename='hftv0_hft2_diplexer_model.txt'
-    pb = PassbandModel(path+filename)
-    plt.plot(pb.model[:,0],pb.model[:,2],'k--')
-    plt.plot(pb.model[:,0],pb.model[:,3],'k--')
-    plt.show()
-
-    bw1 = pb.get_bandwidth(B=pb.model[:,2],f_range_ghz=None)
-    fc1 = pb.get_center_frequency(B=pb.model[:,2],f_range_ghz=None)
-    bw2 = pb.get_bandwidth(B=pb.model[:,3],f_range_ghz=None)
-    fc2 = pb.get_center_frequency(B=pb.model[:,3],f_range_ghz=None)
-    print(fc1,bw1,fc2,bw2)
+    # path = '/home/pcuser/data/lbird/20210320/fts_raw/d3/'
+    # fms = FtsMeasurementSet(path)
+    # #fms.plot_all_measurements()
+    # scan_num_list = []
+    # # start_dex = 88
+    # # n_repeat_scans = 4
+    # # for ii in range(2):
+    # #     scan_num_list.append(list(range(start_dex+n_repeat_scans*ii,(start_dex+n_repeat_scans)+n_repeat_scans*ii)))
+    # A=52
+    # scan_num_list = [[25+A,26+A,27+A,28+A],[92,93,94,95]]
+    # f_lims = [[175,280],[260,400]]
+    # for ii in range(len(scan_num_list)):
+    #     scan_indices = scan_num_list[ii]
+    #     scans = []
+    #     for scan_ii in scan_indices:
+    #         scans.append(fms.all_scans[scan_ii])
+    #     fm = FtsMeasurement(scans)
+    #     dex1 = np.argmin(abs(fm.f-f_lims[ii][0]))
+    #     dex2 = np.argmin(abs(fm.f-f_lims[ii][1]))
+    #     norm = np.max(fm.S_mean[dex1:dex2])
+    #     plt.errorbar(fm.f, fm.S_mean/norm, fm.S_std,linewidth=1,elinewidth=1,label=ii)
+    #     fc = PassbandMetrics().calc_center_frequency(fm.f,fm.S_mean,f_range_ghz=f_lims[ii],source_index=0)
+    #     bw = PassbandMetrics().calc_bandwidth(fm.f,fm.S_mean,f_range_ghz=f_lims[ii])
+    #     print(fc,bw)
+    #     plt.xlabel('Frequency (GHz)')
+    #     plt.ylabel('Response (arb)')
+    #     plt.legend()
+    # #plt.show()
+    #
+    # path = '/home/pcuser/data/lbird/20210320/fts_raw/modeled_response/'
+    # filename='hftv0_hft2_diplexer_model.txt'
+    # pb = PassbandModel(path+filename)
+    # plt.plot(pb.model[:,0],pb.model[:,2],'k--')
+    # plt.plot(pb.model[:,0],pb.model[:,3],'k--')
+    # plt.show()
+    #
+    # bw1 = pb.get_bandwidth(B=pb.model[:,2],f_range_ghz=None)
+    # fc1 = pb.get_center_frequency(B=pb.model[:,2],f_range_ghz=None)
+    # bw2 = pb.get_bandwidth(B=pb.model[:,3],f_range_ghz=None)
+    # fc2 = pb.get_center_frequency(B=pb.model[:,3],f_range_ghz=None)
+    # print(fc1,bw1,fc2,bw2)
