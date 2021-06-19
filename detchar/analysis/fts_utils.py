@@ -118,14 +118,9 @@ class FtsData():
 
     def print_metadata(self):
         attrs = vars(self)
-        # del attrs['x']
-        # del attrs['y']
         for key in attrs:
             if key not in ['x','y']:
                 print(key, '::', attrs[key])
-        #print(', '.join("%s: %s" % item for item in attrs.items()))
-        # meta_list = [file,version,file_prefix,file_number,num_scans,current_scan,resolution,nyquist,num_smaples,speed,zpd,buffer_size,date,juldate,source,comment,x_label,y_label]
-        # print('file: ', self.file)
 
 
 class TimeDomainDataProcessing():
@@ -530,20 +525,29 @@ class IfgToSpectrum(TimeDomainDataProcessing):
 
 
 class FtsMeasurement(IfgToSpectrum):
+    ''' Analyze a set of identical FTS sweeps '''
     def __init__(self,scan_list):
+        self.scan_list = scan_list # holds all info
+
+        # metadata stuff
         self.file_prefix = scan_list[0].file_prefix
-        self.first_file_number = scan_list[0].file_number
-        self.last_file_number = scan_list[-1].file_number
         self.comment = scan_list[0].comment
         self.source = scan_list[0].source
-
-        self.scan_list = scan_list
-        self.x = self.scan_list[0].x
+        self.file_number_list = self.__get_file_numbers()
         self.speed = self.scan_list[0].speed
         self.num_scans = self.scan_list[0].num_scans
         self.num_samples = self.scan_list[0].num_samples
+
+        # data
+        self.x = self.scan_list[0].x
         self.y_mean, self.y_std = self.get_ifg_mean_and_std()
         self.f, self.S, self.S_mean, self.S_std = self.get_spectra_mean_and_std()
+
+    def __get_file_numbers(self):
+        file_number_list = []
+        for scan in self.scan_list:
+            file_number_list.append(scan.file_number)
+        return file_number_list
 
     def plot_ifgs(self,fig_num=1):
         plt.figure(fig_num)
@@ -566,7 +570,7 @@ class FtsMeasurement(IfgToSpectrum):
         plt.legend()
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
-        plt.title('Spectra for %s, file numbers %s - %s'%(self.file_prefix,self.first_file_number,self.last_file_number))
+        plt.title('Spectra for %s file numbers %s - %s'%(self.file_prefix,self.file_number_list[0],self.file_number_list[-1]))
 
     def get_ifg_mean_and_std(self):
         ys = np.zeros((self.num_samples,self.num_scans))
@@ -593,18 +597,39 @@ class FtsMeasurement(IfgToSpectrum):
         S_std = np.std(S,axis=1)
         return f, S, S_mean, S_std
 
+    def print_measurement_metadata(self):
+        attrs = vars(self)
+        exclude_list = ['scan_list','x','y_mean','y_std','f','S','S_mean','S_std']
+        for key in attrs:
+            if key not in exclude_list:
+                print(key, '::', attrs[key])
+
 class FtsMeasurementSet():
     ''' class for analysis of an FTS measurement set.
-        Data files are stored in a single directory with filename structure:
-        <prefix>_YrMthDay_<4 digit scan number>
-        The prefix is typically the readout channel row select.
-        Example: rs03_210318_0002.csv is row select 3, measurement taken
-        on March 18, 2021 and is the 3nd scan (zero indexed)
 
-        Nomenclature:
-        Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
-        Measurement: N repeat scans for a given detector
-        scan: one sweep of the FTS
+        INPUT:
+            path: <str> to folder which holds fts data csv files
+
+            Data files are stored in a single directory with filename structure:
+            <prefix>_YrMthDay_<4 digit scan number>.csv
+            The prefix is typically the readout channel row select.
+            Example: rs03_210318_0002.csv is row select 3, measurement taken
+            on March 18, 2021 and is the 3nd scan (zero indexed)
+
+        ATTRIBUTES:
+            path: <str> path to folder which holds fts data csv files
+            filename_list: <list> of all csv files
+            all_scans: <list> of FtsData instances, one per file in filename_list
+            prefix_set: <set> of prefixes in the Measurement Set (in standard practice these are the row selects)
+            num_scans: <int> number of individual FTS scans
+            measurement_filenames: <list> of "measurements", unique instances of FtsMeasurement
+            measurement_filenames: nested <list> of filenames for each "measurement"
+            measurement_scan_list: nested <list> of scans for each "measurement"
+
+        NOMENCLATURE:
+            Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
+            Measurement: N repeat scans for a given detector
+            scan: one sweep of the FTS
     '''
     def __init__(self, path):
         self.path = path
@@ -612,22 +637,10 @@ class FtsMeasurementSet():
             self.path = path+'/'
         self.filename_list = self.get_filenames(path)
         self.all_scans = self.get_all_scans()
-
-    def plot_all_measurements(self,showfig=True,savefig=False):
-        ''' plot/save all measurement ifgs and spectra '''
-        ii = 0
-        print('\n## scan index; file_number; prefix; n_repeat_scan; source; speed; comment ##')
-        while ii < len(self.filename_list):
-            scan = self.all_scans[ii]
-            #fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(ii)))
-            fm = FtsMeasurement(self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(scan.file_number)))
-            print(ii, ';', scan.file_number, ';', fm.file_prefix, ';',fm.num_scans, ';',fm.source, ';',fm.speed, ';',fm.comment)
-            fm.plot_ifgs(fig_num=1)
-            fm.plot_spectra(fig_num=2)
-            plt.show()
-            num_scans = scan.num_scans
-            ii = ii + num_scans
-            #ii = scan.file_number + num_scans
+        self.prefix_set = self.get_prefix_set() # normally the row select
+        self.num_scans = len(self.filename_list)
+        self.measurements, self.measurement_filenames, self.measurement_scan_list = self.get_fts_measurements() # nested list of FTS measurement filenames
+        self.num_measurements = len(self.measurements)
 
     def get_all_scans(self):
         scans = []
@@ -635,17 +648,51 @@ class FtsMeasurementSet():
             scans.append(load_fts_scan_fromfile(self.path+file))
         return scans
 
-    def isSingleDate(self):
-        ''' returns boolean if the folder has scans taken on more than
-            one date
-        '''
-        result = True
-        date = self.filename_list[0].split('_')[1]
-        for fname in self.filename_list:
-            if fname.split('_')[1] != date:
-                result = False
-                break
-        return result
+    def get_prefix_set(self):
+        prefix_list = []
+        for scan in self.all_scans:
+            prefix_list.append(scan.file_prefix)
+        return set(prefix_list)
+
+    def get_fts_measurements(self):
+        ''' Group individual scans into measurements '''
+        ii = 0
+        fts_meas_filenames=[]
+        fts_meas_scans=[]
+        fts_meas = []
+        while ii < self.num_scans:
+            scan = self.all_scans[ii]
+            meas_filenames, meas_scans = self.get_scans_from_prefix_and_filenumber(scan.file_prefix,'%04d'%(scan.file_number))
+            fts_meas.append(FtsMeasurement(meas_scans))
+            fts_meas_filenames.append(meas_filenames)
+            fts_meas_scans.append(meas_scans)
+            num_scans = scan.num_scans
+            ii = ii + scan.num_scans
+        return fts_meas, fts_meas_filenames, fts_meas_scans
+
+    def plot_all_measurements(self,showfig=True,savefig=False):
+        ''' plot/save all measurement ifgs and spectra '''
+        for ii, measurement in enumerate(self.measurements):
+            measurement.print_measurement_metadata()
+            measurement.plot_ifgs(fig_num=1)
+            measurement.plot_spectra(fig_num=2)
+            plt.show()
+
+    def plot_all_measurements_for_prefix(self,prefix='rs03',fig_num=1):
+        assert prefix in list(self.prefix_set), print(prefix + 'not in prefix_set: '%self.prefix_set)
+        fig = plt.figure(fig_num)
+        fig.suptitle(prefix)
+        for ii, measurement in enumerate(self.measurements):
+            if prefix == measurement.file_prefix:
+                plt.subplot(211)
+                plt.plot(measurement.x,measurement.y_mean,label=measurement.file_number_list[0])
+                plt.legend(loc='upper right')
+                plt.subplot(212)
+                plt.plot(measurement.f,measurement.S_mean)
+        plt.xlabel('Frequency (GHz)')
+        plt.ylabel('Response (arb)')
+
+        plt.show()
 
     def get_scans_from_prefix_and_filenumber(self,prefix,num):
         assert self.isSingleDate(), "The measurement set contains data from more than one day"
@@ -662,7 +709,19 @@ class FtsMeasurementSet():
             fname = prefix+'_'+self.filename_list[0].split('_')[1]+'_%04d'%file_number+'_ifg.csv'
             file_names.append(fname)
             scan_list.append(self.all_scans[self.filename_list.index(fname)])
-        return scan_list
+        return file_names, scan_list
+
+    def isSingleDate(self):
+        ''' returns boolean if the folder has scans taken on more than
+            one date
+        '''
+        result = True
+        date = self.filename_list[0].split('_')[1]
+        for fname in self.filename_list:
+            if fname.split('_')[1] != date:
+                result = False
+                break
+        return result
 
     def get_filenames(self,path):
         files = self.gather_csv(path)
@@ -703,42 +762,6 @@ class FtsMeasurementSet():
                 if file.split('_')[2]==run:
                     orderedfiles.append(file)
         return orderedfiles
-
-    def average_ifgs(self, filenames,v=5.0,deg=3, notch_freqs=[60.0,120.0,180.0,240.0,300.0,420.0,480.0,540.0], plotfig=False):
-        ''' remove drift and noise pickup from several IFG and then average together '''
-
-        for ii in range(len(filenames)):
-            df = load_fts_scan_fromfile(filenames[ii])
-            y = NotchFrequencies(df.x,df.y,v=df.speed,freqs=notch_freqs,df=.2,plotfig=False) # remove noise pickup
-            y=RemoveDrift(x,y,deg=deg,plotfig=False) # remove detector drift
-            if plotfig:
-                ax1 = plt.subplot(211)
-                plt.plot(x,y,label=str(i))
-                plt.title('Individual IFGs post processing')
-            if i==0:
-                y_all = y
-            else:
-                y_all=np.vstack((y_all,y))
-
-        if len(filenames) == 1:
-            m = y_all * 1.
-            s = y_all * 0.
-        else:
-            m = np.mean(y_all,axis=0)
-            s = np.std(y_all,axis=0)
-
-        if plotfig:
-
-            plt.figure(1,figsize = (12,6))
-            plt.legend()
-            plt.subplot(212, sharex=ax1, sharey=ax1) #get plots to zoom together
-            plt.title('Averaged response')
-            #plt.errorbar(x=x, y=m, yerr=s)
-            plt.plot(x,m)
-            plt.xlabel('OPD (cm)')
-            plt.ylabel('Response (arb)')
-            plt.show()
-        return x,m,s
 
 class PassbandModel():
     def __init__(self,txtfilename):
