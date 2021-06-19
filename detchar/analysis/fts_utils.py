@@ -116,7 +116,6 @@ class FtsData():
         f,B = IfgToSpectrum().to_spectrum_simple(self.x,self.y,self.speed,poly_filter_deg=1,plotfig=True)
         return f,B
 
-<<<<<<< HEAD
     def print_metadata(self):
         attrs = vars(self)
         # del attrs['x']
@@ -129,8 +128,6 @@ class FtsData():
         # print('file: ', self.file)
 
 
-=======
->>>>>>> 69b22f894cca088922211b6243483e7cebfec436
 class TimeDomainDataProcessing():
     def remove_poly(self,x,y,deg=1):
         ''' remove polynomial from detector response
@@ -188,7 +185,7 @@ class TimeDomainDataProcessing():
             plt.show()
         return y_filt
 
-class IfgToSpectrum():
+class IfgToSpectrum(TimeDomainDataProcessing):
 
     # lower level methods ----------------------------------------------------------
     def get_zpd(self,x,y,plotfig=False):
@@ -474,10 +471,9 @@ class IfgToSpectrum():
 
     def to_spectrum(self,x,y,poly_filter_deg=1,window="hanning"):
         print('UNFINISHED')
-        tddp = TimeDomainDataProcessing()
 
         # get phase from low res, double-sided IFG
-        y_filt = tddp.remove_poly(x,y,poly_filter_deg)
+        y_filt = self.remove_poly(x,y,poly_filter_deg)
         zpd_index, zpd = self.get_zpd(x,y_filt,plotfig=False)
         x_sym, y_sym = self.get_double_sided_ifg(x,y_filt,zpd_index,plotfig=False)
         x_sym, y_sym = self.window_and_shift(x,y_filt,window)
@@ -496,12 +492,12 @@ class IfgToSpectrum():
         return f,B
 
     def to_spectrum_simple(self,x,y,v,poly_filter_deg=1,plotfig=False):
-        tddp = TimeDomainDataProcessing()
+
         samp_int=x[1]-x[0]
         N=len(y)
         f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
-        y_filt = tddp.standardProcessing(x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=poly_filter_deg,plotfig=False)
-        #y_filt = tddp.remove_poly(x,y,poly_filter_deg)
+        y_filt = self.standardProcessing(x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=poly_filter_deg,plotfig=False)
+        #y_filt = self.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
         if plotfig:
             plt.plot(f,B,'b-',label='no window')
@@ -512,8 +508,7 @@ class IfgToSpectrum():
 
     def to_spectrum_alt(self,x,y,poly_filter_deg=1,zpd_index=None,plotfig=False):
 
-        tddp = TimeDomainDataProcessing()
-        y_filt = tddp.remove_poly(x,y,poly_filter_deg)
+        y_filt = self.remove_poly(x,y,poly_filter_deg)
         x_highres, y_highres = self.make_high_res_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
         samp_int=x[1]-x[0]
         N = len(x_highres)
@@ -526,7 +521,15 @@ class IfgToSpectrum():
             #plt.show()
         return f,B
 
-class FtsMeasurement():
+    def peak_normalize(self,x,y,x_range):
+        ''' normalize y to max(y) with in the x_range '''
+        dex1 = np.argmin(abs(x-x_range[0]))
+        dex2 = np.argmin(abs(x-x_range[1]))
+        y_max = np.max(y[dex1:dex2])
+        return y/y_max
+
+
+class FtsMeasurement(IfgToSpectrum):
     def __init__(self,scan_list):
         self.file_prefix = scan_list[0].file_prefix
         self.first_file_number = scan_list[0].file_number
@@ -577,7 +580,7 @@ class FtsMeasurement():
         Ss = []
         for ii in range(self.num_scans):
             scan = self.scan_list[ii]
-            f,S = IfgToSpectrum().to_spectrum_simple(scan.x,scan.y,self.speed,poly_filter_deg=1,plotfig=False)
+            f,S = self.to_spectrum_simple(scan.x,scan.y,self.speed,poly_filter_deg=1,plotfig=False)
             #f,S = IfgToSpectrum().to_spectrum_alt(scan.x,scan.y,poly_filter_deg=1,zpd_index=None,plotfig=False)
             Ss.append(S)
 
