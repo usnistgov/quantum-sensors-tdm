@@ -14,7 +14,7 @@ from . import serial_instrument
 #import serial_instrument
 
 
-class VelmexSerial(serial_instrument.SerialInstrument):
+class Velmex(serial_instrument.SerialInstrument):
     '''
     Velmex VXM Stepper Motor Communication Class.  
     Hardware allows for control of two motors, but this class only controls one. 
@@ -27,7 +27,7 @@ class VelmexSerial(serial_instrument.SerialInstrument):
 
         '''
 
-        super(VelmexSerial, self).__init__(port, baud=9600, bytesize=8, parity=serial.PARITY_NONE,
+        super(Velmex, self).__init__(port, baud=9600, bytesize=8, parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.05, readtimeout=0.05)
         
         # identity string of the instrument
