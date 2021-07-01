@@ -108,12 +108,13 @@ def software_lock_in(v_signal, v_reference, reference_type='square',response_typ
 
     return I, Q, v_reference_amp
 
-def software_lock_in_acquisition(signal_index=0,reference_index,reference_type='square',response_type='sine',
+def software_lock_in_acquisition(ec, signal_index,reference_index,reference_type='square',response_type='sine',
                                  debug=False):
     '''
     Acquire data and return the locked in signal for each row in one column of data.
 
     input:
+    ec: instance of easyClient
     signal_index: column index in EasyClient.getNewData return which corresponds to the signal.
     reference_index: column index in EasyClient.getNewData return which corresponds to the reference
     reference_type: 'square' or 'sine'
@@ -122,8 +123,7 @@ def software_lock_in_acquisition(signal_index=0,reference_index,reference_type='
 
     output:
     '''
-    # get the data
-    ec = EasyClient()
+    
     #dataOut[col,row,frame,error=0/fb=1]
     dataOut = ec.getNewData(delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3)
     I,Q,v_ref_amp = software_lock_in(dataOut[signal_index,:,:,1],datatOut[reference_index,:,:,0],
