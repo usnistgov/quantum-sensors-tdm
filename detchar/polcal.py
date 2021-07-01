@@ -26,6 +26,7 @@ from tools import *
 # 1) write XY stage class
 # 2) ability to handle arbitrary row to state orders
 # 3) include bayname and db_cardname?
+# 4) limits to input angles so that wires of IR source don't rip.
 
 
 # questions: is an instance of easy client the right thing for every point?
