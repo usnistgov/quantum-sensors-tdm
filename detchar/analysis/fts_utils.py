@@ -272,7 +272,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
         '''
         samp_int = x[1]-x[0]
         ffty=scipy.fftpack.fft(y)
-        f=scipy.fftpack.fftfreq(len(x),samp_int)
+        f=scipy.fftpack.fftfreq(len(y),samp_int)
 
         if plotfig:
             plt.figure(1,figsize = (12,6))
@@ -292,38 +292,132 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             plt.show()
         return f,ffty
 
+    def fit_angle(self,frequencies,theta,min_poly,max_poly,deg=1,PLOT=False,units="wavenumber"):
+        '''
+        function to fit angle versus frequency with a polynomial
+        probably best to fit in complex plane
+
+        inputs:
+        frequencies-
+        theta-
+        fmin-
+        fmax-
+        deg-
+
+        outputs:
+        fit_dict-
+             fit_dict['fit']-             output of curve fit
+             fit_dict['fit_result']       y data for the fitted result
+             fit_dict['initial_guess']    y data for the inital guess for fitting
+        '''
+
+        if units == "wavenumber":
+            unit_scale = 1
+        elif units == "GHz":
+            unit_scale = 30
+        elif units == "THz":
+            unit_scale = 30/1000.
+        else:
+            print("please select a valid unit type")
+            return
+
+        theta_complex = np.hstack((np.sin(theta),np.cos(theta)))
+
+        print("min_poly,max_poly",min_poly,max_poly)
+
+        frequencies_use = frequencies[(frequencies*unit_scale>min_poly) & (frequencies*unit_scale<max_poly)]
+        theta_use = theta[(frequencies*unit_scale>min_poly) & (frequencies*unit_scale<max_poly)]
+        theta_complex = np.hstack((np.sin(theta_use),np.cos(theta_use)))
+
+
+        if deg == 0:
+            p0 = np.asarray([np.median(theta_use)])
+            upper_bound = (np.pi)
+            lower_bound = (-np.pi)
+            bounds = (lower_bound,upper_bound)
+        elif deg == 1:
+            p0 = np.asarray((np.median(theta_use),0))
+            upper_bound = (np.pi,np.inf)
+            lower_bound = (-np.pi,-np.inf)
+            bounds = (lower_bound,upper_bound)
+        elif deg == 2:
+            p0 = np.asarray([np.median(theta_use),0,0])
+            upper_bound = (np.pi,np.inf,np.inf)
+            lower_bound = (-np.pi,-np.inf,-np.inf)
+            bounds = (lower_bound,upper_bound)
+        else:
+            print("Please choose a polynomial degree of 0,1, or 2")
+            return None
+
+        print(p0)
+
+
+
+        fit = curve_fit(poly_angle_complex_plane,frequencies_use,theta_complex,p0 = p0,bounds = bounds)
+        initial_guess = poly_mod_2pi(frequencies,p0)
+        fit_result = poly_mod_2pi(frequencies,fit[0])
+        fit_dict = {"fit":fit,"fit_result":fit_result,"initial_guess":initial_guess}
+
+        if PLOT:
+            plt.figure(figsize = (12,6))
+            plt.subplot(211)
+            plt.title("fit_angle function output")
+            plt.xlabel("Fitted domain "+units)
+            plt.ylabel("Phase (Radians)")
+            plt.plot(np.sort(frequencies*unit_scale),initial_guess[np.argsort(frequencies)],label = "initial guess")
+            plt.plot(np.sort(frequencies*unit_scale),fit_result[np.argsort(frequencies)],label = "fit result")
+            plt.plot(frequencies*unit_scale,theta,"o",mec = "k",label = "data")
+            plt.xlim(min_poly,max_poly)
+            plt.legend()
+            plt.subplot(212)
+            plt.xlabel("Entire domain "+units)
+            plt.ylabel("Phase (Radians)")
+            plt.plot(np.sort(frequencies*unit_scale),initial_guess[np.argsort(frequencies)],label = "initial guess")
+            plt.plot(np.sort(frequencies*unit_scale),fit_result[np.argsort(frequencies)],label = "fit result")
+            plt.plot(frequencies*unit_scale,theta,".",label = "data")
+            plt.fill([min_poly,max_poly,max_poly,min_poly], [-1.25*np.pi,-1.25*np.pi,1.25*np.pi,1.25*np.pi], 'grey', alpha=0.4)
+            #plt.xlim(fmin,fmax)
+            plt.ylim(-1.25*np.pi,1.25*np.pi)
+            plt.legend()
+            plt.show()
+
+        return fit_dict
+
+
     # medium level methods --------------------------------------------------------------
-    def get_double_sided_ifg(self,x,y,zpd_index=None,x_to_opd=True,
-                             fftpacking=True,plotfig=False):
+    def get_symmetric_ifg(self,x,y,zpd_index=None,x_to_opd=False,
+                             fftpacking=False,plotfig=False):
         ''' return only the symmetric portion of an asymmetric IFG given the index of the
-            zero path difference (zpd_index).  This algorithm always returns an even number of
-            data points.  It returns -\delta_max -> +\delta_max - \delta_res.
+            zero path difference (zpd_index).
         '''
         if zpd_index == None:
             zpd_index, zpd_val = self.get_zpd(x,y)
         else:
             zpd_val = x[zpd_index]
+
         N=zpd_index*2
-        xsym=x[0:N]
-        ysym=y[0:N] # length of xsym, ysym always odd by construction
+        #x_sym=x[0:N]
+        #y_sym=y[0:N] # length of x_sym, y_sym always odd by construction
+        x_sym=x[0:N+1]
+        y_sym=y[0:N+1]
         if fftpacking:
-            #xsym,ysym = self.ascending_to_standard_fftpacking(xsym,ysym,zpd_index)
-            xsym = fftshift(xsym) ; ysym = fftshift(ysym)
+            #x_sym,y_sym = self.ascending_to_standard_fftpacking(x_sym,y_sym,zpd_index)
+            x_sym = fftshift(x_sym) ; y_sym = fftshift(y_sym)
         if x_to_opd:
-            xsym = xsym - zpd_val
+            x_sym = x_sym - zpd_val
             x=x-zpd_val
 
         if plotfig:
             plt.figure(1,figsize = (12,6))
             plt.plot(x,y,label = "Entire interferogram")
             plt.plot(x[zpd_index],y[zpd_index],'ro',label='ZPD')
-            plt.plot(xsym,ysym,label = "Double-sided interferogram")
+            plt.plot(x_sym,y_sym,label = "Double-sided interferogram")
             plt.xlabel('OPD (cm)')
             plt.ylabel('Detector response (arb)')
-            plt.title('IFG')
+            plt.title('Symmetric portion of IFG')
             plt.legend()
             plt.show()
-        return xsym,ysym
+        return x_sym,y_sym
 
     def get_zero_padded_high_res_ifg(self, x, y, zpd_index=None, add_linear_weight=True,
                                      fftpacking=True, plotfig=False, debug=False):
@@ -384,13 +478,193 @@ class IfgToSpectrum(TimeDomainDataProcessing):
 
     def get_phase_spectrum(self,x,y,zpd_index):
         ''' return frequency and phase spectrum from double sided IFG in fft standard packing '''
-        x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,x_to_opd=True,
+        x_ds,y_ds = self.get_symmetric_ifg(x,y,zpd_index,x_to_opd=True,
                                              fftpacking=True,plotfig=False) # packing is "standard"
         f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
         phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
         return f_ds, phi_ds
 
     # high-level methods -------------------------------------------------------------------
+    def get_phase_corrected_spectrum(self,x,y,ZPD = None,
+                        min_filter=None,
+                        max_filter=None,
+                        algorithm='Richards',
+                        phase_fit_method = "interp",
+                        phase_fit_degree = 1,
+                        min_poly = 210/30.,
+                        max_poly = 300/30.,
+                        units = "wavenumber",
+                        window = True,
+                        debug=False):
+        '''
+        Full FTS analysis following for single sided IFGs using an algorithm of 'Mertz' or 'Richards'
+
+        written by Jordan Wheeler
+
+        inputs:
+        x-                  distances of interferogram points in cm from 0 to total throw L
+        y-                  interferogram intensity values
+        ZPD-                the location of the white light fringe in same units as x.  if not specified program will try to automatically find it.
+        min_filter-         minimum frequency below which to filter signal out of if using method Richards
+        max_filter-         maximum frequency above which to filter signal out of if using method Richards
+        algorithm-          Mertz or Richards i.e. fix phase in frequency space or interferogram space
+        phase_fit_method-   either poly or interp - poly is good for extrapolating the phase correction to frequencies with little S/N
+        phase_fit_degree-   the degree of polynomial for fitting the phase if using phase_fit_method = poly can be 0, 1, or 2
+        min_poly-           min for which to fit phase with if using phase_fit_method = poly (units wavenumber)
+        max_poly-           max for which to fit phase with if using phase_fit_method = poly (units wavenumber)
+        units-              the units for plotting can be wavenumber, GHz, or THz default wavenumber cm^-1
+        window-             <bool> if true apply hanning window
+        debug-              make a bunch of plots or not - always make plots if it is the first run
+
+        outputs:
+        f-                  frequencies of in wavenumber of spectrum
+        B-                  complex fourier transformed spectrum with signal
+                            in the real component and noise in the imaginary component
+
+        '''
+        if phase_fit_method != "poly":
+            phase_fit_method = "interp"
+
+        if units == "wavenumber":
+            unit_scale = 1
+        elif units == "GHz":
+            unit_scale = icm2ghz
+        elif units == "THz":
+            unit_scale = icm2ghz/1000
+        else:
+            print("please select a valid unit type")
+            return
+
+        samp_int = x[1]-x[0] # used in plotting later on
+        y_orig = y.copy()
+        y = self.remove_poly(x,y,deg=1)
+        # find ZPD -------------------------------------------------------------
+        if ZPD == None:
+            ZPD_index, ZPD = self.get_zpd(x,y,plotfig=debug)
+        else:
+            ZPD_index = np.argmin(np.abs(x-ZPD))
+            ZPD = x[ZPD_index]
+
+        # Work on symmetric portion of ifg --------------------------------------------
+        # get phase of symmeric portion of ifg ----------------------------------------
+        x_sym,y_sym = self.get_symmetric_ifg(x,y,zpd_index=ZPD_index,x_to_opd=False,
+                                 fftpacking=False,plotfig=debug)
+        if window:
+            y_sym = scipy.fftpack.ifftshift(y_sym*np.hanning(len(y_sym))) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
+        else:
+            y_sym = scipy.fftpack.ifftshift(y_sym)
+        x_sym = scipy.fftpack.ifftshift(x_sym) # packing is now 0,1,2,...N/2,N/2-1,N/2-2,...1
+        f_sym,S_sym = self.get_fft(x_sym,y_sym,plotfig=debug) #FFTandFrequencies(x_sym,y_sym,plotfig=plotfig,units = units)
+        phase_sym = np.angle(S_sym)
+
+        # Work on full (mirrored) double-sided IFG -------------------------------------
+        # force a symmetric IFG from the single sided IFG by mirroring the IFG ---------
+        # _ds is for "double sided"
+        x_ds = np.concatenate((-x[2*ZPD_index+1:][::-1]+ZPD,x-ZPD))
+        y_ds = np.concatenate((y[2*ZPD_index+1:][::-1],y)) # mirror the -delta portion not measured
+        if window:
+            y_ds = scipy.fftpack.ifftshift(np.hanning(len(y_ds))*y_ds)
+        else:
+            y_ds = scipy.fftpack.ifftshift(y_ds)
+        x_ds = scipy.fftpack.ifftshift(x_ds)
+        f,S = self.get_fft(x_ds,y_ds,plotfig=debug)
+
+        # interpolate phase information to resolution of mirrored double sided ifg
+        interp_func = scipy.interpolate.interp1d(scipy.fftpack.fftshift(f_sym),
+                                                 scipy.fftpack.fftshift(phase_sym),
+                                                 kind = "linear",
+                                                 bounds_error = False,
+                                                 fill_value = 0)
+
+        if phase_fit_method == "poly":
+            fit_dict = self.fit_angle(f_sym,phase_sym,min_poly,max_poly,deg=phase_fit_degree,plotfig=debug,units=units)
+            phase_highres = poly_mod_2pi(f,fit_dict['fit'][0])
+        else:
+            phase_highres = self.interp_angle(f,f_sym,phase_sym,debug = False)
+
+        # do phase correction ---------------------------------------------------------
+        if algorithm=='Mertz': # phase correct in frequency spectrum space
+            S_corr = S*np.exp(-1j*phase_highres)
+
+        elif algorithm=='Richards': #phase correct in interferogram space
+            if min_filter: # since you are Fourier transforming to correct phase you might as well do a frequency filter
+                if max_filter:
+                    boxcar = np.zeros(len(y_ds))
+                    boxcar[(f*unit_scale>min_filter) & (f*unit_scale<max_filter)] = 1
+                    boxcar[(f*unit_scale<-1*min_filter) & (f*unit_scale>-1*max_filter)] = 1
+                else:
+                    print("please specify both min_filter and max_filter")
+            else:
+               boxcar = np.ones(len(y_ds))  # do nothing
+
+            phase_ifft = np.fft.ifft(np.exp(-1j*phase_highres)*boxcar) # interpolate between points
+            N=len(phase_ifft)
+            phase_ifft_sym = scipy.fftpack.fftshift(phase_ifft)
+
+            # convolve in interferogram space and trim extra stuff from convolution
+            y_corr = np.real(signal.convolve(scipy.fftpack.fftshift(y_ds),scipy.fftpack.fftshift(phase_ifft)))[N//2:3*N//2]
+            if window:
+                y_corr = y_corr*np.hanning(len(y_corr)) #appodize should be made into option
+            else:
+                pass
+            f,S_corr = self.get_fft(x_ds,scipy.fftpack.ifftshift(y_corr),plotfig=debug)
+
+        if debug:
+            # fig 1: ifg and location of zpd
+            plt.figure(1)
+            plt.title("Manually specified Zero Path Length difference (ZPD) location")
+            plt.plot(x,y)
+            plt.plot(x[ZPD_index],y[ZPD_index],"*",label = "ZPD")
+            plt.legend()
+
+            # fig 2 symmetric ifg with hanning window applied (if asked)
+            plt.figure(2)
+            plt.title(window +" window applied")
+            plt.plot(x_sym,y_sym,label = 'data')
+            plt.plot(x_sym,np.hanning(len(y_sym))*np.max(np.abs(y_sym)),label = 'scaled window')
+            plt.plot(x_sym,y_sym*np.hanning(len(y_sym)),label ='windowed data')
+            plt.legend()
+            plt.xlabel("Path length (cm)")
+            plt.ylabel("Power")
+
+            # fig 3: symmetric ifg with proper indexing
+            plt.figure(3)
+            plt.title("Proper indexing for FFT\nWhite light fringe at 0\nPoint to left of white light fringe at index N")
+            plt.plot(y_sym)
+            plt.ylabel("Power")
+            plt.xlabel("Index")
+            #plt.show()
+
+            # fig 4: mirrored double sided ifg
+            plt.figure(figsize = (12,6))
+            plt.title("mirroring interferogram")
+            plt.plot(x-ZPD,y,linewidth = 2,label = "full interferogram")
+            plt.plot(x_sym,y_sym,linewidth = 2,label = "symmetric portion")
+            plt.plot(x_ds, y_ds,linewidth = 2,label = "mirrored portion")
+
+            # fig 5: check that white light fringe is at index 0
+            plt.figure()
+            plt.title("Proper indexing for FFT\nWhite light fringe at 0\nPoint to left of white light fringe at index N")
+            plt.plot(y_ds)
+            plt.ylabel("Power")
+            plt.xlabel("Index")
+            #plt.show()
+
+            # fig 6: interpolated phase
+            plt.figure(figsize = (12,6))
+            plt.title("Fitting of phase, currently using method " + phase_fit_method)
+            plt.plot(fsym*unit_scale,theta,"o",mec = "k",label = "theta from symmetric interferogram")
+            plt.plot(f*unit_scale,theta_highres_2,".",label = "theta interpolated to higher resolution in complex plane")
+            if phase_fit_method == "poly":
+                plt.plot(np.sort(f*unit_scale),theta_highres_3[np.argsort(f)],label = "theta fitted polynomial")
+            plt.ylim(-5,5)
+            plt.xlabel(units)
+            plt.legend()
+            #plt.show()
+
+
+        return f,S_corr
+
     def phase_correction_mertz(self,x,y,zpd_index=None,plotfig=False):
         ''' Generate phase corrected spectrum using method from
             L. Mertz. Rapid scanning fourier transform spectroscopy.
@@ -404,7 +678,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             zpd_index, zpd_val = self.get_zpd(x, y, plotfig=False)
         f_ds, phi_ds = self.get_phase_spectrum(x,y,zpd_index)
 
-        # x_ds,y_ds = self.get_double_sided_ifg(x,y,zpd_index,x_to_opd=True,
+        # x_ds,y_ds = self.get_symmetric_ifg(x,y,zpd_index,x_to_opd=True,
         #                                      fftpacking=True,plotfig=False) # packing is "standard"
         # f_ds, B_ds = self.get_fft(x_ds, y_ds*fftshift(np.hanning(len(y_ds))), plotfig=False) # apodize ifg before FFT
         # phi_ds = np.arctan(np.imag(B_ds)/np.real(B_ds)) # output between -pi/2 and pi/2
@@ -470,7 +744,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
         # get phase from low res, double-sided IFG
         y_filt = self.remove_poly(x,y,poly_filter_deg)
         zpd_index, zpd = self.get_zpd(x,y_filt,plotfig=False)
-        x_sym, y_sym = self.get_double_sided_ifg(x,y_filt,zpd_index,plotfig=False)
+        x_sym, y_sym = self.get_symmetric_ifg(x,y_filt,zpd_index,plotfig=False)
         x_sym, y_sym = self.window_and_shift(x,y_filt,window)
         f_sym, S_sym = self.get_fft(x_sym, y_sym,plotfig=False)
         theta_lowres=np.angle(S_sym)
@@ -824,48 +1098,27 @@ class PassbandMetrics():
         return fc
 
 if __name__ == "__main__":
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210607/20210617/'
-    fms = FtsMeasurementSet(path)
-    fms.plot_all_measurements()
-
-    # path = '/home/pcuser/data/lbird/20210320/fts_raw/d3/'
+    # path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210607/20210617/'
     # fms = FtsMeasurementSet(path)
-    # #fms.plot_all_measurements()
-    # scan_num_list = []
-    # # start_dex = 88
-    # # n_repeat_scans = 4
-    # # for ii in range(2):
-    # #     scan_num_list.append(list(range(start_dex+n_repeat_scans*ii,(start_dex+n_repeat_scans)+n_repeat_scans*ii)))
-    # A=52
-    # scan_num_list = [[25+A,26+A,27+A,28+A],[92,93,94,95]]
-    # f_lims = [[175,280],[260,400]]
-    # for ii in range(len(scan_num_list)):
-    #     scan_indices = scan_num_list[ii]
-    #     scans = []
-    #     for scan_ii in scan_indices:
-    #         scans.append(fms.all_scans[scan_ii])
-    #     fm = FtsMeasurement(scans)
-    #     dex1 = np.argmin(abs(fm.f-f_lims[ii][0]))
-    #     dex2 = np.argmin(abs(fm.f-f_lims[ii][1]))
-    #     norm = np.max(fm.S_mean[dex1:dex2])
-    #     plt.errorbar(fm.f, fm.S_mean/norm, fm.S_std,linewidth=1,elinewidth=1,label=ii)
-    #     fc = PassbandMetrics().calc_center_frequency(fm.f,fm.S_mean,f_range_ghz=f_lims[ii],source_index=0)
-    #     bw = PassbandMetrics().calc_bandwidth(fm.f,fm.S_mean,f_range_ghz=f_lims[ii])
-    #     print(fc,bw)
-    #     plt.xlabel('Frequency (GHz)')
-    #     plt.ylabel('Response (arb)')
-    #     plt.legend()
-    # #plt.show()
-    #
-    # path = '/home/pcuser/data/lbird/20210320/fts_raw/modeled_response/'
-    # filename='hftv0_hft2_diplexer_model.txt'
-    # pb = PassbandModel(path+filename)
-    # plt.plot(pb.model[:,0],pb.model[:,2],'k--')
-    # plt.plot(pb.model[:,0],pb.model[:,3],'k--')
-    # plt.show()
-    #
-    # bw1 = pb.get_bandwidth(B=pb.model[:,2],f_range_ghz=None)
-    # fc1 = pb.get_center_frequency(B=pb.model[:,2],f_range_ghz=None)
-    # bw2 = pb.get_bandwidth(B=pb.model[:,3],f_range_ghz=None)
-    # fc2 = pb.get_center_frequency(B=pb.model[:,3],f_range_ghz=None)
-    # print(fc1,bw1,fc2,bw2)
+    # fms.plot_all_measurements()
+
+    #fname = 'rs03_210318_0000_ifg.csv'
+    fname = 'rs15_210625_0168_ifg.csv'
+    d = load_fts_scan_fromfile(fname)
+    ifg2s = IfgToSpectrum()
+
+    f, B = ifg2s.get_phase_corrected_spectrum(d.x,d.y,
+                        algorithm='Richards',
+                        debug = True,
+                        phase_fit_method = 'interp',
+                        window = True,
+                        min_filter = None,  #icm
+                        max_filter = None)
+    N = len(f)
+    f=f[0:N//2]
+    B=B[0:N//2]
+    plt.figure(1000)
+    plt.plot(f,np.abs(B))
+    plt.plot(f,np.real(B))
+    plt.plot(f,np.imag(B))
+    plt.show()
