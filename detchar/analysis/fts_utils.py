@@ -2,7 +2,7 @@
 fts_utils.py
 
 everything one should need to analyze data taken with the NIST FTS system
-@author JH, started 03/2021
+@author JH, started 03/2021, significant updates 6/2021 in prep for LTD
 
 Notes:
 1) phase correction for individual scans or for average?
