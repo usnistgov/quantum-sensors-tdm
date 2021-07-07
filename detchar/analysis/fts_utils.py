@@ -31,7 +31,7 @@ from scipy.fftpack import fftshift, ifftshift
 from scipy import signal
 import scipy.constants
 import os
-from scipy.integrate import quad, simps
+from scipy.integrate import quad, simpson
 
 icm2ghz = scipy.constants.c/1e7
 
@@ -661,8 +661,6 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             plt.xlabel(units)
             plt.legend()
             #plt.show()
-
-
         return f,S_corr
 
     def phase_correction_mertz(self,x,y,zpd_index=None,plotfig=False):
@@ -796,7 +794,6 @@ class IfgToSpectrum(TimeDomainDataProcessing):
         dex2 = np.argmin(abs(x-x_range[1]))
         y_max = np.max(y[dex1:dex2])
         return y/y_max
-
 
 class FtsMeasurement(IfgToSpectrum):
     ''' Analyze a set of identical FTS sweeps '''
@@ -1072,6 +1069,233 @@ class FtsMeasurementSet():
                     orderedfiles.append(file)
         return orderedfiles
 
+class PassbandMetrics():
+    def __cull_range(self,x,y,x_range):
+        indices = np.where((x >= x_range[0]) & (x <= x_range[1]))
+        return x[indices], y[indices]
+
+    def get_passband_metrics(self,f_ghz,S,f_range_ghz):
+        fc = None ; bw = None
+        if S is not None:
+            fc = self.calc_center_frequency(f_ghz,S,f_range_ghz)
+            bw = self.calc_bandwidth(f_ghz,S,f_range_ghz)
+        return fc, bw
+
+    def calc_center_frequency(self,f_ghz,S,f_range_ghz=None,source_index=0):
+        ''' calculate the center frequency of the passband as
+
+            fc = \int_f1^f2 f S(f) f^source_index / \int_f1^f2 S(f) f^source_index df
+
+            where S(f) is the passband, f is the frequency, and the f^source_index term
+            accounts for the spectral shape of the source.
+
+            f^-0.7, 3.6, and 0 for synchrotron, dust, and thermal BB
+        '''
+        if f_range_ghz is not None:
+            f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
+
+        fc = simpson(y=S*f_ghz*f_ghz**source_index,x=f_ghz) / simpson(y=S*f_ghz**source_index,x=f_ghz)
+        return fc
+
+    def calc_bandwidth(self,f_ghz,S,f_range_ghz=None):
+        ''' calculate bandwidth of passband from equation:
+            bw = [ \int_f1^f2 S(f_ghz) df ] ^2 / [ \int_f1^f2 S(f_ghz)^2 df ]
+        '''
+        if f_range_ghz is not None:
+            f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
+
+        integral_numerator = simpson(y=S, x=f_ghz) #simpson(y, x=None, dx=1, axis=-1, even='avg')
+        integral_denom = simpson(y=S**2,x=f_ghz)
+        return integral_numerator**2 / integral_denom
+
+    def get_passband_norm(self,f_ghz,S,f_range_ghz=None):
+        if f_range_ghz is not None:
+            f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
+
+        num = simpson(S**2,x=f_ghz)
+        denom = simpson(S,x=f_ghz)
+        result = num/denom
+        return result
+
+class Passband(PassbandMetrics):
+    def __init__(self,f_measure_ghz,S_measure_complex,f_model_ghz,S_model,f_range_ghz=None):
+        ''' S_measure_complex assumed to be phase corrected '''
+        # measurement
+        self.f_ghz, self.S_complex, self.S_norm, self.fc_measured_ghz, self.bw_measured_ghz = self._handle_input(f_measure_ghz,S_measure_complex,f_range_ghz)
+
+        # model/simulation
+        self.f_model_ghz, self.S_model, self.S_model_norm, self.fc_model_ghz, self.bw_model_ghz = self._handle_input(f_model_ghz,S_model,f_range_ghz)
+
+    def _handle_input(self,f_ghz,S,f_range_ghz):
+        if S is not None:
+            S_real = np.real(S)
+            S_norm = self.normalize_passband(f_ghz,S_real,f_range_ghz)
+            fc, bw = self.get_passband_metrics(f_ghz,S_norm,f_range_ghz)
+        else:
+            f_ghz = S = S_norm, fc = bw = None
+        return f_ghz, S, S_norm, fc, bw
+
+    def print_passband_metrics(self):
+        attrs = vars(self)
+        for key in attrs:
+            if key in ['fc_measured_ghz','fc_model_ghz','bw_measured_ghz','bw_model_ghz']:
+                print(key, ':: %.1f GHz'%attrs[key])
+
+    def peak_normalize(self,a):
+        return a/np.max(a)
+
+    def plot(self,fig_num=1,normalize = True):
+        fig,ax = plt.subplots(num=fig_num)
+        legend_labels=[]
+        if self.S_complex is not None:
+            if normalize:
+                ax.plot(self.f_ghz,self.peak_normalize(np.abs(self.S_complex)),'-')
+                ax.plot(self.f_ghz,self.peak_normalize(np.real(self.S_complex)),'-')
+                ax.plot(self.f_ghz,self.peak_normalize(np.imag(self.S_complex)),'-')
+            else:
+                ax.plot(self.f_ghz,np.abs(self.S_complex),'-')
+                ax.plot(self.f_ghz,np.real(self.S_complex),'-')
+                ax.plot(self.f_ghz,np.imag(self.S_complex),'-')
+            legend_labels.extend(['abs','real','imag'])
+        if self.S_model is not None:
+            if normalize:
+                ax.plot(self.f_model_ghz,self.peak_normalize(self.S_model),'k--')
+            else:
+                ax.plot(self.f_model_ghz,self.S_model,'k--')
+            legend_labels.append('model')
+        ax.legend(legend_labels)
+        ax.set_xlabel('Frequency (GHz)')
+        ax.set_ylabel('Response (arb)')
+        return fig, ax
+
+    def normalize_passband(self,freq_ghz,S,f_range_ghz=None):
+        norm = self.get_passband_norm(freq_ghz,S,f_range_ghz)
+        return S/norm
+
+    # methods for calculating radiated power emitted from a black body ------------------------------
+    def pnu_thermal(self,freq_hz,temp_k):
+        ''' power spectral density (W/Hz) of single mode from thermal source at
+            temp_k (in K) and freq_hz (Hz).
+        '''
+        x = scipy.constants.h*freq_hz/(scipy.constants.k*temp_k)
+        result = scipy.constants.h*freq_hz * (np.exp(x)-1)**-1
+        return result
+
+    def calc_thermal_power_rj(self,temp_k,bw_hz):
+        return scipy.constants.k*temp_k*bw_hz
+
+    def calc_thermal_power_from_tophat(self,freq_min_hz,freq_max_hz,temp_k):
+        ''' Calculate the single mode thermal power (in pW) emitted from a blackbody
+            at temperature temp_k (in K) from freq_min_hz to freq_max_hz assuming
+            a tophat bandpass
+        '''
+        P = quad(self.pnu_thermal,freq_min_hz,freq_max_hz,args=(temp_k))[0] # toss the error
+        return P
+
+    def calc_thermal_power_from_passband_metrics(self,fc_ghz,bw_ghz,temp_k):
+        result = self.pnu_thermal(fc_ghz*1e9,temp_k)*bw_ghz*1e9
+        return result
+
+    def calc_thermal_power_over_spectrum(self,temp_k,freq_ghz,passband,f_min_mask_ghz=None,f_max_mask_ghz=None,peak_normalize=False,debug=False):
+        ''' return single-mode power (in W) from thermal source at temp_k with user
+            supplied vectors describing the spectral response
+
+            input
+            temp_k: source temperature in K
+            freq_ghz: frequency vector of passband
+            passband: vector of passband, assumed normalized
+            f_min_mask_ghz: freq_ghz < f_min_mask_ghz excluded from calculation
+            f_max_mask_ghz: freq_ghz > f_max_mask_ghz excludded from calculation
+            peak_normalize: <bool>
+            debug: <bool>, if True show a bunch of plots
+
+            return: float(P) (in W)
+        '''
+        S = passband # shorthand
+        if freq_ghz[0] == 0:
+            freq_ghz = freq_ghz[1:]
+            S=S[1:]
+        if peak_normalize:
+            S=S/np.max(S)
+
+        pnu = self.pnu_thermal(freq_ghz*1e9,temp_k) # single mode power per unit bandwidth
+        # build a mask
+        if f_min_mask_ghz is not None:
+            mask = np.where(freq_ghz < f_min_mask_ghz, 0, 1)
+        else:
+            mask = np.ones(len(freq_ghz))
+        if f_max_mask_ghz is not None:
+            mask = np.where(freq_ghz > f_max_mask_ghz, 0,mask)
+
+        #print(len(pnu),len(B),len(mask))
+        integrand = pnu*S*mask
+        P = simpson(integrand,freq_ghz*1e9)
+
+        if debug:
+            plt.figure(1)
+            plt.plot(freq_ghz,pnu)
+            plt.plot(freq_ghz,B*np.max(pnu))
+            plt.plot(freq_ghz,mask*np.max(pnu))
+            plt.legend(('Pnu','passband','mask'))
+            plt.xlabel('Frequency (GHz)')
+            plt.ylabel('W/Hz')
+            plt.title('T_bb = %.1f K'%temp_k)
+
+            plt.figure(2)
+            plt.xlabel('Frequency (GHz)')
+            plt.ylabel('Integrand (W/Hz)')
+            plt.plot(freq_ghz,pnu*B*mask)
+            plt.show()
+
+        return P
+
+    def get_PvT(self,temp_k_list,freq_ghz,passband,f_mask=None,peak_normalize=False):
+        if f_mask is not None:
+            f1 = f_mask[0] ; f2 = f_mask[1]
+        else:
+            f1 = f2 = None
+        Ps=np.zeros(len(temp_k_list))
+        for ii,temp_k in enumerate(temp_k_list):
+            Ps[ii] = self.calc_thermal_power_over_spectrum(temp_k,freq_ghz,passband,f_min_mask_ghz=f1,f_max_mask_ghz=f2,peak_normalize=peak_normalize,debug=False)
+        return Ps
+
+    def get_PvT_from_measured_passband(self,temp_k_list,f_mask):
+        assert self.S_norm is not None, print('There is no measured passband.  self.S_norm = ',self.S_norm)
+        Ps = self.get_PvT(temp_k_list,self.f_ghz, self.S_norm,f_mask=f_mask,peak_normalize=False)
+        return Ps
+
+    def get_PvT_from_model_passband(self,temp_k_list,f_mask):
+        assert self.S_norm is not None, print('There is no measured passband.  self.S_norm = ',self.S_norm)
+        Ps = self.get_PvT(temp_k_list,self.f_model_ghz, self.S_model_norm,f_mask=f_mask,peak_normalize=False)
+        return Ps
+
+    def get_PvT_from_tophat(self,temp_k_list,freq_edges_ghz):
+        Ps=np.zeros(len(temp_k_list))
+        for ii,temp_k in enumerate(temp_k_list):
+            Ps[ii] = self.calc_thermal_power_from_tophat(freq_min_hz=freq_edges_ghz[0]*1e9,freq_max_hz =freq_edges_ghz[1]*1e9,temp_k=temp_k)
+        return Ps
+
+    def plot_PvTs(self,temp_k_list,f_mask,freq_edges_ghz,fig_num=1):
+        if f_mask is not None:
+            mask_state = "True"
+            f_mask_min = f_mask[0]
+            f_mask_max = f_mask[1]
+        else:
+            mask_state = "False"
+            f_mask_min = f_mask_max = None
+        P1 = self.get_PvT_from_measured_passband(temp_k_list,f_mask)
+        P2 = self.get_PvT_from_model_passband(temp_k_list,f_mask)
+        P3 = self.get_PvT_from_tophat(temp_k_list,freq_edges_ghz)
+        Ps = np.array([P1,P2,P3]).transpose()
+        fig,ax = plt.subplots(num=fig_num)
+        ax.plot(temp_k_list,Ps,'o-')
+        ax.set_xlabel('BB Temp (K)')
+        ax.set_ylabel('Power (W)')
+        ax.grid(1)
+        ax.legend(tuple(['measure','model','tophat [%.1f,%.1f]'%(freq_edges_ghz[0],freq_edges_ghz[1])]),loc='upper left')
+        ax.set_title('P vs T (mask applied: %s [%.1f,%.1f])'%(mask_state,f_mask_min,f_mask_max))
+        return fig,ax
+
 class PassbandModel():
     def __init__(self,txtfilename):
         self.txtfilename = txtfilename
@@ -1100,60 +1324,23 @@ class PassbandModel():
         plt.xlabel(self.header[0])
         plt.ylabel('Response')
         plt.legend()
-        plt.show()
-
-class PassbandMetrics():
-    def __cull_range(self,x,y,x_range):
-        indices = np.where((x >= x_range[0]) & (x <= x_range[1]))
-        return x[indices], y[indices]
-
-    def calc_bandwidth(self,f_ghz,B,f_range_ghz=None):
-        ''' calculate bandwidth of passband from equation:
-            bw = [ \int_f1^f2 B(f_ghz) df ] ^2 / [ \int_f1^f2 B(f_ghz)^2 df ]
-        '''
-        if f_range_ghz != None:
-            f_ghz, B = self.__cull_range(f_ghz,B,f_range_ghz)
-
-        integral_numerator = simps(y=B, x=f_ghz) #simps(y, x=None, dx=1, axis=-1, even='avg')
-        integral_denom = simps(y=B**2,x=f_ghz)
-        return integral_numerator**2 / integral_denom
-
-    def calc_center_frequency(self,f_ghz,B,f_range_ghz=None,source_index=0):
-        ''' calculate the center frequency of the passband as
-
-            fc = \int_f1^f2 f B(f) S(f) f / \int_f1^f2 B(f) S(f) df
-
-            where B(f) is the spectrum, f is the frequency, S(f) is the the frequency
-            dependance of the source = f^-0.7, 3.6, and 1 for synchrotron, dust, and thermal BB
-        '''
-        if f_range_ghz != None:
-            f_ghz, B = self.__cull_range(f_ghz,B,f_range_ghz)
-
-        fc = simps(y=B*f_ghz*f_ghz**source_index,x=f_ghz) / simps(y=B*f_ghz**source_index,x=f_ghz)
-        return fc
+        #plt.show()
 
 if __name__ == "__main__":
-    # path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/measurement/fts/20210607/20210617/'
-    # fms = FtsMeasurementSet(path)
-    # fms.plot_all_measurements()
+    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/modeled_response/' # on Hannes' machine
+    filename='hftv0_hft2_diplexer_model.txt'
+    pbm = PassbandModel(path+filename)
+    #pbm.plot_model()
+    #plt.show()
 
-    #fname = 'rs03_210318_0000_ifg.csv'
-    fname = 'rs15_210625_0168_ifg.csv'
-    d = load_fts_scan_fromfile(fname)
-    ifg2s = IfgToSpectrum()
+    d=np.load('measured_spectrum_example.npz')
+    f_ghz = d['f']
+    S = d['B']
+    f_range_ghz = [175,300]
+    # plt.plot(f_ghz,np.real(S))
+    # plt.show()
 
-    f, B = ifg2s.get_phase_corrected_spectrum(d.x,d.y,
-                        algorithm='Richards',
-                        debug = True,
-                        phase_fit_method = 'interp',
-                        window = True,
-                        min_filter = None,  #icm
-                        max_filter = None)
-    N = len(f)
-    f=f[0:N//2]
-    B=B[0:N//2]
-    plt.figure(1000)
-    plt.plot(f,np.abs(B))
-    plt.plot(f,np.real(B))
-    plt.plot(f,np.imag(B))
+    pb = Passband(f_measure_ghz=f_ghz,S_measure_complex=S,f_model_ghz=pbm.f_ghz,S_model=pbm.model[:,2],f_range_ghz=f_range_ghz)
+    pb.plot_PvTs(temp_k_list=list(range(4,12)),f_mask=f_range_ghz,freq_edges_ghz=[200,275],fig_num=1)
+    pb.print_passband_metrics()
     plt.show()
