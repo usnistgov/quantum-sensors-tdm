@@ -189,7 +189,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
         ZPD=x[z==z.max()]
         if len(ZPD)>1:
             print('warning, more than one maximum found.  Estimated ZPD not single valued!  Using first index')
-            ZPD = ZPD[0]
+        ZPD = ZPD[0]
         dex=list(x).index(ZPD)
         if plotfig:
             plt.figure(1,figsize = (12,6))
@@ -619,7 +619,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
 
             # fig 2 symmetric ifg with hanning window applied (if asked)
             plt.figure(2)
-            plt.title(window +" window applied")
+            plt.title("hanning window applied")
             plt.plot(x_sym,y_sym,label = 'data')
             plt.plot(x_sym,np.hanning(len(y_sym))*np.max(np.abs(y_sym)),label = 'scaled window')
             plt.plot(x_sym,y_sym*np.hanning(len(y_sym)),label ='windowed data')
@@ -653,7 +653,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             # fig 6: interpolated phase
             plt.figure(figsize = (12,6))
             plt.title("Fitting of phase, currently using method " + phase_fit_method)
-            plt.plot(fsym*unit_scale,theta,"o",mec = "k",label = "theta from symmetric interferogram")
+            plt.plot(f_sym*unit_scale,theta,"o",mec = "k",label = "theta from symmetric interferogram")
             plt.plot(f*unit_scale,theta_highres_2,".",label = "theta interpolated to higher resolution in complex plane")
             if phase_fit_method == "poly":
                 plt.plot(np.sort(f*unit_scale),theta_highres_3[np.argsort(f)],label = "theta fitted polynomial")
@@ -814,8 +814,24 @@ class FtsMeasurement(IfgToSpectrum):
 
         # data
         self.x = self.scan_list[0].x
-        self.y_mean, self.y_std = self.get_ifg_mean_and_std()
+        self.y_mean, self.y_std = self.get_ifg_mean_and_std(remove_poly=True,poly_deg=1)
+
+        # analysis
         self.f, self.S, self.S_mean, self.S_std = self.get_spectra_mean_and_std()
+        f,S = self.get_phase_corrected_spectrum(self.x,self.y_mean,ZPD = None,
+                            min_filter=None,
+                            max_filter=None,
+                            algorithm='Richards',
+                            phase_fit_method = "interp",
+                            phase_fit_degree = 1,
+                            min_poly = 210/30.,
+                            max_poly = 300/30.,
+                            units = "wavenumber",
+                            window = True,
+                            debug=False)
+        N = len(f)
+        self.f_phase_corr = f[0:N//2]*icm2ghz
+        self.S_phase_corr = S[0:N//2]
 
     def __get_file_numbers(self):
         file_number_list = []
@@ -839,17 +855,36 @@ class FtsMeasurement(IfgToSpectrum):
         for ii in range(self.num_scans):
             plt.plot(self.f,self.S[:,ii],'.',linewidth=0.5,label=self.scan_list[ii].current_scan)
 
-        #plt.axvline(165.75)
-        #plt.axvline(224.25)
         plt.legend()
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
         plt.title('Spectra for %s file numbers %s - %s'%(self.file_prefix,self.file_number_list[0],self.file_number_list[-1]))
 
-    def get_ifg_mean_and_std(self):
+    def plot_phase_corrected_spectrum(self,fig_num=3):
+        fig, axs = plt.subplots(nrows=2, ncols=1, num=fig_num)
+        for ii, scan in enumerate(self.scan_list):
+            axs[0].plot(scan.x,self.remove_poly(scan.x,scan.y,deg=0),'b-',linewidth=0.25,alpha=0.3)
+        axs[0].errorbar(self.x, self.y_mean, self.y_std, color='k',linewidth=1,ecolor='k',elinewidth=1,label='mean')
+        #axs[0].set_xlim(0, 2)
+        axs[0].set_xlabel(scan.x_label)
+        axs[0].set_ylabel(scan.y_label)
+        axs[0].grid(True)
+
+        axs[1].plot(self.f_phase_corr,np.abs(self.S_phase_corr))
+        axs[1].plot(self.f_phase_corr,np.real(self.S_phase_corr))
+        axs[1].plot(self.f_phase_corr,np.imag(self.S_phase_corr))
+        axs[1].set_xlabel('Frequency (GHz)')
+        axs[1].set_ylabel('Response (arb)')
+        axs[1].legend(('abs','real','imag'))
+        fig.suptitle('Phase corrected spectrum')
+
+    def get_ifg_mean_and_std(self,remove_poly=True,poly_deg=1):
         ys = np.zeros((self.num_samples,self.num_scans))
-        for ii in range(self.num_scans):
-            ys[:,ii] = self.scan_list[ii].y
+        for ii, scan in enumerate(self.scan_list):
+            if remove_poly:
+                ys[:,ii] = self.remove_poly(scan.x,scan.y,deg=poly_deg)
+            else:
+                ys[:,ii] = scan.y
         y_mean = np.mean(ys,axis=1)
         y_std = np.std(ys,axis=1)
         return y_mean, y_std
@@ -873,7 +908,7 @@ class FtsMeasurement(IfgToSpectrum):
 
     def print_measurement_metadata(self):
         attrs = vars(self)
-        exclude_list = ['scan_list','x','y_mean','y_std','f','S','S_mean','S_std']
+        exclude_list = ['scan_list','x','y_mean','y_std','f','S','S_mean','S_std','f_phase_corr','S_phase_corr']
         for key in attrs:
             if key not in exclude_list:
                 print(key, '::', attrs[key])
@@ -896,7 +931,7 @@ class FtsMeasurementSet():
             all_scans: <list> of FtsData instances, one per file in filename_list
             prefix_set: <set> of prefixes in the Measurement Set (in standard practice these are the row selects)
             num_scans: <int> number of individual FTS scans
-            measurement_filenames: <list> of "measurements", unique instances of FtsMeasurement
+            measurements: <list> of "measurements", unique instances of FtsMeasurement
             measurement_filenames: nested <list> of filenames for each "measurement"
             measurement_scan_list: nested <list> of scans for each "measurement"
 
@@ -944,12 +979,12 @@ class FtsMeasurementSet():
             ii = ii + scan.num_scans
         return fts_meas, fts_meas_filenames, fts_meas_scans
 
-    def plot_all_measurements(self,showfig=True,savefig=False):
+    def plot_all_measurements(self,fig_num=1,showfig=True,savefig=False):
         ''' plot/save all measurement ifgs and spectra '''
         for ii, measurement in enumerate(self.measurements):
             measurement.print_measurement_metadata()
-            measurement.plot_ifgs(fig_num=1)
-            measurement.plot_spectra(fig_num=2)
+            measurement.plot_ifgs(fig_num=fig_num+2*ii)
+            measurement.plot_spectra(fig_num=fig_num+2*ii+1)
             plt.show()
 
     def plot_all_measurements_for_prefix(self,prefix='rs03',fig_num=1):
