@@ -199,16 +199,16 @@ class IVCurveColumnDataExtra():
         self.data = iv_curve_column_data
         self.x, self.y = self.data.xy_arrays_zero_subtracted_at_dac_high()
         self.n_pts, self.n_rows = np.shape(self.y)
-    
+
     def plot_dy(self):
-        dy = np.diff(self.y,axis=0) 
+        dy = np.diff(self.y,axis=0)
         print(np.shape(dy))
         for ii in range(self.n_rows):
             plt.plot(self.x[0:-1],dy[:,ii],label='%02d'%ii)
         plt.xlabel('V bias (DAC)')
         plt.ylabel('Vfb diff (DAC)')
         plt.legend(loc='upper right')
-    
+
     def plot_iv(self):
         for ii in range(self.n_rows):
             plt.plot(self.x,self.y[:,ii],label='%02d'%ii)
@@ -216,7 +216,6 @@ class IVCurveColumnDataExtra():
         plt.ylabel('Vfb (DAC)')
         plt.legend(loc='upper right')
 
-        
 class IVSetAnalyzeRow(IVClean):
     def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
         ''' Analyze IV set at different physical conditions for one row.
