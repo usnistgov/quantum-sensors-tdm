@@ -1275,6 +1275,23 @@ class Passband(PassbandMetrics):
             Ps[ii] = self.calc_thermal_power_from_tophat(freq_min_hz=freq_edges_ghz[0]*1e9,freq_max_hz =freq_edges_ghz[1]*1e9,temp_k=temp_k)
         return Ps
 
+    def get_dT_and_dP(self,temp_k_list,P,zero_index=0):
+        dT = temp_k_list - temp_k_list[zero_index]
+        dP = P - P[zero_index]
+        return dT, dP
+
+    def get_dT_and_dP_from_measured_passband(self,temp_k_list,f_mask,zero_index=0):
+        P = self.get_PvT_from_measured_passband(temp_k_list,f_mask)
+        return self.get_dT_and_dP(temp_k_list,P,zero_index=0)
+
+    def get_dT_and_dP_from_model_passband(self,temp_k_list,f_mask,zero_index=0):
+        P = self.get_PvT_from_model_passband(temp_k_list,f_mask)
+        return self.get_dT_and_dP(temp_k_list,P,zero_index=0)
+
+    def get_dT_and_dP_from_tophat(self,temp_k_list,freq_edges_ghz,zero_index=0):
+        P = self.get_PvT_from_tophat(temp_k_list,freq_edges_ghz)
+        return self.get_dT_and_dP(temp_k_list,P,zero_index=0)
+
     def plot_PvTs(self,temp_k_list,f_mask,freq_edges_ghz,fig_num=1):
         if f_mask is not None:
             mask_state = "True"
@@ -1341,6 +1358,7 @@ if __name__ == "__main__":
     # plt.show()
 
     pb = Passband(f_measure_ghz=f_ghz,S_measure_complex=S,f_model_ghz=pbm.f_ghz,S_model=pbm.model[:,2],f_range_ghz=f_range_ghz)
+    print(type(pb))
     pb.plot_PvTs(temp_k_list=list(range(4,12)),f_mask=f_range_ghz,freq_edges_ghz=[200,275],fig_num=1)
     pb.print_passband_metrics()
     plt.show()
