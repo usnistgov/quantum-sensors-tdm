@@ -136,12 +136,16 @@ def software_lock_in_acquisition(easy_client, signal_column_index=0,reference_co
     I,Q,v_ref_amp = software_lock_in(dataOut[signal_column_index,:,:,dex],dataOut[reference_column_index,:,:,0],
                                      reference_type=reference_type, response_type = response_type)
     if debug:
-        
         for ii in range(easy_client.numRows):
             plt.figure(ii)
             plt.title('Row index = %02d'%ii)
             plt.plot(dataOut[signal_column_index,ii,:,dex],label='signal')
             plt.plot(dataOut[reference_column_index,ii,:,0],label='reference')
+
+            ref_pp = np.max(dataOut[reference_column_index,ii,:,0]) - np.min(dataOut[reference_column_index,ii,:,0])
+            sig_pp = np.max(dataOut[signal_column_index,ii,:,dex]) - np.min(dataOut[signal_column_index,ii,:,dex])
+            lock_in_amp = (I**2+Q**2)/v_ref_amp
+            print('signal amplitude: ',sig_pp/2, '\nlock-in amplitude: ',lock_in_amp/2,'\nref_pp: ',ref_pp)
             print('Row index %02d: (I, Q, v_ref_amp) = (%.3f,%.3f,.%.3f)'%(ii,I[ii],Q[ii],v_ref_amp[ii]))
     return I,Q,v_ref_amp
 
@@ -152,5 +156,6 @@ if __name__ == "__main__":
     #print(', '.join("%s: %s" % item for item in attrs.items()))
 
     I,Q,v_ref_amp = software_lock_in_acquisition(easy_client,signal_feedback_or_error='error',debug=True)
+
     plt.show()
 
