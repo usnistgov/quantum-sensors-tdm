@@ -1132,7 +1132,7 @@ class Passband(PassbandMetrics):
             S_norm = self.normalize_passband(f_ghz,S_real,f_range_ghz)
             fc, bw = self.get_passband_metrics(f_ghz,S_norm,f_range_ghz)
         else:
-            f_ghz = S = S_norm, fc = bw = None
+            f_ghz = S = S_norm = fc = bw = None
         return f_ghz, S, S_norm, fc, bw
 
     def print_passband_metrics(self):
@@ -1276,8 +1276,8 @@ class Passband(PassbandMetrics):
         return Ps
 
     def get_dT_and_dP(self,temp_k_list,P,zero_index=0):
-        dT = temp_k_list - temp_k_list[zero_index]
-        dP = P - P[zero_index]
+        dT = np.array(temp_k_list) - temp_k_list[zero_index]
+        dP = np.array(P) - P[zero_index]
         return dT, dP
 
     def get_dT_and_dP_from_measured_passband(self,temp_k_list,f_mask,zero_index=0):
