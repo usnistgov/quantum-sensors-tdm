@@ -9,6 +9,7 @@ Useful/general software for detector characterization
 import numpy as np
 from nasa_client import EasyClient
 import matplotlib.pyplot as plt
+from scipy.signal import hilbert
 
 def software_lock_in(v_signal, v_reference, reference_type='square',response_type='sine'):
     ''' lockin algorithm written by J. McMahon
@@ -108,8 +109,8 @@ def software_lock_in(v_signal, v_reference, reference_type='square',response_typ
 
     return I, Q, v_reference_amp
 
-def software_lock_in_acquisition(ec, signal_index,reference_index,reference_type='square',response_type='sine',
-                                 debug=False):
+def software_lock_in_acquisition(easy_client, signal_column_index=0,reference_column_index=1,reference_type='square',response_type='sine',
+                                 signal_feedback_or_error='feedback', debug=False):
     '''
     Acquire data and return the locked in signal for each row in one column of data.
 
@@ -125,14 +126,31 @@ def software_lock_in_acquisition(ec, signal_index,reference_index,reference_type
     '''
     
     #dataOut[col,row,frame,error=0/fb=1]
-    dataOut = ec.getNewData(delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3)
-    I,Q,v_ref_amp = software_lock_in(dataOut[signal_index,:,:,1],datatOut[reference_index,:,:,0],
+    if signal_feedback_or_error == 'feedback':
+        dex = 1 
+    elif signal_feedback_or_error == 'error':
+        dex = 0
+    else:
+        print('unknown signal_feedback_or_error: ',signal_feedback_or_error)
+    dataOut = easy_client.getNewData(delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3)
+    I,Q,v_ref_amp = software_lock_in(dataOut[signal_column_index,:,:,dex],dataOut[reference_column_index,:,:,0],
                                      reference_type=reference_type, response_type = response_type)
     if debug:
-        for ii in range(ec.n_rows):
+        
+        for ii in range(easy_client.numRows):
             plt.figure(ii)
             plt.title('Row index = %02d'%ii)
-            plt.plot(dataOut[signal_index,ii,:,1],label='signal')
-            plt.plot(dataOut[reference_index,ii,:,1],label='reference')
+            plt.plot(dataOut[signal_column_index,ii,:,dex],label='signal')
+            plt.plot(dataOut[reference_column_index,ii,:,0],label='reference')
             print('Row index %02d: (I, Q, v_ref_amp) = (%.3f,%.3f,.%.3f)'%(ii,I[ii],Q[ii],v_ref_amp[ii]))
     return I,Q,v_ref_amp
+
+if __name__ == "__main__":
+    easy_client = EasyClient()
+    easy_client.setupAndChooseChannels()
+    #attrs = vars(easy_client)
+    #print(', '.join("%s: %s" % item for item in attrs.items()))
+
+    I,Q,v_ref_amp = software_lock_in_acquisition(easy_client,signal_feedback_or_error='error',debug=True)
+    plt.show()
+
