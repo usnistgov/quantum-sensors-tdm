@@ -2,7 +2,7 @@
 
 tools.py
 
-Useful/general software for detector characterization
+Useful/general software for detector characterization.
 
 '''
 
@@ -11,96 +11,123 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert,square
 
-def test_software_lock_in():
-    N=1000
-    t = np.linspace(0,1,N,endpoint=False)
-    # reference square wave
-    ref_freq_hz = 5
-    ref_offset = 0
-    ref_phase = 0
-    ref_amp = 3.0
-    ref = ref_amp*square(2*np.pi*ref_freq_hz*t+ref_phase)+ref_offset
+def get_amplitude_of_sinusoid_high_s2n(a):
+    ''' return amplitude of a wave.  
+        Algorithm only good for high signal to noise 
+    ''' 
+    N=len(a)
+    fa = np.fft.fft(a)
+    aa = fa.conjugate()*fa
+    amp = np.sqrt(2*np.mean(np.real(aa))/N)
+    #amp = np.sqrt(2*np.sum(np.real(aa))/N**2)
+    return amp
 
-    # signal is a sine wave
-    sig_freq_hz = 5
-    sig_offset = 0
-    sig_phase = 0#np.pi/2.0
-    sig_amp = 3.0
+def get_amplitude_of_sinusoid(a,nbins=0,debug=True):
+    ''' return amplitude of a real-valued wave.  
+        Expects "a" is a pure harmonic.  If multiple tones, will return 
+        the amplitude of the largest tone.  
 
-    noise_to_signal = 0
-    noise = (np.random.random(N)-0.5)*noise_to_signal*sig_amp
-    sig = sig_amp*np.sin(2*np.pi*sig_freq_hz*t+sig_phase) + sig_offset + noise
+        input:
+        a: 1D array-like 
+        nbins: <int>, number of bins to (left and right) to integrate around max 
+        debug: <bool>, if True, plot some stuff 
 
-    sh=hilbert(sig)
-    #plt.plot(ref)
-    plt.plot(sh.real)
-    plt.plot(sh.imag)
-    plt.legend(('hil real','hil imag'))
-    plt.show()
-
-    #I,Q,v_ref_amp = software_lock_in(sig, ref, reference_type='square',response_type='sine')
-    I,Q = software_lock_in_1d(sig, mix=ref, mix_type='square',sig_type='sine',data_pts_factor2=False,debug=True)
-    plt.show()
-
-    #lockin_amp = (I**2+Q**2)/v_ref_amp/np.sqrt(2)
-
-    #print('Input signal amplitude = ',sig_amp)
-    #print('lock in signal amplitude = ',lockin_amp)
-
-    plt.plot(t,ref,'o-',label='ref')
-    plt.plot(t,sig,'o-',label='sig')
-    #plt.plot(t,noise)
-
-    plt.show()
-
-def make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='sine',plotfig=False):
-    t = np.linspace(0,1,N,endpoint=False)
-    # reference square wave
-    if ref_type == 'square':
-        ref = ref_params[0]*square(2*np.pi*ref_params[1]*t+ref_params[2])+ref_params[3]
-    elif ref_type == 'sine':
-        ref = ref_params[0]*np.sin(2*np.pi*ref_params[1]*t+ref_params[2])+ref_params[3]
-
-    noise = (np.random.random(N)-0.5)*noise_to_signal*sig_params[0]
-    sig = sig_params[0]*np.sin(2*np.pi*sig_params[1]*t+sig_params[2]) + sig_params[3] + noise
-
-    if plotfig:
-        plt.plot(sig)
-        plt.plot(ref)
+        output: amplitude (float)   
+    ''' 
+    N=len(a)
+    fa = np.fft.fft(a)
+    aa = fa.conjugate()*fa
+    aa=aa.real 
+    dex = np.where(aa==np.max(aa))[0][0]
+    aa_slice = aa[dex-nbins:dex+nbins+1]
+    amp = np.sqrt(4*np.sum(aa_slice))/N
+    
+    if debug:
+        print('recovered amplitude = ',amp)
+        indices=range(N)
+        plt.plot(aa,'bo')
+        plt.plot(dex,aa[dex],'r*')
+        plt.plot(indices[dex-nbins:dex+nbins+1],aa_slice,'go')
         plt.show()
-    return sig, ref
+    return amp
 
-def sine_lock_in_td(sig,ref):
-    # truncate to integer number of periods
-    # determine amplitude of reference for normalization
-    # do the lock in
-    N = len(sig)
-    rh = hilbert(ref)
-    x=sig*rh.real*np.hanning(N)
-    y=sig*rh.imag*np.hanning(N)
-    I = np.mean(x)*4
-    Q = np.mean(y)*4
-    print('I=',I,'\nQ=',Q)
-    fig, ax = plt.subplots(3)
-    ax[0].plot(sig)
-    ax[0].set_title('Signal')
-    ax[1].plot(rh.real)
-    ax[1].plot(rh.imag)
-    ax[1].set_title('Analytic reference')
-    ax[1].legend(('real','imag'))
-    ax[2].set_title('mix (prefilter)')
-    ax[2].plot(x)
-    ax[2].plot(y)
-    ax[2].legend(('I','Q'))
-    return I,Q
-
-def test_sine_lock_in_td():
-    sig_amp=3
-    sig,ref = make_simulated_lock_in_data(sig_params=[sig_amp,5,0,0],ref_params=[10,5,0,0],N=2048,noise_to_signal=0,ref_type='sine',plotfig=False)
-    I,Q=sine_lock_in_td(sig,ref)
-    amp=np.sqrt(I**2+Q**2)
-    print((amp-sig_amp)/sig_amp)
+def get_num_points_per_period(a,debug=False):
+    fa = np.fft.fft(a)
+    aa = fa.conjugate()*fa
+    aa = aa[0:len(a)//2].real
+    max_aa = np.max(aa)
+    max_aa_index = np.where(aa==max_aa)[0][0]  
+    N = len(a)/max_aa_index # number of points per period
+    print(max_aa_index,N)
+    N=int(N)
+    
+    if debug:
+        fig,ax=plt.subplots(2)
+        ax[0].plot(aa,'o-')
+        ax[0].plot(max_aa_index,max_aa,'r*')
+        ax[1].plot(a,'o')
+        ax[1].plot(range(0,N,1),a[0:N],'o-')
+        fig.suptitle('Period of reference wave')
     plt.show()
+    return N 
+
+def sine_lock_in_td(sig,ref,window=False,integer_periods=True,num_pts_per_period=None,debug=False):
+    ''' software lock in using sine-wave mixing in time domain 
+    
+        sig: 1d array, raw signal 
+        ref: 1d array, reference signal 
+        window: <bool>, if True apply hanning window to data before lock-in 
+        integer_periods: <bool>, if True truncate the data to an integer number of periods before lock-in
+        num_pts_per_period: only used if integer_periods=True.  If None, determine this from the reference signal.
+        debug: <bool>, if True, plot some stuff
+
+        return: I, Q (single points for *all* of sig)
+    
+    '''
+    if integer_periods:
+        if num_pts_per_period is not None:
+            pass     
+        else:
+            num_pts_per_period = get_num_points_per_period(ref,debug)
+        N = len(sig)//num_pts_per_period * num_pts_per_period
+        print('num pts per period = ',num_pts_per_period)
+        sig=sig[0:N]
+        ref=ref[0:N]  
+            
+    else:
+        N = len(sig)
+    
+    sig = sig - sig.mean()
+    ref = ref - ref.mean() 
+    ref = ref/get_amplitude_of_sinusoid(ref,nbins=1,debug=False) # make reference wave from +/- 1
+
+    rh = hilbert(ref)
+    if window:
+        x=sig*rh.real*np.hanning(N)
+        y=sig*rh.imag*np.hanning(N)
+        I = np.mean(x)*4
+        Q = np.mean(y)*4
+    else:
+        x=sig*rh.real
+        y=sig*rh.imag
+        I = np.mean(x)*2
+        Q = np.mean(y)*2
+    
+    if debug:
+        print('I=',I,'\nQ=',Q)
+        fig, ax = plt.subplots(3)
+        ax[0].plot(sig,'o-')
+        ax[0].set_title('Signal')
+        ax[1].plot(rh.real)
+        ax[1].plot(rh.imag)
+        ax[1].set_title('Analytic reference')
+        ax[1].legend(('real','imag'))
+        ax[2].set_title('mix (prefilter). Window = %s'%(window))
+        ax[2].plot(x)
+        ax[2].plot(y)
+        ax[2].legend(('I','Q'))
+        plt.show()
+    return I,Q
 
 def lock_in_1d(sig, mix, mix_type='square',sig_type='sine',data_pts_factor2=False,debug=True):
     ''' inspired by J. McMahon
@@ -308,12 +335,106 @@ def software_lock_in_acquisition(easy_client, signal_column_index=0,reference_co
             print('Row index %02d: (I, Q, v_ref_amp) = (%.3f,%.3f,.%.3f)'%(ii,I[ii],Q[ii],v_ref_amp[ii]))
     return I,Q,v_ref_amp
 
-if __name__ == "__main__":
-    # is it better to truncate data to integer number of periods or to window the data?
-    # is there a difference in signal accuracy?
-    # a running software lock in would be pretty cool.  How to accomplishs this?  How do you
-    # continually feed in data from easy client, do math on it, and spit it out?
-    test_sine_lock_in_td()
 
+# functions used in debugging -----------------------------
+def make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='sine',plotfig=False):
+    ''' sig/ref_params[amplitude, number of periods, phase, DC offset] '''
+    t = np.linspace(0,1,N,endpoint=False)
+    # reference square wave
+    if ref_type == 'square':
+        ref = ref_params[0]*square(2*np.pi*ref_params[1]*t+ref_params[2])+ref_params[3]
+    elif ref_type == 'sine':
+        ref = ref_params[0]*np.sin(2*np.pi*ref_params[1]*t+ref_params[2])+ref_params[3]
+
+    noise = np.random.normal(0,noise_to_signal*sig_params[0],(N))
+    sig = sig_params[0]*np.sin(2*np.pi*sig_params[1]*t+sig_params[2]) + sig_params[3] + noise
+
+    if plotfig:
+        plt.plot(sig)
+        plt.plot(ref)
+        plt.show()
+    return sig, ref
+
+def test_software_lock_in():
+    N=1000
+    t = np.linspace(0,1,N,endpoint=False)
+    # reference square wave
+    ref_freq_hz = 5
+    ref_offset = 0
+    ref_phase = 0
+    ref_amp = 3.0
+    ref = ref_amp*square(2*np.pi*ref_freq_hz*t+ref_phase)+ref_offset
+
+    # signal is a sine wave
+    sig_freq_hz = 5
+    sig_offset = 0
+    sig_phase = 0#np.pi/2.0
+    sig_amp = 3.0
+
+    noise_to_signal = 0
+    noise = (np.random.random(N)-0.5)*noise_to_signal*sig_amp
+    sig = sig_amp*np.sin(2*np.pi*sig_freq_hz*t+sig_phase) + sig_offset + noise
+
+    sh=hilbert(sig)
+    #plt.plot(ref)
+    plt.plot(sh.real)
+    plt.plot(sh.imag)
+    plt.legend(('hil real','hil imag'))
+    plt.show()
+
+    #I,Q,v_ref_amp = software_lock_in(sig, ref, reference_type='square',response_type='sine')
+    I,Q = software_lock_in_1d(sig, mix=ref, mix_type='square',sig_type='sine',data_pts_factor2=False,debug=True)
+    plt.show()
+
+    #lockin_amp = (I**2+Q**2)/v_ref_amp/np.sqrt(2)
+
+    #print('Input signal amplitude = ',sig_amp)
+    #print('lock in signal amplitude = ',lockin_amp)
+
+    plt.plot(t,ref,'o-',label='ref')
+    plt.plot(t,sig,'o-',label='sig')
+    #plt.plot(t,noise)
 
     plt.show()
+
+def test_sine_lock_in_td():
+    # lessons learned:
+    # 1) culling to an integer number of periods does not improve accuracy when many periods mixed.  For few periods (~1), it does make a difference.
+    signal_amp = 1.0
+    num_periods = 10
+    N=2048
+    n_to_s = np.linspace(0,1,3) # noise to signal vector
+    cases = [[False,False],[False,True]]#,[False,True]]#,[True,True]]
+    #cases = [[False,False]]
+    
+
+    data_list=[]
+    for ii,n2s in enumerate(list(n_to_s)):
+        sig,ref = make_simulated_lock_in_data(sig_params=[signal_amp,num_periods,np.pi/3,0],ref_params=[1,num_periods,0,0],N=N,noise_to_signal=n2s,ref_type='sine',plotfig=False)
+        data_list.append([sig,ref])
+    
+    results = []
+    for case in cases:
+        print(case)
+        tmp_arr = np.empty((len(n_to_s),4))
+        for ii,n2s in enumerate(data_list):
+            I,Q=sine_lock_in_td(n2s[0],n2s[1],window=case[0],integer_periods=case[1],num_pts_per_period=None,debug=True)
+            amp = np.sqrt(I**2+Q**2)
+            err_pct = ((amp - signal_amp)/amp)*100 
+            print('amplitude =',amp, '%% diff = ',err_pct)
+            tmp_arr[ii,:] = np.array([I,Q,amp,err_pct])
+        results.append(tmp_arr)
+    
+    for result in results:
+        plt.plot(n_to_s,result[:,3])
+    plt.xlabel('Noise/Signal')
+    plt.ylabel('%% error in amplitude measurement')
+    #plt.legend(('basic','window','int periods','window and int periods'))
+    plt.legend(('basic','alt'))
+    plt.show()
+
+
+if __name__ == "__main__":
+    test_sine_lock_in_td()
+    
+   
