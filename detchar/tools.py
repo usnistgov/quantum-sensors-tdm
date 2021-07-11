@@ -10,6 +10,7 @@ DO TO:
 3) MAKE FUNCTION THAT ACCEPTS easy_client return data structure as input to lock-in
 4) IMPROVE LOCK-IN DATA ACQUISITION FUNCTION
 5) CLEAN UP UN-NEEDED FUNCTIONS IN THIS FILE
+6) rolling average of lock-in signal 
 
 '''
 
