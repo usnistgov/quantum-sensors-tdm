@@ -97,6 +97,9 @@ class DetectorMap():
         for key in self.map_dict.keys():
             print(key,":: ",self.map_dict[key])
 
+    def get_mapval_for_row_index(self,row_index):
+        return self.map_dict['Row%02d'%row_index]
+
     # are the methods below useful or obsolete?
 
     def get_onerow_device_dict(self,row_index):

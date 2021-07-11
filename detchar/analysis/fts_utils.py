@@ -1118,7 +1118,7 @@ class PassbandMetrics():
         return result
 
 class Passband(PassbandMetrics):
-    def __init__(self,f_measure_ghz,S_measure_complex,f_model_ghz,S_model,f_range_ghz=None):
+    def __init__(self,f_measure_ghz,S_measure_complex,f_model_ghz=None,S_model=None,f_range_ghz=None):
         ''' S_measure_complex assumed to be phase corrected '''
         # measurement
         self.f_ghz, self.S_complex, self.S_norm, self.fc_measured_ghz, self.bw_measured_ghz = self._handle_input(f_measure_ghz,S_measure_complex,f_range_ghz)

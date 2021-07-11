@@ -558,7 +558,7 @@ class IVColdloadAnalyzeOneRow():
 
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                 device_dict=None,iv_circuit=None,passband_dict=None,
-                dark_dP_w=None):
+                dark_dP_w=None,passband_instance=None,passband_f_mask_ghz=None):
         self.dacs = dac_values
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.fb_align = None
@@ -593,8 +593,25 @@ class IVColdloadAnalyzeOneRow():
         self.power_cl_tophat=self.power_cl_sim_passband=self.power_cl_tophat_delta=self.power_cl_sim_passband_delta=self.eta_tophat=self.eta_passband_sim=None
         self._handle_prediction(passband_dict)
 
+        # measured passband
+        self.passband_instance = passband_instance
+        self.passband_f_mask_ghz = passband_f_mask_ghz
+        self.power_cl_measured_passband, self.power_cl_measured_passband_delta = self._handle_passband_instance(passband_instance)
+        self.eta_passband_measured = self.eta_passband_measured_ds = None
+        if passband_instance is not None:
+            self.eta_passband_measured = self.get_efficiency(self.power_cl_measured_passband_delta, self.dP_w)
+            self.eta_passband_measured_ds = self.get_efficiency(self.power_cl_measured_passband_delta, self.dP_w_darksubtracted)
+
         # plotting stuff
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
+
+    def _handle_passband_instance(self,passband_instance):
+        if passband_instance is not None:
+            P = passband_instance.get_PvT_from_measured_passband(temp_k_list=self.cl_temps_k,f_mask=self.passband_f_mask_ghz)
+            dT,dP = passband_instance.get_dT_and_dP_from_measured_passband(temp_k_list=self.cl_temps_k,f_mask=self.passband_f_mask_ghz,zero_index=0)
+        else:
+            P = dP = None
+        return P, dP
 
     def power_subtraction(self,dP_w,dP_w_vec):
         ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
@@ -610,13 +627,13 @@ class IVColdloadAnalyzeOneRow():
     def _handle_dark(self, dark_dP_w):
         self.dP_w_darksubtracted = None
         self.do_dark_analysis = False
-        try:
-            if dark_dP_w == None:
-                ddp_w = None
-        except:
+        if dark_dP_w is not None:
             assert len(dark_dP_w) == self.n_cl_temps, ('Length of dark_dP_w must equal number of cold load temperatures')
             ddp_w = dark_dP_w
             self.do_dark_analysis = True
+        else:
+            self.do_dark_analysis = False
+            ddp_w=None
         return ddp_w
 
     def _handle_device_dict(self,device_dict):
@@ -967,6 +984,11 @@ class IVColdloadAnalyzeOneRow():
                 figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7, eta_dark_subtracted=self.eta_passband_sim_ds))
             else:
                 figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7))
+        if self.passband_instance is not None:
+            if self.do_dark_analysis:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_measured, self.rn_fracs, fig_num=8, eta_dark_subtracted=self.eta_passband_measured_ds))
+            else:
+                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_measured, self.rn_fracs, fig_num=8))
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta_top','eta_sim']
             for ii,fig in enumerate(figs):
