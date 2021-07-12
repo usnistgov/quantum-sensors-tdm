@@ -1139,7 +1139,6 @@ class PassbandMetrics():
             plt.show()
         return f2-f1
 
-
     def get_passband_norm(self,f_ghz,S,f_range_ghz=None):
         if f_range_ghz is not None:
             f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
@@ -1148,8 +1147,6 @@ class PassbandMetrics():
         denom = simpson(S,x=f_ghz)
         result = num/denom
         return result
-
-
 
 class Passband(PassbandMetrics):
     def __init__(self,f_measure_ghz,S_measure_complex,f_model_ghz=None,S_model=None,f_range_ghz=None):
