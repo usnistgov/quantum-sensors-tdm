@@ -1108,6 +1108,38 @@ class PassbandMetrics():
         integral_denom = simpson(y=S**2,x=f_ghz)
         return integral_numerator**2 / integral_denom
 
+    def integrate_passband(self,f_ghz,S,f_range_ghz=None):
+        ''' calculate bandwidth of passband from equation:
+            bw = [ \int_f1^f2 S(f_ghz) df ] ^2 / [ \int_f1^f2 S(f_ghz)^2 df ]
+        '''
+        if f_range_ghz is not None:
+            f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
+
+        return simpson(y=S, x=f_ghz)
+
+    def calc_fwhm(self,f_ghz,S,f_range_ghz=None,debug=False):
+        if f_range_ghz is not None:
+            f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
+
+        f_res = 0.1 # ghz resolution
+        f=np.arange(f_ghz[0],f_ghz[-1],f_res)
+        S=np.interp(f,f_ghz,S)
+
+        S = S/np.max(S)
+        max_dex = np.argmax(S)
+
+        f1 = f[np.argmin(abs(S[0:max_dex]-0.5))]
+        f2 = f[np.argmin(abs(S[max_dex:]-0.5))+len(S[0:max_dex])]
+        if debug:
+            dex1 = np.argmin(abs(S[0:max_dex]-0.5))
+            dex2 = np.argmin(abs(S[max_dex:]-0.5))+len(S[0:max_dex])
+            plt.plot(f,S,'o-')
+            plt.plot(f1,S[dex1],'g*')
+            plt.plot(f2,S[dex2],'r*')
+            plt.show()
+        return f2-f1
+
+
     def get_passband_norm(self,f_ghz,S,f_range_ghz=None):
         if f_range_ghz is not None:
             f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
@@ -1117,14 +1149,27 @@ class PassbandMetrics():
         result = num/denom
         return result
 
+
+
 class Passband(PassbandMetrics):
     def __init__(self,f_measure_ghz,S_measure_complex,f_model_ghz=None,S_model=None,f_range_ghz=None):
-        ''' S_measure_complex assumed to be phase corrected '''
+        ''' S_measure_complex assumed to be phase corrected.
+
+            input:
+            f_measure_ghz: frequency vector for measured spectrum
+            S_measure_complex: spectrum (complex), assumed properly phase corrected
+            f_model_ghz: frequency vector for modeled passband
+            S_model: response vector for modeled passband
+            f_range_ghz: limits of integration (f_min,f_max) for the measured spectrum
+
+        '''
         # measurement
         self.f_ghz, self.S_complex, self.S_norm, self.fc_measured_ghz, self.bw_measured_ghz = self._handle_input(f_measure_ghz,S_measure_complex,f_range_ghz)
 
         # model/simulation
         self.f_model_ghz, self.S_model, self.S_model_norm, self.fc_model_ghz, self.bw_model_ghz = self._handle_input(f_model_ghz,S_model,f_range_ghz)
+
+        self.f_range_ghz = f_range_ghz
 
     def _handle_input(self,f_ghz,S,f_range_ghz):
         if S is not None:
@@ -1149,13 +1194,14 @@ class Passband(PassbandMetrics):
         legend_labels=[]
         if self.S_complex is not None:
             if normalize:
+                norm = np.max(self.S_complex.real)
                 ax.plot(self.f_ghz,self.peak_normalize(np.abs(self.S_complex)),'-')
-                ax.plot(self.f_ghz,self.peak_normalize(np.real(self.S_complex)),'-')
-                ax.plot(self.f_ghz,self.peak_normalize(np.imag(self.S_complex)),'-')
+                ax.plot(self.f_ghz,self.S_complex.real/norm,'-')
+                ax.plot(self.f_ghz,self.S_complex.imag/norm,'-')
             else:
                 ax.plot(self.f_ghz,np.abs(self.S_complex),'-')
-                ax.plot(self.f_ghz,np.real(self.S_complex),'-')
-                ax.plot(self.f_ghz,np.imag(self.S_complex),'-')
+                ax.plot(self.f_ghz,self.S_complex.real,'-')
+                ax.plot(self.f_ghz,self.S_complex.imag,'-')
             legend_labels.extend(['abs','real','imag'])
         if self.S_model is not None:
             if normalize:
