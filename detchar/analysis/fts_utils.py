@@ -1190,6 +1190,7 @@ class Passband(PassbandMetrics):
         return a/np.max(a)
 
     def plot(self,fig_num=1,normalize = True):
+        # in future, and self weighted normalization
         fig,ax = plt.subplots(num=fig_num)
         legend_labels=[]
         if self.S_complex is not None:
@@ -1321,6 +1322,10 @@ class Passband(PassbandMetrics):
             Ps[ii] = self.calc_thermal_power_from_tophat(freq_min_hz=freq_edges_ghz[0]*1e9,freq_max_hz =freq_edges_ghz[1]*1e9,temp_k=temp_k)
         return Ps
 
+    def get_PvT_from_measured_fc_and_bw(self,temp_k_list):
+        assert self.f_ghz is not None
+        return self.get_PvT_from_tophat(temp_k_list,freq_edges_ghz=[self.fc_measured_ghz-self.bw_measured_ghz/2,self.fc_measured_ghz+self.bw_measured_ghz/2])
+
     def get_dT_and_dP(self,temp_k_list,P,zero_index=0):
         dT = np.array(temp_k_list) - temp_k_list[zero_index]
         dP = np.array(P) - P[zero_index]
@@ -1338,6 +1343,10 @@ class Passband(PassbandMetrics):
         P = self.get_PvT_from_tophat(temp_k_list,freq_edges_ghz)
         return self.get_dT_and_dP(temp_k_list,P,zero_index=0)
 
+    def get_dT_and_dP_from_measured_fc_and_bw(self,temp_k_list,zero_index):
+        P = self.get_PvT_from_measured_fc_and_bw(temp_k_list)
+        return self.get_dT_and_dP(temp_k_list,P,zero_index=0)
+
     def plot_PvTs(self,temp_k_list,f_mask,freq_edges_ghz,fig_num=1):
         if f_mask is not None:
             mask_state = "True"
@@ -1349,13 +1358,14 @@ class Passband(PassbandMetrics):
         P1 = self.get_PvT_from_measured_passband(temp_k_list,f_mask)
         P2 = self.get_PvT_from_model_passband(temp_k_list,f_mask)
         P3 = self.get_PvT_from_tophat(temp_k_list,freq_edges_ghz)
-        Ps = np.array([P1,P2,P3]).transpose()
+        P4 = self.get_PvT_from_measured_fc_and_bw(temp_k_list)
+        Ps = np.array([P1,P2,P3,P4]).transpose()
         fig,ax = plt.subplots(num=fig_num)
         ax.plot(temp_k_list,Ps,'o-')
         ax.set_xlabel('BB Temp (K)')
         ax.set_ylabel('Power (W)')
         ax.grid(1)
-        ax.legend(tuple(['measure','model','tophat [%.1f,%.1f]'%(freq_edges_ghz[0],freq_edges_ghz[1])]),loc='upper left')
+        ax.legend(tuple(['measure','model','tophat [%.1f,%.1f],'%(freq_edges_ghz[0],freq_edges_ghz[1]),'tophat measured fc and bw']),loc='upper left')
         ax.set_title('P vs T (mask applied: %s [%.1f,%.1f])'%(mask_state,f_mask_min,f_mask_max))
         return fig,ax
 
