@@ -134,6 +134,25 @@ class SignalAnalysis():
             plt.show()
         return N
 
+    def get_num_points_per_period_squarewave(self,arr,threshold=0.5,debug=False):
+        arr_diff = abs(np.diff(arr))
+        #indices = np.where(arr_diff > arr_diff.mean() * threshold)[0]+1 # +1 since diff makes one less pt
+        indices = np.where(arr_diff > arr_diff.max()*threshold)[0]+1 #np.max(arr_diff)*threshold)[0]+1 # +1 since diff makes one less pt
+        indices = indices[1::2]
+        num_pts_per_period_arr = np.diff(indices)
+        num_pts_per_period = int(round(num_pts_per_period_arr.mean()))
+
+        if debug:
+            print('Number of points per period list: ',num_pts_per_period_arr)
+            fix,ax = plt.subplots(2) 
+            ax[0].plot(arr,'bo-')
+            ax[0].plot(indices,arr[indices],'r*')
+            ax[1].plot(arr_diff,'bo-')
+            ax[1].plot(indices-1, arr_diff[indices-1],'r*')
+            ax[1].axhline(arr_diff.max()*threshold)
+            plt.show()
+        return num_pts_per_period
+
     def lowpass(self, x, alpha=0.001):
         data = [x[0]]
         for a in x[1:]:
@@ -141,13 +160,14 @@ class SignalAnalysis():
         return np.array(data)
 
 class SoftwareLockIn(SignalAnalysis):
-    def __handle_integer_periods(self,integer_periods,num_pts_per_period,sig,ref,debug):
+    def _handle_integer_periods(self,integer_periods,num_pts_per_period,sig,ref,debug):
 
         if integer_periods:
             if num_pts_per_period is not None:
                 pass
             else:
-                num_pts_per_period = self.get_num_points_per_period(ref,fit_wave=True,debug=debug)
+                #num_pts_per_period = self.get_num_points_per_period(ref,fit_wave=True,debug=debug)
+                num_pts_per_period = self.get_num_points_per_period_squarewave(ref,threshold=0.5,debug=False)
             N = len(sig)//num_pts_per_period * num_pts_per_period
             sig=sig[0:N]
             ref=ref[0:N]
@@ -175,7 +195,7 @@ class SoftwareLockIn(SignalAnalysis):
             Note: For square-wave like response in sig, the normalization may be incorrect.
 
         '''
-        sig,ref,N = self.__handle_integer_periods(integer_periods,num_pts_per_period,sig,ref,debug)
+        sig,ref,N = self._handle_integer_periods(integer_periods,num_pts_per_period,sig,ref,debug)
         sig = sig - sig.mean()
         ref = ref - ref.mean()
         ref = ref/self.get_amplitude_of_sinusoid(ref,nbins=3,debug=False) # make reference wave from +/- 1
@@ -385,7 +405,7 @@ class SoftwareLockIn(SignalAnalysis):
 
         return I, Q, v_reference_amp
 
-class SoftwareLockinAcquisition(SoftwareLockIn):
+class SoftwareLockinAcquire(SoftwareLockIn):
     ''' One column data acquisition to lock-into a small signal.  
         The signal comes form one dfb card input.
         The references comes from another dfb card input 
@@ -431,11 +451,12 @@ class SoftwareLockinAcquisition(SoftwareLockIn):
         if num_pts_per_period is not None:
             num_pts = num_pts_per_period 
         else:
-            data = self.ec.getNewData()
+            data = self.ec.getNewData(minimumNumPoints=80000)
             arr = data[self.ref_col_index,0,:,0]
             arr_pp = np.max(arr) - np.min(arr)
-            assert arr_pp > self.ref_pp_min, print('Reference signal amplitude is too low.  Increase and try again.') 
-            num_pts = self.get_num_points_per_period(arr,fit_wave=False,debug=False)
+            assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2)) 
+            #num_pts = self.get_num_points_per_period(arr,fit_wave=False,debug=False)
+            num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
         return num_pts
 
     def getData(self, num_periods=10, window=False,debug=False):
@@ -652,11 +673,16 @@ def test_get_num_points_per_period():
     plt.show()
 
 def test_lockin_acq():
-    sla = SoftwareLockinAcquisition(signal_feedback_or_error='error')
+    sla = SoftwareLockinAcquire(signal_feedback_or_error='error')
     sla.getData(num_periods=12, window=False,debug=True)
+
+def test_get_num_points_per_period_squarewave():
+    sig,ref = make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='square',plotfig=False)
+    SignalAnalysis().get_num_points_per_period_squarewave(ref,debug=True)
     
 if __name__ == "__main__":
 
     #test_lockin_func()
     test_lockin_acq()
+    #test_get_num_points_per_period_squarewave()
     plt.show()
