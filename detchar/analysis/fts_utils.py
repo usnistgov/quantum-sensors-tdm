@@ -1137,7 +1137,7 @@ class PassbandMetrics():
             plt.plot(f1,S[dex1],'g*')
             plt.plot(f2,S[dex2],'r*')
             plt.show()
-        return f2-f1
+        return f2-f1,f1,f2
 
     def get_passband_norm(self,f_ghz,S,f_range_ghz=None):
         if f_range_ghz is not None:
