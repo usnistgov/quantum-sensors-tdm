@@ -7,7 +7,7 @@ ported to python3 7/2021 from XY.py written JH 10/20/2011
 import socket
 import time
 
-class aerotechXY(object):
+class AerotechXY(object):
     '''
     Class for controlling the aerotech XY stage.  Some setup is required on the Ensemble motor controller side.
 
@@ -179,7 +179,7 @@ class aerotechXY(object):
         if verbose:
             print('sending following string to ensemble: ',string)
         self.__SendStr__(string)
-        
+
     def get_position(self,sleeptime=.01):
         #self.client_socket.recv(1000) # clear the current buffer of returns from the controller
         x=self.__SendStr__('PFBK X')

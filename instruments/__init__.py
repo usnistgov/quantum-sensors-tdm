@@ -15,3 +15,4 @@ from .cryocon22_serial import Cryocon22
 from .agilent33220a_usb import Agilent33220A
 from .bluebox import BlueBox
 from .velmex_serial import Velmex
+from .aerotechXY import AerotechXY

@@ -12,7 +12,7 @@ from dataclasses_json import dataclass_json
 from typing import Any, List
 
 from nasa_client import EasyClient
-from instruments import BlueBox, Velmex, Agilent33220A
+from instruments import BlueBox, Velmex, Agilent33220A, AerotechXY
 from adr_gui.adr_gui_control import AdrGuiControl
 
 import time
@@ -106,6 +106,13 @@ class PolCalSteppedSweepData():
             ax[0].set_title('Column %d, Group %d'%(self.column_number,ii))
         plt.show()
 
+@dataclass_json
+@dataclass
+class PolCalSteppedBeamMapData():
+    xy_position_list: List[Any]
+    data: List[PolCalSteppedSweepData]
+
+
 class PolcalSteppedSweep():
     ''' Aquire polcal at stepped, fixed angles '''
     def __init__(self, angle_list_deg,
@@ -187,9 +194,21 @@ class PolcalSteppedSweep():
                                       extra_info=extra_info)
 
 class PolCalSteppedBeamMap():
-    ''' Aquire PolcalSteppedSweep for x,y positions '''
-    def __init__(self):
-        print('To be written')
+    ''' Acquire PolcalSteppedSweep for x,y positions '''
+    def __init__(self,xy_position_list, polcal_stepped_sweep, doXYinit=True):
+        self.pcss = polcal_stepped_sweep
+        self.xy_pos_list = xy_position_list
+        self.x_velocity_mmps = self.y_velocity_mmps = 25 # velocity of xy motion in mm per s
+        self.xy = AerotechXY() #
+        if doXYinit:
+            self.xy.initialize()
+
+    def acquire(self, extra_info = {}):
+        data_list = []
+        for ii, xy_pos in enumerate(self.xy_pos_list):
+            self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
+            data_list.append(self.pcss.get_polcal(extra_info = extra_info))
+        return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
 
 if __name__ == "__main__":
     pcss = PolcalSteppedSweep(angle_list_deg=[0,30,60,90],
