@@ -5,17 +5,15 @@ tools.py
 Useful/general software for detector characterization.
 
 DO TO:
+0): check num_pts_per_period for square wave input
 1) DETERMINE IF TIME DOMAIN APPROACH OR FREQUENCY DOMAIN APPROACH TO LOCK-IN IS "BETTER"
-2) WRITE FUNCTION TO USE SQUARE WAVE REFERENCE
-3) MAKE FUNCTION THAT ACCEPTS easy_client return data structure as input to lock-in
-4) IMPROVE LOCK-IN DATA ACQUISITION FUNCTION
-5) CLEAN UP UN-NEEDED FUNCTIONS IN THIS FILE
-6) rolling average of lock-in signal 
+2) rolling average of lock-in signal 
+3) ~1-2% bias in lock-in detection.  Probably due to integer # of periods?
 
 '''
 
 import numpy as np
-#from nasa_client import EasyClient
+from nasa_client import EasyClient
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert,square
 from scipy.optimize import curve_fit
@@ -32,7 +30,7 @@ class SignalAnalysis():
         #amp = np.sqrt(2*np.sum(np.real(aa))/N**2)
         return amp
 
-    def get_amplitude_of_sinusoid(self,a,nbins=0,debug=True):
+    def get_amplitude_of_sinusoid(self,a,nbins=0,debug=False):
         ''' return amplitude of a real-valued wave.
             Expects "a" is a pure harmonic.  If multiple tones, will return
             the amplitude of the largest tone.
@@ -48,8 +46,8 @@ class SignalAnalysis():
         fa = np.fft.fft(a)
         aa = fa.conjugate()*fa
         aa=aa.real
-        #dex = np.where(aa==np.max(aa[1:]))[0][0]+1 # excluding the zero frequency "peak", which is related to offset
-        dex = np.where(aa==np.max(aa))[0][0]
+        dex = np.where(aa[1:] == np.max(aa[1:]))[0][0]+1 # excluding the zero frequency "peak", which is related to offset
+        #dex = np.where(aa==np.max(aa))[0][0]
         aa_slice = aa[dex-nbins:dex+nbins+1]
         amp = np.sqrt(4*np.sum(aa_slice))/N
 
@@ -59,6 +57,33 @@ class SignalAnalysis():
             plt.plot(aa,'bo')
             plt.plot(dex,aa[dex],'r*')
             plt.plot(indices[dex-nbins:dex+nbins+1],aa_slice,'go')
+            plt.show()
+        return amp
+
+    def get_amplitude_of_squarewave(self,a,debug=False):
+        ''' return amplitude of a real-valued square wave.
+
+            input:
+            a: 1D array-like
+            nbins: <int>, number of bins to (left and right) to integrate around max
+            debug: <bool>, if True, plot some stuff
+
+            output: amplitude (float)
+        '''
+        N=len(a)
+        fa = np.fft.fft(a)
+        aa = fa.conjugate()*fa
+        aa=aa.real
+        amp = np.sqrt(np.sum(aa[1:]))/N
+
+        if debug:
+            print('recovered amplitude = ',amp)
+            print('max - min / 2 = ',((np.max(a)-np.min(a))*.5))
+            fig,ax = plt.subplots(2)
+            ax[0].plot(a,'bo-') 
+            ax[0].set_ylabel('time domain')
+            ax[1].plot(aa,'bo-')
+            ax[1].set_ylabel('frequency domain')
             plt.show()
         return amp
 
@@ -109,9 +134,52 @@ class SignalAnalysis():
             plt.show()
         return N
 
+    def get_num_points_per_period_squarewave(self,arr,threshold=0.5,debug=False):
+        arr_diff = abs(np.diff(arr))
+        #indices = np.where(arr_diff > arr_diff.mean() * threshold)[0]+1 # +1 since diff makes one less pt
+        indices = np.where(arr_diff > arr_diff.max()*threshold)[0]+1 #np.max(arr_diff)*threshold)[0]+1 # +1 since diff makes one less pt
+        indices = indices[1::2]
+        num_pts_per_period_arr = np.diff(indices)
+        num_pts_per_period = int(round(num_pts_per_period_arr.mean()))
+
+        if debug:
+            print('Number of points per period list: ',num_pts_per_period_arr)
+            fix,ax = plt.subplots(2) 
+            ax[0].plot(arr,'bo-')
+            ax[0].plot(indices,arr[indices],'r*')
+            ax[1].plot(arr_diff,'bo-')
+            ax[1].plot(indices-1, arr_diff[indices-1],'r*')
+            ax[1].axhline(arr_diff.max()*threshold)
+            plt.show()
+        return num_pts_per_period
+
+    def lowpass(self, x, alpha=0.001):
+        data = [x[0]]
+        for a in x[1:]:
+            data.append(data[-1] + (alpha*(a-data[-1])))
+        return np.array(data)
+
 class SoftwareLockIn(SignalAnalysis):
-    def lockin_reference_is_sine(self,sig,ref,window=True,integer_periods=True,num_pts_per_period=None,debug=False):
-        ''' software lock in using sine-wave mixing in time domain
+    def _handle_integer_periods(self,integer_periods,num_pts_per_period,sig,ref,debug):
+
+        if integer_periods:
+            if num_pts_per_period is not None:
+                pass
+            else:
+                #num_pts_per_period = self.get_num_points_per_period(ref,fit_wave=True,debug=debug)
+                num_pts_per_period = self.get_num_points_per_period_squarewave(ref,threshold=0.5,debug=False)
+            N = len(sig)//num_pts_per_period * num_pts_per_period
+            sig=sig[0:N]
+            ref=ref[0:N]
+        else:
+            N = len(sig)
+        return sig, ref, N  
+    
+    def lockin_func(self,sig,ref,window=False,integer_periods=True,num_pts_per_period=None,debug=False):
+        ''' software lock in using mixing in time domain.  Function works for either square wave or sine-wave 
+            reference.  
+
+            input: 
 
             sig: 1d array, raw signal
             ref: 1d array, reference signal
@@ -124,21 +192,14 @@ class SoftwareLockIn(SignalAnalysis):
 
             return: I, Q (single points for *all* of sig)
 
-        '''
-        if integer_periods:
-            if num_pts_per_period is not None:
-                pass
-            else:
-                num_pts_per_period = self.get_num_points_per_period(ref,fit_wave=True,debug=debug)
-            N = len(sig)//num_pts_per_period * num_pts_per_period
-            sig=sig[0:N]
-            ref=ref[0:N]
-        else:
-            N = len(sig)
+            Note: For square-wave like response in sig, the normalization may be incorrect.
 
+        '''
+        sig,ref,N = self._handle_integer_periods(integer_periods,num_pts_per_period,sig,ref,debug)
         sig = sig - sig.mean()
         ref = ref - ref.mean()
-        ref = ref/self.get_amplitude_of_sinusoid(ref,nbins=1,debug=False) # make reference wave from +/- 1
+        ref = ref/self.get_amplitude_of_sinusoid(ref,nbins=3,debug=False) # make reference wave from +/- 1
+        #ref = ref/self.get_amplitude_of_squarewave(ref,debug=False) # make reference wave from +/- 1
 
         rh = hilbert(ref)
         if window:
@@ -149,12 +210,12 @@ class SoftwareLockIn(SignalAnalysis):
         else:
             x=sig*rh.real
             y=sig*rh.imag
-            I = np.mean(x)*2
-            Q = np.mean(y)*2
+            I = np.mean(x)*2#*np.sqrt(2/np.pi)
+            Q = np.mean(y)*2#*np.sqrt(2/np.pi)
 
         if debug:
             print('I=',I,'\nQ=',Q)
-            fig, ax = plt.subplots(3)
+            fig, ax = plt.subplots(4)
             ax[0].plot(sig,'o-')
             ax[0].set_title('Signal')
             ax[1].plot(rh.real)
@@ -165,14 +226,22 @@ class SoftwareLockIn(SignalAnalysis):
             ax[2].plot(x)
             ax[2].plot(y)
             ax[2].legend(('I','Q'))
+            
+            I_arr = 2*self.lowpass(sig*rh.real,alpha=.0001)
+            Q_arr = 2*self.lowpass(sig*rh.imag,alpha=.0001)
+            a_arr = 2*self.lowpass(np.sqrt((sig*rh.real)**2+(sig*rh.imag)**2),alpha=.0001)
+            ax[3].plot(I_arr)
+            ax[3].plot(Q_arr)
+            ax[3].plot(np.sqrt(I_arr**2+Q_arr**2))
+            ax[3].plot(a_arr)
+            ax[3].legend(('I','Q','amp1','amp2'))
+            ax[3].set_title('low passed signal')
             plt.show()
         return I,Q
 
-    def lockin_reference_is_square(self,sig,ref,window=True,integer_periods=True,num_pts_per_period=None,debug=False):
-        print('To be written!!!')
-
-    # def lock_in_1d(self,sig, mix, mix_type='square',sig_type='sine',debug=True):
-    #     ''' inspired by J. McMahon
+    # def lockin_func_fd(self,sig, mix, mix_type='square',sig_type='sine',debug=True):
+    #     ''' lockin using mixing in frequency domain.
+    #          inspired by J. McMahon
     #
     #         input:
     #             sig: raw input signal wave
@@ -229,7 +298,11 @@ class SoftwareLockIn(SignalAnalysis):
     #         plt.legend()
     #     return I, Q
 
-    def software_lock_in(self, v_signal, v_reference, reference_type='square',response_type='sine'):
+    
+
+    # deprecated methods from "legacy electronics", ported over to python 3 and PGE for posterity
+    # ------------------------------------------------------------------------------------------------------
+    def software_lock_in_original(self, v_signal, v_reference, reference_type='square',response_type='sine'):
         ''' lockin algorithm written by J. McMahon
 
             input:
@@ -251,6 +324,8 @@ class SoftwareLockIn(SignalAnalysis):
                        THE PHASE IS DIFFERENT THAN ZERO
 
         '''
+
+        print('warning: software_lock_in_original is depricated.')
 
         if reference_type=='square':
             v_ref_norm = 1
@@ -330,45 +405,135 @@ class SoftwareLockIn(SignalAnalysis):
 
         return I, Q, v_reference_amp
 
-    def getNewData_lockin(self, easy_client, signal_column_index=0,reference_column_index=1,reference_type='square',response_type='sine',
-                                     signal_feedback_or_error='feedback', debug=False):
+class SoftwareLockinAcquire(SoftwareLockIn):
+    ''' One column data acquisition to lock-into a small signal.  
+        The signal comes form one dfb card input.
+        The references comes from another dfb card input 
+    ''' 
+    def __init__(self, easy_client=None, signal_column_index=0,reference_column_index=1, 
+                 signal_feedback_or_error='feedback',num_pts_per_period=None):
         '''
-        Acquire data and return the locked in signal for each row in one column of data.
-
         input:
-        ec: instance of easyClient
-        signal_index: column index in EasyClient.getNewData return which corresponds to the signal.
-        reference_index: column index in EasyClient.getNewData return which corresponds to the reference
-        reference_type: 'square' or 'sine'
-        response_type: 'square' or 'sine'
-        debug: boolean
-
-        output:
+        easy_client: instance of easyClient
+        signal_column_index: column index in EasyClient.getNewData return which corresponds to the signal.
+        reference_column_index: column index in EasyClient.getNewData return which corresponds to the reference
+        signal_feedback_or_error: 'feedback' or 'error', defines which vector describes the signal.  
+                                  Typical use case is 'feedback', which is default.
+        num_pts_per_period: <int> or if None determined from data. 
         '''
+        # constant globals
+        self.ref_pp_min = 100
 
-        #dataOut[col,row,frame,error=0/fb=1]
+        self.ec = self._handle_easy_client_arg(easy_client)
+        self.sig_col_index = signal_column_index 
+        self.ref_col_index = reference_column_index 
+        self.num_pts_per_period = self._handle_pts_per_period_arg(num_pts_per_period)
+        self.signal_feedback_or_error = signal_feedback_or_error 
+        self.sig_index = self._handle_feedback_or_error_arg(signal_feedback_or_error)
+        
+    def _handle_feedback_or_error_arg(self, signal_feedback_or_error):
         if signal_feedback_or_error == 'feedback':
             dex = 1
         elif signal_feedback_or_error == 'error':
             dex = 0
         else:
             print('unknown signal_feedback_or_error: ',signal_feedback_or_error)
-        dataOut = easy_client.getNewData(delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3)
-        I,Q,v_ref_amp = self.software_lock_in(dataOut[signal_column_index,:,:,dex],dataOut[reference_column_index,:,:,0],
-                                         reference_type=reference_type, response_type = response_type)
+        return dex
+
+    def _handle_easy_client_arg(self, easy_client):
+        if easy_client is not None:
+            return easy_client
+        easy_client = EasyClient()
+        easy_client.setupAndChooseChannels()
+        return easy_client
+
+    def _handle_pts_per_period_arg(self,num_pts_per_period):
+        if num_pts_per_period is not None:
+            num_pts = num_pts_per_period 
+        else:
+            data = self.ec.getNewData(minimumNumPoints=80000)
+            arr = data[self.ref_col_index,0,:,0]
+            arr_pp = np.max(arr) - np.min(arr)
+            assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2)) 
+            #num_pts = self.get_num_points_per_period(arr,fit_wave=False,debug=False)
+            num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
+        return num_pts
+
+    def getData(self, num_periods=10, window=False,debug=False):
+        '''
+        Acquire data and return the locked in signal for each row in one column of data.
+
+        input:
+        window: boolean, if true Hanning window applied
+        debug: boolean, if true plot some stuff
+
+        output: iq_arr, n_row x 2 numpy.array of I and Q
+        '''
+    
+        #dataOut[col,row,frame,error=0/fb=1]
+        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = True)
+        iq_arr = np.empty((self.ec.numRows,2))
+        for ii in range(self.ec.numRows):
+            iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],
+                                                window=window,integer_periods=True,num_pts_per_period=self.num_pts_per_period,debug=False))
+            
         if debug:
-            for ii in range(easy_client.numRows):
+            for ii in range(self.ec.numRows):
+                ref_amp = self.get_amplitude_of_squarewave(dataOut[self.ref_col_index,ii,:,0],debug=False) 
+                #ref_amp = self.get_amplitude_of_sinusoid(dataOut[reference_column_index,ii,:,0],nbins=2,debug=True) 
+                sig_amp = self.get_amplitude_of_sinusoid(dataOut[self.sig_col_index,ii,:,self.sig_index],nbins=2,debug=False)
+                lock_in_amp = np.sqrt(iq_arr[ii,0]**2+iq_arr[ii,1]**2)
+                print('Row index %02d: (I, Q) = (%.3e,%.3e)'%(ii,iq_arr[ii,0],iq_arr[ii,1]))
+                print('lock-in amplitude: ',lock_in_amp,'\nsignal amplitude: ',sig_amp, '\nref_amp: ',ref_amp)
+
                 plt.figure(ii)
                 plt.title('Row index = %02d'%ii)
-                plt.plot(dataOut[signal_column_index,ii,:,dex],label='signal')
-                plt.plot(dataOut[reference_column_index,ii,:,0],label='reference')
+                plt.plot(dataOut[self.sig_col_index,ii,:,self.sig_index],label='signal')
+                plt.plot(dataOut[self.ref_col_index,ii,:,0],label='reference')
+                plt.legend()
+        return iq_arr
 
-                ref_pp = np.max(dataOut[reference_column_index,ii,:,0]) - np.min(dataOut[reference_column_index,ii,:,0])
-                sig_pp = np.max(dataOut[signal_column_index,ii,:,dex]) - np.min(dataOut[signal_column_index,ii,:,dex])
-                lock_in_amp = (I**2+Q**2)/v_ref_amp
-                print('signal amplitude: ',sig_pp/2, '\nlock-in amplitude: ',lock_in_amp/2,'\nref_pp: ',ref_pp)
-                print('Row index %02d: (I, Q, v_ref_amp) = (%.3f,%.3f,.%.3f)'%(ii,I[ii],Q[ii],v_ref_amp[ii]))
-        return I,Q,v_ref_amp
+    
+
+    # def getNewData_lockin_classic(self, easy_client, signal_column_index=0,reference_column_index=1,reference_type='square',response_type='sine',
+    #                                  signal_feedback_or_error='feedback', debug=False):
+    #     '''
+    #     Acquire data and return the locked in signal for each row in one column of data.
+
+    #     input:
+    #     ec: instance of easyClient
+    #     signal_index: column index in EasyClient.getNewData return which corresponds to the signal.
+    #     reference_index: column index in EasyClient.getNewData return which corresponds to the reference
+    #     reference_type: 'square' or 'sine'
+    #     response_type: 'square' or 'sine'
+    #     debug: boolean
+
+    #     output:
+    #     '''
+
+    #     #dataOut[col,row,frame,error=0/fb=1]
+    #     if signal_feedback_or_error == 'feedback':
+    #         dex = 1
+    #     elif signal_feedback_or_error == 'error':
+    #         dex = 0
+    #     else:
+    #         print('unknown signal_feedback_or_error: ',signal_feedback_or_error)
+    #     dataOut = easy_client.getNewData(delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3)
+    #     I,Q,v_ref_amp = self.software_lock_in(dataOut[signal_column_index,:,:,dex],dataOut[reference_column_index,:,:,0],
+    #                                      reference_type=reference_type, response_type = response_type)
+    #     if debug:
+    #         for ii in range(easy_client.numRows):
+    #             plt.figure(ii)
+    #             plt.title('Row index = %02d'%ii)
+    #             plt.plot(dataOut[signal_column_index,ii,:,dex],label='signal')
+    #             plt.plot(dataOut[reference_column_index,ii,:,0],label='reference')
+
+    #             ref_pp = np.max(dataOut[reference_column_index,ii,:,0]) - np.min(dataOut[reference_column_index,ii,:,0])
+    #             sig_pp = np.max(dataOut[signal_column_index,ii,:,dex]) - np.min(dataOut[signal_column_index,ii,:,dex])
+    #             lock_in_amp = (I**2+Q**2)/v_ref_amp
+    #             print('signal amplitude: ',sig_pp/2, '\nlock-in amplitude: ',lock_in_amp/2,'\nref_pp: ',ref_pp)
+    #             print('Row index %02d: (I, Q, v_ref_amp) = (%.3f,%.3f,.%.3f)'%(ii,I[ii],Q[ii],v_ref_amp[ii]))
+    #     return I,Q,v_ref_amp
 
 
 # functions used in debugging -----------------------------
@@ -433,8 +598,8 @@ def make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024
 #
 #     plt.show()
 
-def test_lockin_reference_is_sine():
-    ''' Test the function lockin_reference_is_sine()
+def test_lockin_func():
+    ''' Test the function lockin_func()
 
         lessons learned:
         1) In limit of fine sampling and a low number of periods: ~8-10% bias when locking in on a non-integer number of
@@ -462,8 +627,8 @@ def test_lockin_reference_is_sine():
     N = int(num_periods/f/samp_int) # number of samples
     print(N)
 
-    #n_to_s = np.linspace(0,10,21) # noise to signal vector
-    n_to_s = np.ones(100)*10
+    n_to_s = np.linspace(0,10,21) # noise to signal vector
+    #n_to_s = np.ones(100)*10
     cases = [[False,False],[True,False],[False,True],[True,True]]
     #cases = [[False,False]]
 
@@ -477,7 +642,7 @@ def test_lockin_reference_is_sine():
         print(case)
         tmp_arr = np.empty((len(n_to_s),4))
         for ii,n2s in enumerate(data_list):
-            I,Q=sl.lockin_reference_is_sine(n2s[0],n2s[1],window=case[0],integer_periods=case[1],num_pts_per_period=None,debug=False)
+            I,Q=sl.lockin_func(n2s[0],n2s[1],window=case[0],integer_periods=case[1],num_pts_per_period=None,debug=False)
             amp = np.sqrt(I**2+Q**2)
             err_pct = ((amp - signal_amp)/amp)*100
             print('amplitude =',amp, '% diff = ',err_pct)
@@ -486,7 +651,7 @@ def test_lockin_reference_is_sine():
 
     for ii,result in enumerate(results):
         plt.plot(n_to_s,result[:,3])
-        print(result[:,3].mean(),'+/-',result[:,3].std())
+        #print(result[:,3].mean(),'+/-',result[:,3].std())
     plt.xlabel('Noise/Signal')
     plt.ylabel('% error in amplitude measurement')
     plt.legend(('basic','window','int periods','window and int periods'))
@@ -507,6 +672,17 @@ def test_get_num_points_per_period():
     plt.plot(num_periods,y[:,1])
     plt.show()
 
+def test_lockin_acq():
+    sla = SoftwareLockinAcquire(signal_feedback_or_error='error')
+    sla.getData(num_periods=12, window=False,debug=True)
+
+def test_get_num_points_per_period_squarewave():
+    sig,ref = make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='square',plotfig=False)
+    SignalAnalysis().get_num_points_per_period_squarewave(ref,debug=True)
+    
 if __name__ == "__main__":
 
-    test_lockin_reference_is_sine()
+    #test_lockin_func()
+    test_lockin_acq()
+    #test_get_num_points_per_period_squarewave()
+    plt.show()
