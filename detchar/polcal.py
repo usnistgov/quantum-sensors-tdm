@@ -81,29 +81,29 @@ class PolCalSteppedSweepData():
         if rows_per_figure is not None:
             pass
         else:
+            num_in_group = 8
             n_angles,n_rows,n_iq = np.shape(self.iq_v_angle)
             n_groups = n_rows//num_in_group + 1
             rows_per_figure=[]
             for jj in range(n_groups):
                 tmp_list = []
-                for kk in range(8):
+                for kk in range(num_in_group):
                     row_index = jj*num_in_group+kk
                     if row_index>=n_rows: break
                     tmp_list.append(row_index)
                 rows_per_figure.append(tmp_list)
-        print rows_per_figure
         for ii,row_list in enumerate(rows_per_figure):
             fig,ax = plt.subplots(3,num=ii)
             for row in row_list:
                 ax[0].plot(self.angle_deg,self.iq_v_angle[:,row,0],'o-',label=jj)
                 ax[1].plot(self.angle_deg,self.iq_v_angle[:,row,1],'o-',label=jj)
                 ax[2].plot(self.angle_deg,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=jj)
-            ax[0].y_label('I (DAC)')
-            ax[1].y_label('Q (DAC)')
-            ax[2].y_label('Amplitude (DAC)')
-            ax[2].x_label('Angle (deg)')
+            ax[0].set_ylabel('I (DAC)')
+            ax[1].set_ylabel('Q (DAC)')
+            ax[2].set_ylabel('Amplitude (DAC)')
+            ax[2].set_xlabel('Angle (deg)')
             ax[1].legend()
-            fig.title('Column %d, Group %d'%(self.column_number,ii))
+            ax[0].set_title('Column %d, Group %d'%(self.column_number,ii))
         plt.show()
 
 class PolcalSteppedSweep():
@@ -129,7 +129,7 @@ class PolcalSteppedSweep():
         self.source_freq_hz = source_frequency_hz
         self.num_lockin_periods = 10
         self.row_order = self._handle_row_to_state(row_order)
-        self.waittime_s = 10.0 # time to wait between setting grid angle and acquiring data
+        self.waittime_s = 1.0 # time to wait between setting grid angle and acquiring data
 
     def _handle_row_to_state(self,row_order):
         if row_order is not None:
@@ -192,9 +192,10 @@ class PolCalSteppedBeamMap():
         print('To be written')
 
 if __name__ == "__main__":
-    pcss = PolcalSteppedSweep(angle_list_deg=[0,45,90],
+    pcss = PolcalSteppedSweep(angle_list_deg=[0,30,60,90],
                        source_amp_volt=.1, source_offset_volt=0.5, source_frequency_hz=5.0,
-                       num_lockin_periods = 10,
+                       num_lockin_periods = 30,
                        row_order=None)
     pc_data = pcss.get_polcal()
     pc_data.to_file('test_polcal_data',overwrite=True)
+    pc_data.plot()

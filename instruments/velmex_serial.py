@@ -80,14 +80,14 @@ class Velmex(serial_instrument.SerialInstrument):
             self.wait_for_ready(verbose=verbose)
         return
 
-    def move_absolute(self,rotation,home_offset=200,wait=False,verbose=False):
+    def move_absolute(self,phi_100th_deg,home_offset=200,wait=False,verbose=False):
         '''
         Move azimuth to absolute angle from any starting angle
         Beware, will do several movements to home first, then find absolute
         
         Parameters
         ----------
-        rotation : int
+        phi_100th_deg : int
             1/100 degrees of rotation
         wait : boolean (optional)
             wait for motor to finish moving before allowing another command
@@ -100,20 +100,20 @@ class Velmex(serial_instrument.SerialInstrument):
         None 
         '''
         if verbose:
-            print('Absolute azimuth move to '+str(rotation/100)+' deg')
-        # note in next command, last move before commanded rotation is unique home to a particular motor/limit switch being used, 
-        cmd_str = 'F N C setL1M-2,SIM400,A1M1,I1M-400,I1M0,I1M-400,I1M0,I1M'+str(home_offset)+',I1M'+str(-rotation/5)+',R'
+            print('Absolute azimuth move to '+str(phi_100th_deg/100)+' deg')
+        # note in next command, last move before commanded phi_100th_deg is unique home to a particular motor/limit switch being used, 
+        cmd_str = 'F N C setL1M-2,SIM400,A1M1,I1M-400,I1M0,I1M-400,I1M0,I1M'+str(home_offset)+',I1M'+str(-phi_100th_deg/5)+',R'
         self.write(cmd_str)
         if wait:
             self.wait_for_ready(verbose=verbose)
         return 
     
-    def move_relative(self,rotation,wait=False,verbose=False):
+    def move_relative(self,phi_100th_deg,wait=False,verbose=False):
         '''
         Move azimuth from current position
         Parameters
         ----------
-        rotation : int
+        phi_100th_deg : int
             1/100 degrees of rotation
         wait : boolean (optional)
             wait for motor to finish moving before allowing another command
@@ -123,8 +123,8 @@ class Velmex(serial_instrument.SerialInstrument):
         None 
         '''
         if verbose:
-            print('Incremental azimuth move of '+str(rotation/100)+' deg')
-        cmd_str = 'F N C S1M400,I1M'+str(-rotation/5)+',R'
+            print('Incremental azimuth move of '+str(phi_100th_deg/100)+' deg')
+        cmd_str = 'F N C S1M400,I1M'+str(-phi_100th_deg/5)+',R'
         self.write(cmd_str)
         if wait:
             self.wait_for_ready(verbose=verbose)
