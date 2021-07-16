@@ -55,8 +55,8 @@ class Velmex(serial_instrument.SerialInstrument):
         self.motor_type_int = 4 # hardware defined.  INCORRECT VALUE CAN DAMAGE MOTOR OR CONTROLLER!
         self.steps_per_revolution = 36000 # hardware defined.
         # In full the controller steps per revolution = 40 and the B5990 rotary table has a 90:1 gear ratio
-        self.steps_second = 400 # speed of rotation
-        self.acceleration = 1 # can be 1-127
+        self.jog_steps_second = 400 # speed of rotation
+        self.acceleration_setting = 1 # 1-127, with 1 unit = 4000 steps/s^2.  With 90:1 gear ratio, this is .11 rev/s^2
 
         self.id_string = "Velmex VXM-2"
         self.manufacturer = 'Velmex'
@@ -70,7 +70,44 @@ class Velmex(serial_instrument.SerialInstrument):
             self.initialize(verbose=True)
 
     def setup(self):
-        print('to be written')
+        print('to be tested')
+        # set motor type, jog speed, acceleration, zero index
+        # limit switches???
+        cmd_list = [self._cmdstr_set_motor_type(self.motor_type_int, self.motor_id),\
+                    self._cmdstr_set_jog(self.jog_steps_per_second, self.motor_id),\
+                    self._cmdstr_set_acceleration(self.acceleration_setting, self.motor_id),\
+                    self._cmdstr_set_zero_index(zero_index,self.motor_id)]
+        cmd_str = ''
+        for cmd in cmd_list:
+            cmd_str.append(cmd+',')
+        cmd_str.pop()
+        self.write(cmd_str)
+
+    def get_setup(self,print_back=True):
+        print('to be tested')
+        # set motor type, jog speed, acceleration, zero index
+        response_tuple = tuple(self.get_motor_type(),\
+                         self.get_jog(),\
+                         self.get_acceleration(),\
+                         self.get_zero_index())
+        if print_back:
+            labels = ['motor type','jog','accel','zero index']
+            for ii, response in enumerate(response_list):
+                print(labels[ii],": ",response)
+        return response_tuple
+
+    def kill_motion(self):
+        self.write("K")
+
+    def clear(self):
+        self.write("C")
+
+    def is_ready(self):
+        result = self.ask("V").decode()
+        if result == 'B':
+            return False
+        elif result == 'R':
+            return True
 
     def run_command(self,cmd_str):
         self.write(cmd_str+",R")
@@ -221,27 +258,22 @@ class Velmex(serial_instrument.SerialInstrument):
     def set_jog_speed(self,speed):
         self.write("setj1M%d"%speed)
 
-    def kill_motion(self):
-        self.write("K")
 
-    def clear(self):
-        self.write("C")
 
-    def is_ready(self):
-        result = self.ask("V").decode()
-        if result == 'B':
-            return False
-        elif result == 'R':
-            return True
+    def cmdStrGet_motor_type(self,motor_id):
+        return "getM%dM"%motor_id
 
-    def get_motor_type(self,motor_id):
-        return int(self.askFloat("getM%dM"%motor_id))
+    def get_motor_type(self):
+        return int(self.askFloat(self._cmd_str_motor_type(self.motor_id)))
 
     def set_motor_type_func(self,motor_id=1,motor_type_int=1):
         self.write("setM%dM%d"%(motor_id,motor_type_int))
 
     def set_motor_type(self):
         self.set_motor_type_func(self.motor_id,self.motor_type_int)
+
+    def set_limit_switch(self,switch_str="-2",motor_id=1):
+        self.write("setL%dM%s"%(motor_id,switch_str))
 
 
 if __name__ == "__main__":
