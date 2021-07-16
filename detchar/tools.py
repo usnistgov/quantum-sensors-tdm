@@ -471,7 +471,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         '''
     
         #dataOut[col,row,frame,error=0/fb=1]
-        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = True)
+        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 10)
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
             iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],
@@ -488,9 +488,10 @@ class SoftwareLockinAcquire(SoftwareLockIn):
 
                 plt.figure(ii)
                 plt.title('Row index = %02d'%ii)
-                plt.plot(dataOut[self.sig_col_index,ii,:,self.sig_index],label='signal')
-                plt.plot(dataOut[self.ref_col_index,ii,:,0],label='reference')
+                plt.plot(dataOut[self.sig_col_index,ii,:,self.sig_index]-np.mean(dataOut[self.sig_col_index,ii,:,self.sig_index]),label='signal')
+                plt.plot(dataOut[self.ref_col_index,ii,:,0]-np.mean(dataOut[self.ref_col_index,ii,:,0]),label='reference')
                 plt.legend()
+                plt.show()
         return iq_arr
 
     
@@ -681,8 +682,7 @@ def test_get_num_points_per_period_squarewave():
     SignalAnalysis().get_num_points_per_period_squarewave(ref,debug=True)
     
 if __name__ == "__main__":
+    sla = SoftwareLockinAcquire()
+    sla.getData(num_periods=10, window=False,debug=True)
 
-    #test_lockin_func()
-    test_lockin_acq()
-    #test_get_num_points_per_period_squarewave()
-    plt.show()
+    

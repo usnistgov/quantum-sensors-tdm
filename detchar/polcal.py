@@ -95,9 +95,9 @@ class PolCalSteppedSweepData():
         for ii,row_list in enumerate(rows_per_figure):
             fig,ax = plt.subplots(3,num=ii)
             for row in row_list:
-                ax[0].plot(self.angle_deg,self.iq_v_angle[:,row,0],'o-',label=jj)
-                ax[1].plot(self.angle_deg,self.iq_v_angle[:,row,1],'o-',label=jj)
-                ax[2].plot(self.angle_deg,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=jj)
+                ax[0].plot(self.angle_deg,self.iq_v_angle[:,row,0],'o-',label=row)
+                ax[1].plot(self.angle_deg,self.iq_v_angle[:,row,1],'o-',label=row)
+                ax[2].plot(self.angle_deg,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=row)
             ax[0].set_ylabel('I (DAC)')
             ax[1].set_ylabel('Q (DAC)')
             ax[2].set_ylabel('Amplitude (DAC)')
@@ -115,44 +115,54 @@ class PolCalSteppedBeamMapData():
 
 class PolcalSteppedSweep():
     ''' Aquire polcal at stepped, fixed angles '''
-    def __init__(self, angle_list_deg,
+    def __init__(self, angle_throw_amp_deg=360, angle_step_deg=10,
                  source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
                  num_lockin_periods = 10,
                  row_order=None):
 
         # hardware and class initialization
         self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
-                                         signal_feedback_or_error='error',num_pts_per_period=None)
+                                         signal_feedback_or_error='feedback',num_pts_per_period=None)
         self.source = Agilent33220A()
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
         self.init_source(source_amp_volt, source_offset_volt, source_frequency_hz)
-        self.grid_motor = Velmex(doInit=True)
+        self.grid_motor = Velmex(doInit=False)
+        # print('Sleeping for 15 seconds after homing.')
+        # time.sleep(15)
+        # print('end sleep.')
 
         # input parameters
-        self.angle_deg, self._angle_100th_deg = self._handle_angle_arg(angle_list_deg)
+        self.angle_deg, self._angle_100th_deg = self._handle_angle_args(angle_throw_amp_deg, angle_step_deg)
         self.num_angles = len(self.angle_deg)
         self.source_amp_v = source_amp_volt
         self.source_offset_v = source_offset_volt
         self.source_freq_hz = source_frequency_hz
         self.num_lockin_periods = 10
         self.row_order = self._handle_row_to_state(row_order)
-        self.waittime_s = 1.0 # time to wait between setting grid angle and acquiring data
+        self.waittime_s = 5 # time to wait between setting grid angle and acquiring data
 
     def _handle_row_to_state(self,row_order):
         if row_order is not None:
             return row_order
         return list(range(self.sla.ec.nrow))
 
-    def _handle_angle_arg(self,angle):
-        ''' velmex motor only has 100th degree step resolution.  So round to nearest '''
+    def _handle_angle_args(self,angle_throw_amp_deg, angle_step_deg):
+        ''' velmex motor hase 100th degree step resolution.  So round to nearest.    
+            Also, wires underneath motor cannot be continually twisted or risk breaking.  
+        '''
+        self.grid_motor.ensure_safe_angle(angle_throw_amp_deg*200) # x100 due to expected units of velmex class 
+        angle_deg = np.arange(-angle_throw_amp_deg,angle_throw_amp_deg+angle_step_deg,angle_step_deg)
         angle_100th_deg = []
-        for a in angle:
-            angle_100th_deg.append(int(round(a*100)))
-        angle_deg = list(np.array(angle_100th_deg)/100)
-        return angle_deg, angle_100th_deg
+        for ii, angle in enumerate(angle_deg):
+            a = int(round(angle*100))
+            angle_100th_deg.append(a)
+            angle_deg[ii] = a/100
+            
+        return angle_deg, np.array(angle_100th_deg)
 
     def init_source(self, amp, offset, frequency):
-        self.source.SetFunction(function = 'sine')
+        #self.source.SetFunction(function = 'sine')
+        self.source.SetFunction(function = 'square')
         self.source.SetLoad('INF')
         self.source.SetFrequency(frequency)
         self.source.SetAmplitude(amp)
@@ -165,19 +175,25 @@ class PolcalSteppedSweep():
     def get_polcal(self, extra_info = {}):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
-        angle_100th_deg_diff = np.diff(np.array(self._angle_100th_deg))
-        angle_100th_deg_diff=np.insert(angle_100th_deg_diff,0,0)
+        print('Moving to initial angle and waiting 10s')
+        self.grid_motor.move_absolute(self._angle_100th_deg[0])
+        time.sleep(10)
+
         iq_v_angle = np.empty((self.num_angles,self.sla.ec.nrow,2))
-        for ii, angle in enumerate(angle_100th_deg_diff):
+        angle_100th_diff = np.diff(self._angle_100th_deg)
+        angle_100th_diff = np.insert(angle_100th_diff,0,0)
+        for ii, angle in enumerate(angle_100th_diff):
             print('Moving to angle = %.1f deg'%(self.angle_deg[ii]))
-            self.grid_motor.move_relative(phi_100th_deg=angle,wait=False,verbose=False)
+            self.grid_motor.move_relative(angle_100th_deg=angle,wait=False,verbose=False)
+            print('motor absolute angle is = ',self.grid_motor.current_angle_100th_deg)
             time.sleep(self.waittime_s)
-            iq_arr = self.get_point() # nrow x 2 array
-            iq_v_angle[ii,:,:] = iq_arr
+            # iq_arr = self.get_point() # nrow x 2 array
+            # iq_v_angle[ii,:,:] = iq_arr
         post_temp_k = self.adr_gui_control.get_temp_k()
         post_time = time.time()
 
-        self.grid_motor.home()
+        print('Acquisition done.  Unwinding wires.')
+        self.grid_motor.move_relative(-1*self._angle_100th_deg[-1])
 
         return PolCalSteppedSweepData(angle_deg=self.angle_deg, iq_v_angle = iq_v_angle,
                                       row_order=self.row_order,
@@ -211,9 +227,9 @@ class PolCalSteppedBeamMap():
         return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
 
 if __name__ == "__main__":
-    pcss = PolcalSteppedSweep(angle_list_deg=[0,30,60,90],
-                       source_amp_volt=.1, source_offset_volt=0.5, source_frequency_hz=5.0,
-                       num_lockin_periods = 30,
+    pcss = PolcalSteppedSweep(angle_throw_amp_deg=40, angle_step_deg=10,
+                       source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
+                       num_lockin_periods = 1,
                        row_order=None)
     pc_data = pcss.get_polcal()
     pc_data.to_file('test_polcal_data',overwrite=True)
