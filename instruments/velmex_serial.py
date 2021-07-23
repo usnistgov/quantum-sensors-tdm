@@ -56,7 +56,7 @@ class Velmex(serial_instrument.SerialInstrument):
                                      # label on rotary table
 
         # definitions of motion speed
-        self.index_per_second = 2000 # speed of rotation in indices/ sec.  
+        self.index_per_second = 600 # speed of rotation in indices/ sec.  
         self.acceleration_setting = 1 # 1-127, with 1 unit = 4000 steps/s^2.  
 
         # keep track of current index so that infinite rotations don't break wires beneath the rotary stage
@@ -114,7 +114,9 @@ class Velmex(serial_instrument.SerialInstrument):
         return "setL%d%d"%(motor_id,mode_int)
 
     def _cmdstr_home(self,speed,motor_id=1):
-        cmd_str = 'C setL%dM-2,S%dM%d'%(motor_id,motor_id,speed)+',I%dM-400,I%dM0,I%dM-400,I%dM0,I%dM200,I%dM,R'%tuple([motor_id]*6)
+        #cmd_str = 'C setL%dM-2,S%dM%d'%(motor_id,motor_id,speed)+',I%dM-400,I%dM0,I%dM-400,I%dM0,I%dM200,I%dM,R'%tuple([motor_id]*6)
+        #cmd_str = 'C setL%dM-2,S%dM%d'%(motor_id,motor_id,speed)+',I%dM400,I%dM0,I%dM400,I%dM0,I%dM-200,I%dM,R'%tuple([motor_id]*6)
+        cmd_str = 'C S%dM%d'%(motor_id,speed)+', I%dM-0, I%dM900,I%dM-0,IA%dM-0,R'%tuple([motor_id]*4)
         return cmd_str
 
     def _cmdstr_set_zero_index(self):
@@ -162,6 +164,10 @@ class Velmex(serial_instrument.SerialInstrument):
         return index/self.num_index_per_deg
 
     def is_ready(self):
+        ''' determine if VMX is ready to receive a new 
+            command.  It does not wait for motion to 
+            complete 
+        '''
         result = self.read().decode()
         if "^" in result:
             print(result)
@@ -170,6 +176,9 @@ class Velmex(serial_instrument.SerialInstrument):
             return False
         
     def wait_for_ready(self):
+        ''' wait for VMX to be ready to receive a command.  
+            This does not wait for the actual motion to complete. 
+        '''
         ready = self.is_ready()
         t = time.time()
         time_out = t+self.timeout_s
@@ -177,6 +186,15 @@ class Velmex(serial_instrument.SerialInstrument):
             time.sleep(self.wait_cycle_time_s)
             ready = self.is_ready()
             t+=time.time()
+
+    def _motion_time(self,rel_angle_deg):
+        ''' return estimated motion time for a move in seconds '''
+        t = self._deg_to_index(abs(rel_angle_deg))/self.index_per_second
+        #print("motion time is %.3f s"%t)
+        return t
+
+    def wait_for_move_to_complete(self,rel_angle_deg):
+        time.sleep(self._motion_time(rel_angle_deg)+1)
 
     def ensure_safe_angle(self, angle_100th_deg):
         assert self.is_safe_angle(angle_100th_deg),print('Angle %d is outside safe zone (phi +/- %d deg)!'%(angle_100th_deg/100,self.max_angle_100th_deg/100))
@@ -227,17 +245,17 @@ class Velmex(serial_instrument.SerialInstrument):
         mode = self.get_operating_mode()
         motor_type = self.get_motor_type(self.motor_id) 
         limitswitch_mode = self.get_limitswitch_mode(self.motor_id)
-        speed = self.get_speed(self.motor_id) 
+        speed = self.index_per_second 
         accel = self.acceleration_setting #self.get_acceleration() 
 
         if print_back:
-           labels = ['mode','motor_type','limit switch mode','speed','acceleration']
-           labels = ['motor_type','limit switch mode','speed','acceleration']
-           vals = [mode,motor_type,limitswitch_mode,speed,accel]
-           for ii in range(len(labels)):
-               print(labels[ii],':: ',vals[ii])
+            vals = [mode,motor_type,limitswitch_mode,speed,accel]
+            labels = ['mode','motor_type','limit switch mode','index per sec','acceleration setting']
+            print("Motor Config:")
+            for ii in range(len(labels)):
+                print(labels[ii],':: ',vals[ii])
 
-        return motor_type, limitswitch_mode, speed, accel 
+        return mode, motor_type, limitswitch_mode, speed, accel 
 
     # the sets ---------------------------------------------
     # dangerous ones do not allow arguments, apply only to motor 1
@@ -281,28 +299,43 @@ class Velmex(serial_instrument.SerialInstrument):
 
     def initialize(self, verbose=False):
         self.home()
-        self.wait_for_ready()
-        time.sleep(10)
         self.set_zero_angle()
         
-    def home(self):
-        ''' performs a series of motions and lands at angle = 0 '''
+    def home(self,verbose=True):
+        ''' performs a series of motions and lands at angle = 0. 
+            Since home() command always approaches the limitswitch from the 
+            same direction, wires could wrap up.  To handle case where the 
+            system has already been homed and the current angle is negative, 
+            run to zero index before executing this home command.
+        
+        '''
+        if self.system_homed:
+            if verbose: print('Home: Moving to zero index.')
+            self.move_to_zero_index(wait=True)
         self.write(self._cmdstr_home(self.index_per_second, self.motor_id))
+        wait_time = self._motion_time(180+self._index_to_deg(900*2))+2
+        if verbose: print('Home: performing home sequence for %.1f seconds.'%wait_time)
+        time.sleep(wait_time)
         self.system_homed = True
 
-    def move_relative(self,angle_deg,wait_for_complete=False):
+    def move_relative(self,angle_deg,wait=False):
         '''
         Index the motor by angle_deg relative to current position. 
         '''
         #self.ensure_safe_angle(self.current_angle_100th_deg + angle_100th_deg)
         self.write(self._cmdstr_move_rel(angle_deg,self.index_per_second,self.motor_id))
-        if wait_for_complete:
-            self.wait_for_ready()
+        if wait: self.wait_for_move_to_complete(angle_deg)
 
-    def move_absolute(self,angle_deg,wait_for_complete=False):
+    def move_absolute(self,angle_deg,wait=False):
         '''
         Index the motor by angle_deg relative to current position. 
         '''
         assert self.system_homed, 'The system must be homed before move_absolute can be used'
         cur_index = self.get_current_position(self.motor_id)
-        self.move_relative(angle_deg - self._index_to_deg(cur_index),wait_for_complete = wait_for_complete)
+        rel_angle = angle_deg - self._index_to_deg(cur_index)
+        self.move_relative(rel_angle,wait=wait)
+        if wait: self.wait_for_move_to_complete(rel_angle)
+
+    def move_to_zero_index(self,wait=False):
+        cur_angle = self.get_current_position(self.motor_id,convert_to_deg=True)
+        self.move_relative(-cur_angle,wait)
