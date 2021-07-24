@@ -143,16 +143,20 @@ class Velmex(serial_instrument.SerialInstrument):
     def _index_to_deg(self, index):
         return index/self.num_index_per_deg
 
+    def angle_list_to_stepper_resolution(self,angle_list):
+        index_list = np.round(np.array(angle_list)*self.num_index_per_deg,decimals=0).astype(int)
+        return list(index_list/self.num_index_per_deg)
+
     def _motion_time(self,rel_angle_deg):
         ''' return estimated motion time for a move in seconds '''
         t = self._deg_to_index(abs(rel_angle_deg))/self.index_per_second
         #print("motion time is %.3f s"%t)
         return t
 
-    def _wait_for_move_to_complete(self,rel_angle_deg):
-        time.sleep(self._motion_time(rel_angle_deg)+1)
+    def _wait_for_move_to_complete(self,rel_angle_deg,additional_wait_s=0.1):
+        time.sleep(self._motion_time(rel_angle_deg)+additional_wait_s)
 
-    def _check_angle_safe(self,angle_deg):
+    def check_angle_safe(self,angle_deg):
         assert abs(angle_deg) <= self.max_deg_allowed, print('Requested angle %.2f is outside the allowable range'%angle_deg)
 
     def _is_ready(self):
@@ -302,7 +306,7 @@ class Velmex(serial_instrument.SerialInstrument):
         This is the main use method of the class.
         If wait=True, wait for the motion to complete.
         '''
-        self._check_angle_safe(self.get_current_position(convert_to_deg=True) + angle_deg)
+        self.check_angle_safe(self.get_current_position(convert_to_deg=True) + angle_deg)
         self.write(self._cmdstr_move_rel(angle_deg,self.index_per_second,self.motor_id))
         if wait: self._wait_for_move_to_complete(angle_deg)
 
