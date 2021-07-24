@@ -117,10 +117,18 @@ class PolcalSteppedSweep():
                                       post_time_epoch_s=post_time,
                                       extra_info=extra_info)
 
-class PolCalSteppedBeamMap():
+class PolCalSteppedBeamMap(PolcalSteppedSweep):
     ''' Acquire PolcalSteppedSweep for x,y positions '''
-    def __init__(self,xy_position_list, polcal_stepped_sweep, doXYinit=True):
-        self.pcss = polcal_stepped_sweep
+    def __init__(self,xy_position_list, angle_deg_list,
+                 source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
+                 num_lockin_periods=10,
+                 row_order=None,
+                 doXYinit=True):
+
+        super().__init__(angle_deg_list,source_amp_volt, source_offset_volt, source_frequency_hz,
+                     num_lockin_periods,row_order,None, False)
+        self.grid_motor.initialize()
+
         self.xy_pos_list = xy_position_list
         self.x_velocity_mmps = self.y_velocity_mmps = 25 # velocity of xy motion in mm per s
         self.xy = AerotechXY() #
@@ -131,7 +139,7 @@ class PolCalSteppedBeamMap():
         data_list = []
         for ii, xy_pos in enumerate(self.xy_pos_list):
             self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
-            data_list.append(self.pcss.get_polcal(extra_info = extra_info))
+            data_list.append(self.get_polcal(extra_info = extra_info,move_to_zero_at_end = False))
         return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
 
 if __name__ == "__main__":
