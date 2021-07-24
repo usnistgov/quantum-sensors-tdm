@@ -10,6 +10,7 @@ Manual at https://www.velmex.com/Downloads/User_Manuals/vxm_user_manl.pdf
 
 import time, serial
 from . import serial_instrument
+import numpy as np 
 
 class Velmex(serial_instrument.SerialInstrument):
     '''
@@ -48,6 +49,9 @@ class Velmex(serial_instrument.SerialInstrument):
         # definitions of motion speed
         self.index_per_second = 600 # speed of rotation in indices/sec.
         self.acceleration_setting = 1 # 1-127, with 1 unit = 4000 steps/s^2.
+
+        # timing
+        self.additional_wait_s = 0.2 # added time to wait for motion to complete
 
         # limits
         self.max_deg_allowed = 720 # + or - 2 revolutions is the max allowed
@@ -153,12 +157,12 @@ class Velmex(serial_instrument.SerialInstrument):
 
     def _motion_time(self,rel_angle_deg):
         ''' return estimated motion time for a move in seconds '''
-        t = self._deg_to_index(abs(rel_angle_deg))/self.index_per_second
+        t = abs(rel_angle_deg)*self.num_index_per_deg/self.index_per_second
         #print("motion time is %.3f s"%t)
         return t
 
-    def _wait_for_move_to_complete(self,rel_angle_deg,additional_wait_s=0.1):
-        time.sleep(self._motion_time(rel_angle_deg)+additional_wait_s)
+    def _wait_for_move_to_complete(self,rel_angle_deg):
+        time.sleep(self._motion_time(rel_angle_deg)+self.additional_wait_s)
 
     def check_angle_safe(self,angle_deg):
         #assert abs(angle_deg) <= self.max_deg_allowed, print('Requested angle %.2f is outside the allowable range'%angle_deg)
@@ -301,7 +305,7 @@ class Velmex(serial_instrument.SerialInstrument):
             if verbose: print('Home: Moving to zero index.')
             self.move_to_zero_index(wait=True)
         self.write(self._cmdstr_home(self.motor_id))
-        wait_time = self._motion_time(180+self._index_to_deg(900*2))+2
+        wait_time = self._motion_time(180+self._index_to_deg(900*2))+self.additional_wait_s
         if verbose: print('Home: performing home sequence for %.1f seconds.'%wait_time)
         time.sleep(wait_time)
         self.system_homed = True
@@ -323,7 +327,6 @@ class Velmex(serial_instrument.SerialInstrument):
         assert self.system_homed, 'The system must be homed before move_absolute can be used'
         rel_angle = angle_deg - self.get_current_position(convert_to_deg=True)
         self.move_relative(rel_angle,wait=wait)
-        if wait: self._wait_for_move_to_complete(rel_angle)
 
     def move_to_zero_index(self,wait=False,verbose=False):
         if verbose: print('Moving to zero index.')

@@ -6,7 +6,7 @@
     @author JH 7/2021, based on Jay's software for legacy electronics.
 '''
 
-from .iv_data import PolCalSteppedSweepData, PolCalSteppedBeamMapData
+from iv_data import PolCalSteppedSweepData, PolCalSteppedBeamMapData
 
 from nasa_client import EasyClient
 from instruments import BlueBox, Velmex, Agilent33220A, AerotechXY
@@ -38,7 +38,7 @@ class PolcalSteppedSweep():
 
         # input parameters
         self.angles = self._handle_angle_arg(angle_deg_list)
-        self.num_angles = len(self.angle_deg)
+        self.num_angles = len(self.angles)
         self.source_amp_v = source_amp_volt
         self.source_offset_v = source_offset_volt
         self.source_freq_hz = source_frequency_hz
@@ -85,12 +85,11 @@ class PolcalSteppedSweep():
         iq_v_angle = np.empty((self.num_angles,self.sla.ec.nrow,2))
         measured_angles = []
         for ii, angle in enumerate(self.angles):
-            print('Moving grid to angle = %.2f deg'%(angle)
+            print('Moving grid to angle = %.2f deg'%angle)
             self.grid_motor.move_absolute(angle,wait=True)
             m_angle = self.grid_motor.get_current_position()
             measured_angles.append(m_angle)
-            print('Motor at angle = ',m_angle)
-            time.sleep(self.waittime_s)
+            print('Motor at angle = %.2f.  Grabbing data'%m_angle)
             iq_arr = self.get_point() # nrow x 2 array
             iq_v_angle[ii,:,:] = iq_arr
         post_temp_k = self.adr_gui_control.get_temp_k()
@@ -101,7 +100,7 @@ class PolcalSteppedSweep():
             print('Unwinding wires; moving to angle=0')
             self.grid_motor.move_to_zero_index(wait=True)
 
-        return PolCalSteppedSweepData(angle_deg_req=self.angle_deg,
+        return PolCalSteppedSweepData(angle_deg_req=self.angles,
                                       angle_deg_meas=measured_angles,
                                       iq_v_angle = iq_v_angle,
                                       row_order=self.row_order,
@@ -143,7 +142,8 @@ class PolCalSteppedBeamMap(PolcalSteppedSweep):
         return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
 
 if __name__ == "__main__":
-    angles = list(range(0,360,10))
+    #angles = list(range(0,360,90))
+    angles = [50,40,-40,20,110]
     pcss = PolcalSteppedSweep(angle_deg_list=angles)
     pc_data = pcss.get_polcal()
     pc_data.to_file('test_polcal_data',overwrite=True)
