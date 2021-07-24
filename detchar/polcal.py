@@ -78,7 +78,7 @@ class PolcalSteppedSweep():
     def get_point(self,window=False):
         return self.sla.getData(num_periods=self.num_lockin_periods, window=window,debug=False)
 
-    def get_polcal(self, extra_info = {}, move_to_zero_at_end = True):
+    def get_polcal(self, extra_info = {}, move_to_zero_at_end = True, turn_off_source_on_end = True):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
 
@@ -99,6 +99,7 @@ class PolcalSteppedSweep():
         if move_to_zero_at_end:
             print('Unwinding wires; moving to angle=0')
             self.grid_motor.move_to_zero_index(wait=True)
+        if turn_off_source_on_end: self.source.SetOutput('off')
 
         return PolCalSteppedSweepData(angle_deg_req=self.angles,
                                       angle_deg_meas=measured_angles,
