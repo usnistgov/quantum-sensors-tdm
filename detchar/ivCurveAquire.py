@@ -49,7 +49,7 @@ else:
 
 # open config file
 with open(config_filename, 'r') as ymlfile:
-    cfg = yaml.load(ymlfile)
+    cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 def create_filename():
     baystring = 'Column' + cfg['detectors']['Column']

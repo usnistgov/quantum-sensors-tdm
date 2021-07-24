@@ -240,9 +240,9 @@ class PolCalSteppedSweepData():
         for ii,row_list in enumerate(rows_per_figure):
             fig,ax = plt.subplots(3,num=ii)
             for row in row_list:
-                ax[0].plot(self.angle_deg,self.iq_v_angle[:,row,0],'o-',label=row)
-                ax[1].plot(self.angle_deg,self.iq_v_angle[:,row,1],'o-',label=row)
-                ax[2].plot(self.angle_deg,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=row)
+                ax[0].plot(self.angle_deg_meas,self.iq_v_angle[:,row,0],'o-',label=row)
+                ax[1].plot(self.angle_deg_meas,self.iq_v_angle[:,row,1],'o-',label=row)
+                ax[2].plot(self.angle_deg_meas,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=row)
             ax[0].set_ylabel('I (DAC)')
             ax[1].set_ylabel('Q (DAC)')
             ax[2].set_ylabel('Amplitude (DAC)')

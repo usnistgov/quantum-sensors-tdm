@@ -18,6 +18,45 @@ import pylab as plt
 import progress.bar
 import os
 from tools import SoftwareLockinAcquire
+import matplotlib.pyplot as plt
+
+def test_for_signal(N_lockins=5):
+    pc = PolcalSteppedSweep(angle_deg_list=[0],
+                 source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
+                 num_lockin_periods = 10,
+                 row_order=None,
+                 grid_motor=None,
+                 initialize_grid_motor=False)
+    
+    N=N_lockins
+    iq_arr = []
+    for ii in range(N):
+        iq_arr.append(pc.get_point()) # nrow x 2 array
+    
+    pc.source.SetOutput(outputstate='off')
+
+    iq_arr2 = []
+    for ii in range(N):
+        iq_arr2.append(pc.get_point())
+
+    nrow,col = np.shape(iq_arr[0])
+    
+    for ii in range(nrow):
+        plt.figure(ii)
+        for jj in range(N):
+            amp_on = np.sqrt(iq_arr[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
+            amp_off = np.sqrt(iq_arr2[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
+            plt.plot(jj,amp_on,'bo')
+            plt.plot(jj,amp_off,'ro')
+        plt.legend(('source on','source off'))
+        plt.xlabel('measurement index')
+        plt.ylabel('Amplitude response')
+        plt.title('Row index %d'%(ii))
+
+    plt.show()
+    
+        
+    
 
 class PolcalSteppedSweep():
     ''' Acquire polcal at stepped, fixed absolute angles '''
@@ -143,9 +182,11 @@ class PolCalSteppedBeamMap(PolcalSteppedSweep):
         return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
 
 if __name__ == "__main__":
-    #angles = list(range(0,360,90))
-    angles = [50,40,-40,20,110]
-    pcss = PolcalSteppedSweep(angle_deg_list=angles)
+    angles = list(range(0,360,10))
+    #angles = [50,40,-40,20,110]
+    pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 10)
     pc_data = pcss.get_polcal()
     pc_data.to_file('test_polcal_data',overwrite=True)
     pc_data.plot()
+
+    #test_for_signal()
