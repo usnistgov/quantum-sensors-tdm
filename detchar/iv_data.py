@@ -8,6 +8,7 @@ import collections
 import os
 from numpy.polynomial.polynomial import Polynomial
 
+# iv data classes -----------------------------------------------------------------------------
 @dataclass_json
 @dataclass
 class IVCurveColumnData():
@@ -68,7 +69,7 @@ class IVCurveColumnData():
         fb = self.fb_values_array()
         fb = fb - fb[0,:]
         return dac_values, fb
-    
+
     def xy_arrays(self):
         dac_values = np.array(self.dac_values)
         fb = self.fb_values_array()
@@ -183,3 +184,75 @@ class IVCircuit():
             #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm[ii]) # for future for unique rx per sensor
             x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
         return x,y
+
+### polcal data classes ---------------------------------------------------------------------
+
+@dataclass_json
+@dataclass
+class PolCalSteppedSweepData():
+    angle_deg_req: List[float]
+    angle_deg_meas: List[float]
+    iq_v_angle: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
+    #iq_rms_values: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
+    row_order: List[int]
+    #bayname: str
+    #db_cardname: str
+    column_number: int
+    source_amp_volt: float
+    source_offset_volt: float
+    source_frequency_hz: float
+    #nominal_temp_k: float
+    pre_temp_k: float
+    post_temp_k: float
+    pre_time_epoch_s: float
+    post_time_epoch_s: float
+    extra_info: dict
+
+    def to_file(self, filename, overwrite = False):
+        if not overwrite:
+            assert not os.path.isfile(filename)
+        with open(filename, "w") as f:
+            f.write(self.to_json())
+
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, "r") as f:
+            return cls.from_json(f.read())
+
+    def plot(self, rows_per_figure=None):
+        ''' rows_per_figure is a list of lists to group detector responses
+            to be plotted together.  If None will plot in groups of 8.
+        '''
+        if rows_per_figure is not None:
+            pass
+        else:
+            num_in_group = 8
+            n_angles,n_rows,n_iq = np.shape(self.iq_v_angle)
+            n_groups = n_rows//num_in_group + 1
+            rows_per_figure=[]
+            for jj in range(n_groups):
+                tmp_list = []
+                for kk in range(num_in_group):
+                    row_index = jj*num_in_group+kk
+                    if row_index>=n_rows: break
+                    tmp_list.append(row_index)
+                rows_per_figure.append(tmp_list)
+        for ii,row_list in enumerate(rows_per_figure):
+            fig,ax = plt.subplots(3,num=ii)
+            for row in row_list:
+                ax[0].plot(self.angle_deg,self.iq_v_angle[:,row,0],'o-',label=row)
+                ax[1].plot(self.angle_deg,self.iq_v_angle[:,row,1],'o-',label=row)
+                ax[2].plot(self.angle_deg,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=row)
+            ax[0].set_ylabel('I (DAC)')
+            ax[1].set_ylabel('Q (DAC)')
+            ax[2].set_ylabel('Amplitude (DAC)')
+            ax[2].set_xlabel('Angle (deg)')
+            ax[1].legend()
+            ax[0].set_title('Column %d, Group %d'%(self.column_number,ii))
+        plt.show()
+
+@dataclass_json
+@dataclass
+class PolCalSteppedBeamMapData():
+    xy_position_list: List[Any]
+    data: List[PolCalSteppedSweepData]
