@@ -6,27 +6,27 @@ import detchar
 plt.ion()
 plt.close("all")
 curve_taker = detchar.IVCurveTaker(
-    detchar.IVPointTaker("DB1", "AX", column_number=0),
-    temp_settle_time_out_s=180,
+    detchar.IVPointTaker("DB1", "CY", column_number=1),
+    temp_settle_time_out_s=300,
     temp_settle_tolerance_k=0.05 * 1e-3,
     shock_normal_dac_value=40000,
 )
 curve_taker.prep_fb_settings(I=10, fba_offset=8000)
 temp_sweeper = detchar.IVTempSweeper(curve_taker)
-dacs = detchar.sparse_then_fine_dacs(a=10000, b=5000, c=0, n_ab=20, n_bc=150)
+dacs = detchar.sparse_then_fine_dacs(a=14000, b=6000, c=0, n_ab=50, n_bc=150)
 # temps_mk = np.arange(85,40,-5)
-temps_mk = np.arange(50,85,5)
+temps_mk = np.arange(50,95,5)
 print(f"{temps_mk} mK")
 sweep = temp_sweeper.get_sweep(
     dacs, set_temps_k=temps_mk * 1e-3, extra_info={"field coil current (Amps)": 0}
 )
-sweep.to_file("20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json", overwrite=True)
+sweep.to_file("20210727_CX_NSLS_temp_sweep_IVs_with_zero_bias_track.json", overwrite=True)
 sweep.plot_row(row=0)
 sweep.data[0].plot()
 
 
 plt.ion()
-sdata = detchar.IVTempSweepData.from_file("20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
+sdata = detchar.IVTempSweepData.from_file("20210727_CX_NSLS_temp_sweep_IVs_with_zero_bias_track.json")
 circuit = detchar.IVCircuit(
     rfb_ohm=4e3,
     rbias_ohm=1e3,  # need to check notes for true value

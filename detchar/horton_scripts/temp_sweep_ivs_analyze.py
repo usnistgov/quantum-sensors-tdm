@@ -7,7 +7,7 @@ plt.ion()
 plt.close("all")
 
 
-sdata = detchar.IVTempSweepData.from_file("20210513_AX_SSRL_temp_sweep_IVs.json")
+sdata = detchar.IVTempSweepData.from_file("20210727_CX_NSLS_temp_sweep_IVs_with_zero_bias_track.json")
 circuit = detchar.IVCircuit(
     rfb_ohm=4e3,
     rbias_ohm=1e3,  # need to check notes for true value

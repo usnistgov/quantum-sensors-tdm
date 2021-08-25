@@ -77,8 +77,10 @@ class TuneTab(QWidget):
         stateVector["IMixProduct"] = self.vphidemo.MixSlopeProductSpin.value()
         stateVector["PercentFromBottomOfVphi"] = self.vphidemo.PercentFromBottomSpin.value()
         stateVector["minimumD2aAValue"] = self.vphidemo.minimumD2AValueSpin.value()
+        stateVector["d2aBshiftValue"] = self.vphidemo.d2aBshiftSpin.value()
         stateVector["lockSlopeSignCheckBoxChecked"] = self.vphidemo.lockSlopeSignCheckBox.isChecked()
         stateVector["lockSlopeSignFBBCheckBoxChecked"] = self.vphidemo.lockSlopeSignFBBCheckBox.isChecked()
+
         return stateVector
 
     def unpackState(self, loadState):
@@ -88,6 +90,8 @@ class TuneTab(QWidget):
             loadState["PercentFromBottomOfVphi"])
         self.vphidemo.minimumD2AValueSpin.setValue(
             loadState.get("minimumD2aAValue", 200))
+        self.vphidemo.d2aBshiftSpin.setValue(
+            loadState.get("d2aBshiftValue", 0))
         self.vphidemo.lockSlopeSignCheckBox.setChecked(
             loadState.get("lockSlopeSignCheckBoxChecked", False))
         self.vphidemo.lockSlopeSignFBBCheckBox.setChecked(
@@ -164,6 +168,14 @@ class VPhiDemo(QWidget):
         self.MixSlopeProductSpin.setValue(-400)
         layout.addWidget(QLabel("Mix*Slope product"))
         layout.addWidget(self.MixSlopeProductSpin)
+        self.layout.addLayout(layout)
+
+        layout = QHBoxLayout()
+        self.d2aBshiftSpin = QSpinBox()
+        self.d2aBshiftSpin.setRange(-2000, 2000)
+        self.d2aBshiftSpin.setValue(0)
+        layout.addWidget(QLabel("DAC B offset shift"))
+        layout.addWidget(self.d2aBshiftSpin)
         self.layout.addLayout(layout)
 
         layout = QHBoxLayout()
@@ -397,15 +409,22 @@ class VPhiDemo(QWidget):
         plots.ylabel("error")
         plots.show()
 
+        # here we choose where the sq1 curve lies on the SA curve
         # the right side of the sq1 curve is at d2aB
+        # Xup is the size of the upward slope in FBB units
         Xup = fbb2stats["firstMaximumX"] - fbb2stats["firstMinimumX"]
         Xup[Xup < 0] += fbb2stats["periodXUnits"][Xup < 0]
+        # Xdown is the size of the downward slope in FBB units
         Xdown = fbb2stats["firstMinimumX"] - fbb2stats["firstMaximumX"]
         Xdown[Xdown < 0] += fbb2stats["periodXUnits"][Xdown < 0]
+        #d2aBupwardSlpe is the d2aB value that places the Sq1 approximatley midpoint on the upward slope
+        #d2aBshift is a user settable parameter to shift the position of the Sq1 on the SA
+        d2aBshift = self.d2aBshiftSpin.value()
         d2aBupwardSlope = fbb2stats["firstMinimumX"] + \
-            lfbastats["modDepth"]+(Xup-lfbastats["modDepth"])/2.0
+            lfbastats["modDepth"]+(Xup-lfbastats["modDepth"])/2.0+d2aBshift
         d2aBdownwardSlope = fbb2stats["firstMaximumX"] + \
-            lfbastats["modDepth"]+(Xdown-lfbastats["modDepth"])/2.0
+            lfbastats["modDepth"]+(Xdown-lfbastats["modDepth"])/2.0+d2aBshift
+
 
         if self.lockSlopeSignFBBCheckBox.isChecked():
             d2aB = d2aBupwardSlope
@@ -510,6 +529,7 @@ class VPhiDemo(QWidget):
         plots.title("final fba vphis analyzed and shifted to lockpoint")
         plots.xlabel("fba triangle")
         plots.ylabel("error")
+        plots.grid(True)
         plots.show()
 
         ISlopeProduct = self.ISlopeProductSpin.value()
@@ -1282,6 +1302,11 @@ class ColPlots(QDialog):
         for col in range(self.ncol):
             ax = self.axes[col]
             ax.clear()
+
+    def grid(self, x=True):
+        for col in range(self.ncol):
+            ax = self.axes[col]
+            ax.grid(x)
 
     def draw(self):
         self.canvas.draw()

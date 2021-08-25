@@ -548,7 +548,7 @@ class Cringe(QtWidgets.QWidget):
             self.RLDpos_title, 0, 2, 1, 1, QtCore.Qt.AlignRight)
 
         self.RLDpos_spin = QtWidgets.QSpinBox()
-        self.RLDpos_spin.setRange(1, 65535)
+        self.RLDpos_spin.setRange(0, 65535)
         self.RLDpos_spin.setFixedHeight(25)
         self.RLDpos_spin.setSingleStep(16)
         self.RLDpos_spin.setKeyboardTracking(0)
@@ -584,7 +584,7 @@ class Cringe(QtWidgets.QWidget):
             self.RLDneg_title, 0, 4, 1, 1, QtCore.Qt.AlignRight)
 
         self.RLDneg_spin = QtWidgets.QSpinBox()
-        self.RLDneg_spin.setRange(1, 65535)
+        self.RLDneg_spin.setRange(0, 65535)
         self.RLDneg_spin.setFixedHeight(25)
         self.RLDneg_spin.setSingleStep(16)
         self.RLDneg_spin.setKeyboardTracking(0)

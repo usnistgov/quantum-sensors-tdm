@@ -8,7 +8,7 @@ import time
 plt.ion()
 plt.close("all")
 curve_taker = IVCurveTaker(
-    IVPointTaker("DB1", "BX", column_number=6),
+    IVPointTaker("DB1", "AX", column_number=0),
     shock_normal_dac_value=0,
     temp_settle_time_out_s=0,
     temp_settle_tolerance_k=0.05 * 1e-3,
