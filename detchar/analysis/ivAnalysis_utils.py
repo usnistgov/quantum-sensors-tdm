@@ -194,26 +194,198 @@ class IVClean():
 
         return ivTurnDex
 
-class IVCurveColumnDataExtra():
-    def __init__(self,iv_curve_column_data):
+class IVCurveColumnDataExplore():
+    def __init__(self,iv_curve_column_data,iv_circuit=None):
+        # fixed globals
+        self.n_normal_pts = 10
+
         self.data = iv_curve_column_data
-        self.x, self.y = self.data.xy_arrays_zero_subtracted_at_dac_high()
-        self.n_pts, self.n_rows = np.shape(self.y)
+        self.iv_circuit = self._handle_iv_circuit(iv_circuit) 
+
+        # the raw data for one column and dimensionality
+        self.x_raw, self.y_raw = self.data.xy_arrays_zero_subtracted_at_dac_high() # raw units
+        self.n_pts, self.n_rows = np.shape(self.y_raw)
+
+        # data converted to physical units
+        self.phys_units = self._handle_physical_units()
+        self.labels = self._handle_labels(self.phys_units)
+
+    # data manipulation methods -------------------------------------------------------- 
+    def _handle_iv_circuit(self, iv_circuit):
+        if iv_circuit is not None:
+            ivcirc = iv_circuit
+        else:
+            if self.data.extra_info:
+                if 'config' in self.data.extra_info.keys():
+                    if 'calnums' in self.data.extra_info['config'].keys():
+                        vmax = self._get_voltage_max_from_source(self.data.extra_info['config']['voltage_bias']['source'])
+                        ivcirc = IVCircuit(rfb_ohm=self.data.extra_info['config']['calnums']['rfb']+50.0,
+                                           rbias_ohm=self.data.extra_info['config']['calnums']['rbias'], 
+                                           rsh_ohm=self.data.extra_info['config']['calnums']['rjnoise'], 
+                                           rx_ohm=0,
+                                           m_ratio=self.data.extra_info['config']['calnums']['mr'],
+                                           vfb_gain=self.data.extra_info['config']['calnums']['vfb_gain']/(2**14-1),
+                                           vbias_gain=vmax/(2**16-1))
+            else:
+                ivcirc = None 
+        return ivcirc
+
+    def _get_voltage_max_from_source(self,voltage_source='tower'):
+        assert voltage_source in ['tower','bluebox'], print('Voltage source ',voltage_source,' not recognized')
+        
+        if voltage_source == 'tower':
+            vmax = 2.5
+        elif voltage_source == 'bluebox':
+            vmax = 6.5
+        return vmax
+        
+
+    def _handle_physical_units(self):
+        y = self.remove_offset(False)
+        if self.iv_circuit is not None:
+            self.v, self.i = self.convert_to_physical_units(self.x_raw,y)
+            phys_units = True
+        else:
+            self.i = y 
+            self.v = np.empty((self.n_pts,self.n_rows))
+            for ii in range(self.n_rows):
+                self.v[:,ii] = self.x_raw 
+            phys_units = False 
+        return phys_units
+
+    def _handle_labels(self,phys_units):
+        labels = {}
+        if phys_units:
+            labels['iv']={'x':'Vbias (V)',
+                          'y':'Current (A)'}
+            labels['vp']={'x':'Vbias (V)',
+                          'y':'Power (W)'}
+            labels['rp']={'x':'Resistance ($\Omega$)',
+                          'y':'Power (W)'}
+            labels['vr']={'x':'Vbias (V)',
+                          'y':'Resistance ($\Omega$)'}
+            labels['dy']={'x':'Vbias (V)',
+                          'y':'$\Delta{I}$ (A)'}
+            labels['responsivity']={'x':'Vbias (V)',
+                          'y':'$\delta{I}$/$\delta{P}$ (V$^{-1})'}
+
+        else:
+            labels['iv']={'x':'Vbias (DAC)',
+                          'y':'Current (DAC)'}
+            labels['vp']={'x':'Vbias (DAC)',
+                          'y':'Power (DAC)'}
+            labels['rp']={'x':'Resistance (DAC))',
+                          'y':'Power (DAC)'}
+            labels['vr']={'x':'Vbias (DAC)',
+                          'y':'Resistance (DAC)'}
+            labels['dy']={'x':'Vbias (DAC)',
+                          'y':'$\Delta{I}$ (DAC)'}
+            labels['responsivity']={'x':'Vbias (DAC)',
+                          'y':'$\delta{I}/\delta{P}$ (DAC)'}
+        return labels
+
+    def remove_offset(self,showplot=False):
+        x = self.x_raw[::-1][-self.n_normal_pts:]
+        yr = self.y_raw[::-1,:] 
+        yr = yr[-self.n_normal_pts:,:]
+        m, b = np.polyfit(x,yr,deg=1)
+        y = self.y_raw - b 
+        if m[0]<0: y = -1*y
+
+        if showplot:
+            for ii in range(self.n_rows):
+                plt.plot(self.x_raw,y[:,ii])
+            plt.show()
+        return y
+
+    def convert_to_physical_units(self,x,y):
+        assert self.iv_circuit is not None, 'You must supply an iv_circuit to convert to physical units!'
+        return self.iv_circuit.to_physical_units(x,y)
+
+    def get_responsivity(self):
+        v = np.diff(self.v,axis=0)+self.v[:-1,:]
+        di = np.diff(self.i, axis=0)
+        dp = np.diff(self.i*self.v, axis=0)
+        resp = di/dp 
+        return v, resp
+        
+    # plotting methods --------------------------------------
+    def plot_iv(self, fig_num=1):
+        fig = plt.figure(fig_num)
+        for ii in range(self.n_rows):
+            plt.plot(self.v[:,ii],self.i[:,ii],label='%02d'%ii)
+        plt.xlabel(self.labels['iv']['x'])
+        plt.ylabel(self.labels['iv']['y'])
+        plt.legend(loc='upper right')
+        return fig
+    
+    def plot_responsivity(self,fig_num=1):
+        fig = plt.figure(fig_num)
+        v,r = self.get_responsivity()
+        #for ii in range(self.n_rows):
+        plt.plot(v,r)
+        plt.xlabel(self.labels['responsivity']['x'])
+        plt.ylabel(self.labels['responsivity']['y'])
+        plt.legend(tuple(range(self.n_rows)),loc='upper right')
+        return fig
+
+    def plot_vipr(self,fig_num=1, figtitle=None):
+        #v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]
+        v = self.v 
+        i = self.i 
+        p = v*i 
+        r = v/i 
+
+        # fig 1, 2x2 of converted IV
+        #fig = plt.figure(fig_num)
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fig_num)
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+        for ii in range(self.n_rows):
+            ax[0].plot(v[:,ii],i[:,ii])
+            ax[1].plot(v[:,ii],p[:,ii])
+            ax[2].plot(r[:,ii],p[:,ii])
+            #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
+            ax[3].plot(v[:,ii],r[:,ii])
+
+        ax[0].set_xlabel(self.labels['iv']['x'])
+        ax[0].set_ylabel(self.labels['iv']['y'])
+        ax[1].set_xlabel(self.labels['vp']['x'])
+        ax[1].set_ylabel(self.labels['vp']['y'])
+        ax[2].set_xlabel(self.labels['rp']['x'])
+        ax[2].set_ylabel(self.labels['rp']['y'])
+        ax[3].set_xlabel(self.labels['vr']['x'])
+        ax[3].set_ylabel(self.labels['vr']['y'])
+         
+        #xlabels = ['V (V)','V (V)','P (W)','V (V)']
+        #ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
+        # for ii in range(4):
+        #     ax[ii].set_xlabel(xlabels[ii])
+        #     ax[ii].set_ylabel(ylabels[ii])
+        #     ax[ii].grid()
+
+        # plot range limits 
+        ax[0].set_xlim((0,np.max(v)*1.1))
+        ax[0].set_ylim((0,np.max(i)*1.1))
+        ax[1].set_xlim((0,np.max(v)*1.1))
+        ax[1].set_ylim((0,np.max(p)*1.1))
+        ax[2].set_xlim((0,np.max(r[0,:])*1.1))
+        ax[2].set_ylim((0,np.max(p)*1.1))
+        ax[3].set_xlim((0,np.max(v)*1.1))
+        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
+        #ax[3].set_xlim((0,np.max(p)*1.1))
+        #ax[3].set_ylim((0,1.1))
+
+        if figtitle is not None:
+            fig.suptitle(figtitle)
+        return fig
 
     def plot_dy(self):
-        dy = np.diff(self.y,axis=0)
+        dy = np.diff(self.i,axis=0)
         print(np.shape(dy))
         for ii in range(self.n_rows):
-            plt.plot(self.x[0:-1],dy[:,ii],label='%02d'%ii)
-        plt.xlabel('V bias (DAC)')
-        plt.ylabel('Vfb diff (DAC)')
-        plt.legend(loc='upper right')
-
-    def plot_iv(self):
-        for ii in range(self.n_rows):
-            plt.plot(self.x,self.y[:,ii],label='%02d'%ii)
-        plt.xlabel('V bias (DAC)')
-        plt.ylabel('Vfb (DAC)')
+            plt.plot(self.v[0:-1,ii],dy[:,ii],label='%02d'%ii)
+        plt.xlabel(self.labels['dy']['x'])
+        plt.ylabel(self.labels['dy']['y'])
         plt.legend(loc='upper right')
 
 class IVSetAnalyzeRow(IVClean):
@@ -250,6 +422,27 @@ class IVSetAnalyzeRow(IVClean):
         self.v,self.i,self.p,self.r = self.get_vipr()
         self.ro = self.r / self.r[0,:]
 
+        self.v,self.i,self.p,self.r,ro = self.remove_bad_data()
+    def power_difference_analysis(self,fig_num=1):
+        
+        fig,ax = plt.subplots(2,num=fig_num)
+        for ii in range(self.num_sweeps):
+            ax[0].plot(self.r[:,ii],self.p[:,ii],label=ii)
+
+        ax[0].set_xlabel('Resistance (Ohms)')    
+        ax[0].set_ylabel('Power (W)') 
+        ax[0].legend(tuple(self.state_list))
+        ax[0].set_xlim(0,self.r[0,0]*1.1)
+        ax[1].set_xlim(0,self.r[0,0]*1.1)
+
+        dP = np.diff(self.p)
+        ax[1].plot(self.r[:,0],dP)
+        ax[1].set_xlabel('Resistance (Ohms)')
+        ax[1].set_ylabel('dP (W)')
+
+        return fig
+
+
     def plot_raw(self,fig_num=1):
         figXX = plt.figure(fig_num)
         for ii in range(self.num_sweeps):
@@ -281,13 +474,13 @@ class IVSetAnalyzeRow(IVClean):
         if m[0]<0: fb_align = fb_align*-1
 
         if showplot:
-            for ii in range(self.n_cl_temps):
+            for ii in range(self.num_sweeps):
                 plt.plot(self.dacs,fb_align[:,ii])
             plt.show()
 
         return fb_align
 
-    def get_vipr(self,showplot=False):
+    def get_vipr(self, showplot=False):
         ''' returns the voltage, current, power, and resistance vectors '''
         self.fb_align = self.fb_align_and_remove_offset(showplot=False)
 
@@ -370,7 +563,7 @@ class IVSetAnalyzeRow(IVClean):
         r_clean = cut(self.r,dexs)
         ro_clean = cut(self.ro,dexs)
         p_clean = cut(self.p,dexs)
-        return v_clean, i_clean, r_clean, p_clean, ro_clean
+        return v_clean, i_clean, p_clean, r_clean, ro_clean
 
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.

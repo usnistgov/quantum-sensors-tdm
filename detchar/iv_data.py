@@ -137,7 +137,7 @@ class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, d
 
     def plot_row(self, row):
         #n=len(set_cl_temps_k)
-        plt.figure()
+        #plt.figure()
         for ii, tempSweep in enumerate(self.data): # loop over IVTempSweepData instances (ie coldload temperature settings)
             for jj, set_temp_k in enumerate(tempSweep.set_temps_k): # loop over bath temperatures
                 data = tempSweep.data[jj]
