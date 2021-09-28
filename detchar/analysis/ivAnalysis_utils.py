@@ -423,25 +423,26 @@ class IVSetAnalyzeRow(IVClean):
         self.ro = self.r / self.r[0,:]
 
         self.v,self.i,self.p,self.r,ro = self.remove_bad_data()
+    
     def power_difference_analysis(self,fig_num=1):
         
         fig,ax = plt.subplots(2,num=fig_num)
         for ii in range(self.num_sweeps):
-            ax[0].plot(self.r[:,ii],self.p[:,ii],label=ii)
+            ax[0].plot(self.r[:,ii]*1000,self.p[:,ii]*1e12,label=ii)
 
-        ax[0].set_xlabel('Resistance (Ohms)')    
-        ax[0].set_ylabel('Power (W)') 
+        ax[0].set_xlabel('Resistance (mOhms)')    
+        ax[0].set_ylabel('Power (pW)') 
         ax[0].legend(tuple(self.state_list))
-        ax[0].set_xlim(0,self.r[0,0]*1.1)
-        ax[1].set_xlim(0,self.r[0,0]*1.1)
+        ax[0].set_xlim(0,self.r[0,0]*1100)
+        ax[1].set_xlim(0,self.r[0,0]*1100)
 
         dP = np.diff(self.p)
-        ax[1].plot(self.r[:,0],dP)
-        ax[1].set_xlabel('Resistance (Ohms)')
-        ax[1].set_ylabel('dP (W)')
+        #dP = self.p[:,1] - self.p[:,0]
+        ax[1].plot(self.r[:,0]*1e3,dP*1e12)
+        ax[1].set_xlabel('Resistance (mOhms)')
+        ax[1].set_ylabel('dP (pW)')
 
         return fig
-
 
     def plot_raw(self,fig_num=1):
         figXX = plt.figure(fig_num)
