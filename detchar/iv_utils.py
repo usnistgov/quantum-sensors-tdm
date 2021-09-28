@@ -33,7 +33,7 @@ class IVPointTaker():
 
     def _handle_voltage_source_arg(self,voltage_source):
         # set "set_volt" to either tower or bluebox
-        if voltage_source == None:
+        if voltage_source == None or voltage_source == 'tower':
             set_volt = self.set_tower # 0-2.5V in 2**16 steps
         elif voltage_source == 'bluebox':
             self.bb = BlueBox(port='vbox', version='mrk2')

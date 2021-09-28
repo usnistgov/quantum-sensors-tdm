@@ -19,7 +19,7 @@ def plot_iv_groups(iv_temp_sweep_inst,num_in_group=8):
         df = iv_temp_sweep_inst.data[ii]
         dac,fb_arr = df.xy_arrays_zero_subtracted_at_dac_high()
         n_dac,n_rows = np.shape(fb_arr)
-        n_groups = n_rows//num_in_group + 1
+        n_groups = n_rows//num_in_group
         for jj in range(n_groups): # plot in groups 
             plt.figure(jj)
             for kk in range(num_in_group):
@@ -49,7 +49,7 @@ else:
 
 # open config file
 with open(config_filename, 'r') as ymlfile:
-    cfg = yaml.load(ymlfile)
+    cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 def create_filename():
     baystring = 'Column' + cfg['detectors']['Column']
@@ -67,7 +67,7 @@ write_filename = create_filename()
 if cfg['voltage_bias']['source'] in ['bluebox','BlueBox','Blue Box','blue box']:
     voltage_source = 'bluebox'
 else:
-    voltage_source = 'tower'
+    voltage_source = None
 if cfg['voltage_bias']['overbias']:
     to_normal_method='overbias'
     overbias_temp_k=cfg['voltage_bias']['overbias_temp_k']
