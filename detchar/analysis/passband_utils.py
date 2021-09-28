@@ -18,10 +18,10 @@ class LoadingCalculation():
         B = h*nu * (np.exp(x)-1)**-1
         return B
 
-    def thermalPower(self,nu1,nu2,T,passband_arr=None):
+    def thermalPower(self,nu1,nu2,T,passband_arr=None,debug=False):
         ''' Calculate the single mode thermal power emitted from a blackbody
             at temperature T (in Kelvin) from frequency nu1 to nu2 (in Hz).
-            passband_arr is an N x 2 np.array with the 1st column the frequency in GHz (monotonically increasing),
+            passband_arr is an N x 2 np.array with the 1st column the frequency in Hz (monotonically increasing),
             and the second column the absolute response. The default is None, in which case a
             top hat band is assumed.  If passband_arr provided, nu1 and nu2 are unused.
         '''
@@ -30,9 +30,19 @@ class LoadingCalculation():
                 P = quad(Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
         except: # case for arbitrary passband shape F
             N,M = np.shape(passband_arr)
-            nu = np.linspace(passband_arr[0,0],passband_arr[-1,0],N)*1e9
+            nu = np.linspace(passband_arr[0,0],passband_arr[-1,0],N)
             integrand = self.Pnu_thermal(nu,T)*passband_arr[:,1]
             P = simps(integrand,nu)
+            if debug:
+                print('calculating power from %.1f GHz to %.1f GHz'%(passband_arr[0,0]/1e9,passband_arr[-1,0]/1e9))
+                yy = self.Pnu_thermal(nu,T)
+                plt.plot(passband_arr[:,0],passband_arr[:,1]*np.max(yy),'k-')
+                plt.plot(nu,yy,'b-')
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Power (W)')
+                plt.legend(('passband','thermal spectrum'))
+                plt.title('Debug plot for thermalPower calculation')
+                plt.show()
         return P
 
 

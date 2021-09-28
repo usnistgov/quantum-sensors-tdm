@@ -788,8 +788,10 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             #plt.show()
         return f,B
 
-    def peak_normalize(self,x,y,x_range):
+    def peak_normalize(self,x,y,x_range=None):
         ''' normalize y to max(y) with in the x_range '''
+        if x_range==None:
+            x_range=[np.min(x),np.max(x)]
         dex1 = np.argmin(abs(x-x_range[0]))
         dex2 = np.argmin(abs(x-x_range[1]))
         y_max = np.max(y[dex1:dex2])
@@ -838,10 +840,14 @@ class FtsMeasurement(IfgToSpectrum):
 
     def plot_ifgs(self,fig_num=1):
         plt.figure(fig_num)
-        plt.errorbar(self.x, self.y_mean, self.y_std, color='k',linewidth=1,ecolor='k',elinewidth=1,label='mean')
-        for scan in self.scan_list:
+        y_mean_list = []
+        for ii, scan in enumerate(self.scan_list):
+            #plt.plot(self.x,scan.y,'.',linewidth=0.5,label=scan.current_scan)
             plt.plot(self.x,scan.y,'.',linewidth=0.5,label=scan.current_scan)
-        plt.legend()
+            y_mean_list.append(scan.y.mean())
+        plt.errorbar(self.x, self.y_mean+np.array(y_mean_list).mean(), self.y_std,
+                     color='k',linewidth=1,ecolor='k',elinewidth=1,label='mean')
+        plt.legend(loc='upper right')
         plt.xlabel(scan.x_label)
         plt.ylabel(scan.y_label)
         plt.title('Interferograms for %s'%(self.file_prefix))
@@ -852,7 +858,7 @@ class FtsMeasurement(IfgToSpectrum):
         for ii in range(self.num_scans):
             plt.plot(self.f,self.S[:,ii],'.',linewidth=0.5,label=self.scan_list[ii].current_scan)
 
-        plt.legend()
+        plt.legend(loc='upper right')
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
         plt.title('Spectra for %s file numbers %s - %s'%(self.file_prefix,self.file_number_list[0],self.file_number_list[-1]))
@@ -947,6 +953,14 @@ class FtsMeasurementSet():
         self.num_scans = len(self.filename_list)
         self.measurements, self.measurement_filenames, self.measurement_scan_list = self.get_fts_measurements() # nested list of FTS measurement filenames
         self.num_measurements = len(self.measurements)
+
+    def get_measurement_indices_for_prefix(self,prefix):
+        assert prefix in self.prefix_set, print(prefix,' not in prefix_set')
+        idx = []
+        for ii in range(self.num_measurements):
+            if self.measurements[ii].file_prefix == prefix:
+                idx.append(ii)
+        return idx
 
     def get_all_scans(self):
         scans = []
@@ -1109,8 +1123,7 @@ class PassbandMetrics():
         return integral_numerator**2 / integral_denom
 
     def integrate_passband(self,f_ghz,S,f_range_ghz=None):
-        ''' calculate bandwidth of passband from equation:
-            bw = [ \int_f1^f2 S(f_ghz) df ] ^2 / [ \int_f1^f2 S(f_ghz)^2 df ]
+        ''' integrate the passband over range f_range_ghz
         '''
         if f_range_ghz is not None:
             f_ghz, S = self.__cull_range(f_ghz,S,f_range_ghz)
