@@ -168,7 +168,10 @@ class TimeDomainDataProcessing():
         return y_filt
 
     def standardProcessing(self,x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=1,plotfig=False):
-        y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz,filter_width_hz,plotfig=False)
+        if filter_freqs_hz is not None:
+            y_filt = self.notch_frequencies(x,y,v,filter_freqs_hz,filter_width_hz,plotfig=False)
+        else:
+            y_filt = y
         y_filt = self.remove_poly(x,y_filt,deg=poly_filter_deg)
         if plotfig:
             plt.figure(1)
@@ -763,7 +766,7 @@ class IfgToSpectrum(TimeDomainDataProcessing):
         samp_int=x[1]-x[0]
         N=len(y)
         f=scipy.fftpack.fftfreq(N,samp_int)[0:N//2]*icm2ghz
-        y_filt = self.standardProcessing(x,y,v,filter_freqs_hz=[60,180],filter_width_hz=0.5,poly_filter_deg=poly_filter_deg,plotfig=False)
+        y_filt = self.standardProcessing(x,y,v,filter_freqs_hz=None,filter_width_hz=0.5,poly_filter_deg=poly_filter_deg,plotfig=False)
         #y_filt = self.remove_poly(x,y,poly_filter_deg)
         B=np.abs(scipy.fftpack.fft(y_filt)[0:N//2])
         if plotfig:

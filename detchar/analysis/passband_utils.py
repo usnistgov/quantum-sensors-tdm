@@ -27,7 +27,7 @@ class LoadingCalculation():
         '''
         try:
             if passband_arr==None: # case for tophat
-                P = quad(Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
+                P = quad(self.Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
         except: # case for arbitrary passband shape F
             N,M = np.shape(passband_arr)
             nu = np.linspace(passband_arr[0,0],passband_arr[-1,0],N)

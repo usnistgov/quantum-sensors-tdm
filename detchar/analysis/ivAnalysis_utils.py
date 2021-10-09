@@ -200,7 +200,7 @@ class IVCurveColumnDataExplore():
         self.n_normal_pts = 10
 
         self.data = iv_curve_column_data
-        self.iv_circuit = self._handle_iv_circuit(iv_circuit) 
+        self.iv_circuit = self._handle_iv_circuit(iv_circuit)
 
         # the raw data for one column and dimensionality
         self.x_raw, self.y_raw = self.data.xy_arrays_zero_subtracted_at_dac_high() # raw units
@@ -210,7 +210,7 @@ class IVCurveColumnDataExplore():
         self.phys_units = self._handle_physical_units()
         self.labels = self._handle_labels(self.phys_units)
 
-    # data manipulation methods -------------------------------------------------------- 
+    # data manipulation methods --------------------------------------------------------
     def _handle_iv_circuit(self, iv_circuit):
         if iv_circuit is not None:
             ivcirc = iv_circuit
@@ -220,25 +220,25 @@ class IVCurveColumnDataExplore():
                     if 'calnums' in self.data.extra_info['config'].keys():
                         vmax = self._get_voltage_max_from_source(self.data.extra_info['config']['voltage_bias']['source'])
                         ivcirc = IVCircuit(rfb_ohm=self.data.extra_info['config']['calnums']['rfb']+50.0,
-                                           rbias_ohm=self.data.extra_info['config']['calnums']['rbias'], 
-                                           rsh_ohm=self.data.extra_info['config']['calnums']['rjnoise'], 
+                                           rbias_ohm=self.data.extra_info['config']['calnums']['rbias'],
+                                           rsh_ohm=self.data.extra_info['config']['calnums']['rjnoise'],
                                            rx_ohm=0,
                                            m_ratio=self.data.extra_info['config']['calnums']['mr'],
                                            vfb_gain=self.data.extra_info['config']['calnums']['vfb_gain']/(2**14-1),
                                            vbias_gain=vmax/(2**16-1))
             else:
-                ivcirc = None 
+                ivcirc = None
         return ivcirc
 
     def _get_voltage_max_from_source(self,voltage_source='tower'):
         assert voltage_source in ['tower','bluebox'], print('Voltage source ',voltage_source,' not recognized')
-        
+
         if voltage_source == 'tower':
             vmax = 2.5
         elif voltage_source == 'bluebox':
             vmax = 6.5
         return vmax
-        
+
 
     def _handle_physical_units(self):
         y = self.remove_offset(False)
@@ -246,11 +246,11 @@ class IVCurveColumnDataExplore():
             self.v, self.i = self.convert_to_physical_units(self.x_raw,y)
             phys_units = True
         else:
-            self.i = y 
+            self.i = y
             self.v = np.empty((self.n_pts,self.n_rows))
             for ii in range(self.n_rows):
-                self.v[:,ii] = self.x_raw 
-            phys_units = False 
+                self.v[:,ii] = self.x_raw
+            phys_units = False
         return phys_units
 
     def _handle_labels(self,phys_units):
@@ -286,10 +286,10 @@ class IVCurveColumnDataExplore():
 
     def remove_offset(self,showplot=False):
         x = self.x_raw[::-1][-self.n_normal_pts:]
-        yr = self.y_raw[::-1,:] 
+        yr = self.y_raw[::-1,:]
         yr = yr[-self.n_normal_pts:,:]
         m, b = np.polyfit(x,yr,deg=1)
-        y = self.y_raw - b 
+        y = self.y_raw - b
         if m[0]<0: y = -1*y
 
         if showplot:
@@ -306,9 +306,9 @@ class IVCurveColumnDataExplore():
         v = np.diff(self.v,axis=0)+self.v[:-1,:]
         di = np.diff(self.i, axis=0)
         dp = np.diff(self.i*self.v, axis=0)
-        resp = di/dp 
+        resp = di/dp
         return v, resp
-        
+
     # plotting methods --------------------------------------
     def plot_iv(self, fig_num=1):
         fig = plt.figure(fig_num)
@@ -318,7 +318,7 @@ class IVCurveColumnDataExplore():
         plt.ylabel(self.labels['iv']['y'])
         plt.legend(loc='upper right')
         return fig
-    
+
     def plot_responsivity(self,fig_num=1):
         fig = plt.figure(fig_num)
         v,r = self.get_responsivity()
@@ -331,10 +331,10 @@ class IVCurveColumnDataExplore():
 
     def plot_vipr(self,fig_num=1, figtitle=None):
         #v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]
-        v = self.v 
-        i = self.i 
-        p = v*i 
-        r = v/i 
+        v = self.v
+        i = self.i
+        p = v*i
+        r = v/i
 
         # fig 1, 2x2 of converted IV
         #fig = plt.figure(fig_num)
@@ -355,7 +355,7 @@ class IVCurveColumnDataExplore():
         ax[2].set_ylabel(self.labels['rp']['y'])
         ax[3].set_xlabel(self.labels['vr']['x'])
         ax[3].set_ylabel(self.labels['vr']['y'])
-         
+
         #xlabels = ['V (V)','V (V)','P (W)','V (V)']
         #ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
         # for ii in range(4):
@@ -363,7 +363,7 @@ class IVCurveColumnDataExplore():
         #     ax[ii].set_ylabel(ylabels[ii])
         #     ax[ii].grid()
 
-        # plot range limits 
+        # plot range limits
         ax[0].set_xlim((0,np.max(v)*1.1))
         ax[0].set_ylim((0,np.max(i)*1.1))
         ax[1].set_xlim((0,np.max(v)*1.1))
@@ -423,15 +423,15 @@ class IVSetAnalyzeRow(IVClean):
         self.ro = self.r / self.r[0,:]
 
         self.v,self.i,self.p,self.r,ro = self.remove_bad_data()
-    
+
     def power_difference_analysis(self,fig_num=1):
-        
+
         fig,ax = plt.subplots(2,num=fig_num)
         for ii in range(self.num_sweeps):
             ax[0].plot(self.r[:,ii]*1000,self.p[:,ii]*1e12,label=ii)
 
-        ax[0].set_xlabel('Resistance (mOhms)')    
-        ax[0].set_ylabel('Power (pW)') 
+        ax[0].set_xlabel('Resistance (mOhms)')
+        ax[0].set_ylabel('Power (pW)')
         ax[0].legend(tuple(self.state_list))
         ax[0].set_xlim(0,self.r[0,0]*1100)
         ax[1].set_xlim(0,self.r[0,0]*1100)
@@ -1370,7 +1370,7 @@ class IVColdloadSweepAnalyzer():
 
         plt.show()
 
-    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,dark_rnfrac=0.7):
+    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
         if self.det_map != None:
             # first collect dark responses for each pixel
             dark_keys, dark_indices = self.det_map.get_keys_and_indices_of_type(type_str='dark')
@@ -1401,8 +1401,10 @@ class IVColdloadSweepAnalyzer():
                                               bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                               device_dict=self.det_map.get_onerow_device_dict(row),
                                               iv_circuit=self.iv_circuit,
-                                              passband_dict=passband_dict,
+                                              passband_dict=None,#passband_dict,
                                               dark_dP_w=dark_dP)
+                if rn_fracs is not None:
+                    iva.rn_fracs = rn_fracs
                 iva.plot_full_analysis(showfigs,savefigs)
 
 if __name__ == "__main__":
