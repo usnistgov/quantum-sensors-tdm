@@ -798,8 +798,11 @@ class IVColdloadAnalyzeOneRow():
         self.remove_bad_data()
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
 
+        self.T_cl_index = 0 # default uses the zeroth index.
+        self.dark_analysis, self.dark_power_w, self.dark_dp_w = self._handle_dark(dark_power_w)
+
         # get change in power versus change in temperature
-        self.update_T_cl_index(0) # default uses the zeroth index.
+        self.update_T_cl_index(self.T_cl_index) 
 
         # get efficiency
         if self.analyze_eta:
@@ -823,17 +826,14 @@ class IVColdloadAnalyzeOneRow():
             analyze_eta = False
         return analyze_eta, p_in
 
-    def _handle_dark(self, dark_dP_w):
-        self.dP_w_darksubtracted = None
-        self.do_dark_analysis = False
-        if dark_dP_w is not None:
-            assert len(dark_dP_w) == self.n_cl_temps, ('Length of dark_dP_w must equal number of cold load temperatures')
-            ddp_w = dark_dP_w
-            self.do_dark_analysis = True
+    def _handle_dark(self, dark_power_w):
+        if dark_power_w is None:
+            dark_analysis = False
+            dark_dp_w = None
         else:
-            self.do_dark_analysis = False
-            ddp_w=None
-        return ddp_w
+            dark_analysis = True
+            dark_dp_w = dark_power_w - dark_power_w[self.T_cl_index]
+        return dark_analysis, dark_power_w, dark_dp_w
 
     # helper methods -----------------------------------------------------------
     def update_T_cl_index(self,T_cl_index):
@@ -842,6 +842,8 @@ class IVColdloadAnalyzeOneRow():
         if self.analyze_eta:
             self.predicted_dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
             self.eta = self.get_efficiency(self.dp_at_rnfrac,self.predicted_dp_w)
+        if self.dark_analysis:
+            self.dark_dp_w = dark_power_w - dark_power_w[self.T_cl_index]
 
     def power_subtraction(self,dP_w,dP_w_vec):
         ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
@@ -1132,31 +1134,18 @@ class IVColdloadAnalyzeOneRow():
         '''
         figs = []
         figs.append(self.plot_raw(True,fig_num=1)) # raw
-        figs.append(self.plot_vipr(data_list=None,fig_num=2)) # 2x2 of converted data
-        figs.append(self.plot_pr(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=3))
+        figs.append(self.plot_vipr(fig_num=2)) # 2x2 of converted data
+        figs.append(self.plot_pr(fig_num=3))
         if not np.isnan(self.p_at_rnfrac).all():
-            figs.append(self.plot_pt(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=4))
-            if self.do_dark_analysis:
-                figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5, dp_at_rnfrac_dark_subtracted=self.dP_w_darksubtracted))
+            figs.append(self.plot_pt(fig_num=4))
+            if self.dark_analysis:
+                figs.append(self.plot_pt_delta(fig_num=5, dp_at_rnfrac_dark_subtracted=self.dP_w_darksubtracted))
             else:
-                figs.append(self.plot_pt_delta(self.cl_dT_k, self.dP_w, self.rn_fracs,fig_num=5))
-        if self.prediction[0]==1:
-            if self.do_dark_analysis:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6, eta_dark_subtracted=self.eta_tophat_ds))
-            else:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_tophat, self.rn_fracs, fig_num=6))
-        if self.prediction[1]==1:
-            if self.do_dark_analysis:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7, eta_dark_subtracted=self.eta_passband_sim_ds))
-            else:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_sim, self.rn_fracs, fig_num=7))
-        if self.passband_instance is not None:
-            if self.do_dark_analysis:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_measured, self.rn_fracs, fig_num=8, eta_dark_subtracted=self.eta_passband_measured_ds))
-            else:
-                figs.append(self.plot_efficiency(self.cl_dT_k, self.eta_passband_measured, self.rn_fracs, fig_num=8))
+                figs.append(self.plot_pt_delta(fig_num=5))
+        if self.analyze_eta:
+            figs.append(self.plot_efficiency(fig_num=6))
         if savefigs:
-            fig_appendix=['raw','vipr','pr','pt','dpt','eta_top','eta_sim']
+            fig_appendix=['raw','vipr','pr','pt','dpt','eta']
             for ii,fig in enumerate(figs):
                 fig.savefig(self.row_name+'_%d_'%ii+fig_appendix[ii]+'.png')
         if showfigs: plt.show()
