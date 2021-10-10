@@ -756,7 +756,7 @@ class IVColdloadAnalyzeOneRow():
         cl_temps_k: list cold load temperatures in K
         bath_temp_k: <number> substrate temperature during measurement
         row_name: <str> for plot labeling only
-        dev_name: <str> for plot labeling only 
+        dev_name: <str> for plot labeling only
         iv_circuit: instance of iv_data.IVCircuit to convert data to physical units
         predicted_power_w: <list or 1D numpy array> predicted power (in watts) corresponding to each cl_temp, used to determine optical efficiency
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
@@ -797,7 +797,13 @@ class IVColdloadAnalyzeOneRow():
         self.ro = self.r / self.r[0,:]
         self.remove_bad_data()
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
-        self.plot_pr(self.rn_fracs,self.p_at_rnfrac,self.p,self.ro,fig_num=5)
+
+        # get change in power versus change in temperature
+        self.update_T_cl_index(0) # default uses the zeroth index.
+
+        # get efficiency
+        if self.analyze_eta:
+            self.eta = self.get_efficiency(self.dp_at_rnfrac,self.predicted_dp_w)
 
         # self.dark_dP_w = self._handle_dark(dark_dP_w) # a vector (not 2D array)
         # self.cl_dT_k, self.dP_w, self.T_cl_index = self.get_delta_pt()
@@ -830,6 +836,13 @@ class IVColdloadAnalyzeOneRow():
         return ddp_w
 
     # helper methods -----------------------------------------------------------
+    def update_T_cl_index(self,T_cl_index):
+        self.T_cl_index = T_cl_index
+        self.dcl_temps_k, self.dp_at_rnfrac, self.T_cl_index = self.get_delta_pt(cl_index = T_cl_index)
+        if self.analyze_eta:
+            self.predicted_dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
+            self.eta = self.get_efficiency(self.dp_at_rnfrac,self.predicted_dp_w)
+
     def power_subtraction(self,dP_w,dP_w_vec):
         ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
             dP_w_vec (typically a dark detector response) is a 1 x M array
@@ -886,7 +899,7 @@ class IVColdloadAnalyzeOneRow():
     # gets ---------------------------------------------------------------------
     def get_vipr(self,showplot=False):
         ''' returns the voltage, current, power, and resistance vectors '''
-        if self.fb_align==None:
+        if self.fb_align is None:
             self.fb_align = self.fb_align_and_remove_offset(showplot=False)
 
         if self.to_physical_units:
@@ -934,12 +947,6 @@ class IVColdloadAnalyzeOneRow():
             result[:,ii] = YY
         return result
 
-    def get_pt_delta_for_rnfrac(self,rnfrac):
-        assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
-        dex = self.rn_fracs.index(rnfrac)
-        return self.dP_w[dex]
-
-
     def get_delta_pt(self,rn_fracs=None,p_at_rnfrac=None,cl_index=None):
         if cl_index == None: dex = np.argmin(self.cl_temps_k)
         else: dex = cl_index
@@ -953,14 +960,13 @@ class IVColdloadAnalyzeOneRow():
             dP_w[ii,:] = p_at_rnfrac[ii,dex] - p_at_rnfrac[ii,:]
         return dT_k, dP_w, dex
 
-    def get_efficiency(self,dP,dP_m):
-        # dexs = [i for i, dP in enumerate(dP) if dP == 0]
-        # eta = np.ones(len(dP))*np.nan
-        # for ii in range(len(dP)):
-        #     if ii in dexs:
-        #         pass
-        #     else: eta[ii]==dP_m[ii]/dP[ii]
-        return dP_m/dP
+    def get_pt_delta_for_rnfrac(self,rnfrac):
+        assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
+        dex = self.rn_fracs.index(rnfrac)
+        return self.dP_w[dex]
+
+    def get_efficiency(self,dP,dP_predict):
+        return dP/dP_predict
 
     def get_eta_mean_std(self,eta):
         n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
@@ -987,23 +993,17 @@ class IVColdloadAnalyzeOneRow():
         plt.legend((self.cl_temps_k),loc='upper right')
         return fig
 
-    def plot_vipr(self,data_list=None,fig_num=1):
-
-        if data_list==None:
-            v=self.v; i=self.i; p=self.p; r=self.r
-        else:
-            v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
-
+    def plot_vipr(self,fig_num=1):
         # fig 1, 2x2 of converted IV
         #fig = plt.figure(fig_num)
         figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
-            ax[0].plot(v[:,ii],i[:,ii])
-            ax[1].plot(v[:,ii],p[:,ii])
-            ax[2].plot(p[:,ii],r[:,ii])
+            ax[0].plot(self.v[:,ii],self.i[:,ii])
+            ax[1].plot(self.v[:,ii],self.p[:,ii])
+            ax[2].plot(self.p[:,ii],self.r[:,ii])
             #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
-            ax[3].plot(v[:,ii],r[:,ii])
+            ax[3].plot(self.v[:,ii],self.r[:,ii])
         # xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','V ($\mu$V)']
         # ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R (m$\Omega$)']
         xlabels = ['V (V)','V (V)','P (W)','V (V)']
@@ -1015,14 +1015,14 @@ class IVColdloadAnalyzeOneRow():
             ax[ii].grid()
 
         # plot ranges
-        ax[0].set_xlim((0,np.max(v)*1.1))
-        ax[0].set_ylim((0,np.max(i)*1.1))
-        ax[1].set_xlim((0,np.max(v)*1.1))
-        ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,np.max(p)*1.1))
-        ax[2].set_ylim((0,np.max(r[0,:])*1.1))
-        ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
+        ax[0].set_xlim((0,np.max(self.v)*1.1))
+        ax[0].set_ylim((0,np.max(self.i)*1.1))
+        ax[1].set_xlim((0,np.max(self.v)*1.1))
+        ax[1].set_ylim((0,np.max(self.p)*1.1))
+        ax[2].set_xlim((0,np.max(self.p)*1.1))
+        ax[2].set_ylim((0,np.max(self.r[0,:])*1.1))
+        ax[3].set_xlim((0,np.max(self.v)*1.1))
+        ax[3].set_ylim((0,np.max(self.r[0,:])*1.1))
         #ax[3].set_xlim((0,np.max(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
@@ -1030,13 +1030,13 @@ class IVColdloadAnalyzeOneRow():
         ax[3].legend(tuple(self.cl_temps_k))
         return figXX
 
-    def plot_pr(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
-        pPlot = self.get_value_at_rn_frac([0.995],arr=p,ro=ro)
+    def plot_pr(self,fig_num=1):
+        pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
         # FIG1: P versus R/Rn
         fig = plt.figure(fig_num)
-        plt.plot(ro, p,'-') # plots for all Tbath
-        plt.plot(rn_fracs,p_at_rnfrac,'ro')
+        plt.plot(self.ro, self.p,'-') # plots for all Tbath
+        plt.plot(self.rn_fracs,self.p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
         try:
             #plt.ylim((np.min(p_at_rnfrac[~np.isnan(p_at_rnfrac)])*0.9,1.25*np.max(pPlot[~np.isnan(pPlot)])))
@@ -1051,14 +1051,14 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle)
         return fig
 
-    def plot_pt(self,rn_fracs,p_at_rnfrac,p,ro,fig_num=1):
+    def plot_pt(self,fig_num=1):
         # power plateau (evaluated at each rn_frac) versus T_cl
         fig = plt.figure(fig_num)
         llabels=[]
-        for ii in range(len(rn_fracs)):
-            if not np.isnan(p_at_rnfrac[ii,:]).any():
-                plt.plot(self.cl_temps_k,p_at_rnfrac[ii,:],'o-')
-                llabels.append(rn_fracs[ii])
+        for ii in range(len(self.rn_fracs)):
+            if not np.isnan(self.p_at_rnfrac[ii,:]).any():
+                plt.plot(self.cl_temps_k,self.p_at_rnfrac[ii,:],'o-')
+                llabels.append(self.rn_fracs[ii])
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau')
         plt.legend((llabels))
@@ -1066,21 +1066,19 @@ class IVColdloadAnalyzeOneRow():
         plt.grid()
         return fig
 
-    def plot_pt_delta(self,cl_dT_k, dp_at_rnfrac, rn_fracs, fig_num=1, dp_at_rnfrac_dark_subtracted=None):
+    def plot_pt_delta(self,fig_num=1, dp_at_rnfrac_dark_subtracted=None):
         ''' plot change in saturation power relative to minimum coldload temperature '''
         fig = plt.figure(fig_num)
         legend_vals = []
-        if self.prediction[0]==1: # include tophat passband prediction
-            plt.plot(self.cl_dT_k,self.power_cl_tophat_delta,'k-',label='$\Delta{P}_{calc}$ (top hat)')
-        if self.prediction[1]==1: # include simulated passband prediction
-            plt.plot(self.cl_dT_k,self.power_cl_sim_passband_delta,'k--',label='$\Delta{P}_{calc}$ (sim passband)')
+        if self.analyze_eta:
+            plt.plot(self.dcl_temps_k,self.predicted_dp_w,'k-',label='$\Delta{P}_{pred}$')
         jj=0
-        for ii in range(len(rn_fracs)):
-            if not np.isnan(dp_at_rnfrac[ii,:]).any():
-                plt.plot(cl_dT_k,dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(rn_fracs[ii]))
+        for ii in range(len(self.rn_fracs)):
+            if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
+                plt.plot(self.dcl_temps_k,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 try:
                     if len(dp_at_rnfrac_dark_subtracted) > 0:
-                        plt.plot(cl_dT_k,dp_at_rnfrac_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                        plt.plot(self.dcl_temps_k,dp_at_rnfrac_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                 except:
                     pass
                 jj+=1
@@ -1091,28 +1089,38 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle)
         return fig
 
-    def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
+    def plot_efficiency(self, fig_num=1, eta_dark_subtracted=None):
         fig = plt.figure(fig_num)
-        jj=0
-        for ii in range(len(rn_fracs)):
-            if not np.isnan(eta[ii,1:]).any():
-                plt.plot(cl_dT_k,eta[ii,:],'o-',color=self.colors[jj], label=str(rn_fracs[ii]))
-                try:
-                    if len(eta_dark_subtracted) > 0:
-                        plt.plot(cl_dT_k,eta_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
-                except:
-                    pass
-                jj+=1
-        eta_m, eta_std = self.get_eta_mean_std(eta)
-        eta_m_ds, eta_std_ds = self.get_eta_mean_std(eta_dark_subtracted)
-        plt.errorbar(cl_dT_k[1:],eta_m,eta_std,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
-        plt.errorbar(cl_dT_k[1:],eta_m_ds,eta_std_ds,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean ds',linestyle='--')
+        plt.plot(self.dcl_temps_k,self.eta.transpose())
         plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
         plt.ylabel('Efficiency')
-        plt.legend()
+        plt.legend(self.rn_fracs)
         plt.grid()
         plt.title(self.figtitle)
         return fig
+
+    # def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
+    #     fig = plt.figure(fig_num)
+    #     jj=0
+    #     for ii in range(len(rn_fracs)):
+    #         if not np.isnan(eta[ii,1:]).any():
+    #             plt.plot(cl_dT_k,eta[ii,:],'o-',color=self.colors[jj], label=str(rn_fracs[ii]))
+    #             try:
+    #                 if len(eta_dark_subtracted) > 0:
+    #                     plt.plot(cl_dT_k,eta_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+    #             except:
+    #                 pass
+    #             jj+=1
+    #     eta_m, eta_std = self.get_eta_mean_std(eta)
+    #     eta_m_ds, eta_std_ds = self.get_eta_mean_std(eta_dark_subtracted)
+    #     plt.errorbar(cl_dT_k[1:],eta_m,eta_std,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
+    #     plt.errorbar(cl_dT_k[1:],eta_m_ds,eta_std_ds,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean ds',linestyle='--')
+    #     plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
+    #     plt.ylabel('Efficiency')
+    #     plt.legend()
+    #     plt.grid()
+    #     plt.title(self.figtitle)
+    #     return fig
 
     def plot_full_analysis(self,showfigs=False,savefigs=False):
         ''' Make plots of the full analysis:
