@@ -426,7 +426,7 @@ class IVSetAnalyzeRow(IVClean):
 
     def power_difference_analysis(self,fig_num=1):
 
-        fig,ax = plt.subplots(2,num=fig_num)
+        fig,ax = plt.subplots(2,num=fig_num)#,figsize=(45,5))
         for ii in range(self.num_sweeps):
             ax[0].plot(self.r[:,ii]*1000,self.p[:,ii]*1e12,label=ii)
 
@@ -799,16 +799,16 @@ class IVColdloadAnalyzeOneRow():
 
         # get change in power versus change in temperature ("infinitesimal", thus lower case d)
         self.cl_dT_k = np.diff(np.array(self.cl_temps_k))
-        self.dp_at_rnfrac = np.diff(self.p_at_rnfrac)
+        self.dp_at_rnfrac = np.diff(self.p_at_rnfrac)*-1
 
         # get change in power relative to P(T=T_cl_index), (not infinitesimal thus big D)
         self.cl_DT_k, self.Dp_at_rnfrac, self.T_cl_index = self.get_Delta_pt()
 
         # handle darks
-        self.dark_analysis, self.dark_power_w, self.dark_Dp_w, self.dark_dp_w = self._handle_dark(dark_power_w)
+        self.dark_analysis, self.dark_power_w, self.dark_Dp_w, self.dark_dp_w = self._handle_power_input(dark_power_w)
 
         # predicted power
-        self.analyze_eta, self.predicted_power_w, self.predicted_Dp_w, self.predicted_dp_w = self._handle_prediction(predicted_power_w)
+        self.analyze_eta, self.predicted_power_w, self.predicted_Dp_w, self.predicted_dp_w = self._handle_power_input(predicted_power_w)
 
         # get efficiency
         if self.analyze_eta: self.get_efficiency_at_rnfrac()
@@ -817,25 +817,15 @@ class IVColdloadAnalyzeOneRow():
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
 
     # handle methods ----------------------------------------------------------
-    def _handle_prediction(self,predicted_power_w):
-        if predicted_power_w is not None:
-            assert len(predicted_power_w) == self.n_cl_temps, 'Hey, the dimensions of the predicted power do not match the number of cold load temperatures!'
-            p_in = predicted_power_w
+    def _handle_power_input(self,p_in):
+        if p_in is not None:
+            assert len(p_in) == self.n_cl_temps, 'Hey, the dimensions of the input power do not match the number of cold load temperatures!'
             Dp, dp = self.get_power_difference_1D(p_in, self.T_cl_index)
-            analyze_eta = True
+            analyze = True
         else:
-            p_in = Dp = dp = None
-            analyze_eta = False
-        return analyze_eta, p_in, Dp, dp
-
-    def _handle_dark(self, dark_power_w):
-        if dark_power_w is None:
-            dark_analysis = False
-            dark_Dp_w = dark_dp_w = None
-        else:
-            dark_analysis = True
-            dark_Dp_w, dark_dp_w = self.get_power_difference_1D(dark_power_w, self.T_cl_index)
-        return dark_analysis, dark_power_w, dark_Dp_w, dark_dp_w
+            Dp = dp = None
+            analyze = False
+        return analyze, p_in, Dp, dp
 
     # helper methods -----------------------------------------------------------
 
@@ -896,12 +886,6 @@ class IVColdloadAnalyzeOneRow():
         if self.analyze_eta:
             self.predicted_Dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
             self.eta_Dp = self.get_efficiency()
-
-    def power_subtraction(self,dP_w,dP_w_vec):
-        ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
-            dP_w_vec (typically a dark detector response) is a 1 x M array
-        '''
-        return dP_w - dP_w_vec
 
     def calc_power_differences(self,T_cl_index):
         if self.analyze_eta: # power predictions
@@ -979,16 +963,18 @@ class IVColdloadAnalyzeOneRow():
         if rn_fracs==None: rn_fracs=self.rn_fracs
 
         DT_k = np.array(self.cl_temps_k)-self.cl_temps_k[dex]
-        DP_w = (p_at_rnfrac.transpose() - p_at_rnfrac[:,dex]).transpose()
+        DP_w = (p_at_rnfrac[:,dex] - p_at_rnfrac.transpose()).transpose()
         return DT_k, DP_w, dex
 
-    def get_pt_delta_for_rnfrac(self,rnfrac):
-        assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
-        dex = self.rn_fracs.index(rnfrac)
-        return self.dP_w[dex]
-
     def get_efficiency_at_rnfrac(self):
-        ''' '''
+        '''
+        create four global variables that quantify the optical efficiency.
+
+        eta_Dp_arr_(darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
+                                     Array has dimensions n_rfrac  x n_clTemps
+        eta_dp_arr_(darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
+                                     Array has dimensions n_rfrac  x n_clTemps - 1
+        '''
         self.eta_Dp_arr = self.Dp_at_rnfrac / self.predicted_Dp_w
         self.eta_dp_arr = self.dp_at_rnfrac / self.predicted_dp_w
         if self.dark_analysis:
@@ -997,17 +983,23 @@ class IVColdloadAnalyzeOneRow():
         else:
             self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
 
+    # def get_pt_delta_for_rnfrac(self,rnfrac):
+    #     assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
+    #     dex = self.rn_fracs.index(rnfrac)
+    #     return self.dP_w[dex]
+    #
 
-    def get_eta_mean_std(self,eta):
-        n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
-        dexs=[] # rn cuts w/out np.nan entries
-        for ii in range(n):
-            if not np.isnan(eta[ii,1:]).any():
-                dexs.append(ii)
-
-        eta_m = np.mean(eta[dexs,1:],axis=0)
-        eta_std = np.std(eta[dexs,1:],axis=0)
-        return eta_m, eta_std
+    #
+    # def get_eta_mean_std(self,eta):
+    #     n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
+    #     dexs=[] # rn cuts w/out np.nan entries
+    #     for ii in range(n):
+    #         if not np.isnan(eta[ii,1:]).any():
+    #             dexs.append(ii)
+    #
+    #     eta_m = np.mean(eta[dexs,1:],axis=0)
+    #     eta_std = np.std(eta[dexs,1:],axis=0)
+    #     return eta_m, eta_std
 
     # plotting methods ---------------------------------------------------------
     def plot_raw(self,fb_align_dc_level=True,fig_num=1):
@@ -1096,21 +1088,18 @@ class IVColdloadAnalyzeOneRow():
         plt.grid()
         return fig
 
-    def plot_pt_delta(self,fig_num=1, dp_at_rnfrac_dark_subtracted=None):
-        ''' plot change in saturation power relative to minimum coldload temperature '''
+    def plot_DpDt(self,fig_num=1, include_prediction=True, include_darksubtraction=True):
+        ''' plot change in saturation power relative to one fixed coldload temperature '''
         fig = plt.figure(fig_num)
         legend_vals = []
-        if self.analyze_eta:
-            plt.plot(self.dcl_temps_k,self.predicted_dp_w,'k-',label='$\Delta{P}_{pred}$')
+        if include_prediction and self.analyze_eta:
+            plt.plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label='$\Delta{P}_{pred}$')
         jj=0
         for ii in range(len(self.rn_fracs)):
-            if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                plt.plot(self.dcl_temps_k,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
-                try:
-                    if len(dp_at_rnfrac_dark_subtracted) > 0:
-                        plt.plot(self.dcl_temps_k,dp_at_rnfrac_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
-                except:
-                    pass
+            if not np.isnan(self.Dp_at_rnfrac[ii,:]).any():
+                plt.plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                if include_darksubtraction and self.dark_analysis:
+                    plt.plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:]-self.dark_Dp_w,'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
         plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
         plt.ylabel('P$_o$ - P')
@@ -1119,14 +1108,55 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle)
         return fig
 
-    def plot_efficiency(self, fig_num=1, eta_dark_subtracted=None):
+    def plot_dpdt(self,fig_num=1, include_prediction=True, include_darksubtraction=True):
+        ''' plot change in saturation power relative to change in coldload temperature '''
         fig = plt.figure(fig_num)
-        plt.plot(self.dcl_temps_k,self.eta.transpose())
-        plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
-        plt.ylabel('Efficiency')
-        plt.legend(self.rn_fracs)
+        legend_vals = []
+        x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
+        if include_prediction and self.analyze_eta:
+            plt.plot(x,self.predicted_dp_w,'k-',label='$dP_{pred}$')
+        jj=0
+        for ii in range(len(self.rn_fracs)):
+            if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
+                plt.plot(x,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                if include_darksubtraction and self.dark_analysis:
+                    plt.plot(x,self.dp_at_rnfrac[ii,:]-self.dark_dp_w,'o--',color=self.colors[jj],label='_nolegend_')
+                jj+=1
+        plt.xlabel('T$_{cl}$')
+        plt.ylabel('dP')
+        plt.legend()
         plt.grid()
         plt.title(self.figtitle)
+        return fig
+
+    def plot_efficiency(self, fig_num=1, include_darksubtraction=True):
+        fig, ax = plt.subplots(1,2,num=fig_num)
+        x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
+
+        # ax[0]: fixed reference point method; ax[1]: differential method
+        jj=0
+        for ii in range(len(self.rn_fracs)):
+            if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
+                ax[0].plot(self.cl_temps_k,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                if include_darksubtraction and self.dark_analysis:
+                    ax[0].plot(self.cl_temps_k,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                    ax[1].plot(x,self.eta_dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                jj+=1
+
+        ax[0].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
+        ax[0].set_ylabel('Optical Efficiency')
+        ax[0].grid('on')
+        ax[0].set_title('Fixed Reference Method')
+        ax[0].set_ylim(0,1)
+
+        ax[1].set_xlabel('T$_{cl}$ K')
+        ax[1].grid('on')
+        ax[1].set_title('Differential Method')
+        ax[1].set_ylim(0,1)
+
+        ax[1].legend()#self.rn_fracs)
+        plt.suptitle(self.figtitle)
         return fig
 
     # def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
