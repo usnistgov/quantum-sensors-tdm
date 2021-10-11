@@ -483,8 +483,6 @@ class IVSetAnalyzeRow(IVClean):
 
     def get_vipr(self, showplot=False):
         ''' returns the voltage, current, power, and resistance vectors '''
-        self.fb_align = self.fb_align_and_remove_offset(showplot=False)
-
         if self.to_physical_units:
             v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
         else:
@@ -762,17 +760,19 @@ class IVColdloadAnalyzeOneRow():
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
     '''
 
+    # to debug
+    # axis limits and NaN for plot_vipr
+
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
                  iv_circuit=None,predicted_power_w=None,dark_power_w=None):
-        # fixed globals
+        # fixed globals / options
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
-        self.rn_fracs = [0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute delta Ps
+        self.rn_fracs = [0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute electrical power versus temperature
         self.n_rn_fracs = len(self.rn_fracs)
-        self.fb_align = None # detail of IV normalization
 
-        # make inputs globals
+        # other globals
         self.dacs = dac_values
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.cl_temps_k = cl_temps_k
@@ -781,36 +781,37 @@ class IVColdloadAnalyzeOneRow():
         self.row_name = row_name
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
-
-        # handle conversion to physical units
-        if iv_circuit==None:
-            self.to_physical_units = False
-        else:
+        self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
+                                                          # (i.e. the appropriate DC offset has been removed)
+        # convert to physical units if iv_circuit provided
+        if iv_circuit is not None:
             self.iv_circuit = iv_circuit
             self.to_physical_units = True
+        else:
+            self.to_physical_units = False
 
-        # predicted power
-        self.analyze_eta, self.predicted_power_w = self._handle_prediction(predicted_power_w)
-
-        # do analysis, place main results as globals to class
+        # do analysis of v,i,r,p vectors.  Place main results as globals to class
         self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
         self.ro = self.r / self.r[0,:]
+        self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = self.v, self.i, self.p, self.r, self.ro
         self.remove_bad_data()
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
 
-        self.T_cl_index = 0 # default uses the zeroth index.
-        self.dark_analysis, self.dark_power_w, self.dark_dp_w = self._handle_dark(dark_power_w)
+        # get change in power versus change in temperature ("infinitesimal", thus lower case d)
+        self.cl_dT_k = np.diff(np.array(self.cl_temps_k))
+        self.dp_at_rnfrac = np.diff(self.p_at_rnfrac)
 
-        # get change in power versus change in temperature
-        self.update_T_cl_index(self.T_cl_index) 
+        # get change in power relative to P(T=T_cl_index), (not infinitesimal thus big D)
+        self.cl_DT_k, self.Dp_at_rnfrac, self.T_cl_index = self.get_Delta_pt()
+
+        # handle darks
+        self.dark_analysis, self.dark_power_w, self.dark_Dp_w, self.dark_dp_w = self._handle_dark(dark_power_w)
+
+        # predicted power
+        self.analyze_eta, self.predicted_power_w, self.predicted_Dp_w, self.predicted_dp_w = self._handle_prediction(predicted_power_w)
 
         # get efficiency
-        if self.analyze_eta:
-            self.eta = self.get_efficiency(self.dp_at_rnfrac,self.predicted_dp_w)
-
-        # self.dark_dP_w = self._handle_dark(dark_dP_w) # a vector (not 2D array)
-        # self.cl_dT_k, self.dP_w, self.T_cl_index = self.get_delta_pt()
-        # if self.do_dark_analysis: self.dP_w_darksubtracted = self.power_subtraction(self.dP_w,self.dark_dP_w)
+        if self.analyze_eta: self.get_efficiency_at_rnfrac()
 
         # plotting stuff
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
@@ -820,42 +821,26 @@ class IVColdloadAnalyzeOneRow():
         if predicted_power_w is not None:
             assert len(predicted_power_w) == self.n_cl_temps, 'Hey, the dimensions of the predicted power do not match the number of cold load temperatures!'
             p_in = predicted_power_w
+            Dp, dp = self.get_power_difference_1D(p_in, self.T_cl_index)
             analyze_eta = True
         else:
-            p_in = None
+            p_in = Dp = dp = None
             analyze_eta = False
-        return analyze_eta, p_in
+        return analyze_eta, p_in, Dp, dp
 
     def _handle_dark(self, dark_power_w):
         if dark_power_w is None:
             dark_analysis = False
-            dark_dp_w = None
+            dark_Dp_w = dark_dp_w = None
         else:
             dark_analysis = True
-            dark_dp_w = dark_power_w - dark_power_w[self.T_cl_index]
-        return dark_analysis, dark_power_w, dark_dp_w
+            dark_Dp_w, dark_dp_w = self.get_power_difference_1D(dark_power_w, self.T_cl_index)
+        return dark_analysis, dark_power_w, dark_Dp_w, dark_dp_w
 
     # helper methods -----------------------------------------------------------
-    def update_T_cl_index(self,T_cl_index):
-        self.T_cl_index = T_cl_index
-        self.dcl_temps_k, self.dp_at_rnfrac, self.T_cl_index = self.get_delta_pt(cl_index = T_cl_index)
-        if self.analyze_eta:
-            self.predicted_dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
-            self.eta = self.get_efficiency(self.dp_at_rnfrac,self.predicted_dp_w)
-        if self.dark_analysis:
-            self.dark_dp_w = dark_power_w - dark_power_w[self.T_cl_index]
-
-    def power_subtraction(self,dP_w,dP_w_vec):
-        ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
-            dP_w_vec (typically a dark detector response) is a 1 x M array
-        '''
-        return dP_w - dP_w_vec
-
-    def removeNaN(self,arr):
-        ''' only works on 1d vector, not array '''
-        return arr[~np.isnan(arr)]
 
     def fb_align_and_remove_offset(self,showplot=False):
+        # this method ought to be placed in another general class
         fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
         for ii in range(self.n_cl_temps): # align fb DC levels to a common value
             dy = self.fb[0,ii]-self.fb[0,0]
@@ -872,14 +857,20 @@ class IVColdloadAnalyzeOneRow():
         if self.use_ave_offset: b = np.mean(b)
         fb_align = fb_align - b
         if m[0]<0: fb_align = fb_align*-1
-        #self.fb_align = fb_align
         if showplot:
             for ii in range(self.n_cl_temps):
                 plt.plot(self.dacs,fb_align[:,ii])
             plt.show()
         return fb_align
 
+    def removeNaN(self,arr):
+        ''' only works on 1d vector, not array '''
+        return arr[~np.isnan(arr)]
+
     def remove_bad_data(self):
+        ''' remove poor data (typically in superconducting transition).
+            Used primarily to avoid throwing off determination of power at a given Rn
+        '''
         def cut(arr,dexs):
             n,m=np.shape(arr)
             arr_copy = arr.copy()
@@ -892,18 +883,45 @@ class IVColdloadAnalyzeOneRow():
         for ii in range(self.n_cl_temps):
             dexs.append(IVClean().find_bad_data_index(self.dacs,self.fb[:,ii],threshold=0.5,showplot=False))
         self.bad_data_idx = dexs
-        self.v_cl = cut(self.v,dexs)
-        self.i_cl = cut(self.i,dexs)
-        self.r_cl = cut(self.r,dexs)
-        self.ro_cl = cut(self.ro,dexs)
-        self.p_cl = cut(self.p,dexs)
+        self.v = cut(self.v,dexs)
+        self.i = cut(self.i,dexs)
+        self.r = cut(self.r,dexs)
+        self.ro = cut(self.ro,dexs)
+        self.p = cut(self.p,dexs)
+
+    def update_T_cl_index(self,T_cl_index):
+        self.cl_DT_k, self.Dp_at_rnfrac, self.T_cl_index = self.get_Delta_pt(cl_index = T_cl_index)
+        if self.dark_analysis:
+            self.dark_Dp_w = self.dark_power_w - self.dark_power_w[self.T_cl_index]
+        if self.analyze_eta:
+            self.predicted_Dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
+            self.eta_Dp = self.get_efficiency()
+
+    def power_subtraction(self,dP_w,dP_w_vec):
+        ''' dP_w is an N x M array with N rows of %rn cuts over M coldload temps
+            dP_w_vec (typically a dark detector response) is a 1 x M array
+        '''
+        return dP_w - dP_w_vec
+
+    def calc_power_differences(self,T_cl_index):
+        if self.analyze_eta: # power predictions
+            self.predicted_power_Dp, self.predicted_power_dp = self.get_power_difference_1D(self.predicted_power_w,T_cl_index)
+        self.dp_at_rnfrac, self.Dp_at_rnfrac = self.get_power_difference_2D(self.p_at_rnfrac,T_cl_index)
 
     # gets ---------------------------------------------------------------------
+    def get_power_difference_1D(self,power_w, T_cl_index):
+        ''' return the '''
+        Dp = power_w - power_w[T_cl_index]
+        dp = np.diff(power_w)
+        return Dp, dp
+
+    def get_power_difference_2D(self,arr,T_cl_index):
+        Dp = arr - arr[:,T_cl_index]
+        dp = np.diff(arr)
+        return Dp, dp
+
     def get_vipr(self,showplot=False):
         ''' returns the voltage, current, power, and resistance vectors '''
-        if self.fb_align is None:
-            self.fb_align = self.fb_align_and_remove_offset(showplot=False)
-
         if self.to_physical_units:
             v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
         else:
@@ -928,6 +946,11 @@ class IVColdloadAnalyzeOneRow():
         arr and ro must be same shape
         return: len(rn_fracs) x M array of the interpolated values
 
+        This method used to determine the electrical power at some Rn fraction.
+        It is used to make the global variable self.p_at_rnfrac, a 2D array
+        Each row of this array is the electrical power determined at each cl_temps_k, and for
+        a single cut in Rn.
+
         '''
         # ensure rn_fracs is a np.array
         if type(rn_fracs)!=np.ndarray:
@@ -949,26 +972,31 @@ class IVColdloadAnalyzeOneRow():
             result[:,ii] = YY
         return result
 
-    def get_delta_pt(self,rn_fracs=None,p_at_rnfrac=None,cl_index=None):
+    def get_Delta_pt(self,rn_fracs=None,p_at_rnfrac=None,cl_index=None):
         if cl_index == None: dex = np.argmin(self.cl_temps_k)
         else: dex = cl_index
         if p_at_rnfrac==None: p_at_rnfrac=self.p_at_rnfrac
         if rn_fracs==None: rn_fracs=self.rn_fracs
 
-        dT_k = np.array(self.cl_temps_k)-self.cl_temps_k[dex]
-        #p_at_rnfrac[ii,min_dex]-p_at_rnfrac[ii,:]
-        dP_w = np.zeros(np.shape(p_at_rnfrac))
-        for ii in range(len(rn_fracs)): # must be a better way...
-            dP_w[ii,:] = p_at_rnfrac[ii,dex] - p_at_rnfrac[ii,:]
-        return dT_k, dP_w, dex
+        DT_k = np.array(self.cl_temps_k)-self.cl_temps_k[dex]
+        DP_w = (p_at_rnfrac.transpose() - p_at_rnfrac[:,dex]).transpose()
+        return DT_k, DP_w, dex
 
     def get_pt_delta_for_rnfrac(self,rnfrac):
         assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
         dex = self.rn_fracs.index(rnfrac)
         return self.dP_w[dex]
 
-    def get_efficiency(self,dP,dP_predict):
-        return dP/dP_predict
+    def get_efficiency_at_rnfrac(self):
+        ''' '''
+        self.eta_Dp_arr = self.Dp_at_rnfrac / self.predicted_Dp_w
+        self.eta_dp_arr = self.dp_at_rnfrac / self.predicted_dp_w
+        if self.dark_analysis:
+            self.eta_Dp_arr_darksubtracted = (self.Dp_at_rnfrac - self.dark_Dp_w) / self.predicted_Dp_w
+            self.eta_dp_arr_darksubtracted = (self.dp_at_rnfrac - self.dark_dp_w) / self.predicted_dp_w
+        else:
+            self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
+
 
     def get_eta_mean_std(self,eta):
         n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
@@ -1017,14 +1045,14 @@ class IVColdloadAnalyzeOneRow():
             ax[ii].grid()
 
         # plot ranges
-        ax[0].set_xlim((0,np.max(self.v)*1.1))
-        ax[0].set_ylim((0,np.max(self.i)*1.1))
-        ax[1].set_xlim((0,np.max(self.v)*1.1))
-        ax[1].set_ylim((0,np.max(self.p)*1.1))
-        ax[2].set_xlim((0,np.max(self.p)*1.1))
-        ax[2].set_ylim((0,np.max(self.r[0,:])*1.1))
-        ax[3].set_xlim((0,np.max(self.v)*1.1))
-        ax[3].set_ylim((0,np.max(self.r[0,:])*1.1))
+        # ax[0].set_xlim((0,np.max(self.v)*1.1))
+        # ax[0].set_ylim((0,np.max(self.i)*1.1))
+        # ax[1].set_xlim((0,np.max(self.v)*1.1))
+        # ax[1].set_ylim((0,np.max(self.p)*1.1))
+        # ax[2].set_xlim((0,np.max(self.p)*1.1))
+        # ax[2].set_ylim((0,np.max(self.r[0,:])*1.1))
+        # ax[3].set_xlim((0,np.max(self.v)*1.1))
+        # ax[3].set_ylim((0,np.max(self.r[0,:])*1.1))
         #ax[3].set_xlim((0,np.max(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
