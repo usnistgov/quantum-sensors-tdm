@@ -1129,8 +1129,41 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle)
         return fig
 
+    def plot_power_change_vs_temperature(self,fig_num=1,include_prediction=True, include_darksubtraction=True):
+        fig, ax = plt.subplots(1,2,num=fig_num,figsize=(10,5))
+        x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
+
+        # ax[0]: fixed reference point method; ax[1]: differential method
+        if include_prediction and self.analyze_eta:
+            ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label='$\Delta{P}_{pred}$')
+            ax[1].plot(x,self.predicted_dp_w,'k-',label='$dP_{pred}$')
+
+        jj=0
+        for ii in range(len(self.rn_fracs)):
+            if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
+                ax[0].plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[1].plot(x,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                if include_darksubtraction and self.dark_analysis:
+                    ax[0].plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:]-self.dark_Dp_w,'o--',color=self.colors[jj],label='_nolegend_')
+                    ax[1].plot(x,self.dp_at_rnfrac[ii,:]-self.dark_dp_w,'o--',color=self.colors[jj],label='_nolegend_')
+                jj+=1
+
+        ax[0].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
+        ax[0].set_ylabel('P$_o$ - P')
+        ax[0].grid('on')
+        ax[0].set_title('Fixed Reference Method')
+
+        ax[1].set_xlabel('T$_{cl}$ K')
+        ax[1].set_ylabel('dP (W)')
+        ax[1].grid('on')
+        ax[1].set_title('Differential Method')
+
+        ax[0].legend(loc='best')#self.rn_fracs)
+        plt.suptitle(self.figtitle)
+        return fig
+
     def plot_efficiency(self, fig_num=1, include_darksubtraction=True):
-        fig, ax = plt.subplots(1,2,num=fig_num)
+        fig, ax = plt.subplots(1,2,num=fig_num,figsize=(10,5))
         x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
 
         # ax[0]: fixed reference point method; ax[1]: differential method
@@ -1182,26 +1215,31 @@ class IVColdloadAnalyzeOneRow():
     #     plt.title(self.figtitle)
     #     return fig
 
-    def plot_full_analysis(self,showfigs=False,savefigs=False):
+    def plot_full_analysis(self,include_darksubtraction=True,showfigs=False,savefigs=False):
         ''' Make plots of the full analysis:
             1) raw IV, one curve per coldload temperature
             2) vipr, (2x2 plot if IV, PV, RP, RV), on curve per coldload temperature
             3) P versus R, with cuts at rnfracs
             4) P versus T_cl
+            5) dP vs dT (1 x 2 using both methods)
+            6) efficiency
 
         '''
+        if include_darksubtraction and self.dark_analysis:
+            include_ds = True
+        else:
+            include_ds = False
+
         figs = []
         figs.append(self.plot_raw(True,fig_num=1)) # raw
         figs.append(self.plot_vipr(fig_num=2)) # 2x2 of converted data
         figs.append(self.plot_pr(fig_num=3))
         if not np.isnan(self.p_at_rnfrac).all():
             figs.append(self.plot_pt(fig_num=4))
-            if self.dark_analysis:
-                figs.append(self.plot_pt_delta(fig_num=5, dp_at_rnfrac_dark_subtracted=self.dP_w_darksubtracted))
-            else:
-                figs.append(self.plot_pt_delta(fig_num=5))
-        if self.analyze_eta:
-            figs.append(self.plot_efficiency(fig_num=6))
+            figs.append(self.plot_power_change_vs_temperature(fig_num=5,include_prediction=True, include_darksubtraction=include_ds))
+            if self.analyze_eta:
+                figs.append(self.plot_efficiency(fig_num=6, include_darksubtraction=include_ds))
+
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta']
             for ii,fig in enumerate(figs):
