@@ -828,7 +828,55 @@ class IVColdloadAnalyzeOneRow():
         return analyze, p_in, Dp, dp
 
     # helper methods -----------------------------------------------------------
-
+    def variable_definitions(self):
+        defs = {}
+        defs['dacs'] = 'Common DAC values (voltage applied to detector bias line in computer units) for all measurements.'
+        defs['n_dac_values'] = 'number of dac values'
+        defs['rn_fracs'] = 'Fraction of normal resistance cuts used for determining electrical power on bolometer.'
+        defs['n_rn_fracs'] = 'number of normal resistance fraction cuts'
+        defs['fb'] = 'raw feedback array.  Array of dimensions n_dac_values x num_rows'
+        defs['fb_align'] = 'Feedback array with DC offset removed'
+        defs['cl_temps_k'] = 'Cold load temperatures in Kelvin'
+        defs['n_cl_temps'] = 'Number of coldload temperatures'
+        defs['bath_temp_k'] = 'The common ADR temperature for all measurements.'
+        defs['det_name'] = 'The detector name/id'
+        defs['row_name'] = 'The multiplexer row name'
+        defs['i'] = 'current array n_dac_values x num_rows.  This array may be truncted to cut out bad data points.'
+        defs['v'] = 'voltage array n_dac_values x num_rows. This array may be truncted to cut out bad data points.'
+        defs['p'] = 'power array n_dac_values x num_rows. This array may be truncted to cut out bad data points.'
+        defs['r'] = 'resistance array n_dac_values x num_rows. This array may be truncted to cut out bad data points.'
+        defs['ro'] = 'normalized resistance array n_dac_values x num_rows. This array may be truncted to cut out bad data points.'
+        defs['i_orig'] = 'untruncated, original current array n_dac_values x num_rows.'
+        defs['v_orig'] = 'untruncated, originalvoltage array n_dac_values x num_rows.'
+        defs['p_orig'] = 'untruncated, originalpower array n_dac_values x num_rows.'
+        defs['r_orig'] = 'untruncated, originalresistance array n_dac_values x num_rows.'
+        defs['ro_orig'] = 'untruncated, original normalized resistance array n_dac_values x num_rows.'
+        defs['p_at_rnfrac'] = 'n_rn_fracs x n_cl_temps 2D array of electrical power evaluated at each rn_fracs.  Formatted as row-like in rn_frac cuts, that is the first index selects which cut in rn_frac'
+        defs['cl_dT_k'] = 'The difference of the cl_temps_k vector.  The temperature difference between successive coldload temperatures'
+        defs['dp_at_rnfrac'] = 'n_rn_fracs x n_cl_temps-1 2D array of the change in electrical power between successive coldload temperature at each rn_fracs.  '\
+                               'Used in the `differential` method of determining the optical efficiency.'\
+                               'Formatted as row-like in rn_frac cuts, that is the first index selects which cut in rn_frac'
+        defs['cl_DT_k'] = 'The difference of cl_temps_k relative to a fixed coldload temperature defined by cl_temps_k[T_cl_index]'
+        defs['Dp_at_rnfrac'] = 'n_rn_fracs x n_cl_temps 2D array of difference of electrical power relative to the power at a fixed coldload '\
+                               'temperature defined by cl_temps_k[T_cl_index], evaluated at each rn_fracs.  Formatted as row-like in rn_frac cuts, that is the first index selects which cut in rn_frac'
+        defs['T_cl_index'] = 'Index of coldload temperature used for the `fixed reference method` of determining optical efficiency'
+        defs['dark_analysis'] = 'A boolean to determine of dark subtraction should be applied'
+        defs['dark_power_w'] = 'Dark electrical power to be subtracted from the measured electrical power if dark_analysis = True'
+        defs['dark_Dp_w'] = 'Difference of dark electrical power relative to the power measured at fixed coldload temperature cl_temps_k[T_cl_index]'
+        defs['dark_dp_w'] = 'change in dark electrical power between successive coldload temperatures.'
+        defs['analyze_eta'] = 'Boolean to determine if the efficiency analysis should be run'
+        defs['predicted_power_w'] = '1 x n_cl_temps array of the prediction for optical power emitted toward the detector at each coldload temperature'
+        defs['predicted_Dp_w'] = '1 x n_cl_temps array of the prediction for difference of the optical power emitted '\
+                                 'toward the detector at each coldload temperature relative to the power predicted at T_cl = cl_temps_k[T_cl_index]. '\
+                                 'Used in the `fixed reference` method.'
+        defs['predicted_dp_w'] = '1 x n_cl_temps-1 array of the prediction for change in optical power emitted '\
+                                 'toward the detector at successive coldload temperatures. '\
+                                 'Used in the `differential` method.'
+        defs['eta_Dp_arr'] = '2D optical efficiency array of dimensions n_rn_fracs x cl_temps_k, using the `fixed reference` method.'
+        defs['eta_dp_arr'] = '2D optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
+        defs['eta_Dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k, using the `fixed reference` method.'
+        defs['eta_dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
+        
     def fb_align_and_remove_offset(self,showplot=False):
         # this method ought to be placed in another general class
         fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
