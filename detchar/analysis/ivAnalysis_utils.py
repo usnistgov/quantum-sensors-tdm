@@ -758,6 +758,7 @@ class IVColdloadAnalyzeOneRow():
         iv_circuit: instance of iv_data.IVCircuit to convert data to physical units
         predicted_power_w: <list or 1D numpy array> predicted power (in watts) corresponding to each cl_temp, used to determine optical efficiency
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
+        rn_fracs: <list of rn fractions to use for electrical power cuts.  If None: default list used.
     '''
 
     # to debug
@@ -765,14 +766,15 @@ class IVColdloadAnalyzeOneRow():
 
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
-                 iv_circuit=None,predicted_power_w=None,dark_power_w=None):
+                 iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None):
         # fixed globals / options
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
-        self.rn_fracs = [0.5,0.6,0.7,0.8,0.9] # slices in Rn space to compute electrical power versus temperature
+        self.rn_fracs = self._handle_rn_fracs(rn_fracs) # slices in Rn space to compute electrical power versus temperature
         self.n_rn_fracs = len(self.rn_fracs)
 
         # other globals
+        self.variable_defs = self.variable_definitions()
         self.dacs = dac_values
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.cl_temps_k = cl_temps_k
@@ -806,6 +808,8 @@ class IVColdloadAnalyzeOneRow():
 
         # handle darks
         self.dark_analysis, self.dark_power_w, self.dark_Dp_w, self.dark_dp_w = self._handle_power_input(dark_power_w)
+        if self.dark_analysis:
+            self.dark_Dp_w = -1*self.dark_Dp_w; self.dark_dp_w=-1*self.dark_dp_w # a stupid thing so that _handle_power_input works for both darks and prediction
 
         # predicted power
         self.analyze_eta, self.predicted_power_w, self.predicted_Dp_w, self.predicted_dp_w = self._handle_power_input(predicted_power_w)
@@ -817,6 +821,12 @@ class IVColdloadAnalyzeOneRow():
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
 
     # handle methods ----------------------------------------------------------
+    def _handle_rn_fracs(self,rn_fracs):
+        if rn_fracs is None:
+            return [0.5,0.6,0.7,0.8,0.9]
+        else:
+            return rn_fracs
+
     def _handle_power_input(self,p_in):
         if p_in is not None:
             assert len(p_in) == self.n_cl_temps, 'Hey, the dimensions of the input power do not match the number of cold load temperatures!'
@@ -876,7 +886,9 @@ class IVColdloadAnalyzeOneRow():
         defs['eta_dp_arr'] = '2D optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
         defs['eta_Dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k, using the `fixed reference` method.'
         defs['eta_dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
-        
+
+        return defs
+
     def fb_align_and_remove_offset(self,showplot=False):
         # this method ought to be placed in another general class
         fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
@@ -1219,14 +1231,15 @@ class IVColdloadAnalyzeOneRow():
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                ax[0].plot(self.cl_temps_k,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[0].plot(self.cl_DT_k,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
-                    ax[0].plot(self.cl_temps_k,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                    ax[0].plot(self.cl_DT_k,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                     ax[1].plot(x,self.eta_dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
 
         ax[0].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
+        #ax[0].set_xlabel('T$_{cl}$')
         ax[0].set_ylabel('Optical Efficiency')
         ax[0].grid('on')
         ax[0].set_title('Fixed Reference Method')
@@ -1294,8 +1307,8 @@ class IVColdloadAnalyzeOneRow():
             for ii,fig in enumerate(figs):
                 fig.savefig(self.row_name+'_%d_'%ii+fig_appendix[ii]+'.png')
         if showfigs: plt.show()
-        for fig in figs:
-            plt.close(fig)
+        #for fig in figs:
+            #plt.close(fig)
             #fig.clf()
 
 class IVColdloadSweepAnalyzer():
@@ -1354,10 +1367,9 @@ class IVColdloadSweepAnalyzer():
     def get_cl_sweep_dataset_for_row(self,row_index,bath_temp_index=0,cl_indices=None):
         if cl_indices==None:
             cl_indices = list(range(self.n_cl_temps))
-        n_cl = len(cl_indices)
-        fb = np.zeros((self.n_dac_values,n_cl))
-        for ii in range(n_cl):
-            fb[:,ii] = self.data[ii].data[bath_temp_index].fb_values_array()[:,row_index]
+        fb = np.zeros((self.n_dac_values,len(cl_indices)))
+        for ii,cl_idx in enumerate(cl_indices):
+            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,row_index]
         return self.dac_values, fb
 
     def plot_measured_cl_temps(self):
