@@ -63,7 +63,10 @@ sudo ./install.sh
 cd ..
 rm -r exodriver
 ```
-
+On ubuntu 20 use this instead, dont install `install`
+```
+sudo apt-get install build-essential libusb-1.0-0-dev  git-core
+```
 # Documentation
 There is very little, but check in the `doc` folder and you might find some.
 
