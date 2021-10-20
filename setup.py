@@ -15,7 +15,7 @@ setup(
     license="MIT license",
     include_package_data=True,
     keywords='tdm, tes',
-    name='qsptdm',
+    name='nist-qsp-tdm',
     packages=find_packages(),
     test_suite='tests',
     url='',
