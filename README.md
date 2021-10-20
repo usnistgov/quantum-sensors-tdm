@@ -22,7 +22,7 @@ Install python3-venv and roxterm. For certain versions of Ubuntu (17.10 and newe
 ```
 sudo add-apt-repository ppa:h-realh/roxterm
 sudo apt-get update
-sudo apt install python3-venv roxterm
+sudo apt install python3-dev python3-venv roxterm
 ```
 Then you can copy and paste the entire next block hopefully.
 ```
