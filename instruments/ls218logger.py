@@ -41,3 +41,6 @@ def _ls218_logger_entry_point():
         logger.log(s)
         time.sleep(PERIOD_S)
 
+if __name__ == "__main__":
+    _ls218_logger_entry_point()
+
