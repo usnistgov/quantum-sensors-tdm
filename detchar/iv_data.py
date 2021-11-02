@@ -276,7 +276,7 @@ class IVTempSweepData:
 
     def iv_temp_val_row(self, circuit, rpar_ohm_by_row=None, sc_below_vbias_arb=None):
         if rpar_ohm_by_row is None:
-            rpar_ohm_by_row = self.fit_for_rpar(self, circuit, scbelow_vbias_arb, 0)
+            rpar_ohm_by_row = self.fit_for_rpar(circuit, sc_below_vbias_arb, 0)
             #assume lowest temp was first
         x, y_temp_fb_row = self.xyarrays_zero_subtracted_temp_fb_row()
         i_temp_fb_row = np.zeros_like(y_temp_fb_row)        
@@ -289,7 +289,8 @@ class IVTempSweepData:
                 v_temp_fb_row[temp_index, :, row] = v
         return i_temp_fb_row, v_temp_fb_row
 
-    def plot_row_iv(self, row, circuit, rpar_ohm_by_row=None, sc_below_vbias_arb=None, y_quantity="current"):
+    def plot_row_iv(self, row, circuit, rpar_ohm_by_row=None, sc_below_vbias_arb=None, 
+    y_quantity="current", x_quantity="voltage"):
         i, v = self.iv_temp_val_row(circuit, rpar_ohm_by_row, sc_below_vbias_arb)
         if y_quantity == "current":
             y = i
@@ -302,14 +303,25 @@ class IVTempSweepData:
             ylabel = "tes power (W)"
         else: 
             raise Exception(f"y_quantity = {y_quantity} is invalid")
+        if x_quantity == "voltage":
+            x = v
+            xlabel = "tes voltage (V)"
+        elif x_quantity == "arbs":
+            x = np.zeros(( len(self.data), len(self.data[0].dac_values),self.get_nrows()))
+            for temp_index in range(len(self.data)):
+                for row in range(self.get_nrows()):
+                    x[temp_index, :, row] = self.data[0].dac_values[:]
+            xlabel = "dac units (arb)"
+        else:
+            raise Exception("fix it")
         print(f"i.shape={i.shape} v.shape={v.shape}")
         plt.figure()
         for temp_index in range(len(self.data)):
             curves = self.data[temp_index]
             t_mK = curves.nominal_temp_k * 1e3
             dt_mK = (curves.post_temp_k - curves.pre_temp_k) * 1e3
-            plt.plot(v[temp_index, :, row], y[temp_index, :, row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
-        plt.xlabel("tes voltage (V)")
+            plt.plot(x[temp_index, :, row], y[temp_index, :, row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
+        plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(
             f"row={row} bayname {curves.bayname}, db_card {curves.db_cardname}"

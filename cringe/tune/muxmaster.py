@@ -1,4 +1,5 @@
 import numpy as np
+from cringe import log
 
 class MuxMaster():
     def __init__(self,cringe):
@@ -12,8 +13,9 @@ class MuxMaster():
         badraps = []
         badstates = []
         for idx, val in enumerate(self.cringe.class_vector):
-            #if val == "DFBCLK":
-                #log.debug("DFBCLK, dont care")
+            if val == "DFBCLK":
+                self.clk_dfbrap1 = self.cringe.crate_widgets[idx].dfbclk_widget1
+                # self.clk_clkrap= self.cringe.crate_widgets[idx].dfbclk_widget2
             if val == "DFBx2":
                 #log.debug(idx, val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)
@@ -64,6 +66,7 @@ class MuxMaster():
             for dfbchn in dfbrap.state_vectors:
                 dacAoffsets.append(dfbchn.d2a_A_spin.value())
         log.debug("muxmaster:dacAoffsets",dacAoffsets)
+        return dacAoffsets
 
     def getdacBoffsets(self):
         dacBoffsets = []
@@ -71,7 +74,8 @@ class MuxMaster():
             for dfbchn in dfbrap.state_vectors:
                 dacBoffsets.append(dfbchn.d2a_B_spin.value())
         log.debug("muxmaster:dacBoffsets",dacBoffsets)
-
+        return dacBoffsets
+        
     def getadcLockpoints(self):
         adcLockpoints = []
         for dfbrap in self.dfbraps:
@@ -113,7 +117,10 @@ class MuxMaster():
         dynamic has default on so that everything gets sent.
         goes through the gui so everything stays in sync
         """
-        dfbrap=self.dfbraps[col]
+        if col == "clk":
+            dfbrap = self.clk_dfbrap1
+        else:
+            dfbrap=self.dfbraps[col]
         if row == "master":
             chn = dfbrap.master_vector
         else:
@@ -253,7 +260,6 @@ class MuxMaster():
     @property
     def bad_delay(self):
         return self.cringe.bad_delay
-
     @property
     def flux_jump_threshold(self):
         return self.cringe.ARLsense_spin.value()
