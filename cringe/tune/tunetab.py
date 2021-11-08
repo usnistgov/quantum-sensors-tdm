@@ -554,8 +554,13 @@ class VPhiDemo(QWidget):
             Mix = chanisgood*MixSlopeProduct/fbastats["negativeCrossingSlope"]
 
         np.save(get_savepath("last_mix_values"), Mix/100.0)
-        writeMixFile(os.path.expanduser(
-            "~/nasa_daq/matter/autotune_mix.mixing_config"), Mix/100.0)
+        matter_mix_dir = os.path.expanduser("~/nasa_daq/matter/")
+        matter_mix_file = os.path.join(matter_mix_dir, "autotune_mix.mixing")
+        try:
+            writeMixFile(matter_mix_file, Mix/100.0)
+        except FileNotFoundError as ex:
+            print(f"not writing f{matter_mix_file}, probably because f{matter_mix_dir} doesn't exist.\
+            This is fine unless you need to load the mix file from matter.")
         # cringe should have created this directory earlier
         np.save(os.path.expanduser("~/.cringe/mix_fractions"), Mix/100.0)
 
