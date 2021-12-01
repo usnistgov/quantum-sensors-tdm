@@ -147,6 +147,7 @@ class EasyClientDastard():
         self._connectRecordSub(verbose=True)
         header, data = self.getMessage()
         self.samplePeriod = header["samplePeriod"]
+        self.nPresamples = header["npresamples"]
         self.linePeriodSeconds = self.samplePeriod/self.numRows
         self.linePeriod = int(round(self.linePeriodSeconds*self.clockMhz*1e6))
         print(self)
