@@ -6,3 +6,4 @@ last_fbastats
 .build
 *.json
 *.hdf5
+*.png
