@@ -10,7 +10,7 @@ curve_taker = detchar.IVCurveTaker(
     detchar.IVPointTaker("DB1", "DX", column_number=2),
     temp_settle_time_out_s=120,
     temp_settle_tolerance_k=0.15 * 1e-3,
-    shock_normal_dac_value=40000,
+    shock_normal_dac_value=40000
 )
 #hacks to take IV with lakeshore off
 # curve_taker.adr_gui_control.get_temp_k = lambda: 0
