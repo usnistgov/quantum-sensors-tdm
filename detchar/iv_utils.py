@@ -20,6 +20,22 @@ from detchar.iv_data import (
 from instruments import BlueBox
 
 
+class AdrGuiControlDummy():
+    def get_temp_k(self):
+        return -1
+
+    def set_temp_k(self, setpoint_k):
+        return True
+
+    def get_temp_rms_uk(self):
+        return -1
+
+    def get_hout(self):
+        return -1
+
+    def get_slope_hout_per_hour(self):
+        return 1e6
+
 class IVPointTaker:
     def __init__(
         self,
@@ -145,7 +161,7 @@ class IVCurveTaker:
     def _handle_adr_gui_control_arg(self, adr_gui_control):
         if adr_gui_control is not None:
             return adr_gui_control
-        return AdrGuiControl()
+        return None
 
     def set_temp_and_settle(
         self, setpoint_k, temp_settle_time_out_s=None, temp_settle_tolerance_k=None
