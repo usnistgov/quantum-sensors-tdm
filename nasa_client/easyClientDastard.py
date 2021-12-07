@@ -147,6 +147,7 @@ class EasyClientDastard():
         self._connectRecordSub(verbose=True)
         header, data = self.getMessage()
         self.samplePeriod = header["samplePeriod"]
+        self.nPresamples = header["npresamples"]
         self.linePeriodSeconds = self.samplePeriod/self.numRows
         self.linePeriod = int(round(self.linePeriodSeconds*self.clockMhz*1e6))
         print(self)
@@ -244,6 +245,7 @@ class EasyClientDastard():
             # if delayNano < 0 accept any data
             if firstTriggerFramecount is None:
                 firstTriggerFramecount=header["triggerFramecount"]
+                fristTriggerUnixNano=header["unixnano"]
             counter[header["triggerFramecount"]-firstTriggerFramecount] += 1
             n_observed = counter[header["triggerFramecount"]-firstTriggerFramecount]
             datas_dict[header["triggerFramecount"]][header["chan"]] = data
@@ -277,7 +279,7 @@ class EasyClientDastard():
         # print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
         # print( self.numChannels, self.numRows, self.numColumns)
         # print( "triggerFramecount Counter", counter)
-        assert(all(np.diff(k_complete)==len(data)))
+        assert(all(np.diff(k_complete)==len(data))), "dropped packet or some other sort of data corruption"
 
 
         dataOut = np.zeros((self.numColumns, self.numRows, n_have, 2),dtype="int32")
@@ -309,6 +311,8 @@ class EasyClientDastard():
 
         if exactNumPoints:
             dataOut = dataOut[:,:,:minimumNumPoints,:]
+        self._lastGetNewDataFirstTriggerFramecount = firstTriggerFramecount
+        self._lastGetNewDataFirstTriggerUnixNano = fristTriggerUnixNano
         return dataOut
 
 

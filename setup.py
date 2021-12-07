@@ -26,7 +26,8 @@ setup(
         'console_scripts': ['adr_gui=adr_gui.adr_gui:main',
         "cringe=cringe.cringe:main",
         "tower_power_gui=instruments.tower_power_supply_gui:main",
-        "cringe_control=cringe.cringe_control:cringe_control_commandline_main"],
+        "cringe_control=cringe.cringe_control:cringe_control_commandline_main",
+        "ls218_logger=instruments:_ls218_logger_entry_point"],
     },
     scripts = ["doc/tdm_term"],
 )

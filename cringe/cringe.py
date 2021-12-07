@@ -7,6 +7,7 @@ import time
 import pickle
 import json
 import os
+import numpy as np
 
 import IPython  # ADDED JG
 
@@ -1000,6 +1001,12 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", I=int(fb_i))
         return True, ""        
 
+    def rpc_set_fb_p(self, col, fb_p):
+        # two step setting to make sure the gui doesn't ignore it
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", P=0)
+        self.tune_widget.mm.changedfbrow(col=int(col), row="master", P=int(fb_p))
+        return True, ""        
+
     def rpc_set_arl_off(self, col):
         # if the master is already off, setting it to off won't change any others
         # so we first set master true, then false
@@ -1007,10 +1014,34 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", ARL=False)
         return True, ""
 
+    def rpc_set_arl_params(self, flux_jump_threshold_dac_units,
+    plus_event_reset_delay_frm_units, minus_event_reset_delay_frm_units):
+        self.ARLsense_spin.setValue(int(flux_jump_threshold_dac_units))
+        self.RLDpos_spin.setValue(int(plus_event_reset_delay_frm_units))
+        self.RLDneg_spin.setValue(int(minus_event_reset_delay_frm_units))
+        return True, ""
+
+
+
     def rpc_set_fba_offset(self, col, fba_offset):
         # two step setting to make sure the gui doesn't ignore it
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=0)
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=int(fba_offset))
+        return True, ""
+
+    def rpc_get_fba_offsets(self):
+        offsets = self.tune_widget.mm.getdacAoffsets()
+        ncol = self.tune_widget.c.ncol
+        nrow = self.tune_widget.c.nrow
+        return True, (ncol,nrow,offsets)
+
+    def rpc_set_clk_fba_dc(self, dac):
+        #make sure MASTER VECTOR Broadcast is off
+        # turn all FBA values to the same value to approximate a DC source
+        # with the FBA output of the clock card
+        if self.tune_widget.mm.clk_dfbrap1.MSTR_TX.isChecked():
+            self.tune_widget.mm.clk_dfbrap1.MSTR_TX.setChecked(False)
+        self.tune_widget.mm.changedfbrow(col="clk", row="master", d2aA=int(dac))
         return True, ""
 
 
