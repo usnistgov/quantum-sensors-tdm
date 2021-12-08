@@ -7,3 +7,4 @@ last_fbastats
 *.json
 *.hdf5
 *.png
+*.pkl

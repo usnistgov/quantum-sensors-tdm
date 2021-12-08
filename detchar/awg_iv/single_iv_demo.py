@@ -88,7 +88,7 @@ def add_flux_jumps(fb, phi0_fb, fb_step_threshold):
     return out
 
 ch2_setup()
-ch2_setvolt(-0.5)
+ch2_setvolt(0.0)
 n_dwell=10
 profile = make_ramp_dwell_ramp_profile(n_ramp=300, n_dwell=n_dwell, blip_delta=0.00)
 srate =  1e2

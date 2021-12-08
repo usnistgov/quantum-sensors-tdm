@@ -4,6 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Any
 import time
+import pickle
 
 plt.ion()
 plt.close("all")
@@ -37,9 +38,11 @@ class RawAWGRowIVData:
     row: int
     ic_fb_units: float
     vbias: Any
+    phi0_fb: float
+    sampled_period_s: float
     # fb_ic_fixed: Any
-    # fb: Any
-    # err: Any
+    fb: Any
+    err: Any
     
 
 def getIVs():
@@ -51,7 +54,7 @@ def getIVs():
     for row in range(awg.c.numRows):
         fb = data[col, row, :, 1]
         err = data[col, row, :, 0]
-        fb_offset = fba_offsets[col,row]
+        # fb_offset = fba_offsets[col,row]
         fb_fixed = awg.add_flux_jumps(fb, phi0_fb = phi0_fb, 
         fb_step_threshold=int(phi0_fb*0.95))
 
@@ -70,13 +73,21 @@ def getIVs():
         vbias = profile*ramp_extreme
 
         # calculate iv vs vbias
-        iv_datas.append(RawAWGRowIVData(row, ic_fb_units, vbias))#, fb_ic_fixed))
+        iv_datas.append(RawAWGRowIVData(row, ic_fb_units, vbias, 
+                                        phi0_fb, awg.c.samplePeriod,
+                                        fb, err))#, fb_ic_fixed))
     return iv_datas
 
 
+@dataclass
+class IVvsField:
+    ivs_pos: Any
+    ivs_neg: Any
+    v_fcs: Any
+
 ivs = []
 ivs_neg = []
-v_fcs = np.linspace(-4,4,61)
+v_fcs = np.linspace(-3,3,31)
 for v_fc in v_fcs:
     print(v_fc)
     awg.ch2_setvolt(v_fc)
@@ -98,6 +109,8 @@ for v_fc in v_fcs:
             print("IV retry")
             pass
 
+ivs_vs_field = IVvsField(ivs, ivs_neg, v_fcs)
+
 ic_row_vfc = np.zeros((awg.c.numRows, len(v_fcs)))
 ic_row_vfc_neg = np.zeros((awg.c.numRows, len(v_fcs)))
 for row in range(awg.c.numRows):
@@ -106,7 +119,7 @@ for row in range(awg.c.numRows):
         ic_row_vfc_neg[row, i] = ivs_neg[i][row].ic_fb_units
 
 plt.figure()
-cm = plt.get_cmap("pink",len(ivs[0]))
+cm = plt.get_cmap("cool",len(ivs[0]))
 for row in range(awg.c.numRows):
     lines=plt.plot(v_fcs, ic_row_vfc[row,:], color=cm(row))
     lines_neg=plt.plot(v_fcs, ic_row_vfc_neg[row, :], "--", color=cm(row))
@@ -117,6 +130,8 @@ plt.grid()
 plt.tight_layout()
 plt.legend([lines[0], lines_neg[0]], ["positive detector bias", "negative detector bias"])
 
+with open("last_ivs_vs_field.pkl", "wb") as f:
+    pickle.dump(ivs_vs_field, f)
 
 # ch2_volt = 0
 # awg.ch2_setvolt(ch2_volt)
