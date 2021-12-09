@@ -109,7 +109,7 @@ time.sleep(1) # wait out cringe timer
 print("cringe timer done")
 time_nano_after_trigger = ch1_trigger()
 
-data = c.getNewData(minimumNumPoints=2200000)
+data = c.getNewData(minimumNumPoints=3400000)
 time_nano_first_sample = c._lastGetNewDataFirstTriggerUnixNano-c.nPresamples*c.samplePeriod*1e9
 col=0
 row=1

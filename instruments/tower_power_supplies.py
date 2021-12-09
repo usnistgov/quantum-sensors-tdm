@@ -73,8 +73,14 @@ class TowerPowerSupplies(object):
         self.power_supply_1.setCurrentLimit("P25V", self.kdVa, self.kdVa_limit_amps)
         self.power_supply_1.setCurrentLimit("N25V", -1 * self.kdVa, self.kdVa_limit_amps)
 
+
         self.power_supply_2.setCurrentLimit("P6V", self.kdVd, self.kdVd_limit_amps)
         self.power_supply_2.setCurrentLimit("P25V", self.kdVr, self.kdVr_limit_amps)
+
+        # SSRL 10-1 specific, used to set field coil
+        print("setting tower PS2 N25V to -0.6 V for SSRL 10-1 magnetic field")
+        self.power_supply_2.setCurrentLimit("N25V", -0.6, 0.1)
+
 
     def measureVoltagesAndCurrents(self):
 
