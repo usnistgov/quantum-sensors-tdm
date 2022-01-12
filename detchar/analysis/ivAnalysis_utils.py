@@ -564,6 +564,43 @@ class IVSetAnalyzeRow(IVClean):
         p_clean = cut(self.p,dexs)
         return v_clean, i_clean, p_clean, r_clean, ro_clean
 
+    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
+        '''
+        Return the value of arr at fraction of Rn.
+        input:
+        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
+        arr: NxM array to determine the Rn fraction at
+        ro: NxM normalized resistance
+
+        arr and ro must be same shape
+        return: len(rn_fracs) x M array of the interpolated values
+
+        This method used to determine the electrical power at some Rn fraction.
+        It is used to make the global variable self.p_at_rnfrac, a 2D array
+        Each row of this array is the electrical power determined at each cl_temps_k, and for
+        a single cut in Rn.
+
+        '''
+        # ensure rn_fracs is a np.array
+        if type(rn_fracs)!=np.ndarray:
+            rn_fracs = np.array(rn_fracs)
+        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
+        n,m=np.shape(arr)
+        result = np.zeros((len(rn_fracs),m))
+        for ii in range(m):
+            x = self.removeNaN(ro[:,ii])
+            y = self.removeNaN(arr[:,ii])
+            YY = np.interp(rn_fracs,x[::-1],y[::-1])
+
+            # over write with NaN for when data does not extend to fracRn
+            ro_min = np.min(x)
+            toCut = np.where(rn_fracs<ro_min)[0]
+            N = len(toCut)
+            if N >0:
+                YY[0:N] = np.zeros(N)*np.NaN
+            result[:,ii] = YY
+        return result
+
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.
     '''
