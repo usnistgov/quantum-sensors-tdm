@@ -62,7 +62,7 @@ class CringeControl:
         return self.send(' '.join(('set_tower_channel', cardname, bayname, str(int(dacvalue)))))
 
     def set_tower_card_all_channels(self, cardname, dacvalue):
-        return self.send(' '.join(('set_tower_card_all_channels', cardname, dacvalue)))
+        return self.send(' '.join(('set_tower_card_all_channels', cardname, str(int(dacvalue)))))
 
     def relock_fba(self, col, row):
         return self.send(' '.join(('relock_fba', str(int(col)), str(int(row)))))

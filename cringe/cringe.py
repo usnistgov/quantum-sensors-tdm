@@ -979,7 +979,7 @@ class Cringe(QtWidgets.QWidget):
 
     def rpc_set_tower_card_all_channels(self, cardname, dacvalue):
         self.tune_widget.mm.setTowerCardAllChannelsToSameDAC(cardname, int(dacvalue))
-
+        return True, ""
 
     def rpc_relock_fba(self, col, row):
         self.tune_widget.mm.relockFBA(int(col), int(row))

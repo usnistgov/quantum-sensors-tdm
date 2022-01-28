@@ -582,8 +582,8 @@ class VPhiDemo(QWidget):
         log.info(("median sq1 periods by column (arbs):\n " +
                   "\n".join(sq1periodsstrs)))
         log.info(("median of all columns: %g arbs" % np.median(sq1periods)))
-        goodfluxjumpthreshold = int(np.median(sq1periods)/2)
-        log.info(("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good" %
+        goodfluxjumpthreshold = int(np.median(sq1periods)*0.8)
+        log.info(("typically the ARL FluxJumpThreshold should be around 0.8 the sq1 period, so %g could be good" %
                   goodfluxjumpthreshold))
         log.info(("This value was set for you, your previous value was %g" %
                   oldfluxjumpthreshold))

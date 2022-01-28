@@ -37,7 +37,7 @@ class MuxMaster():
         self.cringe.tower_widget.set_channel_dac(cardname, bay_index, dacvalue)
 
     def setTowerCardAllChannelsToSameDAC(self, cardname, dacvalue):
-        self.cringe.tower_widget.set_card_dac(cardname, bay_index, dacvalue)
+        self.cringe.tower_widget.set_card_dac(cardname, dacvalue)
 
     def relockFBAifLocked(self, col, row):
         dfbrap=self.dfbraps[col]
