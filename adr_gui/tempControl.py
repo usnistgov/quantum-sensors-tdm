@@ -40,14 +40,15 @@ class TempControl():
 
 
 
-    def setupTempControl(self):
+    def setupTempControl(self, disable_scan = False):
         print(("setup temp control channel={}".format(self.controlChannel)))
         print(("and excitation = {}".format(self.controlThermExcitation)))
         heaterOut = self.getHeaterOut()
         if heaterOut == 0:
             self.a.magnet_control_relay.setRelayToControl()
-            self.a.temperature_controller.setScan(channel = self.controlChannel, autoscan = 'off')
-            time.sleep(5)
+            if disable_scan:
+                self.a.temperature_controller.setScan(channel = self.controlChannel, autoscan = 'off')
+                time.sleep(5)
             self.a.temperature_controller.setReadChannelSetup(channel=self.controlChannel,exciterange=self.controlThermExcitation, resistancerange=self.baseTempResistance)
             time.sleep(5) # let the transition from changing the thermometer settle
 
@@ -79,6 +80,11 @@ class TempControl():
 
     def safeAutorange(self):
         resistance = self.a.temperature_controller.getResistance(channel=self.controlChannel)
+        if resistance == 0: # VMIX overload, do not change resistance range
+            print("got resistance=0.0, which is indicative of VMIX OVL, which should actually correspond to a large resistance")
+            resistance=1e5
+            # a better way to deal with this would be to read the reading status query with
+            # RDGST? 
         newstring = self.resistanceToResistanceRangeString(resistance).encode()
         nowstring = self.getCurrentResistanceRangeString()
         # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
@@ -93,8 +99,10 @@ class TempControl():
         return self.a.temperature_controller.getTemperatureSetPoint()
     def setSetTemp(self,v):
         self.a.temperature_controller.setTemperatureSetPoint(v)
-    def getTemp(self):
-        return self.a.temperature_controller.getTemperature(channel=self.controlChannel)
+    def getTemp(self, channel = None):
+        if channel is None:
+            channel = self.controlChannel
+        return self.a.temperature_controller.getTemperature(channel=channel)
 
     def getHeaterOut(self):
         return self.a.temperature_controller.getHeaterOut()

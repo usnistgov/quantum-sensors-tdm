@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+export WINDOW_NAME="tdm terminals"
+# roxterm --tab -n dastard --title=$WINDOW_NAME --fork -e dastard
+# roxterm --tab -n dcom --title=$WINDOW_NAME --fork -e dcom
+roxterm --tab -n "cringe -L" --title=$WINDOW_NAME --fork -e "cringe -L"
+roxterm --tab -n ndfb_server --title=$WINDOW_NAME --fork -d "/home/pcuser/nasa_daq/ndfb_server/bin"
+roxterm --tab -n matter --title=$WINDOW_NAME --fork -d "/home/pcuser/nasa_daq/matter"

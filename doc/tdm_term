@@ -3,4 +3,4 @@ export WINDOW_NAME="tdm terminals"
 roxterm --tab -n dastard --title=$WINDOW_NAME --fork -e dastard
 roxterm --tab -n dcom --title=$WINDOW_NAME --fork -e dcom
 roxterm --tab -n "cringe -L" --title=$WINDOW_NAME --fork -e "cringe -L"
-roxterm --tab -n misc --title=$WINDOW_NAME --fork
+roxterm --tab -n nsls_server " --title=$WINDOW_NAME --fork -e "nsls_server"

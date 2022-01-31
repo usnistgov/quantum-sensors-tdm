@@ -77,8 +77,10 @@ class TuneTab(QWidget):
         stateVector["IMixProduct"] = self.vphidemo.MixSlopeProductSpin.value()
         stateVector["PercentFromBottomOfVphi"] = self.vphidemo.PercentFromBottomSpin.value()
         stateVector["minimumD2aAValue"] = self.vphidemo.minimumD2AValueSpin.value()
+        stateVector["d2aBshiftValue"] = self.vphidemo.d2aBshiftSpin.value()
         stateVector["lockSlopeSignCheckBoxChecked"] = self.vphidemo.lockSlopeSignCheckBox.isChecked()
         stateVector["lockSlopeSignFBBCheckBoxChecked"] = self.vphidemo.lockSlopeSignFBBCheckBox.isChecked()
+
         return stateVector
 
     def unpackState(self, loadState):
@@ -88,6 +90,8 @@ class TuneTab(QWidget):
             loadState["PercentFromBottomOfVphi"])
         self.vphidemo.minimumD2AValueSpin.setValue(
             loadState.get("minimumD2aAValue", 200))
+        self.vphidemo.d2aBshiftSpin.setValue(
+            loadState.get("d2aBshiftValue", 0))
         self.vphidemo.lockSlopeSignCheckBox.setChecked(
             loadState.get("lockSlopeSignCheckBoxChecked", False))
         self.vphidemo.lockSlopeSignFBBCheckBox.setChecked(
@@ -164,6 +168,14 @@ class VPhiDemo(QWidget):
         self.MixSlopeProductSpin.setValue(-400)
         layout.addWidget(QLabel("Mix*Slope product"))
         layout.addWidget(self.MixSlopeProductSpin)
+        self.layout.addLayout(layout)
+
+        layout = QHBoxLayout()
+        self.d2aBshiftSpin = QSpinBox()
+        self.d2aBshiftSpin.setRange(-2000, 2000)
+        self.d2aBshiftSpin.setValue(0)
+        layout.addWidget(QLabel("DAC B offset shift"))
+        layout.addWidget(self.d2aBshiftSpin)
         self.layout.addLayout(layout)
 
         layout = QHBoxLayout()
@@ -397,15 +409,22 @@ class VPhiDemo(QWidget):
         plots.ylabel("error")
         plots.show()
 
+        # here we choose where the sq1 curve lies on the SA curve
         # the right side of the sq1 curve is at d2aB
+        # Xup is the size of the upward slope in FBB units
         Xup = fbb2stats["firstMaximumX"] - fbb2stats["firstMinimumX"]
         Xup[Xup < 0] += fbb2stats["periodXUnits"][Xup < 0]
+        # Xdown is the size of the downward slope in FBB units
         Xdown = fbb2stats["firstMinimumX"] - fbb2stats["firstMaximumX"]
         Xdown[Xdown < 0] += fbb2stats["periodXUnits"][Xdown < 0]
+        #d2aBupwardSlpe is the d2aB value that places the Sq1 approximatley midpoint on the upward slope
+        #d2aBshift is a user settable parameter to shift the position of the Sq1 on the SA
+        d2aBshift = self.d2aBshiftSpin.value()
         d2aBupwardSlope = fbb2stats["firstMinimumX"] + \
-            lfbastats["modDepth"]+(Xup-lfbastats["modDepth"])/2.0
+            lfbastats["modDepth"]+(Xup-lfbastats["modDepth"])/2.0+d2aBshift
         d2aBdownwardSlope = fbb2stats["firstMaximumX"] + \
-            lfbastats["modDepth"]+(Xdown-lfbastats["modDepth"])/2.0
+            lfbastats["modDepth"]+(Xdown-lfbastats["modDepth"])/2.0+d2aBshift
+
 
         if self.lockSlopeSignFBBCheckBox.isChecked():
             d2aB = d2aBupwardSlope
@@ -510,6 +529,7 @@ class VPhiDemo(QWidget):
         plots.title("final fba vphis analyzed and shifted to lockpoint")
         plots.xlabel("fba triangle")
         plots.ylabel("error")
+        plots.grid(True)
         plots.show()
 
         ISlopeProduct = self.ISlopeProductSpin.value()
@@ -534,8 +554,13 @@ class VPhiDemo(QWidget):
             Mix = chanisgood*MixSlopeProduct/fbastats["negativeCrossingSlope"]
 
         np.save(get_savepath("last_mix_values"), Mix/100.0)
-        writeMixFile(os.path.expanduser(
-            "~/nasa_daq/matter/autotune_mix.mixing_config"), Mix/100.0)
+        matter_mix_dir = os.path.expanduser("~/nasa_daq/matter/")
+        matter_mix_file = os.path.join(matter_mix_dir, "autotune_mix.mixing")
+        try:
+            writeMixFile(matter_mix_file, Mix/100.0)
+        except FileNotFoundError as ex:
+            print(f"not writing f{matter_mix_file}, probably because f{matter_mix_dir} doesn't exist.\
+            This is fine unless you need to load the mix file from matter.")
         # cringe should have created this directory earlier
         np.save(os.path.expanduser("~/.cringe/mix_fractions"), Mix/100.0)
 
@@ -557,17 +582,19 @@ class VPhiDemo(QWidget):
         log.info(("median sq1 periods by column (arbs):\n " +
                   "\n".join(sq1periodsstrs)))
         log.info(("median of all columns: %g arbs" % np.median(sq1periods)))
-        goodfluxjumpthreshold = int(np.median(sq1periods)/2)
-        log.info(("typically the ARL FluxJumpThreshold should be around 1/2 the sq1 period, so %g could be good" %
+        goodfluxjumpthreshold = int(np.median(sq1periods)*0.8)
+        log.info(("typically the ARL FluxJumpThreshold should be around 0.8 the sq1 period, so %g could be good" %
                   goodfluxjumpthreshold))
         log.info(("This value was set for you, your previous value was %g" %
                   oldfluxjumpthreshold))
         self.mm.setFluxJumpThreshold(goodfluxjumpthreshold)
+        
+        Mix[np.isnan(Mix)] = 0  # don't send NaN, its invalid for mix
+        self.mix_afer_full_tune = Mix
 
         if self.shouldSendMixAfterFullTune():
             log.info("sending mix values after full tune")
             log.debug("mix before nan check", Mix)
-            Mix[np.isnan(Mix)] = 0  # don't send NaN, its invalid for mix
             log.debug("mix before divide by 100", Mix)
             log.debug(Mix/100.0)
             self.c.client.setMix(Mix/100.0)
@@ -575,12 +602,22 @@ class VPhiDemo(QWidget):
     def prune_bad_channels(self):
         log.info("prune_bad_channels")
         min_amplitude = 600
-        max_noise_std = 1
+        max_noise_std = 15
         with open("last_fbastats", "rb") as f:
             vphistats = pickle.load(f)
         # log.info([k for k in vphistats.keys()])
         log.info((vphistats["modDepth"]))
         assert(vphistats["modDepth"].shape == (self.c.ncol, self.c.nrow))
+        mix = self.mix_afer_full_tune.copy()
+        data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
+        fba = data[0,0,:,1] #triangle
+        err = data[0,0,:,0] #signal
+        fba_std = np.std(data[:,:,:,1],axis=2)
+        err_std = np.std(data[:,:,:,0],axis=2)
+        log.info("fba_std")
+        log.info(fba_std)
+        log.info("err_std")
+        log.info(err_std)
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 errorChan = col*2*self.c.nrow+row*2
@@ -590,25 +627,21 @@ class VPhiDemo(QWidget):
                     # turn off fb on row
                     # d2aA and d2aB should match next row? unless that row is bad?
                     self.mm.setdfbrow(col, row)
-                    self.c.client.setMixChannel(fbChan, 0)
-        time.sleep(1)
-        # do the loop twice, so you can actually see this output despite all the
-        # crap cringe prints
-        for col in range(self.c.ncol):
-            for row in range(self.c.nrow):
-                errorChan = col*2*self.c.nrow+row*2
-                fbChan = errorChan+1
-                if vphistats["modDepth"][col, row] < min_amplitude:
+                    mix[col,row]=0
                     log.info(("c%gr%g chan %g has amplitdue %0.2f, less than min=%0.f, turning off feedback and mix" % (
                         col, row, fbChan, vphistats["modDepth"][col,
                                                                 row], min_amplitude
-                    )))        # data = self.c.getNewData(0.1,minimumNumPoints=4096*6)
-        # fba = data[0,0,:,1] #triangle
-        # err = data[0,0,:,0] #signal
-        # fba_std = np.std(data[:,:,:,1],axis=2)
-        # err_std = np.std(data[:,:,:,0],axis=2)
-        # log.info(fba_std)
-        # log.info(err_std)
+                    )))   
+                fba_std_cr = fba_std[col,row]
+                if fba_std_cr > max_noise_std:
+                    log.info(f"c{col}r{row} chan{fbChan} has fba_std {fba_std_cr} > max_noise_std {max_noise_std} turning off feedback and mix")
+                    self.mm.setdfbrow(col, row)
+                    mix[col,row]=0
+        log.info(f"sending updated mix {mix}")
+        self.c.client.setMix(mix/100)
+
+
+
 
     def grab_and_set_d2aA_values(self):
         # assume feedback is on
@@ -1274,6 +1307,11 @@ class ColPlots(QDialog):
         for col in range(self.ncol):
             ax = self.axes[col]
             ax.clear()
+
+    def grid(self, x=True):
+        for col in range(self.ncol):
+            ax = self.axes[col]
+            ax.grid(x)
 
     def draw(self):
         self.canvas.draw()

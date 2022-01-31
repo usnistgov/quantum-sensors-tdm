@@ -14,7 +14,7 @@ class AgilentE3631A(serial_instrument.SerialInstrument):
     Agililent E3631A control class
     '''
 
-    def __init__(self, port):
+    def __init__(self, port, init=True):
         '''Constructor - The PAD (Primary GPIB Address) is the only required parameter '''
 
         super(AgilentE3631A, self).__init__(port,stopbits=serial.STOPBITS_TWO, parity=serial.PARITY_NONE,
@@ -31,7 +31,8 @@ class AgilentE3631A(serial_instrument.SerialInstrument):
         self.voltage = None
         self.powered = False
 
-        self.initRS232()
+        if init:
+            self.initRS232()
 
     def initRS232(self):
         self.reset()

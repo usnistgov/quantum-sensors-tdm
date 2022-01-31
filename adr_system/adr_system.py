@@ -14,6 +14,8 @@ import platform
 from instruments import bluebox
 from instruments import zaber
 
+import numpy as np
+import time
 # I dont think anybody actually uses crate and tower thru AdrSystem anymore
 # import crate
 # import tower
@@ -473,3 +475,15 @@ class AdrSystem(object):
         f.write(etree.tostring(root, pretty_print=True))
 
         f.close()
+
+    def manualRampDownForWhenAdrGuiFails(self, target_duration_s=30*60, delay_s=5):
+        hout_start = self.temperature_controller.getManualHeaterOut()
+        nsteps = int(np.ceil(target_duration_s/delay_s))
+        hout_per_step = hout_start/nsteps
+        for i in range(nsteps):
+            n_steps_left = nsteps-(i+1)
+            new_hout = hout_start*(n_steps_left/nsteps)
+            self.temperature_controller.setManualHeaterOut(new_hout)
+            hout = self.temperature_controller.getManualHeaterOut()
+            print(f"step {i} of {nsteps}, hout={new_hout:.2f}%, time left = {delay_s*n_steps_left:.2f} s")
+            time.sleep(delay_s)

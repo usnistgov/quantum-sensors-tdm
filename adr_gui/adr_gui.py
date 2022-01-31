@@ -118,7 +118,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.magUpMinsEdit.startval = 40.0
 
         self.magUpHoldMinsEdit.label_text = "hold after mag up takes this long (mins) "
-        self.magUpHoldMinsEdit.allowed_range = (0.0, 200.0)
+        self.magUpHoldMinsEdit.allowed_range = (0.0, 900.0)
         self.magUpHoldMinsEdit.startval = 40.0
 
         self.magDownMinsEdit.label_text = "mag down takes this long (mins) "
@@ -164,7 +164,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         for i in range(self.excitationCurrentStrings.index('100 uA'),len(self.excitationCurrentStrings)):
             self.currentExcitationComboBox.model().item(i).setEnabled(False)
 
-        self.controlChannelValues = numpy.arange(16)+1
+        self.controlChannelValues = list(numpy.arange(16)+1)+[None]
         self.controlChannelStrings = list(map(str, self.controlChannelValues))
         self.controlChannelComboBox.addItems(self.controlChannelStrings)
         self.controlChannelComboBox.label_text = "control channel"
@@ -174,6 +174,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.comboBox_altChannel.label_text = "Alt Channel"
         self.comboBox_altChannel.startindex = 0
         self.pushButton_altChannel.clicked.connect(self.handleCheckAltTemp)
+        self.lastAltTempK = -1 # start with invalid alt temp
+        self.lastAltTempKCheckTime = 0
 
         # Load combo box starting values from QSettings
         self.comboBoxes = [self.currentExcitationComboBox, self.controlChannelComboBox, self.comboBox_altChannel]
@@ -651,15 +653,30 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         slope_hour = numpy.NAN
         duration_s = numpy.NAN
         if last_n_points is not None:
-            duration_s = last_n_points[0][-1]-last_n_points[0][0]
-            d_heater = last_n_points[1][-1]-last_n_points[1][0]
-            slope_hour = 3600*d_heater/float(duration_s)
+            # duration_s = last_n_points[0][-1]-last_n_points[0][0]
+            # d_heater = last_n_points[1][-1]-last_n_points[1][0]
+            # slope_hour = 3600*d_heater/float(duration_s)
+            t = last_n_points[0]
+            duration_s = t[-1]-t[0]
+            hout = last_n_points[1]
+            pfit = numpy.polyfit(t,hout,1) # linear fit for slope
+            slope_s = pfit[0]
+            slope_hour = 3600*slope_s
         return slope_hour, duration_s
 
     def pollTempControl(self):
         self.lastTemp_K = self.tempControl.getTemp()
+        time_since_last_alt_temp_check = time.time() - self.lastAltTempKCheckTime
+        alt_ch = self.controlChannelValues[self.comboBox_altChannel.currentIndex()]
+        if time_since_last_alt_temp_check > 80 and alt_ch is not None:
+            self.lastAltTempK = self.handleCheckAltTemp()
+            self.lastAltTempKCheckTime = time.time()
+        else:
+            pass
+            # print(f"time_since_last_alt_temp_check {time_since_last_alt_temp_check} s")
         self.lastHOut = self.tempControl.getHeaterOut()
-        logger.log("%s, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut))
+        logger.log("%s, %f, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut,
+        self.lastAltTempK))
         if self.lastTemp_K > 1000*self.thresholdTemperatureK:
             self.SIG_panic.emit()
 
@@ -670,7 +687,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.statusLabel.setText("status: %s"%s)
 
     def setupTempControl(self):
-        self.tempControl.setupTempControl()
+        self.tempControl.setupTempControl(disable_scan=False)
 
     def disableModifyControlSettings(self):
         self.controlChannelComboBox.setEnabled(False)
@@ -687,11 +704,12 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     def handleCheckAltTemp(self):
         alt_ch = self.controlChannelValues[self.comboBox_altChannel.currentIndex()]
         temp_K = self.tempControl.readAltChannelAndReturnToControlChannel(alt_ch)
+        self.lastAltTempK = temp_K
         time_read = time.strftime("%m/%d %H:%M:%S")
         self.label_altTempReading.setText(f"Channel {alt_ch} was {temp_K:.3f} K at {time_read}")
         if self.settings:   
             self.settings.setValue(self.comboBox_altChannel.label_text, self.comboBox_altChannel.currentIndex())
-
+        return self.lastAltTempK
 
 
 def main():
