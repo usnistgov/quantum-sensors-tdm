@@ -19,9 +19,14 @@ def pause_ci_safe(t):
             if not any_figs_open:
                 break
 
+try:
+    d0 = os.path.dirname(os.path.realpath(__file__))
+except:
+    d0 = os.getcwd()
 
 def test_g_from_temp_sweep():
-    sdata = IVTempSweepData.from_file("/home/pcuser/qsp/src/nistqsptdm/detchar/horton_scripts/20210521_AX_SSRL_temp_sweep_IVs_with_zero_bias_track.json")
+    path = os.path.join(d0,"test_data", "horton_20200105_SSRL_10_1_chip3_temp_sweep_ivs.json")
+    sdata = IVTempSweepData.from_file(path)
 
 
     circuit = IVCircuit(rfb_ohm = 4e3, 
