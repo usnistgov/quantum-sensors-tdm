@@ -53,8 +53,20 @@ def thermalPower(nu1,nu2,T,F=None):
         P = simps(integrand,nu)
     return
 
-class IVClean():
-    ''' Data cleaning methods relevant for IV curves '''
+def get_xy_for_row_from_temp_sweep(iv_tempsweep_data,row):
+    ''' dac_values is a 1xn vector
+        fb_values_arr is an nxm array, where m is the number of temp sweeps
+    '''
+    dac_values = iv_tempsweep_data.data[0].dac_values
+    n=len(dac_values)
+    m=len(iv_tempsweep_data.data) # number of IV curves in the temperature sweep
+    fb_values_arr = np.empty((n,m))
+    for ii in range(m):
+        fb_values_arr[:,ii]=iv_tempsweep_data.data[ii].fb_values_array()[:,row]
+    return dac_values, fb_values_arr
+
+class IVCommon():
+    ''' Common IV analysis methods '''
     def is_dac_descending(self,dac):
         result = False
         if dac[1] - dac[0] < 0 :
@@ -104,6 +116,11 @@ class IVClean():
             if dex != None: plt.plot(dex,fb[dex],'ro')
             plt.show()
         return dex#,val
+
+    #def get_number_of_normal_branch_pts(self,dac,fb,frac_above_turn):
+    #    ''' Determine the number of points to use in the normal branch for
+    #        dc offset removal in a smart way
+    #    '''
 
     def find_bad_data_index(self,dac,fb,threshold=0.5,showplot=False):
         ''' Return the index where IV curve misbehaves.
@@ -194,7 +211,147 @@ class IVClean():
 
         return ivTurnDex
 
+    def fit_normal_branch(self,dacs,fb_arr,align_dc=True,n_normal_pts=10):
+        ''' return the slope and offset of the normal branch of a family of IV curves '''
+        n,m=np.shape(fb_arr)
+        fb_align = np.zeros((n,m))
+
+        # align fb DC levels to a common value
+        if align_dc:
+            for ii in range(m):
+                dy = fb_arr[0,ii]-fb_arr[0,0]
+                fb_align[:,ii] = fb_arr[:,ii]-dy
+        else:
+            fb_align = np.copy(fb_arr)
+
+        # remove offset
+        x = dacs[::-1][-n_normal_pts:]
+        y = fb_align[::-1,:] ; y = y[-n_normal_pts:,:]
+        m, b = np.polyfit(x,y,deg=1)
+        return m,b,fb_align
+
+    def fb_align_and_remove_offset(self,dacs,fb_arr,n_normal_pts=10,use_ave_offset=True,showplot=False):
+        ''' Remove DC offset from a set of IV curves and ensure IV is right side up
+
+            dacs: voltage bias in dac units (1xn array)
+            fb_arr: nxm array of all feedback values in dac units
+            n_normal_pts: number of normal points to use for fitting normal branch
+            use_ave_offset: use the average of all IV slope in normal branch for subtraction
+            showplot: if True, plot the figure
+
+        '''
+
+        m,b,fb_align = self.fit_normal_branch(dacs,fb_arr,align_dc=True,n_normal_pts=n_normal_pts)
+        if np.std(b)/np.mean(b) > 0.01:
+            print('Warning DC offset of curves differs by > 1\%')
+            print('Offset fit: ',np.mean(b),'+/-',np.std(b))
+        if use_ave_offset: b = np.mean(b)
+
+        fb_align = fb_align - b
+        if m[0]<0: fb_align = fb_align*-1
+        if showplot:
+            for ii in range(m):
+                plt.plot(dacs,fb_align[:,ii])
+            plt.show()
+        return fb_align
+
+    def remove_bad_data(self,v,i,p,r,threshold=0.5):
+        ''' calling find_bad_data_index, remove bad data deep in transition.
+            v,i,p and r are nxm arrays
+
+            returns tuple: (cleaned) v,i,p,r and list of indices of bad data
+        '''
+        def cut(arr,dexs):
+            n,m=np.shape(arr)
+            arr_copy = arr.copy()
+            for ii in range(m):
+                if dexs[ii]==self.n_dac_values: pass
+                else: arr_copy[dexs[ii]+1:,ii] = np.ones(self.n_dac_values-dexs[ii]-1)*np.nan
+            return arr_copy
+
+        dexs=[]
+        n,m=np.shape(i)
+        for ii in range(m):
+            dexs.append(self.find_bad_data_index(v[:,ii],i[:,ii],threshold=threshold,showplot=False))
+        v_clean = cut(self.v,dexs)
+        i_clean = cut(self.i,dexs)
+        r_clean = cut(self.r,dexs)
+        p_clean = cut(self.p,dexs)
+        return v_clean, i_clean, p_clean, r_clean, dexs
+
+    def get_vipr(self, dacs, fb_arr, iv_circuit=None, showplot=False):
+        ''' returns the voltage, current, power, and resistance vectors for an
+            n x m array of IV curves.  If an instance of iv_data.IVCircuit is
+            provided, the returned vectors are in physical units.
+        '''
+        n,m=np.shape(fb_arr)
+        if iv_circuit:
+            v,i = iv_circuit.to_physical_units(np.array(dacs),fb_arr)
+        else:
+            v = np.zeros((n,m))
+            for ii in range(m):
+                v[:,ii] = dacs
+            i=fb_arr
+        p=v*i; r=v/i
+
+        if showplot:
+            self.plot_vipr([v,i,p,r])
+        return v,i,p,r
+
+    def plot_vipr_method(self,v,i,p,r,fignum=1,figtitle=None,figlegend=None):
+
+        n,m=np.shape(i)
+
+        # fig 1, 2x2 of converted IV
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+        for ii in range(m):
+            ax[0].plot(v[:,ii],i[:,ii])
+            ax[1].plot(v[:,ii],p[:,ii])
+            ax[2].plot(r[:,ii],p[:,ii])
+            ax[3].plot(v[:,ii],r[:,ii])
+
+        # ax[0].set_xlabel(self.labels['iv']['x'])
+        # ax[0].set_ylabel(self.labels['iv']['y'])
+        # ax[1].set_xlabel(self.labels['vp']['x'])
+        # ax[1].set_ylabel(self.labels['vp']['y'])
+        # ax[2].set_xlabel(self.labels['rp']['x'])
+        # ax[2].set_ylabel(self.labels['rp']['y'])
+        # ax[3].set_xlabel(self.labels['vr']['x'])
+        # ax[3].set_ylabel(self.labels['vr']['y'])
+
+        # axes labels
+        ax[0].set_xlabel('V')
+        ax[0].set_ylabel('I')
+        ax[1].set_xlabel('V')
+        ax[1].set_ylabel('P')
+        ax[2].set_xlabel('R')
+        ax[2].set_ylabel('P')
+        ax[3].set_xlabel('V')
+        ax[3].set_ylabel('R')
+
+        # plot range limits
+        #ax[0].set_xlim((np.min(v)*1.1,np.max(v)*1.1))
+        #ax[0].set_ylim((np.min(i)*1.1,np.max(i)*1.1))
+        ax[1].set_xlim((0,np.max(v)*1.1))
+        ax[1].set_ylim((0,np.max(p)*1.1))
+        ax[2].set_xlim((0,r[0,0]*1.1))
+        ax[2].set_ylim((0,np.max(p)*1.1))
+        ax[3].set_xlim((0,np.max(v)*1.1))
+        ax[3].set_ylim((0,r[0,0]*1.1))
+
+        for ii in range(4):
+            ax[ii].grid('on')
+
+        if figtitle:
+            fig.suptitle(figtitle)
+
+        if figlegend:
+            fig.legend(figlegend)
+        return fig
+
 class IVCurveColumnDataExplore():
+    ''' Explore IV data taken on a single column at a single bath temperature.  '''
     def __init__(self,iv_curve_column_data,iv_circuit=None):
         # fixed globals
         self.n_normal_pts = 10
@@ -388,9 +545,16 @@ class IVCurveColumnDataExplore():
         plt.ylabel(self.labels['dy']['y'])
         plt.legend(loc='upper right')
 
-class IVSetAnalyzeRow(IVClean):
+class IVSetAnalyzeRow(IVCommon):
     def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
         ''' Analyze IV set at different physical conditions for one row.
+            This class is useful for inspection of IV families or for determining the power
+            difference between two states (like a 300K to 77K IV chop).
+            Use get_xy_for_row_from_temp_sweep() to package the data from the IVTempSweepData
+            format into the dac_values and fb_values_arr required here.
+            The reason the IVTempSweepData object itself is not passed is for generality.
+
+            Input:
 
             dac_values: np_array of dac_values (corresponding to voltage bias across TES),
                         a common dac_value for all IVs is required
@@ -398,13 +562,14 @@ class IVSetAnalyzeRow(IVClean):
             state_list: list in which items are strings,
                         description of the state of the system for that IV curve
                         used in the legend of plots
+            iv_circuit: instance of iv_data.IVCircuit used to convert data to physical units
+            figtitle: title of figure
         '''
         # options
-        self.n_normal_pts = 10
+        self.n_normal_pts = 50
         self.use_ave_offset = True
-        self.figtitle=None
-        self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
-        self.vipr_scaling = [1e6,1e6,1e12,1e3]
+        #self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
+        #self.vipr_scaling = [1e6,1e6,1e12,1e3]
 
         #
         self.figtitle = figtitle
@@ -412,17 +577,15 @@ class IVSetAnalyzeRow(IVClean):
         self.fb_raw = fb_values_arr
         self.state_list = state_list
         self.n_dac_values, self.num_sweeps = np.shape(self.fb_raw)
-        if iv_circuit==None:
-            self.to_physical_units = False
-        else:
-            self.iv_circuit = iv_circuit
-            self.to_physical_units = True
+        self.iv_circuit = iv_circuit
 
-        # do conversion to physical units
-        self.v,self.i,self.p,self.r = self.get_vipr()
-        self.ro = self.r / self.r[0,:]
-
-        self.v,self.i,self.p,self.r,ro = self.remove_bad_data()
+        # do standard IV analysis
+        #self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
+        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb_raw,self.n_normal_pts,
+                                                        use_ave_offset=self.use_ave_offset,showplot=False)
+        self.v,self.i,self.p,self.r = self.get_vipr(self.dacs, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
+        #self.v,self.i,self.p,self.r,ro = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=0.5)
+        #self.ro = self.r / self.r[0,:]
 
     def power_difference_analysis(self,fig_num=1):
 
@@ -444,6 +607,22 @@ class IVSetAnalyzeRow(IVClean):
 
         return fig
 
+    def normal_branch_subtraction(self,showplot=True):
+        m,b,fb_align = self.fit_normal_branch(self.dacs,self.fb_raw,align_dc=True,n_normal_pts=self.n_normal_pts)
+        arr=np.empty((self.n_dac_values,self.num_sweeps))
+        for jj in range(self.num_sweeps):
+            y = fb_align[:,jj]-(np.array(self.dacs)*m[jj]+b[jj])
+            arr[:,jj]=y
+            if showplot: plt.plot(self.dacs,y)
+        if showplot:
+            plt.xlabel('dac')
+            plt.ylabel('normal slope subtracted fb')
+            plt.legend(self.state_list)
+            plt.title(self.figtitle)
+            plt.show()
+
+        return y
+
     def plot_raw(self,fig_num=1):
         figXX = plt.figure(fig_num)
         for ii in range(self.num_sweeps):
@@ -455,114 +634,8 @@ class IVSetAnalyzeRow(IVClean):
         if self.figtitle != None:
             plt.title(self.figtitle)
 
-    def fb_align_and_remove_offset(self,showplot=False):
-        fb_align = np.zeros((self.n_dac_values,self.num_sweeps))
-        for ii in range(self.num_sweeps): # align fb DC levels to a common value
-            dy = self.fb_raw[0,ii]-self.fb_raw[0,0]
-            fb_align[:,ii] = self.fb_raw[:,ii]-dy
-
-        # remove offset
-        x = self.dacs[::-1][-self.n_normal_pts:]
-        y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
-        m, b = np.polyfit(x,y,deg=1)
-
-        if self.use_ave_offset:
-            if np.std(b)/np.mean(b) > 0.01:
-                print('Warning DC offset of curves differs by > 1\%')
-                print('Offset fit: ',np.mean(b),'+/-',np.std(b))
-            b = np.mean(b)
-        fb_align = fb_align - b
-        if m[0]<0: fb_align = fb_align*-1
-
-        if showplot:
-            for ii in range(self.num_sweeps):
-                plt.plot(self.dacs,fb_align[:,ii])
-            plt.show()
-
-        return fb_align
-
-    def get_vipr(self, showplot=False):
-        ''' returns the voltage, current, power, and resistance vectors '''
-        if self.to_physical_units:
-            v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
-        else:
-            v = np.zeros((self.n_dac_values,self.num_sweeps))
-            for ii in range(self.num_sweeps):
-                v[:,ii] = self.dacs
-            i=self.fb_align
-        p=v*i; r=v/i
-
-        if showplot:
-            self.plot_vipr([v,i,p,r])
-        return v,i,p,r
-
-    def plot_vipr(self,data_list=None,fig_num=1):
-
-        if data_list==None:
-            v=self.v; i=self.i; p=self.p; r=self.r
-        else:
-            v=data_list[0]; i=data_list[1]; p=data_list[2]; r=data_list[3]
-        v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]
-
-        # fig 1, 2x2 of converted IV
-        #fig = plt.figure(fig_num)
-        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
-        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
-        for ii in range(self.num_sweeps):
-            ax[0].plot(v[:,ii],i[:,ii])
-            ax[1].plot(v[:,ii],p[:,ii])
-            ax[2].plot(p[:,ii],r[:,ii])
-            #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
-            ax[3].plot(v[:,ii],r[:,ii])
-
-        xlabels = ['V %s'%self.vipr_unit_labels[0],'V %s'%self.vipr_unit_labels[0],'P %s'%self.vipr_unit_labels[2],'V %s'%self.vipr_unit_labels[0]]
-        ylabels = ['I %s'%self.vipr_unit_labels[1],'P %s'%self.vipr_unit_labels[2], 'R %s'%self.vipr_unit_labels[3],'R %s'%self.vipr_unit_labels[3]]
-
-        #xlabels = ['V (V)','V (V)','P (W)','V (V)']
-        #ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
-
-        for ii in range(4):
-            ax[ii].set_xlabel(xlabels[ii])
-            ax[ii].set_ylabel(ylabels[ii])
-            ax[ii].grid()
-
-        # plot ranges
-        ax[0].set_xlim((0,np.max(v)*1.1))
-        ax[0].set_ylim((0,np.max(i)*1.1))
-        ax[1].set_xlim((0,np.max(v)*1.1))
-        ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,np.max(p)*1.1))
-        ax[2].set_ylim((0,np.max(r[0,:])*1.1))
-        ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
-        #ax[3].set_xlim((0,np.max(p)*1.1))
-        #ax[3].set_ylim((0,1.1))
-
-        if self.figtitle != None:
-            figXX.suptitle(self.figtitle)
-        if self.state_list != None:
-            ax[3].legend(tuple(self.state_list))
-        return figXX
-
-    def remove_bad_data(self,threshold=0.5):
-        def cut(arr,dexs):
-            n,m=np.shape(arr)
-            arr_copy = arr.copy()
-            for ii in range(m):
-                if dexs[ii]==self.n_dac_values: pass
-                else: arr_copy[dexs[ii]+1:,ii] = np.ones(self.n_dac_values-dexs[ii]-1)*np.nan
-            return arr_copy
-
-        dexs=[]
-        for ii in range(self.num_sweeps):
-            dexs.append(self.find_bad_data_index(self.dacs,self.fb_raw[:,ii],threshold=threshold,showplot=False))
-        self.bad_data_idx = dexs
-        v_clean = cut(self.v,dexs)
-        i_clean = cut(self.i,dexs)
-        r_clean = cut(self.r,dexs)
-        ro_clean = cut(self.ro,dexs)
-        p_clean = cut(self.p,dexs)
-        return v_clean, i_clean, p_clean, r_clean, ro_clean
+    def plot_vipr(self,fignum=1):
+        self.plot_vipr_method(self.v,self.i,self.p,self.r,fignum=fignum, figtitle=self.figtitle,figlegend=self.state_list)
 
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.
@@ -602,11 +675,13 @@ class IVSetAnalyzeColumn():
 
 class IVversusADRTempOneRow(IVSetAnalyzeRow):
     ''' analyze thermal transport from IV curve set from one row in which ADR temperature is varied '''
-    def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None):
+    def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None,figtitle=None):
         ''' dac_values: np_array of dac_values (corresponding to voltage bias across TES),
                         a common dac_value for all IVs is required
             fb_values_arr: N_dac_val x N_sweep numpy array, column ordered in which columns are for different adr temperatures
             temp_list_k: adr temperature list in K, must match column order
+            normal_resistance_fractions: determine power at these cuts in Rn fraction space
+            iv_circuit: instance of iv_data.IVCircuit used to convert the data to physical units
         '''
 
         self.temp_list_k = temp_list_k
@@ -615,12 +690,13 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         temp_list_k_str = []
         for ii in range(len(temp_list_k)):
             temp_list_k_str.append(str(temp_list_k[ii]))
-        super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit)
-        self.v_clean, self.i_clean, self.r_clean, self.p_clean, self.ro_clean = self.remove_bad_data(threshold=.000000001)
+        super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit,figtitle)
+        self.ro = self.r / self.r[0,:]
+        self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
+        self.ro_clean = self.r_clean / self.r_clean[0,:]
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_clean,self.ro_clean)
-        print(self.p_at_rnfrac)
+        #print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
-
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
         '''
@@ -641,8 +717,8 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         n,m=np.shape(arr)
         result = np.zeros((len(rn_fracs),m))
         for ii in range(m):
-            x = IVClean().remove_NaN(ro[:,ii])
-            y = IVClean().remove_NaN(arr[:,ii])
+            x = self.remove_NaN(ro[:,ii])
+            y = self.remove_NaN(arr[:,ii])
             YY = np.interp(rn_fracs,x[::-1],y[::-1])
 
             # over write with NaN for when data does not extend to fracRn
@@ -675,7 +751,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         #plt.title(self.figtitle)
         return fig
 
-    def plot_pt(self,fig_num=2):
+    def plot_pt(self,fig_num=2,include_fits=True):
         # power plateau (evaluated at each rn_frac) versus T_cl
         fig = plt.figure(fig_num)
         llabels=[]
@@ -684,8 +760,10 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             if not np.isnan(self.p_at_rnfrac[ii,:]).any():
                 plt.plot(self.temp_list_k,self.p_at_rnfrac[ii,:],'o')
                 llabels.append(self.rn_fracs[ii])
-        for ii in range(self.num_rn_fracs):
-            plt.plot(temp_arr,self.ktn_fit_func(self.pfits[ii],temp_arr),'k--')
+
+        if include_fits:
+            for ii in range(self.num_rn_fracs):
+                plt.plot(temp_arr,self.ktn_fit_func(self.pfits[ii],temp_arr),'k--')
         plt.xlabel('T$_{b}$ (K)')
         plt.ylabel('TES power plateau')
         plt.legend((llabels))
@@ -694,10 +772,14 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         return fig
 
     def fit_pvt_for_all_rn_frac(self):
-        pfits=[]
+        ''' Fit power versus Tbath curves to P=K(T^n-Tb^n) for each rn_fraction cut.
+            Returns pfits, a num_rn_fracs x 3 array.
+            Rows are for each Rn cut; columns are for K,T,n in that order
+        '''
+        pfits=np.empty((self.num_rn_fracs,3))
         for ii in range(self.num_rn_fracs):
             pfit,pcov = self.fit_pvt(np.array(self.temp_list_k),self.p_at_rnfrac[ii])
-            pfits.append(pfit)
+            pfits[ii,:]=pfit
         return pfits
 
     def ktn_fit_func(self,v,t):
@@ -743,6 +825,29 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         pcov=pcov*s_sq
         return pfit,pcov
 
+    def plot_fits(self,fignum=1):
+        K=self.pfits[:,0]
+        T=self.pfits[:,1]
+        n=self.pfits[:,2]
+        G=n*K*T**(n-1)
+
+        vec = [K,T,n,G]
+        yaxis_label=['K','T','n','G']
+        # fig 1, 2x2 of converted IV
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+
+        for ii, v in enumerate(vec):
+            ax[ii].plot(self.rn_fracs,v,'ko-')
+            ax[ii].set_xlabel('Rn_frac')
+            ax[ii].set_ylabel(yaxis_label[ii])
+            ax[ii].grid('on')
+
+        if self.figtitle:
+            fig.suptitle(self.figtitle)
+
+        return fig
+
 class IVColdloadAnalyzeOneRow():
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
@@ -783,7 +888,8 @@ class IVColdloadAnalyzeOneRow():
         self.row_name = row_name
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
-        self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
+        self.fb_align = fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=True,showplot=False)
+        #self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
                                                           # (i.e. the appropriate DC offset has been removed)
         # convert to physical units if iv_circuit provided
         if iv_circuit is not None:
@@ -889,29 +995,29 @@ class IVColdloadAnalyzeOneRow():
 
         return defs
 
-    def fb_align_and_remove_offset(self,showplot=False):
-        # this method ought to be placed in another general class
-        fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
-        for ii in range(self.n_cl_temps): # align fb DC levels to a common value
-            dy = self.fb[0,ii]-self.fb[0,0]
-            fb_align[:,ii] = self.fb[:,ii]-dy
-
-        # remove offset
-        x = self.dacs[::-1][-self.n_normal_pts:]
-        y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
-        m, b = np.polyfit(x,y,deg=1)
-
-        if np.std(b)/np.mean(b) > 0.01:
-            print('Warning DC offset of curves differs by > 1\%')
-            print('Offset fit: ',np.mean(b),'+/-',np.std(b))
-        if self.use_ave_offset: b = np.mean(b)
-        fb_align = fb_align - b
-        if m[0]<0: fb_align = fb_align*-1
-        if showplot:
-            for ii in range(self.n_cl_temps):
-                plt.plot(self.dacs,fb_align[:,ii])
-            plt.show()
-        return fb_align
+    # def fb_align_and_remove_offset(self,showplot=False):
+    #     # this method ought to be placed in another general class
+    #     fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
+    #     for ii in range(self.n_cl_temps): # align fb DC levels to a common value
+    #         dy = self.fb[0,ii]-self.fb[0,0]
+    #         fb_align[:,ii] = self.fb[:,ii]-dy
+    #
+    #     # remove offset
+    #     x = self.dacs[::-1][-self.n_normal_pts:]
+    #     y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
+    #     m, b = np.polyfit(x,y,deg=1)
+    #
+    #     if np.std(b)/np.mean(b) > 0.01:
+    #         print('Warning DC offset of curves differs by > 1\%')
+    #         print('Offset fit: ',np.mean(b),'+/-',np.std(b))
+    #     if self.use_ave_offset: b = np.mean(b)
+    #     fb_align = fb_align - b
+    #     if m[0]<0: fb_align = fb_align*-1
+    #     if showplot:
+    #         for ii in range(self.n_cl_temps):
+    #             plt.plot(self.dacs,fb_align[:,ii])
+    #         plt.show()
+    #     return fb_align
 
     def removeNaN(self,arr):
         ''' only works on 1d vector, not array '''

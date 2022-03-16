@@ -1383,13 +1383,13 @@ class Passband(PassbandMetrics):
         return fig,ax
 
 class PassbandModel():
-    def __init__(self,txtfilename):
+    def __init__(self,txtfilename,delimiter=','):
         self.txtfilename = txtfilename
-        self.n_freqs, self.n_cols, self.header, self.model = self.from_file(self.txtfilename)
+        self.n_freqs, self.n_cols, self.header, self.model = self.from_file(self.txtfilename,delimiter)
         self.f_ghz = self.model[:,0]
 
-    def from_file(self, txtfilename):
-        model = np.loadtxt(txtfilename,skiprows=1)
+    def from_file(self, txtfilename,delimiter=','):
+        model = np.loadtxt(txtfilename,skiprows=1,delimiter=delimiter)
         f=open(txtfilename,'r')
         header_raw = f.readline()
         f.close()
