@@ -54,7 +54,17 @@ class IVPointTaker():
 
     def get_iv_pt(self, dacvalue):
         self.set_volt(dacvalue)
-        data = self.ec.getNewData(delaySeconds=self.delay_s)
+        #data = self.ec.getNewData(delaySeconds=self.delay_s)
+        # GCJ debugging this with try/except
+        try:
+            data = self.ec.getNewData(delaySeconds=self.delay_s)
+        except:
+            print('\ngetNewData failed, trying once more')
+            try:
+                data = self.ec.getNewData(delaySeconds=self.delay_s)
+            except:
+                print('\ngetNewData failed again, trying one last time')
+                data = self.ec.getNewData(delaySeconds=self.delay_s)             
         avg_col = data[self.col,:,:,1].mean(axis=-1)
         rows_relocked_hi = []
         rows_relocked_lo = []
@@ -69,7 +79,16 @@ class IVPointTaker():
         if len(rows_relocked_lo)+len(rows_relocked_hi) > 0:
             # at least one relock occured
             print(f"\nrelocked rows: too low {rows_relocked_lo}, too high {rows_relocked_hi}")
-            data_after = self.ec.getNewData(delaySeconds=self.delay_s)
+            #data_after = self.ec.getNewData(delaySeconds=self.delay_s)
+            try:
+                data_after = self.ec.getNewData(delaySeconds=self.delay_s)
+            except:
+                print('\ngetNewData failed, trying once more')
+                try:
+                    data_after = self.ec.getNewData(delaySeconds=self.delay_s)
+                except:
+                    print('\ngetNewData failed again, trying one last time')
+                    data_after = self.ec.getNewData(delaySeconds=self.delay_s)                
             avg_col_after = data_after[self.col,:,:,1].mean(axis=-1)
             for row in rows_relocked_lo+rows_relocked_hi:
                 self._relock_offset[row] += avg_col_after[row]-avg_col[row]

@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
 from scipy.integrate import quad, simps
 from scipy.optimize import leastsq
+from IPython import embed
 
 def smooth(y, box_pts=5):
     box = np.ones(box_pts)/box_pts
@@ -116,8 +117,6 @@ class IVClean():
             If no bad data found, return the last index (such that subsequent method includes all data points)
         '''
         assert dac[1]-dac[0] < 0, ('dac values must be in descending order')
-        #print('The threshold is = ', threshold)
-
         turn_dex = self.get_turn_index(dac,fb,showplot=False)
         if turn_dex == None: return len(dac)
 
@@ -193,6 +192,47 @@ class IVClean():
             plt.show()
 
         return ivTurnDex
+
+    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
+        '''
+        Return the value of arr at fraction of Rn.
+        input:
+        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
+        arr: NxM array to determine the Rn fraction at
+        ro: NxM normalized resistance
+
+        arr and ro must be same shape
+        return: len(rn_fracs) x M array of the interpolated values
+
+        '''
+        # ensure rn_fracs is a np.array
+        if type(rn_fracs)!=np.ndarray:
+            rn_fracs = np.array(rn_fracs)
+        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
+        n,m=np.shape(arr)
+        result = np.zeros((len(rn_fracs),m))
+        for ii in range(m):
+            x = IVClean().remove_NaN(ro[:,ii])
+            y = IVClean().remove_NaN(arr[:,ii])
+            YY = np.interp(rn_fracs,x[::-1],y[::-1])
+
+            # over write with NaN for when data does not extend to fracRn
+            ro_min = np.min(x)
+            toCut = np.where(rn_fracs<ro_min)[0]
+            N = len(toCut)
+            if N >0:
+                YY[0:N] = np.zeros(N)*np.NaN
+            result[:,ii] = YY
+        return result
+
+    def get_vipr(self,x,y):
+        ''' returns the voltage, current, power, and resistance vectors  '''
+        v = np.zeros((np.shape(y)))
+        for ii in range(self.n_cl_temps):
+            v[:,ii] = self.dacs
+        i=self.fb_align
+        p=v*i; r=v/i
+        return v,i,p,r
 
 class IVCurveColumnDataExplore():
     def __init__(self,iv_curve_column_data,iv_circuit=None):
@@ -368,10 +408,10 @@ class IVCurveColumnDataExplore():
         ax[0].set_ylim((0,np.max(i)*1.1))
         ax[1].set_xlim((0,np.max(v)*1.1))
         ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,np.max(r[0,:])*1.1))
+        ax[2].set_xlim((0,np.nanmax(r[0,:][r[0,:] != np.inf])*1.1))
         ax[2].set_ylim((0,np.max(p)*1.1))
         ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
+        ax[3].set_ylim((0,np.nanmax(r[0,:][r[0,:] != np.inf])*1.1))
         #ax[3].set_xlim((0,np.max(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
@@ -419,6 +459,7 @@ class IVSetAnalyzeRow(IVClean):
             self.to_physical_units = True
 
         # do conversion to physical units
+        self.fb_align = self.fb_align_and_remove_offset()
         self.v,self.i,self.p,self.r = self.get_vipr()
         self.ro = self.r / self.r[0,:]
 
@@ -527,15 +568,15 @@ class IVSetAnalyzeRow(IVClean):
             ax[ii].grid()
 
         # plot ranges
-        ax[0].set_xlim((0,np.max(v)*1.1))
-        ax[0].set_ylim((0,np.max(i)*1.1))
-        ax[1].set_xlim((0,np.max(v)*1.1))
-        ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,np.max(p)*1.1))
-        ax[2].set_ylim((0,np.max(r[0,:])*1.1))
-        ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
-        #ax[3].set_xlim((0,np.max(p)*1.1))
+        ax[0].set_xlim((0,np.nanmax(v)*1.1))
+        ax[0].set_ylim((0,np.nanmax(i)*1.1))
+        ax[1].set_xlim((0,np.nanmax(v)*1.1))
+        ax[1].set_ylim((0,np.nanmax(p)*1.1))
+        ax[2].set_xlim((0,np.nanmax(p)*1.1))
+        ax[2].set_ylim((0,np.nanmax(r[0,:])*1.1))
+        ax[3].set_xlim((0,np.nanmax(v)*1.1))
+        ax[3].set_ylim((0,np.nanmax(r[0,:])*1.1))
+        #ax[3].set_xlim((0,np.nanmax(p)*1.1))
         #ax[3].set_ylim((0,1.1))
 
         if self.figtitle != None:
@@ -652,11 +693,23 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         temp_list_k_str = []
         for ii in range(len(temp_list_k)):
             temp_list_k_str.append(str(temp_list_k[ii]))
+        # GCJ adding the following lines which come from IVColdloadAnalyzeOneRow
+        self.fb = fb_values_arr # NxM array of feedback values.  Columns are per coldload temperature
+        self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
+        self.fb_raw = fb_values_arr
+        self.n_dac_values, self.num_sweeps = np.shape(self.fb_raw)
+        self.dacs = dac_values
+        self.n_normal_pts = 10 # number of points for normal branch fit, this is ignored?!?
+        self.use_ave_offset=True # use a global offset to align fb, not individual per curve
+        self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
+                                                          # (i.e. the appropriate DC offset has been removed)
+    
         super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit)
-        self.v_clean, self.i_clean, self.r_clean, self.p_clean, self.ro_clean = self.remove_bad_data(threshold=.000000001)
+        self.v_clean, self.i_clean, self.r_clean, self.p_clean, self.ro_clean = self.remove_bad_data(threshold=.1)
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_clean,self.ro_clean)
         print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
+    
 
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
@@ -680,8 +733,13 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         for ii in range(m):
             x = IVClean().remove_NaN(ro[:,ii])
             y = IVClean().remove_NaN(arr[:,ii])
+            # removing NaNs is fine and dandy unless you end with unequal array lengths
+            # then interpolation breaks down and you got yourself a whole new bug
+            if len(x)>len(y):
+                x=x[:len(y)]
+            if len(x)<len(y):
+                y=y[:len(x)]
             YY = np.interp(rn_fracs,x[::-1],y[::-1])
-
             # over write with NaN for when data does not extend to fracRn
             ro_min = np.min(x)
             toCut = np.where(rn_fracs<ro_min)[0]
@@ -743,7 +801,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         '''
         return v[0]*(v[1]**v[2]-t**v[2])
 
-    def fit_pvt(self,t,p,init_guess=[20.e-9,.2,4.0]):
+    def fit_pvt(self,t,p,init_guess=[20.e-9,.2,4.0],pmin=1E-15):
         ''' fits saturation power versus temperature to recover fit parameters K, T and n
 
             fit function is P = K(T^n-t^n)
@@ -752,11 +810,19 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             t: vector of bath temperatures
             p: vector of saturation powers
             init_guess: initial guess parameters for K,T,n in that order
+            pmin: float of minimum power in watts to keep in fit
+                  if data is taken at bath temperatures above Tc, P will be nearly zero, like 1E-15
+                  and the fit will be biased to higher Tc, lower n, and just bad in general - GCJ
 
             output:
             fit coefficients
             covarience matrix (diagonals are variance of fit parameters)
         '''
+        # check that atleast 3 of the powers are greater than pmin
+        # you won't get a covariance matrix, but you can't win everything
+        if sum(p>pmin)>=3:
+            t = t[p>pmin]
+            p = p[p>pmin]
         fitfunc = lambda v,x: v[0]*(v[1]**v[2]-x**v[2])
         errfunc = lambda v,t,p: v[0]*(v[1]**v[2]-t**v[2])-p
         lsq = leastsq(errfunc,init_guess, args=(t,p),full_output=1)
@@ -777,7 +843,8 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         for ii in range(len(pfit)):
             pfit[ii]=abs(pfit[ii])
         s_sq = (infodict['fvec']**2).sum()/(len(p)-len(init_guess))
-        pcov=pcov*s_sq
+        if pcov is not None:
+            pcov=pcov*s_sq
         return pfit,pcov
 
 class IVColdloadAnalyzeOneRow():
@@ -805,7 +872,7 @@ class IVColdloadAnalyzeOneRow():
                  row_name=None,det_name=None,
                  iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None):
         # fixed globals / options
-        self.n_normal_pts=10 # number of points for normal branch fit
+        self.n_normal_pts = 10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
         self.rn_fracs = self._handle_rn_fracs(rn_fracs) # slices in Rn space to compute electrical power versus temperature
         self.n_rn_fracs = len(self.rn_fracs)

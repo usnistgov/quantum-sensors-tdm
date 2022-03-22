@@ -47,6 +47,12 @@ Therefore never want to use the high range, and this software forbids it.
 
 from . import serial_instrument
 import serial
+from time import sleep
+import numpy as np
+import cmath
+import pickle
+import pylab
+import math
 
 class Cryocon22(serial_instrument.SerialInstrument):
     '''
