@@ -156,8 +156,8 @@ class IVCircuit():
     rsh_ohm: float # shunt resistor
     rx_ohm: float # parasitic resistance in series with TES
     m_ratio: float # ratio of feedback mutual inductance to input mutual inductance
-    vfb_gain: float # volts/arbs of feeback
-    vbias_gain: float # volts/arbs of bias
+    vfb_gain: float # volts/arbs of feeback (14 bit dac)
+    vbias_gain: float # volts/arbs of bias (16 bit dac for blue boxes)
 
     def iv_raw_to_physical_fit_rpar(self, vbias_arbs, vfb_arbs, sc_below_vbias_arbs):
         ites0, vtes0 = self.iv_raw_to_physical(vbias_arbs, vfb_arbs, rpar_ohm=0)
