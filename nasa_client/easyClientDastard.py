@@ -74,11 +74,16 @@ class EasyClientDastard():
             self._handleStatusMessage(topic, contents)
             if DEBUG:
                 print(f"messages seen so far = {self.messagesSeen}")
-            if all([self.messagesSeen[t]>0 for t in ["STATUS", "LANCERO", "SIMPULSE"]]):
+            if all([self.messagesSeen[t]>0 for t in ["STATUS", "LANCERO", "ABACO", "SIMPULSE"]]):
                 if self.sourceName == "Lancero":
                     self.numRows = self.sequenceLength
                     self.numColumns = self.numChannels//(2*self.numRows)
                     assert self.numChannels%(2*self.numRows) == 0
+                if self.sourceName == "Abaco":
+                    self.numRows = self.numChannels
+                    self.numColumns = 1
+                    self.clockMhz = -1 # not meaningful in abaco.... lets see what breaks
+                    self.nSamp = 1 # not meaningful in abaco, 1 should be ok
                 else:
                     raise Exception(f"source {self.sourceName} not yet supported")
                 print("returned from _getStatus")
@@ -102,19 +107,25 @@ class EasyClientDastard():
             self.sourceName = d["SourceName"]
             self._oldNSamples = d["Nsamples"]
             self._oldNPresamples = d["Npresamp"]
-        if topic == "SIMPULSE" and self.sourceName=="SimPulses":
+        elif topic == "SIMPULSE" and self.sourceName=="SimPulses":
             if not DEBUG:
                 raise Exception("dont use a SIMPULSE in non-debug mode")
             print("using SIMPULSE")
             self.nSamp = 2
             self.clockMhz = 125
             self.sequenceLength=self.numChannels
-        if topic == "LANCERO" and self.sourceName=="Lancero":
+        elif topic == "LANCERO" and self.sourceName=="Lancero":
             self.nSamp = d["DastardOutput"]["Nsamp"]
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
             self.sequenceLength = d["DastardOutput"]["SequenceLength"]
-        if topic == "TRIGGER":
+        elif topic == "TRIGGER":
             self._oldTriggerDict = d[0]
+        elif topic == "ABACO":
+            pass # doesnt seem to be anything useful here?
+            # how do we know the data sampling period?
+            print(contents)
+        else:
+            pass # just just throw away other messages
 
     def restoreOldTriggerSettings(self):
         configLengths  = {"Nsamp": self._oldNSamples, "Npre": self._oldNPresamples}
@@ -191,9 +202,15 @@ class EasyClientDastard():
         return header, data
 
     def fbChannelIndex(self, col, row):
+        if self.sourceName == "Abaco":
+            return row
+        # fall back to lancero
         return 2*(col*self.numRows+row)+1
 
     def errorChannelIndex(self, col, row):
+        if self.sourceName == "Abaco":
+            return None # so we'll error later, no error for abaco
+        # fall back to lancero
         return 2*(col*self.numRows+row)
 
     def setMixToZero(self):
@@ -290,11 +307,17 @@ class EasyClientDastard():
                 # [col, row, frame, 0=error/1=feedback]
                 j=0    
                 for k in k_complete:
-                    data_error = datas_dict[k][errorIndex]
+                    if self.sourceName != "Abaco":
+                        # error is lancero only
+                        data_error = datas_dict[k][errorIndex]
                     data_fb = datas_dict[k][fbIndex]
                     n = len(data_fb)
-                    assert(len(data_error)==n)
-                    dataOut[col,row,j:j+n,0] = data_error
+                    if self.sourceName != "Abaco":
+                        # error is lancero only
+                        assert(len(data_error)==n)
+                    if self.sourceName != "Abaco":
+                        dataOut[col,row,j:j+n,0] = data_error
+                        # error is lancero only
                     dataOut[col,row,j:j+n,1] = data_fb
                     j += len(data_fb)
 
