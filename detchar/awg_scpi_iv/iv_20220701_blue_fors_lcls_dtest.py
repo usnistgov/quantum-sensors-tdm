@@ -13,21 +13,36 @@ srate =  5e1 # rate at which the awg steps thru the profile
 profile0 = awg.make_ramp_dwell_ramp_profile(n_ramp=120, n_dwell=20, blip_delta=0.1)
 profile_extra = [1, 1, 1, 1, 1, 1, 1, 1, 0.125, 0.125, 0.125, 0.125, 0.135, 0.125, 0.145, 0.125, 0.155, 0.125, 0.165, 0.125, 0.175, 0.125, 0.185, 0.125, 0.195, 0.125, 0.205, 0.125, 0.215, 0.125, 0.225, 0.125, 0.235, 0.125, 0, 0,0,0]
 profile = profile0
-ramp_extreme = -1.2 # voltage scale to multiply profile by
+ramp_extreme = 1.2 # voltage scale to multiply profile by
 phi0_fb = 1024
 col = 0 # easyClient treast dastard as having 1 columns and nchan rows
 
+def build_pulsey_profile(n_normal=15, n_quiescent=4, n_excite=4, v_quiescent0=0.11,
+v_step=0.02, n_step = 7, v_step_quiescent=0.01, n_step_quiescent=4):
+    profile = [0]*n_normal
+    profile += list(np.linspace(0,1,n_normal+1))
+    profile += [v_quiescent0]*40
+    for i in range(n_step_quiescent):
+        for j in range(n_step):
+            v_quiescent = v_quiescent0+i*v_step_quiescent
+            v_excite = v_quiescent+j*v_step
+            profile += [v_quiescent]*n_quiescent
+            profile += [v_excite]
+    profile += list(profile[-1]*np.linspace(1,0,n_normal+1))
+    profile += [0]*n_normal
+    return np.array(profile)
+pulsey_profile = build_pulsey_profile()
 
-profile_duration_s = len(profile)/srate
-num_sample_needed = 1.1*(profile_duration_s)//awg.c.samplePeriod
+
+
 
 # setup function generator with both ouputs at zero, and ch1
 # ready to ramp upon trigger
 awg.ch2_setup()
 awg.ch1_setup(profile=profile, srate=srate)
 awg.ch1_set_ramp_extreme(ramp_extreme)
-_ = awg.ch1_trigger()
-time.sleep(profile_duration_s+0.1)
+# _ = awg.ch1_trigger()
+# time.sleep(profile_duration_s+0.1)
 
 # setup readout and get fba offsets
 
@@ -78,13 +93,15 @@ class RawAWGRowIVData:
         plt.plot(t_fb[:-1], self.get_fb_unwrapped(), label="fb_unwrapped")
         plt.plot(t_fb[:-1], fb_ic_fixed, label="fb_ic_fixed")
         plt.plot(t_fb[ic_ind], fb_ic_fixed[ic_ind],"o", label="ic_ind")
-        plt.plot(t_profile+t_profile_offset_s, profile*1e4*ramp_extreme, label="profile/0.1 mV")
+        plt.plot(t_profile+t_profile_offset_s, self.profile*1e4*self.ramp_extreme, label="profile/0.1 mV")
         plt.grid(True)
         plt.legend()
 
 def getIVs(profile, ramp_extreme, srate):
     awg.ch1_setup(profile=profile, srate=srate)
     awg.ch1_set_ramp_extreme(ramp_extreme)
+    profile_duration_s = len(profile)/srate
+    num_sample_needed = 1.1*(profile_duration_s)//awg.c.samplePeriod
     time_nano_after_trigger = awg.ch1_trigger()
     data = awg.c.getNewData(-0.001,minimumNumPoints=num_sample_needed)
     time_nano_first_sample = awg.c._lastGetNewDataFirstTriggerUnixNano-awg.c.nPresamples*awg.c.samplePeriod*1e9
@@ -108,6 +125,18 @@ def getIVs(profile, ramp_extreme, srate):
         iv_datas.append(iv)
     return iv_datas
 
+def getIVs_retry(profile, ramp_extreme, srate):
+    nmax = 3
+    for i in range(nmax):
+        try:
+            if i != nmax-1:
+                print(f"retry after {i+1} failure")
+            iv_datas = getIVs(profile, ramp_extreme, srate)
+            return iv_datas
+        except:
+            continue
+    raise Exception("failed 3 times in a row! :(")
+
 
 @dataclass
 class IVvsField:
@@ -116,14 +145,18 @@ class IVvsField:
     v_fcs: Any
 
 # getting IVs
-ivs = getIVs(profile, ramp_extreme, srate)
-iv = ivs[5]
-iv.plot()
-del ivs
-ivs_neg = getIVs(profile, ramp_extreme, srate)
-iv2 = ivs_neg[5]
-iv2.plot()
-del ivs_neg
+# ivs = getIVs_retry(profile, ramp_extreme, srate)
+# iv = ivs[5]
+# iv.plot()
+# del ivs
+# ivs_neg = getIVs_retry(profile, -ramp_extreme, srate)
+# iv2 = ivs_neg[5]
+# iv2.plot()
+# del ivs_neg
+ivs_pulsey = getIVs_retry(pulsey_profile, ramp_extreme, srate)
+iv3 = ivs_pulsey[5]
+iv3.plot()
+del(ivs_pulsey)
 raise Exception()
 
 
