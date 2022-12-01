@@ -4,6 +4,7 @@ __pycache__
 *.npy
 last_fbastats
 .build
+build
 *.json
 *.hdf5
 *.png
