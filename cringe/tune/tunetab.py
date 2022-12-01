@@ -161,6 +161,9 @@ class VPhiDemo(QWidget):
         self.lockSlopeSignFBBCheckBox = QCheckBox("Lock on + Slope FBB", self)
         self.layout.addWidget(self.lockSlopeSignFBBCheckBox)
         self.layout.addLayout(layout)
+        self.staggerFBBCheckBox = QCheckBox("stagger FBB",self)
+        self.layout.addWidget(self.staggerFBBCheckBox)
+        self.layout.addLayout(layout)
 
         layout = QHBoxLayout()
         self.MixSlopeProductSpin = QSpinBox()
@@ -257,11 +260,11 @@ class VPhiDemo(QWidget):
             data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
         return outtriangle, outsigsup, outsigsdown
 
-    def FBBvphi(self):
+    def FBBvphi(self,a2d=0):
         tridwell, tristeps, tristepsize = 2, 9, 20
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
         # Triangle feedback on FB[B], SendMode : FBB, ERR
-        self.mm.setdfball(trib=1, data_packet=1)
+        self.mm.setdfball(trib=1, data_packet=1,a2d=a2d)
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fbb = data[0, 0, :, 1]  # triangle
         err = data[0, 0, :, 0]  # signal
@@ -301,7 +304,7 @@ class VPhiDemo(QWidget):
 
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6, sendMode=2)
         fba = data[0, 0, :, 1]  # signal
-        fbb = data[0, 0, :, 0]  # triangle
+        fbb = data[0, 0, :, 0]  # triangle0*1250
         np.save(get_savepath("last_locked_fba_vphi"), data)
 
         outtriangle, outsigsup, outsigsdown = analysis.conditionvphis(
@@ -355,7 +358,8 @@ class VPhiDemo(QWidget):
         if not self.validateServerSettings():
             return
         self.c.client.setMixToZero()
-        fbbtriangle, fbbsigsup, fbbsigsdown = self.FBBvphi()
+        fbbtriangle, fbbsigsup, fbbsigsdown = self.FBBvphi(a2d=1250)
+        fbbsigsup=fbbsigsup+1250
         fbbstats = vphistats.vPhiStats(fbbtriangle, fbbsigsup)
 
         # get settings for locked vphis from those vphis
@@ -375,8 +379,7 @@ class VPhiDemo(QWidget):
         plots.show()
 
         log.info("start locked fba vphi")
-        lfbatriangle, lfbasigsup, lfbasigsdown = self.lockedFBAvphi_colsettings(
-            d2aB, a2dlockpoints, I)
+        lfbatriangle, lfbasigsup, lfbasigsdown = self.lockedFBAvphi_colsettings(d2aB=d2aB, a2d=a2dlockpoints, I=I)
         lfbastats = vphistats.vPhiStats(lfbatriangle, lfbasigsup)
 
         plots = ColPlots(self, self.c.ncol, self.c.nrow)
@@ -391,15 +394,15 @@ class VPhiDemo(QWidget):
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 self.mm.setdfbrow(col, row, trib=1,
-                                  d2aA=d2aA_forfbb2[col, row], data_packet=1)
+                                  d2aA=d2aA_forfbb2[col, row],a2d=1250, data_packet=1)
         tridwell, tristeps, tristepsize = 2, 9, 20
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fbb = data[0, 0, :, 1]  # triangle
-        err = data[0, 0, :, 0]  # signal
+        err = data[0, 0, :, 0]+1250  # signal
         np.save(get_savepath("last_fbb2_vphi"), data)
         fbb2triangle, fbb2sigsup, fbb2sigsdown = analysis.conditionvphis(
-            data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
+            data[:, :, :, 1], data[:, :, :, 0]+1250, tridwell, tristeps, tristepsize)
         fbb2stats = vphistats.vPhiStats(fbb2triangle, fbb2sigsup)
 
         plots = ColPlots(self, self.c.ncol, self.c.nrow)
@@ -481,16 +484,16 @@ class VPhiDemo(QWidget):
         self.mm.settriangleparams(tridwell, tristeps, tristepsize)
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
-                self.mm.setdfbrow(col, row, tria=1, d2aB=d2aB[col, row])
+                self.mm.setdfbrow(col, row, tria=1, d2aB=d2aB[col, row],a2d=1250)
         data = self.c.getNewData(0.1, minimumNumPoints=4096*6)
         fba = data[0, 0, :, 1]  # triangle
-        err = data[0, 0, :, 0]  # signal
+        err = data[0, 0, :, 0]+1250  # signal
         np.save(get_savepath("last_fba_vphi"), data)
 
         fracFromBottom = self.PercentFromBottomSpin.value()*0.01
 
         fbatriangle, fbasigsup, fbasigsdown = analysis.conditionvphis(
-            data[:, :, :, 1], data[:, :, :, 0], tridwell, tristeps, tristepsize)
+            data[:, :, :, 1], data[:, :, :, 0]+1250, tridwell, tristeps, tristepsize)
         fbastats = vphistats.vPhiStats(
             fbatriangle, fbasigsup, fracFromBottom=fracFromBottom)
         with open("last_fbastats", "wb") as f:
@@ -513,8 +516,8 @@ class VPhiDemo(QWidget):
                         fbastats["periodXUnits"][col, row]
                     log.debug(("col %g, row %g FBA lockpoint shift up %g phi because it was below %g" % (
                         col, row, nPeriodToAdd, minimum_d2aA)))
-        a2d = fbastats["crossingPoint"]
 
+        a2d = fbastats["crossingPoint"]
         fbatriangles = np.zeros(
             (self.c.ncol, self.c.nrow, len(fbatriangle)), dtype="int64")
         fbasigsupShifted = fbasigsup[:]
@@ -563,12 +566,25 @@ class VPhiDemo(QWidget):
             This is fine unless you need to load the mix file from matter.")
         # cringe should have created this directory earlier
         np.save(os.path.expanduser("~/.cringe/mix_fractions"), Mix/100.0)
-
+        stagger_case=0
+        n_stagger=0
         for col in range(self.c.ncol):
             for row in range(self.c.nrow):
                 if chanisgood[col, row]:
-                    self.mm.setdfbrow(
-                        col, row, a2d=a2d[col, row], I=I[col, row], d2aA=d2aA[col, row], d2aB=d2aB[col, row], FBA=1, ARL=1)
+                    if self.staggerFBBCheckBox.isChecked():
+                        n_stagger=n_stagger+1
+                        if stagger_case==0:
+                            self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=d2aA[col,row]+fbastats["periodXUnits"][col,row],d2aB=d2aB[col,row],FBA=1, ARL=1)
+                            if n_stagger >= 4:
+                                n_stagger=0
+                                stagger_case=1
+                        else:
+                            self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=d2aA[col,row],d2aB=d2aB[col,row],FBA=1, ARL=1)
+                            if n_stagger >= 4:
+                                n_stagger=0
+                                stagger_case=0
+                    else:
+                        self.mm.setdfbrow(col,row,a2d=a2d[col,row],I=I[col,row],d2aA=d2aA[col,row],d2aB=d2aB[col,row],FBA=1, ARL=1)
                 else:
                     # set D2A values for bad channels to the midpoint of the intended distribution of other D2A values
                     # the minimum value is minimum_d2aA, all D2A values should be with sq1periods[col] of the minimum
