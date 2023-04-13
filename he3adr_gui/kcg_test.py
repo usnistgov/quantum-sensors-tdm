@@ -96,7 +96,7 @@ class zaber():
         count = 0
         while count < 5:
             time.sleep(1)
-            print "Closing Charcoal HS"
+            print("Closing Charcoal HS")
             count += 1
         charcoal_heatswitch_closed = True
 
@@ -104,12 +104,12 @@ class zaber():
         count = 0
         while count < 5:
             time.sleep(1)
-            print "Opening Charcoal HS"
+            print("Opening Charcoal HS")
             count += 1
         charcoal_heatswitch_closed = False
 
     def MoveRelative(self,steps):
-        print 'Charcoal MoveRelative', steps
+        print('Charcoal MoveRelative', steps)
 
 class email():
     def __init__(self):

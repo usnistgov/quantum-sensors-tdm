@@ -10,7 +10,7 @@ r = re.compile('[\t]+')
 time = np.zeros(n)
 adr = np.zeros(n)
 pot = np.zeros(n)
-for i in xrange(n):
+for i in range(n):
     fields = r.split(content[i])
     time[i] = float(fields[0])
     adr[i] = float(fields[6])

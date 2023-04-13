@@ -380,7 +380,7 @@ class KPACGui(QMainWindow):
         self.task_cycle.start()
 
     def cycle_done(self):
-        print 'cycle_done'
+        print('cycle_done')
         #if self.auto_cycling and self.ui.cb_is_daily_cycle.isChecked():
         #    self.timer_cycle.setSingleShot(True)
         #else:
@@ -392,7 +392,7 @@ class KPACGui(QMainWindow):
         #    self.auto_cycling = False
 
     def call_full_cycle(self): #, state):
-        print 'call_full_cycle'
+        print('call_full_cycle')
         self.KPAC.full_cycle(float(self.ui.le_ramp_target_level.text()),
                              float(self.ui.le_ramp_time.text())*60,
                              float(self.ui.le_ramp_step_time.text()),

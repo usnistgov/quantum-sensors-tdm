@@ -18,7 +18,7 @@ class ThreadTest(QObject):
         self.task_wake = TaskWaking(4, self.wake, self.work_done)
 
     def my_update(self):
-        print 'my_update', self.counter, self.task.thread.isRunning(), self.task_wake.thread.isRunning()
+        print('my_update', self.counter, self.task.thread.isRunning(), self.task_wake.thread.isRunning())
         if self.counter == 5:
             self.task_wake.start()
         if self.counter == 12:
@@ -26,18 +26,18 @@ class ThreadTest(QObject):
         self.counter += 1
 
     def work_done(self):
-        print 'work done'
+        print('work done')
 
     def wake(self, state):
-        print 'wake start'
+        print('wake start')
         time.sleep(2)
-        print 'wake end'
+        print('wake end')
         return self.counter < 10
 
     def worker(self):
-        print 'worker start'
+        print('worker start')
         time.sleep(10)
-        print 'worker end'
+        print('worker end')
 
 
 if __name__ == '__main__':

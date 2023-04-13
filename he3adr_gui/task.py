@@ -110,7 +110,7 @@ class TaskWaking(QObject):
     
     def wake_up(self):
         should_continue = self.wake_func(True)
-        print 'wake_up returned', should_continue
+        print('wake_up returned', should_continue)
         if not should_continue:
             self.thread.quit()
             self.sig_finished.emit()
