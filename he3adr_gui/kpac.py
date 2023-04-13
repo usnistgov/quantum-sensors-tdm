@@ -1,15 +1,16 @@
 import sys
-from PyQt4.QtCore import QObject, QCoreApplication, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 import time
-import cryocon24c_ser
-import lakeshore370_ser
-import agilentE3644a_ser
-import labjack
-import zaber
+from instruments import Cryocon22
+from instruments import Lakeshore370
+from instruments import  AgilentE3644A
+from instruments import  labjack
+from instruments import Cryocon24c_ser
 import numpy
 import time
 import datetime
-import tes_mail
 from task import Task
 
 # Decorator to help wrap a function with signals. When decorating
@@ -44,7 +45,7 @@ class KPAC(QObject):
 
         # objects for communication with the instruments
         args = QCoreApplication.arguments()
-        if args.count() > 1 and args[1] == 'test':
+        if len(args) > 1 and args[1] == 'test':
             print('Running in test mode')
             import kcg_test
             self.cc = kcg_test.cryocon()
@@ -54,21 +55,21 @@ class KPAC(QObject):
 
             self.email = tes_mail.TESMail()
         else:
-            self.cc = cryocon24c_ser.Cryocon24c_ser(port='cryocon1', baud=9600)
+            self.cc = Cryocon24c_ser(port='cryocon1')
             try:
-                self.cc2 = cryocon24c_ser.Cryocon24c_ser(port='cryocon2', baud=9600)
+                self.cc2 = Cryocon24c_ser(port='cryocon2')
             except Exception as ex:
                 print(ex)
                 self.cc2 = None
             try:
-                self.ps = agilentE3644a_ser.AgilentE3644A(port='heater', baud=9600)
+                self.ps = AgilentE3644A(port='heater')
             except Exception as ex:
                 print(ex)
                 self.ps = None
-            self.lsh = lakeshore370_ser.Lakeshore370_ser()
-            self.lj = labjack.Labjack()
-            self.za = zaber.Zaber()
-            self.email = tes_mail.TESMail()
+            self.lsh = Lakeshore370()
+            # self.lj = labjack.Labjack()
+            # self.za = zaber.Zaber()
+            # self.email = tes_mail.TESMail()
 
         # Times at which we have polled for temp/voltage/current/pressure
         self.poll_times = []
@@ -374,7 +375,7 @@ class KPAC(QObject):
         i_start = self.lsh.getManualHeaterOut() 
         
         i_values = self.calc_mag_steps(i_start, i_end, mag_ramp_time, mag_step_time)
-        print("Ramp Values: ", i_values)
+        print(("Ramp Values: ", i_values))
 
         if i_end > i_start:
             self.sig_ramp_up_start.emit()
@@ -417,7 +418,7 @@ class KPAC(QObject):
         self.ramp_down_done = True
     
     def he3_test(self, hold_time, apply_heat, heat_start_temp, heat_end_temp, heater_voltage):
-        print('Running He3 test: %f %d %f %f %f ' % (hold_time, apply_heat, heat_start_temp, heat_end_temp, heater_voltage))
+        print(('Running He3 test: %f %d %f %f %f ' % (hold_time, apply_heat, heat_start_temp, heat_end_temp, heater_voltage)))
 
         # Cycle fridge
         self.closeADRHeatSwitch()
@@ -427,7 +428,7 @@ class KPAC(QObject):
         self.sig_charcoal_heating_start.emit()
 
         # wait for hold_time seconds
-        print('waiting for', hold_time, 'seconds')
+        print(('waiting for', hold_time, 'seconds'))
         time.sleep(hold_time)
 
         self.openPotHeatSwitch()
@@ -440,7 +441,7 @@ class KPAC(QObject):
         if apply_heat and self.ps != None:
             # wait for temperature to fall below start temp
             while (self.cc.getTemperature('C') > heat_start_temp):
-                print('Still warm: %f K > %f K' % (self.cc.getTemperature('C'), heat_start_temp))
+                print(('Still warm: %f K > %f K' % (self.cc.getTemperature('C'), heat_start_temp)))
                 time.sleep(30)
     
             # turn on heat
@@ -449,7 +450,7 @@ class KPAC(QObject):
 
             # wait for temperature to rise above end temp
             while (self.cc.getTemperature('D') < heat_end_temp):
-                print('Still cold: %f K < %f K' % (self.cc.getTemperature('D'), heat_end_temp))
+                print(('Still cold: %f K < %f K' % (self.cc.getTemperature('D'), heat_end_temp)))
                 time.sleep(30)
 
             # turn off heat
@@ -496,9 +497,9 @@ class KPAC(QObject):
         task_slow_close.start()
         task_ramp_down.start()
 
-        print(self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished())
+        print((self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished()))
         while not (self.slow_close_done and self.ramp_down_done):
-            print(self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished())
+            print((self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished()))
             time.sleep(10)
 
         #self.close_charcoal_and_mag_down(char_fast_turns, char_stage1_turns, char_stage1_temp, char_stage2_temp,
@@ -546,7 +547,7 @@ class KPAC(QObject):
 
         while not char_state == STATE_CHAR_END:
 
-            print("slow_charcoal_close", char_state)
+            print(("slow_charcoal_close", char_state))
 
             if char_state == STATE_CHAR_CLOSING_OK:
 
@@ -594,7 +595,7 @@ class KPAC(QObject):
                 
     
             time.sleep(char_step_time)
-            print("slow_charcoal_close end:", char_state)
+            print(("slow_charcoal_close end:", char_state))
         
         self.sig_charcoal_careful_close_done.emit()
         

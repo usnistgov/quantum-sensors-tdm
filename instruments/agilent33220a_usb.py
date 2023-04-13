@@ -31,7 +31,7 @@ class Agilent33220A(instrument.Instrument):
         rm = pyvisa.ResourceManager()
         device_list = rm.list_resources()
         if self.pyvisa_name not in device_list:
-            print('%s not found in pyvisa resource list.  Check that the instrument is plugged in'%self.pyvisa_name)
+            print(('%s not found in pyvisa resource list.  Check that the instrument is plugged in'%self.pyvisa_name))
         
         self.fg = rm.open_resource(self.pyvisa_name) #instance of pyvisa function generator
         self.fg.read_termination = '\n'

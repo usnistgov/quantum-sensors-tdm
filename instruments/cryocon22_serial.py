@@ -191,12 +191,12 @@ class Cryocon22(serial_instrument.SerialInstrument):
     
     def setControlLoopMode(self,loop_channel,mode='off'): #
         if loop_channel not in [1,2,3,4]:
-            print('Invalid loop_channel: '+str(loop_channel)+'. Must be 1,2,3, or 4')
+            print(('Invalid loop_channel: '+str(loop_channel)+'. Must be 1,2,3, or 4'))
             raise ValueError
         if mode in ['off','man','pid','table','rampt','rampp','OFF','MAN','PID','TABLE','RAMPT','RAMPP']:
             self.writeAndflush('loop '+str(loop_channel)+':type '+mode)
         else:
-            print('Invalid mode: '+mode+'. Only off, man, pid, table, rampt, rampp allowed.')
+            print(('Invalid mode: '+mode+'. Only off, man, pid, table, rampt, rampp allowed.'))
             raise ValueError
 
     def setControlSource(self,loop_channel=1, t_channel='a'): #
@@ -210,10 +210,10 @@ class Cryocon22(serial_instrument.SerialInstrument):
     
     def setHeaterRange(self,loop_channel,heater_range='low'):
         if loop_channel not in [1,2,3,4]:
-            print('Invalid loop_channel: '+str(loop_channel)+'. Only 1->4 allowed')
+            print(('Invalid loop_channel: '+str(loop_channel)+'. Only 1->4 allowed'))
             raise ValueError
         if heater_range not in ['low', 'mid', 'LOW','MID']:
-            print('Invalid heater range: '+range+'. Only low and mid ranges allowed')
+            print(('Invalid heater range: '+range+'. Only low and mid ranges allowed'))
             raise ValueError
         self.writeAndflush('loop '+str(loop_channel)+':range '+heater_range)
         return self.getHeaterRange(loop_channel) 
@@ -241,20 +241,20 @@ class Cryocon22(serial_instrument.SerialInstrument):
         for ii in [1,2,3,4]: # turn all other loops off
             if ii != loop_channel:
                 self.setControlLoopMode(ii,'off') 
-        print('loop channel '+loop_channel_string+' control loop config:')
-        print('source:' + str(self.getControlSource(loop_channel)))
-        print('Heater range: ' + self.getHeaterRange(loop_channel))
-        print('PID = ',self.getPID(loop_channel))
-        print('Control mode: ' + self.getControlLoopMode(loop_channel))
-        print('Control temperature: ', self.getControlTemperature(loop_channel))
-        print('Control status: ' + self.getControlLoopState())
+        print(('loop channel '+loop_channel_string+' control loop config:'))
+        print(('source:' + str(self.getControlSource(loop_channel))))
+        print(('Heater range: ' + self.getHeaterRange(loop_channel)))
+        print(('PID = ',self.getPID(loop_channel)))
+        print(('Control mode: ' + self.getControlLoopMode(loop_channel)))
+        print(('Control temperature: ', self.getControlTemperature(loop_channel)))
+        print(('Control status: ' + self.getControlLoopState()))
         
     def isTemperatureStable(self,loop_channel,tolerance=0.1):
         t_channel=self.getControlSource(loop_channel).split('CH')[1] # have this as input to method to save one read/write?
         t_m = self.getTemperature(t_channel)
         t_c = self.getControlTemperature(loop_channel)
         t_error = t_m - t_c
-        print(t_m, t_c, t_error)
+        print((t_m, t_c, t_error))
         if abs(t_error)<tolerance:
             stability=True
         else:

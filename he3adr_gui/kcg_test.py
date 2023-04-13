@@ -109,7 +109,7 @@ class zaber():
         charcoal_heatswitch_closed = False
 
     def MoveRelative(self,steps):
-        print('Charcoal MoveRelative', steps)
+        print(('Charcoal MoveRelative', steps))
 
 class email():
     def __init__(self):

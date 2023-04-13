@@ -10,12 +10,25 @@ GUI for homebuilt cryo systems runs automags and a secondary feedback loop that 
 ## tower_power_gui
 GUI for turning on/off the tower power supplies in the right order so it doesn't blow up the power card. Run as `tower_power_gui`.
 
-## tdm_term
+## tdm_term =
 Run `tdm_term` to launch a terminal with named tabs and running dastard, cringe and dastard commander. Requires dastard and dastard commander to be installed. The first time you open roxterm (via `tdm_term`) go to Preferenes->Edit Current Profile->General and change "When command exists:" to "Restart Command". This seems to cause it to leave the terminal open for new commands.
 
 ## Why bother with Python 3?
 The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
 
+# Ubuntu 22 instructions
+`roxterm` doesnt work in ubuntu 22, and there are some other weirdnesses, so the instructions need to be totally redone, this is the start
+```
+sudo apt-get update
+sudo apt install python3-dev python3-venv libxcb-xinerama0
+```
+Then you can copy and paste the entire next block hopefully.
+```
+python3 -m venv ~/qsp
+source ~/qsp/bin/activate
+pip install --upgrade pip
+echo "source ~/qsp/bin/activate" >> ~/.bashrc
+```
 
 # Before Install setup venv
 Install python3-venv and roxterm. For certain versions of Ubuntu (17.10 and newer), official Debian packages of roxterm are unavaible. An unsupported version of roxterm can be installed by adding the PPA described at https://launchpad.net/~h-realh/+archive/ubuntu/roxterm prior to running the apt install commands.

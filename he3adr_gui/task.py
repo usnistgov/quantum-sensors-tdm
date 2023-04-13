@@ -1,5 +1,6 @@
-from PyQt4.QtCore import QTimer, QThread, QObject, pyqtSignal
-
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 #
 # Encapsulate the "proper" way to use threads in Qt. Useful for simple cases where
 #  * you want to do some long-running work (like closing a heat switch)
@@ -110,7 +111,7 @@ class TaskWaking(QObject):
     
     def wake_up(self):
         should_continue = self.wake_func(True)
-        print('wake_up returned', should_continue)
+        print(('wake_up returned', should_continue))
         if not should_continue:
             self.thread.quit()
             self.sig_finished.emit()

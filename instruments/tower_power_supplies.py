@@ -6,6 +6,8 @@ Created on July 20, 2011
 Tower Power Supply controller class based on using two (2) Agilent E3631a GPIB power supplies
 '''
 
+from instruments import AgilentE3631A
+
 class TowerPowerSupplies(object):
 
     def __init__(self, pad1=5, pad2=6):
@@ -13,19 +15,9 @@ class TowerPowerSupplies(object):
         '''
         Constructor
         '''
-        try:
-            from . import agilent_e3631a_serial
-            self.power_supply_1 = agilent_e3631a_serial.AgilentE3631A("towerps1")
-            self.power_supply_2 = agilent_e3631a_serial.AgilentE3631A("towerps2")
-            print("using agilent_e3631a_serial, expect to wait 10 seconds for the GUI to work")
-        except:
-            print("failed to find working power supplies on serial ports towerps1 and towerps2")
-            print("trying gpib")
-            from . import agilent_e3631a
-            self.pad1 = pad1
-            self.pad2 = pad2
-            self.power_supply_1 = agilent_e3631a.AgilentE3631A(pad=self.pad1)
-            self.power_supply_2 = agilent_e3631a.AgilentE3631A(pad=self.pad2)
+        self.power_supply_1 = AgilentE3631A("towerps1")
+        self.power_supply_2 = AgilentE3631A("towerps2")
+        print("using agilent_e3631a_serial, expect to wait 10 seconds for the GUI to work")
 
 
 
