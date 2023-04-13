@@ -1,0 +1,1599 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>921</width>
+    <height>856</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,2">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="dataplot_mpl" name="plot1" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>200</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="dataplot_mpl" name="plot2" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>200</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="dataplot_mpl" name="plot3" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>200</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>1</number>
+      </property>
+      <widget class="QWidget" name="tab_config">
+       <attribute name="title">
+        <string>Config</string>
+       </attribute>
+       <widget class="QWidget" name="formLayoutWidget_2">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>30</y>
+          <width>581</width>
+          <height>80</height>
+         </rect>
+        </property>
+        <layout class="QFormLayout" name="formLayout_2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Polling Interval (s)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="le_polling_interval">
+           <property name="text">
+            <string>4</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Data Directory</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="le_data_directory">
+           <property name="text">
+            <string>/data3/temp_data/</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_he3_2">
+       <attribute name="title">
+        <string>He 3</string>
+       </attribute>
+       <widget class="QGroupBox" name="gb1">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>290</y>
+          <width>211</width>
+          <height>191</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>Cryocon Control</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
+        </property>
+        <widget class="QPushButton" name="pb_enable_cryocon_control">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>140</y>
+           <width>85</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>85</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Enable</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pb_disable_cryocon_control">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>140</y>
+           <width>85</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>85</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Disable</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_cryocon_control_status">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>110</y>
+           <width>41</width>
+           <height>21</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;OFF&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pb_write_cryocon_control">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>110</y>
+           <width>95</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Write</string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="formLayoutWidget_7">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>191</width>
+           <height>71</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout_7">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="l1">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>111</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Upper Setpoint (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="l2">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>127</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>17</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Charcoal Setpoint (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="le_charcoal_setpoint">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>55</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="le_upper_setpoint">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>5</string>
+            </property>
+            <property name="maxLength">
+             <number>32767</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+       <widget class="dataplot_mpl" name="plot_he3" native="true">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>140</y>
+          <width>471</width>
+          <height>341</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="gb2">
+        <property name="geometry">
+         <rect>
+          <x>230</x>
+          <y>10</y>
+          <width>601</width>
+          <height>131</height>
+         </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>Heatswitch Control</string>
+        </property>
+        <widget class="QWidget" name="layoutWidget">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>25</y>
+           <width>321</width>
+           <height>95</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="l4">
+            <property name="minimumSize">
+             <size>
+              <width>54</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Pot</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="l_pot_hs_status">
+            <property name="minimumSize">
+             <size>
+              <width>51</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;???&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QPushButton" name="pb_close_adr_hs">
+            <property name="minimumSize">
+             <size>
+              <width>85</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Close</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="pb_open_pot_hs">
+            <property name="minimumSize">
+             <size>
+              <width>85</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Open</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QPushButton" name="pb_open_adr_hs">
+            <property name="minimumSize">
+             <size>
+              <width>85</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Open</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QPushButton" name="pb_close_pot_hs">
+            <property name="minimumSize">
+             <size>
+              <width>85</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Close</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="l_adr_hs_status">
+            <property name="minimumSize">
+             <size>
+              <width>37</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;???&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="l3">
+            <property name="minimumSize">
+             <size>
+              <width>27</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>ADR</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="l5">
+            <property name="text">
+             <string>Charcoal</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="l_charcoal_hs_status">
+            <property name="text">
+             <string>&lt;b&gt;???&lt;/b&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QPushButton" name="pb_open_charcoal_hs">
+            <property name="text">
+             <string>Open</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3">
+           <widget class="QPushButton" name="pb_close_charcoal_hs">
+            <property name="text">
+             <string>Close</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="pb_charcoal_hs_move_relative">
+         <property name="geometry">
+          <rect>
+           <x>490</x>
+           <y>30</y>
+           <width>101</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Move Relative</string>
+         </property>
+        </widget>
+        <widget class="QLineEdit" name="le_charcoal_num_turns">
+         <property name="geometry">
+          <rect>
+           <x>390</x>
+           <y>30</y>
+           <width>85</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>85</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>-0.05</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l29">
+         <property name="geometry">
+          <rect>
+           <x>340</x>
+           <y>40</y>
+           <width>58</width>
+           <height>17</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Turns:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_charcoal_position">
+         <property name="geometry">
+          <rect>
+           <x>340</x>
+           <y>70</y>
+           <width>91</width>
+           <height>17</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Position: 0</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pb_charcoal_position_reset">
+         <property name="geometry">
+          <rect>
+           <x>490</x>
+           <y>60</y>
+           <width>101</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Reset Position</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QGroupBox" name="gb_charcoal_close">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>211</width>
+          <height>271</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Slow Charcoal Close</string>
+        </property>
+        <widget class="QWidget" name="formLayoutWidget_3">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>193</width>
+           <height>194</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout_3">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Fast Turns</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_fast_turns">
+            <property name="text">
+             <string>5</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Stage 1 Turns</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_stage1_turns">
+            <property name="text">
+             <string>1</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Stage 1 Temp (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_stage1_temp">
+            <property name="text">
+             <string>3.8</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Stage 2 Temp (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_stage2_temp">
+            <property name="text">
+             <string>5.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Full Close Temp (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_full_close_temp">
+            <property name="text">
+             <string>10.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>Step Time (s)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="le_charcoal_close_step_time">
+            <property name="text">
+             <string>10.0</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="pb_charcoal_close_start">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>230</y>
+           <width>87</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Start</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_slow_charcoal_close_status">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>230</y>
+           <width>91</width>
+           <height>17</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>???</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QGroupBox" name="gb_he3_test">
+        <property name="geometry">
+         <rect>
+          <x>230</x>
+          <y>160</y>
+          <width>181</width>
+          <height>231</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>He-3 Cycle</string>
+        </property>
+        <widget class="QPushButton" name="pb_he3_test_start">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>190</y>
+           <width>85</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>85</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Start</string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="formLayoutWidget_6">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>161</width>
+           <height>156</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout_6">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_14">
+            <property name="text">
+             <string>Hold Time (min):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="le_he3_test_hold_time">
+            <property name="text">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>Heat Start Temp (K):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="le_he3_test_heat_start_temp">
+            <property name="text">
+             <string>0.5</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>Heat Stop Temp (K):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="le_he3_test_heat_stop_temp">
+            <property name="text">
+             <string>1.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="cb_he3_test_apply_heat">
+            <property name="text">
+             <string>Apply Heat</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>Heater Voltage (V):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="le_he3_test_voltage">
+            <property name="text">
+             <string>1.0</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_adr">
+       <attribute name="title">
+        <string>ADR</string>
+       </attribute>
+       <widget class="QGroupBox" name="gb_ramp">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>80</y>
+          <width>241</width>
+          <height>291</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Ramp Up</string>
+        </property>
+        <widget class="QPushButton" name="pb_ramp_careful">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>250</y>
+           <width>95</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Careful Ramp</string>
+         </property>
+        </widget>
+        <widget class="QWidget" name="formLayoutWidget">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>224</width>
+           <height>217</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::ExpandingFieldsGrow</enum>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="l_7">
+            <property name="text">
+             <string>Current Level (%):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="l_ramp_current_level">
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="l_8">
+            <property name="text">
+             <string>Target Level (%):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="le_ramp_target_level">
+            <property name="text">
+             <string>90</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="l_9">
+            <property name="text">
+             <string>Total Time (min):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="le_ramp_time">
+            <property name="text">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="l_10">
+            <property name="text">
+             <string>Step Time (s):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="le_ramp_step_time">
+            <property name="text">
+             <string>5</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="l_11">
+            <property name="text">
+             <string>3K Plate Start Temp (K):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="le_ramp_start_temp">
+            <property name="text">
+             <string>3.2</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="l_12">
+            <property name="text">
+             <string>Max 3K Temp (K):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="le_ramp_max_temp">
+            <property name="text">
+             <string>6.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="l_13">
+            <property name="text">
+             <string>Soak Time (min)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="le_ramp_soak_time">
+            <property name="text">
+             <string>180</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="pb_ramp">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>250</y>
+           <width>101</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Ramp</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QGroupBox" name="gb_ramp_down">
+        <property name="geometry">
+         <rect>
+          <x>280</x>
+          <y>80</y>
+          <width>211</width>
+          <height>231</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Ramp Down</string>
+        </property>
+        <widget class="QWidget" name="formLayoutWidget_4">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>194</width>
+           <height>171</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout_4">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>ADR Start Temp (K)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="le_mag_ramp_down_precool_temp">
+            <property name="text">
+             <string>1.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Target Level (%)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="le_mag_ramp_down_target_level">
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>Total Time (min)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="le_mag_ramp_down_ramp_time">
+            <property name="text">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>Settle Time (s)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="le_mag_ramp_down_settle_time">
+            <property name="text">
+             <string>120</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Step Time (s)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="le_mag_ramp_down_step_time">
+            <property name="text">
+             <string>5.0</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="pb_ramp_down">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>200</y>
+           <width>87</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Start</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QLabel" name="l_ramp_status">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>420</y>
+          <width>241</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Waiting for start temp&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>311</width>
+          <height>51</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Relay Control</string>
+        </property>
+        <widget class="QPushButton" name="pb_relay_control">
+         <property name="geometry">
+          <rect>
+           <x>240</x>
+           <y>20</y>
+           <width>61</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Control</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_6">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>51</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string> Status:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_relay_status">
+         <property name="geometry">
+          <rect>
+           <x>100</x>
+           <y>30</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>&lt;b&gt;???&lt;b&gt;</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pb_relay_ramp">
+         <property name="geometry">
+          <rect>
+           <x>180</x>
+           <y>20</y>
+           <width>51</width>
+           <height>24</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Ramp</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="dataplot_mpl" name="plot_kepco_voltage" native="true">
+        <property name="geometry">
+         <rect>
+          <x>499</x>
+          <y>10</y>
+          <width>391</width>
+          <height>220</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>200</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="dataplot_mpl" name="plot_kepco_current" native="true">
+        <property name="geometry">
+         <rect>
+          <x>499</x>
+          <y>249</y>
+          <width>391</width>
+          <height>220</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>200</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="geometry">
+         <rect>
+          <x>280</x>
+          <y>320</y>
+          <width>211</width>
+          <height>131</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Regulate Temperature</string>
+        </property>
+        <widget class="QWidget" name="formLayoutWidget_5">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>189</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <layout class="QFormLayout" name="formLayout_5">
+          <item row="0" column="0">
+           <widget class="QLabel" name="l_29">
+            <property name="text">
+             <string>Temperature (mK)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="le_regulate_temp">
+            <property name="text">
+             <string>130</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QPushButton" name="pb_regulate_start">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>70</y>
+           <width>87</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Start</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pb_regulate_stop">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>70</y>
+           <width>87</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Stop</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="l_regulate_status">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>100</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>&lt;b&gt;???&lt;b&gt;</string>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_cycle">
+       <attribute name="title">
+        <string>Cycle</string>
+       </attribute>
+       <widget class="QPushButton" name="pb_start_cycle_now">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>90</y>
+          <width>111</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start Cycle Now</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="l_14">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>20</y>
+          <width>67</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start Time:</string>
+        </property>
+       </widget>
+       <widget class="QDateTimeEdit" name="dte_start_time">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>100</x>
+          <y>20</y>
+          <width>149</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="cb_is_daily_cycle">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>50</y>
+          <width>86</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Daily</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="pb_start_cycle_later">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>100</x>
+          <y>50</y>
+          <width>111</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start Cycle Later</string>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="geometry">
+         <rect>
+          <x>290</x>
+          <y>10</y>
+          <width>331</width>
+          <height>331</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Cycle Status</string>
+        </property>
+        <widget class="QWidget" name="gridLayoutWidget">
+         <property name="geometry">
+          <rect>
+           <x>9</x>
+           <y>29</y>
+           <width>313</width>
+           <height>295</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_3" columnstretch="3,2">
+          <item row="13" column="1">
+           <widget class="QLabel" name="l_cycle_status_ramp_up">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="16" column="0">
+           <widget class="QLabel" name="l_22">
+            <property name="text">
+             <string>Turn off Charcoal Power</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="l_15">
+            <property name="text">
+             <string>&lt;b&gt;Step&lt;/b&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="1">
+           <widget class="QLabel" name="l_cycle_status_close_pot_hs">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="18" column="0">
+           <widget class="QLabel" name="l_24">
+            <property name="text">
+             <string>Open ADR Heat Switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="l_17">
+            <property name="text">
+             <string>Open Charcoal Heat Swtich</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="l_16">
+            <property name="text">
+             <string>Close Pot Heat Switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QLabel" name="l_18">
+            <property name="text">
+             <string>&lt;b&gt;Status&lt;/b&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="l_19">
+            <property name="text">
+             <string>Heat Charcoal</string>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="0">
+           <widget class="QLabel" name="l_20">
+            <property name="text">
+             <string>Ramp up Magnet</string>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="0">
+           <widget class="QLabel" name="l_21">
+            <property name="text">
+             <string>Soak Magnet</string>
+            </property>
+           </widget>
+          </item>
+          <item row="17" column="0">
+           <widget class="QLabel" name="l_23">
+            <property name="text">
+             <string>Close Charcoal Heat Switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QLabel" name="l_cycle_status_open_charcoal_hs">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="1">
+           <widget class="QLabel" name="l_cycle_status_heat_charcoal">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="19" column="0">
+           <widget class="QLabel" name="l_25">
+            <property name="text">
+             <string>Ramp Down Magnet</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="0">
+           <widget class="QLabel" name="l_26">
+            <property name="text">
+             <string>Open Pot Heat Switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="l_27">
+            <property name="text">
+             <string>Close ADR Heat Switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="1">
+           <widget class="QLabel" name="l_cycle_status_close_adr_hs">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="1">
+           <widget class="QLabel" name="l_cycle_status_soak">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="0">
+           <widget class="QLabel" name="l_28">
+            <property name="text">
+             <string>Wait for Cool plate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="1">
+           <widget class="QLabel" name="l_cycle_status_wait_cool_plate">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="15" column="1">
+           <widget class="QLabel" name="l_cycle_status_open_pot_hs">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="16" column="1">
+           <widget class="QLabel" name="l_cycle_status_turn_off_charcoal">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="17" column="1">
+           <widget class="QLabel" name="l_cycle_status_close_charcoal">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="18" column="1">
+           <widget class="QLabel" name="l_cycle_status_open_adr_hs">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+          <item row="19" column="1">
+           <widget class="QLabel" name="l_cycle_status_ramp_down_magnet">
+            <property name="text">
+             <string>???</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+       <widget class="QPushButton" name="pb_stop_cycle">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>120</y>
+          <width>111</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop Cycle</string>
+        </property>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>921</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionQuit"/>
+   </widget>
+   <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>dataplot_mpl</class>
+   <extends>QWidget</extends>
+   <header>dataplot_mpl</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

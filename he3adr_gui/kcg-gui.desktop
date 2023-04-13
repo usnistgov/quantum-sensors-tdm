@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Cryostat Control GUI
+Exec=xfce4-terminal -x sh -c "/home/pcuser/gitrepo/nist_qsp_readout.kpac/kpac/kcg ; bash"
+Icon=/home/pcuser/gitrepo/nist_qsp_readout.kpac/kpac/vince.png
+Categories=Utility; 

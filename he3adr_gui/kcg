@@ -1,0 +1,3 @@
+#!/bin/bash
+#source $HOME/installs/anaconda3/bin/activate kcg
+python2 $HOME/nist_qsp_readout.kpac/kpac/kcg.py "$@"
