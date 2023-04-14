@@ -382,8 +382,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def autorange(self):
         if time.time() - self.timeOfLastAutorange > 4:
-            didAutorange = self.tempControl.safeAutorange()
-            if didAutorange: self.timeOfLastAutorange = time.time()
+            try:
+                didAutorange = self.tempControl.safeAutorange()
+                if didAutorange: self.timeOfLastAutorange = time.time()
+            except Exception as ex:
+                print("failed autorange probably due to lakeshore poor comms")
 
     def timerHandler(self):
         self.pollTempControl()
