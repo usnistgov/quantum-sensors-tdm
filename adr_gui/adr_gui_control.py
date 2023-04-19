@@ -13,7 +13,9 @@ ADR_GUI_COMMANDS = {
     'get_temp_rms_uk': {'fname':'rpc_get_temp_rms_uk', 'args':None, 'help':'temp temperature stability rms'},
     'get_slope_hout_per_hour': {'fname':'rpc_get_slope_hout_per_hour', 'args':None, 'help':'return the heater change per hour slope'},
     'get_hout': {'fname':'rpc_get_hout', 'args':None, 'help':'return the heater out value'},
-    'echo':{'fname':'rpc_echo', 'args':['x'], 'help':'return the string representation of x, for testing'},      
+    'echo':{'fname':'rpc_echo', 'args':['x'], 'help':'return the string representation of x, for testing'},
+    'get_ramp_rate_kpm': {'fname':'rpc_get_ramp_rate_kpm', 'args':None, 'help':'return the most recent ramp rate in kelvin per minute'},
+    'set_ramp_rate_kpm': {'fname':'rpc_set_ramp_rate_kpm', 'args':['ramp_rate_kpm'], 'help':'works in control mode only, set the ramp rate in kelvin per minute'},
     }
 
 
@@ -50,6 +52,20 @@ class AdrGuiControl:
         success, extra_info = self.send_decode_reply("get_temp_k")
         assert success
         return float(extra_info)
+
+    def set_temp_k(self, setpoint_k):
+        success, extra_info = self.send_decode_reply(f"set_temp_k {float(setpoint_k)}")
+        return success
+
+    def get_ramp_rate_kpm(self):
+        success, extra_info = self.send_decode_reply("get_ramp_rate_kpm")
+        #assert success
+        #return float(extra_info)
+        return extra_info
+
+    def set_ramp_rate_kpm(self, ramp_rate_kpm):
+        success, extra_info = self.send_decode_reply(f"set_ramp_rate_kpm {float(ramp_rate_kpm)}")
+        return success
 
     def set_temp_k(self, setpoint_k):
         success, extra_info = self.send_decode_reply(f"set_temp_k {float(setpoint_k)}")
