@@ -67,8 +67,10 @@ class SerialInstrument(instrument.Instrument):
         '''
         send a command and get a float in return. Has error handling for empty returns.
         '''
-        self.write(string)
+        self.write(string.encode())
         result = self.read()
+        print(f"asking : {string}")
+        print(f"result: {result}")
         float_result = np.nan
         if len(result) > 0:
             float_result = float(result)

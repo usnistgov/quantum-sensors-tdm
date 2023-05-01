@@ -92,7 +92,7 @@
          <item row="1" column="1">
           <widget class="QLineEdit" name="le_data_directory">
            <property name="text">
-            <string>/data3/temp_data/</string>
+            <string>/home/pcuser/.kpg/log</string>
            </property>
           </widget>
          </item>

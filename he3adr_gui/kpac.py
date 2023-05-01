@@ -50,10 +50,7 @@ class KPAC(QObject):
             import kcg_test
             self.cc = kcg_test.cryocon()
             self.lsh = kcg_test.lakeshore()
-            self.lj = kcg_test.labjack()
-            self.za = kcg_test.zaber()
-
-            self.email = tes_mail.TESMail()
+            # self.email = tes_mail.TESMail()
         else:
             self.cc = Cryocon24c_ser(port='cryocon1')
             try:
@@ -67,8 +64,7 @@ class KPAC(QObject):
                 print(ex)
                 self.ps = None
             self.lsh = Lakeshore370()
-            # self.lj = labjack.Labjack()
-            # self.za = zaber.Zaber()
+            self.lj = labjack.Labjack()
             # self.email = tes_mail.TESMail()
 
         # Times at which we have polled for temp/voltage/current/pressure
@@ -131,7 +127,7 @@ class KPAC(QObject):
             self.sig_charcoal_above_setpoint.emit()
 
         args = QCoreApplication.arguments()
-        if args.count() > 1 and args[1] == 'test':
+        if len(args) > 1 and args[1] == 'test':
             pass
         else:
             # Log to a new file each day
@@ -170,59 +166,63 @@ class KPAC(QObject):
     sig_adr_hs_close_done = pyqtSignal()
     def closeADRHeatSwitch(self):
         '''Closes the ADR heat switch through the labjack.'''
-
         self.sig_adr_hs_close_start.emit()
-        self.lj.setDigIOState(4, 'low')
-        self.lj.setDigIOState(5, 'high')
-        time.sleep(4.0)
-        self.lj.setDigIOState(5, 'low')
-        time.sleep(3)
+        self.lj_pulse_digitalState(10)
         self.sig_adr_hs_close_done.emit()
 
     sig_adr_hs_open_start = pyqtSignal()
     sig_adr_hs_open_done = pyqtSignal()
     def openADRHeatSwitch(self):
         self.sig_adr_hs_open_start.emit()
-        '''Opens the ADR heat switch through the labjack.'''
-
-        self.lj.setDigIOState(4, 'high')
-        self.lj.setDigIOState(5, 'high')
-        time.sleep(4.5)
-        self.lj.setDigIOState(5, 'low')
-        self.lj.setDigIOState(4, 'low')
-        time.sleep(3)
+        self.lj_pulse_digitalState(8)
         self.sig_adr_hs_open_done.emit()
+
+    def lj_pulse_digitalState(self, ch, sleep_s=0.1, retries=3):  
+        for i in range(retries):
+            try:         
+                if i > 0:
+                    print("lj_pulse_digitalState retrying set high")
+                self.lj.setDigIOState(ch, 'high')
+                break
+            except Exception:
+                continue
+        time.sleep(sleep_s)
+        for i in range(retries):
+            try:         
+                if i > 0:
+                    print("lj_pulse_digitalState retrying set low")
+                self.lj.setDigIOState(ch, 'low')
+                break
+            except Exception:
+                continue
 
     sig_pot_hs_close_start = pyqtSignal()
     sig_pot_hs_close_done = pyqtSignal()
     def closePotHeatSwitch(self):
         self.sig_pot_hs_close_start.emit()
-        self.lj.pulse_digitalState(11)
+        self.lj_pulse_digitalState(11)
         self.sig_pot_hs_close_done.emit()
 
     sig_pot_hs_open_start = pyqtSignal()
     sig_pot_hs_open_done = pyqtSignal()
     def openPotHeatSwitch(self):
         self.sig_pot_hs_open_start.emit()
-        self.lj.pulse_digitalState(12)
+        self.lj_pulse_digitalState(12)
         self.sig_pot_hs_open_done.emit()
 
     sig_charcoal_hs_close_start = pyqtSignal()
     sig_charcoal_hs_close_done = pyqtSignal()
     def closeCharcoalHeatSwitch(self):
         self.sig_charcoal_hs_close_start.emit()
-        self.za.CloseHeatSwitch(13)
+        self.lj_pulse_digitalState(17)
         self.sig_charcoal_hs_close_done.emit()
 
     sig_charcoal_hs_open_start = pyqtSignal()
     sig_charcoal_hs_open_done = pyqtSignal()
     def openCharcoalHeatSwitch(self):
         self.sig_charcoal_hs_open_start.emit()
-        self.za.OpenHeatSwitch(11)
+        self.lj_pulse_digitalState(19)
         self.sig_charcoal_hs_open_done.emit()
-
-    def move_charcoal_relative(self, num_turns):
-        self.za.MoveRelative(int(num_turns*12800))
 
     def enable_cryocon_control(self):
         self.cc.CONTrol()

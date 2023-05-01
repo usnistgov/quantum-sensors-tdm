@@ -163,15 +163,13 @@ class Labjack(object):
                 fio_state_mask = fio_state_mask+2**output
             
         self.safeLJOpen()
-        self.lj.configU3(FIOAnalog=ai_mask,FIODirection=fio_dir_mask,FIOState=fio_state_mask) 
+        self.lj.configU3(FIOAnalog=ai_mask,FIODirection=fio_dir_mask,
+                         FIOState=fio_state_mask,
+                         CIODirMask=255, # all CIO as output
+                         EIODirMask=255, # all EIO as output
+                         ) 
         self.lj.close()
         
-    def configStarupForADRControl(self, ai_inputs=[0,1,2,3], outputs=[4,5,6,7], output_states=[0,0,0,0]):
-        '''Setup FIO 0-3 for analog input and FIO 4-7 at startup to be output and low. Currently for U3 only'''
-        
-        print('Setting up Labjack for controlling the ADR Control Box')
-        self.configStarupFIOs(ai_inputs=ai_inputs, outputs=outputs, output_states=output_states)
-
     def setRelayControl(self, io_channel):
         '''Turn on digital io channel for 2 seconds then turn back off to switch latching relay '''
         

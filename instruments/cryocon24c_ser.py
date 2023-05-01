@@ -22,10 +22,10 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
     '''
 
 
-    def __init__(self, port='cryocon', baud=9600, shared=True):
+    def __init__(self, port='cryocon1', baud=9600, shared=True):
         '''Constructor  The PAD (Primary GPIB Address) is the only required parameter '''
 
-        super(Cryocon24c_ser, self).__init__(port, baud, shared, readtimeout=5)
+        super(Cryocon24c_ser, self).__init__(port, baud, shared, readtimeout=0.25)
         
         self.id_string = ""
         self.manufacturer = 'Cryocon'
@@ -59,7 +59,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
     def getHeaterPower(self, channel=1):
         ''' Get temperature from a given channel as a float '''
 
-        commandstring = 'LOOP ' + str(channel) + ':OUTPwr?'
+        commandstring = f"LOOP {channel}:OUTPwr?"
         response = self.askFloat(commandstring)
         power = response
 
@@ -69,14 +69,20 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
         '''Set the thermometer for a loop '''
 
         commandstring = 'LOOP ' + str(loop) + ':SOURce ' + str(thermometer)
-        self.write(commandstring)
+        result = self.ask(commandstring)
+        print("setLoopThermometer")
+        print(commandstring)
+        print(result)
 
     def setTemperature(self, channel, temp):
         '''Set temperature to a given channel '''
 
         if temp is not None:
             commandstring = 'LOOP ' + str(channel) + ':SETPt ' + str(temp)
-            self.write(commandstring)
+            result = self.ask(commandstring)
+            print("setTemperature")
+            print(commandstring)
+            print(result)
         else:
             print('Not a valid temperature')
 
@@ -85,23 +91,22 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
 
         commandstring = 'LOOP? ' + str(channel) + ':SETPt?'
         ans = self.ask(commandstring)
-        if ans[-3:] != 'K\r\n':
-            pass # xxx need to report an error
-        print('XXXXXXXX', ans)
+        # print('Crycon24c getTemperatureSetpoint response:', ans)
+        if ans[-3:] != b'K\r\n':
+            raise Exception("response should end with K")
         return float(ans[:-3])
 
     def STOP(self):
         '''Stop regulating the temperature'''
         commandstring = 'STOP'
-        self.write(commandstring)
+        self.ask(commandstring)
 
     def CONTrol(self):
   
         commandstring = 'CONT'
-        self.write(commandstring)
-        sleep(5)
+        self.ask(commandstring)
+        # sleep(5)
 
-    # xxx beckerd - just prints result to stdout, seems pointless
     def getControl(self):
 
         commandstring = 'CONT?'
@@ -110,15 +115,16 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
     def setHeaterRange(self, loop, Vrange):
 	
         commandstring = 'LOOP ' + str(loop) + ':RANGe ' + str(Vrange)
-        self.write(commandstring)
+        self.ask(commandstring)
 
     def setHeaterOut(self, loop, Vpercent):
 
         commandstring = 'LOOP ' + str(loop) + ':PMANual ' + str(Vpercent)
-        self.write(commandstring)
+        self.ask(commandstring)
 
     def setToManual(self, loop = 1):
 	
         commandstring = 'LOOP ' + str(loop) + ':TYPe ' + 'MAN'
-        self.write(commandstring)
+        self.ask(commandstring)
+
 

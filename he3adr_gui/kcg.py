@@ -130,7 +130,7 @@ class KPACGui(QMainWindow):
         # Read status of certain components
         #
         ans = self.KPAC.read_cryocon_control()
-        self.l_cryocon_control_status.setText(as_bold_14pt(ans[0]))
+        self.l_cryocon_control_status.setText(as_bold_14pt(ans[0].decode()))
         self.le_upper_setpoint.setText(str(ans[2]))
         self.le_charcoal_setpoint.setText(str(ans[1]))
 
