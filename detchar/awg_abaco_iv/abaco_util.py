@@ -11,6 +11,8 @@ import qsghw.fpgaip.helpers as fpgaiphelpers
 
 
 (ctrlif, dataif, eids) = corehelpers.open(ctrlurl, dataurl, opendata=True, quiet=True) #verbose=False)
+print(f"dataif {dataif}")
+
 print("cmd =", " ".join(sys.argv))
 
 fset = fpgaiphelpers.makeinstance(ctrlif, eids, ":fullset:", verbose=debug)
@@ -33,7 +35,7 @@ backend.write_pktrst(0)
 
 backend.write_monrst(1)
 backend.write_pktsrc("ATAN1", "monitor")
-backend.write_monmerge(2)
+backend.write_monmerge(14)
 backend.write_mondec(1)
 backend.write_monrst(0)
 
@@ -51,13 +53,14 @@ def getdata(toread, tosleep_s):
 
     time.sleep(tosleep_s)
     dataif.reset()
+    # time.sleep(tosleep_s)
     (nbytes, buffer) = dataif.readall(toread)
-    print(nbytes, buffer[0:31])
+    # print(nbytes, buffer[0:31])
 
     (headeroffsets, payloadoffsets, payloadlengths, seqnos) = packetparser.findlongestcontinuous(buffer, incr=1024)
     (consumed, alldata) = packetparser.parsemany(buffer, headeroffsets[0], payloadoffsets, verbose = True)
-    print("longest continuous:", toread, "->", nbytes, "->", consumed, "=", len(payloadoffsets), "packets =", sum(payloadlengths), "byte total payload")
-    print(alldata.data.shape, "x", alldata.data.dtype)
+    # print("longest continuous:", toread, "->", nbytes, "->", consumed, "=", len(payloadoffsets), "packets =", sum(payloadlengths), "byte total payload")
+    # print(alldata.data.shape, "x", alldata.data.dtype)
     return alldata
 
 #get sync signal and unwrap + convert atan

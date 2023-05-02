@@ -14,8 +14,8 @@ plt.close("all")
 
 
 srate =  33e1 # rate at which the awg steps thru the profile
-profile0 = awg.make_ramp_dwell_ramp_profile(n_ramp=400, n_dwell=25, blip_delta=0.0)
-profile_extra = awg.make_pulse_profile(baseline=0.125, peaks=[1, 0.125, 0.125, 0.125, 0.127, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.13, 0.135, 0.14, 0.15, 0.2, 0.25, 0.3], n_dwell=10)
+profile0 = awg.make_ramp_dwell_ramp_profile(n_ramp=100, n_dwell=25, blip_delta=0.0)
+profile_extra = awg.make_pulse_profile(baseline=0.125, peaks=[1, 0.125, 0.125, 0.125, 0.127, 0.129, 0.129, 0.129, 0.129, 0.129, 0.129, 0.13, 0.135, 0.14, 0.15, 0.2, 0.25, 0.3], n_dwell=10)
 # profile = np.array(list(profile0)+profile_extra)
 ramp_extreme = 10 # voltage scale to multiply profile by
 phi0_fb = 1024
@@ -33,7 +33,7 @@ def getdata(profile, ramp_extreme):
         awg.ch1_set_ramp_extreme(ramp_extreme)
         time.sleep(2)
         for i in range(5):
-                alldata = abaco_util.getdata(toread = 1024*1024*1200, tosleep_s=0.12)
+                alldata = abaco_util.getdata(toread = 1024*1024*300, tosleep_s=0.12)
                 if len(alldata.data) >= 150000:
                         break
                 if i ==4:
@@ -121,7 +121,7 @@ makeplot(sync_in, phase, ind_edge_up, ind_edge_down, d, profile, ramp_extreme)
 # plt.pause(20)
 
 
-datafilename = "galens_iv_data.h5"
+datafilename = "galens_iv_data_sc_branch.h5"
 h5 = h5py.File(datafilename,"w")
 
 g = h5.create_group("test_iv")
@@ -130,12 +130,12 @@ g = h5.create_group("test_pulsey")
 take_data_and_to_group(g, profile_extra, 10)
 
 i=0
-temps_mk = [25, 30, 35, 40, 45, 50, 55, 60, 25, 30]
-for j in range(1):
+temps_mk = [25]
+for j in range(3):
         for temp_mk in temps_mk:
                 set_and_settle(temp_mk)
                 plt.close("all")
-                for q in range(2):
+                for q in range(4):
                         plt.pause(q*30) #pause longer and longer each time, want to see how long
                         # we need to really settle
                         print(f"j {j}, temp_mk {temp_mk}, q {q}")

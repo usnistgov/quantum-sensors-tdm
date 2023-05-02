@@ -7,7 +7,6 @@ import time
 import sys, os
 import socket
 
-
 class Agilent33500SCPI():
     def __init__(self, addr="192.168.101.59", port=5025):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -65,6 +64,18 @@ class Agilent33500SCPI():
             raise ValueError(
                 'Undefined format keyword was used. Valid entries are "DAC", "float" and "binary"')
 
+    def check_errors(self):
+        """ Read all errors from the instrument.
+        :return: list of error entries
+        """
+        errors = []
+        while True:
+            err = a.ask("SYST:ERR?")
+            if int(err[0]) != 0:
+                errors.append(err)
+            else:
+                break
+        return errors
     
 a = Agilent33500SCPI()
 
@@ -132,11 +143,14 @@ def ch1_setup(profile, srate):
     # a.output_load = "INF"
     a.write("OUTP:LOAD INF")
     # a.burst_state = True
-    a.write("BURS:STAT 1")
+    # a.write("BURS:STAT 1")
     # a.busrt_ncycles = 1
-    a.write("BURS:NCYC 1")
+    a.write("BURS:NCYC 2")
     # a.trigger_source ="BUS"
-    a.write("TRIG:SOUR BUS")
+    a.write("TRIG:SOUR IMM")
+    a.write("BURS:INT:PER MIN")
+    a.write("OUTP:SYNC:MODE MARK")
+    a.write("SOUR:MARK:POINT 0")
     ch1_ramp_setup(profile)
     ch1_set_ramp_extreme(0)
 
@@ -145,7 +159,7 @@ def ch1_trigger(ramp_extreme):
     ch1_set_ramp_extreme(ramp_extreme)
     time_nano = time.time()*1e9
     # a.trigger()
-    a.write("*TRG;*WAI")
+    # a.write("*TRG;*WAI")
     return time_nano
 
 def make_ramp_dwell_ramp_profile(n_ramp, n_dwell, blip_delta):
@@ -155,6 +169,13 @@ def make_ramp_dwell_ramp_profile(n_ramp, n_dwell, blip_delta):
     start_dwell = np.zeros(n_dwell)
     profile = np.hstack([start_dwell, _ramp, dwell, _ramp[::-1], start_dwell])
     return profile
+
+def make_pulse_profile(baseline, peaks, n_dwell):
+    profile = []
+    for peak in peaks:
+        profile += [peak]*n_dwell
+        profile += [baseline]*n_dwell
+    return np.array(profile)
 
 def add_flux_jumps(fb, phi0_fb, fb_step_threshold):
     """return an array like fb, but with flux jumps resolved and one value removed from the end
@@ -190,16 +211,5 @@ def get_fba_offsets():
     assert reply.startswith("ok")
     return fba_offsets
 
-def check_errors(self):
-    """ Read all errors from the instrument.
-    :return: list of error entries
-    """
-    errors = []
-    while True:
-        err = a.ask("SYST:ERR?")
-        if int(err[0]) != 0:
-            errors.append(err)
-        else:
-            break
-    return errors
+
 
