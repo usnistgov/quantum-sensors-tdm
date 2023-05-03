@@ -9,7 +9,7 @@ from . import towercard
 from cringe.shared import terminal_colors as tc
 from cringe.shared import log
 
-BAY_NAMES = ["CX","CY","DX","DY","AX","AY","BX","BY"]
+BAY_NAMES = ["0","1","2","3","4","5","6","7"]
 
 class LabelWidget(QWidget):
     def __init__(self, parent=None):
