@@ -264,19 +264,19 @@ class IVCommon():
         def cut(arr,dexs):
             n,m=np.shape(arr)
             arr_copy = arr.copy()
-            for ii in range(m):
-                if dexs[ii]==self.n_dac_values: pass
-                else: arr_copy[dexs[ii]+1:,ii] = np.ones(self.n_dac_values-dexs[ii]-1)*np.nan
+            for ii in range(m): # loop over columns (ie different detector fb responses)
+                if dexs[ii]==n: pass
+                else: arr_copy[dexs[ii]+1:,ii] = np.ones(n-dexs[ii]-1)*np.nan
             return arr_copy
 
         dexs=[]
         n,m=np.shape(i)
         for ii in range(m):
             dexs.append(self.find_bad_data_index(v[:,ii],i[:,ii],threshold=threshold,showplot=False))
-        v_clean = cut(self.v,dexs)
-        i_clean = cut(self.i,dexs)
-        r_clean = cut(self.r,dexs)
-        p_clean = cut(self.p,dexs)
+        v_clean = cut(v,dexs)
+        i_clean = cut(i,dexs)
+        r_clean = cut(r,dexs)
+        p_clean = cut(p,dexs)
         return v_clean, i_clean, p_clean, r_clean, dexs
 
     def get_vipr(self, dacs, fb_arr, iv_circuit=None, showplot=False):
@@ -349,6 +349,38 @@ class IVCommon():
         if figlegend:
             fig.legend(figlegend)
         return fig
+
+    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
+        '''
+        Return the value of arr at fraction of Rn.
+        input:
+        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
+        arr: NxM array to determine the Rn fraction at
+        ro: NxM normalized resistance
+
+        arr and ro must be same shape
+        return: len(rn_fracs) x M array of the interpolated values
+
+        '''
+        # ensure rn_fracs is a np.array
+        if type(rn_fracs)!=np.ndarray:
+            rn_fracs = np.array(rn_fracs)
+        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
+        n,m=np.shape(arr)
+        result = np.zeros((len(rn_fracs),m))
+        for ii in range(m):
+            x = self.remove_NaN(ro[:,ii])
+            y = self.remove_NaN(arr[:,ii])
+            YY = np.interp(rn_fracs,x[::-1],y[::-1])
+
+            # over write with NaN for when data does not extend to fracRn
+            ro_min = np.min(x)
+            toCut = np.where(rn_fracs<ro_min)[0]
+            N = len(toCut)
+            if N >0:
+                YY[0:N] = np.zeros(N)*np.NaN
+            result[:,ii] = YY
+        return result
 
 class IVCurveColumnDataExplore():
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
@@ -637,43 +669,6 @@ class IVSetAnalyzeRow(IVCommon):
     def plot_vipr(self,fignum=1):
         self.plot_vipr_method(self.v,self.i,self.p,self.r,fignum=fignum, figtitle=self.figtitle,figlegend=self.state_list)
 
-    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
-        '''
-        Return the value of arr at fraction of Rn.
-        input:
-        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
-        arr: NxM array to determine the Rn fraction at
-        ro: NxM normalized resistance
-
-        arr and ro must be same shape
-        return: len(rn_fracs) x M array of the interpolated values
-
-        This method used to determine the electrical power at some Rn fraction.
-        It is used to make the global variable self.p_at_rnfrac, a 2D array
-        Each row of this array is the electrical power determined at each cl_temps_k, and for
-        a single cut in Rn.
-
-        '''
-        # ensure rn_fracs is a np.array
-        if type(rn_fracs)!=np.ndarray:
-            rn_fracs = np.array(rn_fracs)
-        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
-        n,m=np.shape(arr)
-        result = np.zeros((len(rn_fracs),m))
-        for ii in range(m):
-            x = self.removeNaN(ro[:,ii])
-            y = self.removeNaN(arr[:,ii])
-            YY = np.interp(rn_fracs,x[::-1],y[::-1])
-
-            # over write with NaN for when data does not extend to fracRn
-            ro_min = np.min(x)
-            toCut = np.where(rn_fracs<ro_min)[0]
-            N = len(toCut)
-            if N >0:
-                YY[0:N] = np.zeros(N)*np.NaN
-            result[:,ii] = YY
-        return result
-
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.
     '''
@@ -735,37 +730,37 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         #print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
 
-    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
-        '''
-        Return the value of arr at fraction of Rn.
-        input:
-        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
-        arr: NxM array to determine the Rn fraction at
-        ro: NxM normalized resistance
-
-        arr and ro must be same shape
-        return: len(rn_fracs) x M array of the interpolated values
-
-        '''
-        # ensure rn_fracs is a np.array
-        if type(rn_fracs)!=np.ndarray:
-            rn_fracs = np.array(rn_fracs)
-        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
-        n,m=np.shape(arr)
-        result = np.zeros((len(rn_fracs),m))
-        for ii in range(m):
-            x = self.remove_NaN(ro[:,ii])
-            y = self.remove_NaN(arr[:,ii])
-            YY = np.interp(rn_fracs,x[::-1],y[::-1])
-
-            # over write with NaN for when data does not extend to fracRn
-            ro_min = np.min(x)
-            toCut = np.where(rn_fracs<ro_min)[0]
-            N = len(toCut)
-            if N >0:
-                YY[0:N] = np.zeros(N)*np.NaN
-            result[:,ii] = YY
-        return result
+    # def get_value_at_rn_frac(self,rn_fracs,arr,ro):
+    #     '''
+    #     Return the value of arr at fraction of Rn.
+    #     input:
+    #     rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
+    #     arr: NxM array to determine the Rn fraction at
+    #     ro: NxM normalized resistance
+    #
+    #     arr and ro must be same shape
+    #     return: len(rn_fracs) x M array of the interpolated values
+    #
+    #     '''
+    #     # ensure rn_fracs is a np.array
+    #     if type(rn_fracs)!=np.ndarray:
+    #         rn_fracs = np.array(rn_fracs)
+    #     assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
+    #     n,m=np.shape(arr)
+    #     result = np.zeros((len(rn_fracs),m))
+    #     for ii in range(m):
+    #         x = self.remove_NaN(ro[:,ii])
+    #         y = self.remove_NaN(arr[:,ii])
+    #         YY = np.interp(rn_fracs,x[::-1],y[::-1])
+    #
+    #         # over write with NaN for when data does not extend to fracRn
+    #         ro_min = np.min(x)
+    #         toCut = np.where(rn_fracs<ro_min)[0]
+    #         N = len(toCut)
+    #         if N >0:
+    #             YY[0:N] = np.zeros(N)*np.NaN
+    #         result[:,ii] = YY
+    #     return result
 
     def plot_pr(self,fig_num=1):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
@@ -885,7 +880,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
 
         return fig
 
-class IVColdloadAnalyzeOneRow():
+class IVColdloadAnalyzeOneRow(IVCommon):
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
 
@@ -914,32 +909,31 @@ class IVColdloadAnalyzeOneRow():
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
         self.rn_fracs = self._handle_rn_fracs(rn_fracs) # slices in Rn space to compute electrical power versus temperature
         self.n_rn_fracs = len(self.rn_fracs)
+        self.bad_data_threshold = 1
 
-        # other globals
-        self.variable_defs = self.variable_definitions()
+        # main raw data inputs
         self.dacs = dac_values
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.cl_temps_k = cl_temps_k
         self.bath_temp_k = bath_temp_k
+
+        # other useful globals
+        self.variable_defs = self.variable_definitions()
         self.det_name = det_name
         self.row_name = row_name
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
-        self.fb_align = fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=True,showplot=False)
-        #self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
-                                                          # (i.e. the appropriate DC offset has been removed)
-        # convert to physical units if iv_circuit provided
-        if iv_circuit is not None:
-            self.iv_circuit = iv_circuit
-            self.to_physical_units = True
-        else:
-            self.to_physical_units = False
 
         # do analysis of v,i,r,p vectors.  Place main results as globals to class
-        self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
-        self.ro = self.r / self.r[0,:]
-        self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = self.v, self.i, self.p, self.r, self.ro
-        self.remove_bad_data()
+        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=True,showplot=False) # remove DC offset
+
+        #self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
+        v,i,p,r = self.get_vipr(self.dacs, self.fb_align, iv_circuit, showplot=False)
+        ro = r / r[0,:]
+        self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = v,i,p,r,ro
+        self.v, self.i, self.p, self.r, self.bad_data_idx = self.remove_bad_data(v,i,p,r,threshold=self.bad_data_threshold)
+        self.ro = self.r/self.r[0,:]
+
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
 
         # get change in power versus change in temperature ("infinitesimal", thus lower case d)
@@ -1032,56 +1026,6 @@ class IVColdloadAnalyzeOneRow():
 
         return defs
 
-    # def fb_align_and_remove_offset(self,showplot=False):
-    #     # this method ought to be placed in another general class
-    #     fb_align = np.zeros((self.n_dac_values,self.n_cl_temps))
-    #     for ii in range(self.n_cl_temps): # align fb DC levels to a common value
-    #         dy = self.fb[0,ii]-self.fb[0,0]
-    #         fb_align[:,ii] = self.fb[:,ii]-dy
-    #
-    #     # remove offset
-    #     x = self.dacs[::-1][-self.n_normal_pts:]
-    #     y = fb_align[::-1,:] ; y = y[-self.n_normal_pts:,:]
-    #     m, b = np.polyfit(x,y,deg=1)
-    #
-    #     if np.std(b)/np.mean(b) > 0.01:
-    #         print('Warning DC offset of curves differs by > 1\%')
-    #         print('Offset fit: ',np.mean(b),'+/-',np.std(b))
-    #     if self.use_ave_offset: b = np.mean(b)
-    #     fb_align = fb_align - b
-    #     if m[0]<0: fb_align = fb_align*-1
-    #     if showplot:
-    #         for ii in range(self.n_cl_temps):
-    #             plt.plot(self.dacs,fb_align[:,ii])
-    #         plt.show()
-    #     return fb_align
-
-    def removeNaN(self,arr):
-        ''' only works on 1d vector, not array '''
-        return arr[~np.isnan(arr)]
-
-    def remove_bad_data(self):
-        ''' remove poor data (typically in superconducting transition).
-            Used primarily to avoid throwing off determination of power at a given Rn
-        '''
-        def cut(arr,dexs):
-            n,m=np.shape(arr)
-            arr_copy = arr.copy()
-            for ii in range(m):
-                if dexs[ii]==self.n_dac_values: pass
-                else: arr_copy[dexs[ii]+1:,ii] = np.ones(self.n_dac_values-dexs[ii]-1)*np.nan
-            return arr_copy
-
-        dexs=[]
-        for ii in range(self.n_cl_temps):
-            dexs.append(IVClean().find_bad_data_index(self.dacs,self.fb[:,ii],threshold=0.5,showplot=False))
-        self.bad_data_idx = dexs
-        self.v = cut(self.v,dexs)
-        self.i = cut(self.i,dexs)
-        self.r = cut(self.r,dexs)
-        self.ro = cut(self.ro,dexs)
-        self.p = cut(self.p,dexs)
-
     def update_T_cl_index(self,T_cl_index):
         self.cl_DT_k, self.Dp_at_rnfrac, self.T_cl_index = self.get_Delta_pt(cl_index = T_cl_index)
         if self.dark_analysis:
@@ -1106,58 +1050,6 @@ class IVColdloadAnalyzeOneRow():
         Dp = arr - arr[:,T_cl_index]
         dp = np.diff(arr)
         return Dp, dp
-
-    def get_vipr(self,showplot=False):
-        ''' returns the voltage, current, power, and resistance vectors '''
-        if self.to_physical_units:
-            v,i = self.iv_circuit.to_physical_units(self.dacs,self.fb_align)
-        else:
-            v = np.zeros((self.n_dac_values,self.n_cl_temps))
-            for ii in range(self.n_cl_temps):
-                v[:,ii] = self.dacs
-            i=self.fb_align
-        p=v*i; r=v/i
-
-        if showplot:
-            self.plot_vipr([v,i,p,r])
-        return v,i,p,r
-
-    def get_value_at_rn_frac(self,rn_fracs,arr,ro):
-        '''
-        Return the value of arr at fraction of Rn.
-        input:
-        rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
-        arr: NxM array to determine the Rn fraction at
-        ro: NxM normalized resistance
-
-        arr and ro must be same shape
-        return: len(rn_fracs) x M array of the interpolated values
-
-        This method used to determine the electrical power at some Rn fraction.
-        It is used to make the global variable self.p_at_rnfrac, a 2D array
-        Each row of this array is the electrical power determined at each cl_temps_k, and for
-        a single cut in Rn.
-
-        '''
-        # ensure rn_fracs is a np.array
-        if type(rn_fracs)!=np.ndarray:
-            rn_fracs = np.array(rn_fracs)
-        assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
-        n,m=np.shape(arr)
-        result = np.zeros((len(rn_fracs),m))
-        for ii in range(m):
-            x = self.removeNaN(ro[:,ii])
-            y = self.removeNaN(arr[:,ii])
-            YY = np.interp(rn_fracs,x[::-1],y[::-1])
-
-            # over write with NaN for when data does not extend to fracRn
-            ro_min = np.min(x)
-            toCut = np.where(rn_fracs<ro_min)[0]
-            N = len(toCut)
-            if N >0:
-                YY[0:N] = np.zeros(N)*np.NaN
-            result[:,ii] = YY
-        return result
 
     def get_Delta_pt(self,rn_fracs=None,p_at_rnfrac=None,cl_index=None):
         if cl_index == None: dex = np.argmin(self.cl_temps_k)
@@ -1203,22 +1095,20 @@ class IVColdloadAnalyzeOneRow():
     #     return eta_m, eta_std
 
     # plotting methods ---------------------------------------------------------
-    def plot_raw(self,fb_align_dc_level=True,fig_num=1):
-        fig = plt.figure(fig_num)
+    def plot_raw(self):
+        fig, ax = plt.subplots(nrows=1,ncols=2,sharex=False,figsize=(12,8))
         for ii, cl_temp in enumerate(self.cl_temps_k):
-            if fb_align_dc_level:
-                dy = self.fb[0,ii]-self.fb[0,0]
-            else: dy=0
-            plt.plot(self.dacs, self.fb[:,ii]-dy)
-        plt.xlabel('DAC values')
-        plt.ylabel('Feedback values')
-        plt.title(self.figtitle+'  raw IV')
-        plt.legend((self.cl_temps_k),loc='upper right')
-        return fig
+            ax[0].plot(self.dacs,self.fb[:,ii])
+            ax[1].plot(self.dacs,self.fb_align[:,ii])
+        ax[0].set_xlabel('DAC values')
+        ax[0].set_ylabel('Feedback values')
+        ax[1].set_xlabel('DAC values')
+        ax[1].set_ylabel('Feedback values (offset removed)')
 
-    def plot_vipr(self,fig_num=1):
-        # fig 1, 2x2 of converted IV
-        #fig = plt.figure(fig_num)
+        fig.suptitle(self.figtitle+'  raw IV')
+        ax[0].legend((self.cl_temps_k),loc='upper right')
+
+    def plot_vipr(self):
         figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
@@ -1253,14 +1143,14 @@ class IVColdloadAnalyzeOneRow():
         #ax[3].set_ylim((0,1.1))
 
         figXX.suptitle(self.figtitle+'  IV, PV, RP, RV')
-        ax[3].legend(tuple(self.cl_temps_k))
+        ax[0].legend(tuple(self.cl_temps_k),loc='upper right')
         return figXX
 
-    def plot_pr(self,fig_num=1):
+    def plot_pr(self):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
         # FIG1: P versus R/Rn
-        fig = plt.figure(fig_num)
+        fig = plt.figure()
         plt.plot(self.ro, self.p,'-') # plots for all Tbath
         plt.plot(self.rn_fracs,self.p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
@@ -1277,9 +1167,9 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle+' P vs R')
         return fig
 
-    def plot_pt(self,fig_num=1):
+    def plot_pt(self):
         # power plateau (evaluated at each rn_frac) versus T_cl
-        fig = plt.figure(fig_num)
+        fig = plt.figure()
         llabels=[]
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.p_at_rnfrac[ii,:]).any():
@@ -1292,9 +1182,9 @@ class IVColdloadAnalyzeOneRow():
         plt.grid()
         return fig
 
-    def plot_DpDt(self,fig_num=1, include_prediction=True, include_darksubtraction=True):
+    def plot_DpDt(self, include_prediction=True, include_darksubtraction=True):
         ''' plot change in saturation power relative to one fixed coldload temperature '''
-        fig = plt.figure(fig_num)
+        fig = plt.figure()
         legend_vals = []
         if include_prediction and self.analyze_eta:
             plt.plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label='$\Delta{P}_{pred}$')
@@ -1312,9 +1202,9 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle + 'Dp vs T')
         return fig
 
-    def plot_dpdt(self,fig_num=1, include_prediction=True, include_darksubtraction=True):
+    def plot_dpdt(self, include_prediction=True, include_darksubtraction=True):
         ''' plot change in saturation power relative to change in coldload temperature '''
-        fig = plt.figure(fig_num)
+        fig = plt.figure()
         legend_vals = []
         x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
         if include_prediction and self.analyze_eta:
@@ -1333,8 +1223,8 @@ class IVColdloadAnalyzeOneRow():
         plt.title(self.figtitle + ' dp vs T')
         return fig
 
-    def plot_power_change_vs_temperature(self,fig_num=1,include_prediction=True, include_darksubtraction=True):
-        fig, ax = plt.subplots(1,2,num=fig_num,figsize=(10,5))
+    def plot_power_change_vs_temperature(self,include_prediction=True, include_darksubtraction=True):
+        fig, ax = plt.subplots(1,2,figsize=(10,5))
         x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
 
         # ax[0]: fixed reference point method; ax[1]: differential method
@@ -1366,8 +1256,8 @@ class IVColdloadAnalyzeOneRow():
         plt.suptitle(self.figtitle+' dp vs T')
         return fig
 
-    def plot_efficiency(self, fig_num=1, include_darksubtraction=True):
-        fig, ax = plt.subplots(1,2,num=fig_num,figsize=(10,5))
+    def plot_efficiency(self, include_darksubtraction=True):
+        fig, ax = plt.subplots(1,2,figsize=(10,5))
         x = self.cl_dT_k/2 + self.cl_temps_k[0:-1] # midpoint between sampled coldload temperatures
 
         # ax[0]: fixed reference point method; ax[1]: differential method
@@ -1436,14 +1326,14 @@ class IVColdloadAnalyzeOneRow():
             include_ds = False
 
         figs = []
-        figs.append(self.plot_raw(True,fig_num=1)) # raw
-        figs.append(self.plot_vipr(fig_num=2)) # 2x2 of converted data
-        figs.append(self.plot_pr(fig_num=3))
+        figs.append(self.plot_raw()) # raw
+        figs.append(self.plot_vipr()) # 2x2 of converted data
+        figs.append(self.plot_pr())
         if not np.isnan(self.p_at_rnfrac).all():
-            figs.append(self.plot_pt(fig_num=4))
-            figs.append(self.plot_power_change_vs_temperature(fig_num=5,include_prediction=True, include_darksubtraction=include_ds))
+            figs.append(self.plot_pt())
+            figs.append(self.plot_power_change_vs_temperature(include_prediction=True, include_darksubtraction=include_ds))
             if self.analyze_eta:
-                figs.append(self.plot_efficiency(fig_num=6, include_darksubtraction=include_ds))
+                figs.append(self.plot_efficiency(include_darksubtraction=include_ds))
 
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta']
