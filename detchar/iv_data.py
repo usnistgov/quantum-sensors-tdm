@@ -304,3 +304,25 @@ class SineSweepData():
         ax[1][1].set_xlabel('Freq (Hz)')
 
         ax[1][1].legend(self.row_order)
+
+@dataclass_json
+@dataclass
+class CzData():
+    data: List[Any]
+    detector_bias_list: List[int]
+    temp_list_k: List[float]
+    db_cardname: str
+    db_tower_channel_str: str
+    temp_settle_delay_s: float
+    extra_info: dict
+
+    def to_file(self, filename, overwrite = False):
+        if not overwrite:
+            assert not os.path.isfile(filename)
+        with open(filename, "w") as f:
+            f.write(self.to_json())
+
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, "r") as f:
+            return cls.from_json(f.read())
