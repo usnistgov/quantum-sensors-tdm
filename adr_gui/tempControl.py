@@ -5,7 +5,7 @@ from instruments import zaber
 
 class TempControl():
     def __init__(self, app=None, tempTarget = 0.035, adr_system_in = None, controlThermExcitation = 10e-9, baseTempResistance = 60e3,
-                 rampRate = 0.050, channel = 1):
+                 rampRate = 0.05, channel = 1):
         if adr_system_in is None:
             self.a = adr_system.AdrSystem(app)
         else:

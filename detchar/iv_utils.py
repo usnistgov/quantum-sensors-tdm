@@ -54,7 +54,17 @@ class IVPointTaker():
 
     def get_iv_pt(self, dacvalue):
         self.set_volt(dacvalue)
-        data = self.ec.getNewData(delaySeconds=self.delay_s)
+        #data = self.ec.getNewData(delaySeconds=self.delay_s)
+        # GCJ debugging this with try/except/finally
+        try:
+            data = self.ec.getNewData(delaySeconds=self.delay_s)
+        except:
+            print('\ngetNewData failed, trying once more')
+            try:
+                data = self.ec.getNewData(delaySeconds=self.delay_s)
+            except:
+                print('\ngetNewData failed again, trying one last time')
+                data = self.ec.getNewData(delaySeconds=self.delay_s)             
         avg_col = data[self.col,:,:,1].mean(axis=-1)
         rows_relocked_hi = []
         rows_relocked_lo = []

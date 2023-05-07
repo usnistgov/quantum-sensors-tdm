@@ -854,7 +854,8 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         for ii in range(len(pfit)):
             pfit[ii]=abs(pfit[ii])
         s_sq = (infodict['fvec']**2).sum()/(len(p)-len(init_guess))
-        pcov=pcov*s_sq
+        if pcov is not None:
+            pcov=pcov*s_sq
         return pfit,pcov
 
     def plot_fits(self,fignum=1):

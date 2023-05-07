@@ -19,6 +19,7 @@ from nasa_client import JSONClient # for stopping dastard
 from cringe import zmq_rep
 from . import adr_gui_control
 import sys
+from IPython import embed
 
 class MyLogger():
     def __init__(self):
@@ -101,6 +102,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.setPointmKEdit.allowed_range = (0.0,1000.0)
         self.setPointmKEdit.startval = 80.0
 
+        # GCJ adding this for RvsT measurements
+        # self.setRampRateKPMEdit.label_text = "ramp rate (K/min) "
+        # self.setRampRateKPMEdit.allowed_range = (0.001,0.1)
+        # self.setRampRateKPMEdit.startval = 0.05
+
         self.startTimeEdit.label_text = "start mag cycle at (time as decimal 24 hour) "
         self.startTimeEdit.allowed_range = (0.0, 23.9)
         self.startTimeEdit.startval = 7.0
@@ -130,7 +136,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.magDownHoldMinsEdit.startval = 15.0
 
         # Load line edit starting values from QSettings
-        self.edits = [self.setPointmKEdit, self.startTimeEdit, self.startOutEdit, self.maxHeatOutEdit, self.magUpMinsEdit, self.magUpHoldMinsEdit, self.magDownMinsEdit, self.magDownHoldMinsEdit]
+        self.edits = [self.setPointmKEdit, self.startTimeEdit, self.startOutEdit, self.maxHeatOutEdit, self.magUpMinsEdit, self.magUpHoldMinsEdit, self.magDownMinsEdit, self.magDownHoldMinsEdit] # self.setRampRateKPMEdit
         for iEdit in self.edits:
             try:
                 iEdit.value = self.settings.value(iEdit.label_text, type=float)
@@ -139,6 +145,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             iEdit.setText(str(iEdit.value))
 
         self.setPointmKEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.setPointmKEdit))
+        #self.setRampRateKPMEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.setRampRateKPMEdit))
         self.startTimeEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.startTimeEdit))
         self.startOutEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.startOutEdit))
         self.maxHeatOutEdit.editingFinished.connect(lambda: self.enforceAllowedRange(self.maxHeatOutEdit))
@@ -305,7 +312,12 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def rpc_get_temp_k(self):
         return True, self.lastTemp_K
-    
+
+    def rpc_get_ramp_rate_kpm(self):
+        tc=self.tempControl.a.temperature_controller
+        ramp_status, ramp_rate = tc.getRamp()
+        return True, ramp_rate   
+
     def rpc_get_temp_rms_uk(self):
         assert self.isControlState()
         return True, self._last_stddev_uk
@@ -333,6 +345,28 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             return True, achieved_setpoint_mk*1e-3
         else:
             return False, achieved_setpoint_mk*1e-3
+
+    def rpc_set_ramp_rate_kpm(self, requested_ramp_rate_kpm):
+        '''
+        This is purely a test for now
+        '''
+        assert self.isControlState()
+        
+        #self.tempControl.rampRate = requested_ramp_rate_kpm # easy but dumb way, doesn't work but gives no errors
+
+        # lo, hi = self.setRampRateKPMEdit.allowed_range
+        # if requested_ramp_rate_kpm > hi:
+        #     return False, f"requested ramp rate > than max, max = {hi}"
+        # if requested_ramp_rate_kpm < lo:
+        #     return False, f"requested ramp rate < than min, min = {lo}"
+        # self.setRampRateKPMEdit.setText(str(requested_ramp_rate_kpm))
+        # self.enforceAllowedRange(self.setRampRateKPMEdit)
+        # achieved_ramp_rate_kpm = self.setRampRateKPMEdit.value
+        # if achieved_ramp_rate_kpm == requested_setpoint_mk:
+        #     return True, achieved_ramp_rate_kpm
+        # else:
+        #     return False, achieved_ramp_rate_kpm        
+        return True, requested_ramp_rate_kpm  
 
     def rpc_echo(self, x):
         return True, x

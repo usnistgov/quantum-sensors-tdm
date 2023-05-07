@@ -7,7 +7,8 @@ usage:
 
 @author JH 
 v0: 2/2021
-v1: 4/2021 updated to allow plotting and to take IV curve at current temperature if 
+v1: 4/2021 updated to allow plotting and to take IV curve at current temperature 
+v2: 5/2023 updated to use the tower card detector bias
 '''
 
 import yaml, sys, os
@@ -40,16 +41,21 @@ def is_coldload_sweep():
             result = True
     return result
 
-n_args = len(sys.argv)
-config_filename = str(sys.argv[1])
-if n_args > 2:
-    desc = str(sys.argv[2])
-else:
-    desc=''
-
-# open config file
-with open(config_filename, 'r') as ymlfile:
-    cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
+def handle_column(col):
+    ''' based on the column, select the appropriate tower card detector bias channel.  
+        This "channel" is called "bayname" in the iv_utils software and BAY_NAMES 
+        in the towerwidget.py.  So I follow this poor naming convention 
+    '''
+    assert col in ['a','b','c','d','A','B','C','D'], 'uknown column.  Column must be A,B,C, or D'
+    if col.upper() == 'A':
+        bayname = "0"
+    elif col.upper() == 'B':
+        bayname = "1"
+    elif col.upper() == 'C':
+        bayname = "2"
+    elif col.upper() == 'D':
+        bayname = "3"
+    return bayname
 
 def create_filename():
     baystring = 'Column' + cfg['detectors']['Column']
@@ -63,7 +69,20 @@ def create_filename():
     write_filename = filename+'.json'
     return write_filename
 
+n_args = len(sys.argv)
+config_filename = str(sys.argv[1])
+if n_args > 2:
+    desc = str(sys.argv[2])
+else:
+    desc=''
+
+# open config file ---------------------------------
+with open(config_filename, 'r') as ymlfile:
+    cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
+
 write_filename = create_filename()
+
+# voltage bias things ------------------------------
 if cfg['voltage_bias']['source'] in ['bluebox','BlueBox','Blue Box','blue box']:
     voltage_source = 'bluebox'
 else:
@@ -74,8 +93,10 @@ if cfg['voltage_bias']['overbias']:
 else:
     to_normal_method=None
     overbias_temp_k=None
+bayname = handle_column(cfg['detectors']['Column'])
+dacs = np.linspace(int(cfg['voltage_bias']['v_start_dac']),int(cfg['voltage_bias']['v_stop_dac']),int(cfg['voltage_bias']['npts']))
 
-print(voltage_source)
+# bath temperature things ---------------------------
 bath_temps = cfg['runconfig']['bathTemperatures']
 # below commented out because it can crash adr_gui.  Need to ask what the set-temp is through adr_gui, and this is currently not in the software.
 # if bath_temps==[0]: # take at current temperature only
@@ -83,10 +104,8 @@ bath_temps = cfg['runconfig']['bathTemperatures']
 #     ls370 = Lakeshore370() 
 #     bath_temps = [ls370.getTemperatureSetPoint()]
 
-dacs = np.linspace(int(cfg['voltage_bias']['v_start_dac']),int(cfg['voltage_bias']['v_stop_dac']),int(cfg['voltage_bias']['npts']))
-
 #############
-pt_taker = IVPointTaker(db_cardname=cfg['dfb']['dfb_cardname'], bayname=cfg['detectors']['Column'], voltage_source = voltage_source)
+pt_taker = IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], bayname=bayname, voltage_source = voltage_source)
 curve_taker = IVCurveTaker(pt_taker, temp_settle_delay_s=cfg['runconfig']['temp_settle_delay_s'], shock_normal_dac_value=65000, zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV'], adr_gui_control=None)
 curve_taker.prep_fb_settings(I=cfg['dfb']['i'], fba_offset=cfg['dfb']['dac_a_offset'], ARLoff=True)
 ivsweeper = IVTempSweeper(curve_taker, to_normal_method=to_normal_method, overbias_temp_k=overbias_temp_k, overbias_dac_value = cfg['voltage_bias']['v_start_dac'])
@@ -102,7 +121,7 @@ if is_coldload_sweep():
                                    cool_upon_finish = True, extra_info={'config': cfg, 'exp_status':desc},
                                    write_while_acquire = True, filename=write_filename)
 else:
-    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc})
+    data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc,'row_to_period_map':cfg['detectors']['Rows']})
     data.to_file(write_filename,overwrite=True)
     if cfg['runconfig']['show_plot']:
         print('showing plot')
