@@ -256,3 +256,51 @@ class PolCalSteppedSweepData():
 class PolCalSteppedBeamMapData():
     xy_position_list: List[Any]
     data: List[PolCalSteppedSweepData]
+
+@dataclass_json
+@dataclass
+class SineSweepData():
+    frequency_hz: List[Any]
+    iq_data: List[Any] = dataclasses.field(repr=False)
+    amp_volt: float
+    offset_volt: float
+    row_order: List[int]
+    column_str: str
+    signal_column_index: int
+    reference_column_index: int
+    number_of_lockin_periods: int
+    pre_temp_k: float
+    post_temp_k: float
+    pre_time_epoch_s: int
+    post_time_epoch_s: int
+    extra_info: dict
+
+    def to_file(self, filename, overwrite = False):
+        if not overwrite:
+            assert not os.path.isfile(filename)
+        with open(filename, "w") as f:
+            f.write(self.to_json())
+
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, "r") as f:
+            return cls.from_json(f.read())
+
+    def plot(self,fignum=1):
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+        n_freq,n_row,foo = np.shape(self.iq_v_freq)
+        for ii in range(n_row):
+            ax[0][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
+            ax[0][1].plot(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
+            ax[1][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
+            ax[1][1].plot(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
+
+        # axes labels
+        ax[0][0].set_ylabel('I')
+        ax[0][1].set_ylabel('Q')
+        ax[1][0].set_ylabel('I^2+Q^2')
+        ax[1][1].set_ylabel('Phase')
+        ax[1][0].set_xlabel('Freq (Hz)')
+        ax[1][1].set_xlabel('Freq (Hz)')
+
+        ax[1][1].legend(self.row_order)

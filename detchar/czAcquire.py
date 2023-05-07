@@ -1,15 +1,17 @@
 ''' czAcquire.py
 
-    @authors GCJ and JH 5/2023, based polcal.py.
+    @author JH and GCJ 5/2023, based polcal.py.
 
-    Typical hardware setup: 
+    Typical hardware setup:
     1) Agilent33220A output through resistor box (10K) into detector bias line
     2) Agilent33220A sync into DFB card CH2 input.  This corresponds to reference_column_index=1.
-    3) Detector column signal corresponds to DFB card CH1 input/output.
+    3) Detector column signal corresponds to DFB card CH1 input/output.  This corresponse to signal_column_index=0
+
+    to do: self.waittime_s currently not used.  Is latency taken care of in instrument or not?
 '''
 
 from nasa_client import EasyClient
-from instruments import BlueBox, Agilent33220A 
+from instruments import BlueBox, Agilent33220A
 from adr_gui.adr_gui_control import AdrGuiControl
 #from iv_data import ComplexImpedanceSweepData
 
@@ -22,18 +24,18 @@ from tools import SoftwareLockinAcquire
 import matplotlib.pyplot as plt
 
 def test_for_signal(N_lockins=5):
-    cz = ComplexImpedanceSweep(source_amp_volt=3.0, 
-                                source_offset_volt=1.5, 
+    cz = ComplexImpedanceSweep(source_amp_volt=3.0,
+                                source_offset_volt=1.5,
                                 source_frequency_hz=np.logspace(0,5,50),
                                 num_lockin_periods = 10,
                                 row_order=None,
                                 )
-    
+
     N=N_lockins
     iq_arr = []
     for ii in range(N):
         iq_arr.append(cz.get_point()) # nrow x 2 array
-    
+
     cz.source.SetOutput(outputstate='off')
 
     iq_arr2 = []
@@ -41,12 +43,12 @@ def test_for_signal(N_lockins=5):
         iq_arr2.append(cz.get_point())
 
     nrow,col = np.shape(iq_arr[0])
-    
+
     for ii in range(nrow):
         plt.figure(ii)
         for jj in range(N):
-            amp_on = np.sqrt(iq_arr[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
-            amp_off = np.sqrt(iq_arr2[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
+            amp_on = np.sqrt(iq_arr[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)
+            amp_off = np.sqrt(iq_arr2[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)
             plt.plot(jj,amp_on,'bo')
             plt.plot(jj,amp_off,'ro')
         plt.legend(('source on','source off'))
@@ -55,95 +57,98 @@ def test_for_signal(N_lockins=5):
         plt.title('Row index %d'%(ii))
 
     plt.show()
-    
+
 class SineSweep():
-    ''' Sweep constant amplitude sine wave as a function of frequency.  
-        Used for example in a single detector bias position for a complex impedance or complex responsivity 
+    ''' Sweep constant amplitude sine wave as a function of frequency.
+        Used for example in a single detector bias position for a complex impedance or complex responsivity
         measurement.
     '''
     def __init__(self,
-                 source_amp_volt=0.04, source_offset_volt=0, source_frequency_hz=np.logspace(1,3,50),
+                 amp_volt=0.04, offset_volt=0, frequency_hz=np.logspace(1,3,50),
                  num_lockin_periods = 10,
-                 row_order=None):
+                 row_order=None,
+                 signal_column_index=0,
+                 reference_column_index=1,
+                 column_str='A'):
 
-        self.source = Agilent33220A()
+        self.fg = Agilent33220A() #function generator
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
-        self.init_source(source_amp_volt, source_offset_volt, source_frequency_hz[0])
-
-        # hardware and class initialization
-        self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
+        self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=signal_column_index,
+                                         reference_column_index=reference_column_index,
                                          signal_feedback_or_error='feedback',num_pts_per_period=None)
-
         # input parameters
-        self.source_amp_v = source_amp_volt
-        self.source_offset_v = source_offset_volt
-        self.source_freq_hz = source_frequency_hz
+        self.freq_hz = frequency_hz
+        self.amp_v = amp_volt
+        self.offset_v = offset_volt
+        self.signal_column_index = signal_column_index
+        self.reference_column_index = reference_column_index
         self.num_lockin_periods = num_lockin_periods
-        self.waittime_s = 0.1 # time to wait between setting new frequency and acquiring data
-        self.num_freq = len(self.source_freq_hz)
+        self.waittime_s = 0 # time to wait between setting new frequency and acquiring data.
         self.row_order = self._handle_row_to_state(row_order)
-        self.freq_hz_measured = None  
+        self.column_str = column_str # purely for recording purposes
         self.iq_v_freq = None
+
+        self.init_fg(source_amp_volt, source_offset_volt, source_frequency_hz[0])
 
     def _handle_row_to_state(self,row_order):
         if row_order is not None:
             return row_order
         return list(range(self.sla.ec.nrow))
 
-    def init_source(self, amp, offset, frequency):
-        self.source.SetFunction(function = 'sine')
-        self.source.SetLoad('INF')
-        self.source.SetFrequency(frequency)
-        self.source.SetAmplitude(amp)
-        self.source.SetOffset(offset)
-        self.source.SetOutput(outputstate='on')
+    def init_fg(self, amp, offset, frequency):
+        self.fg.SetFunction(function = 'sine')
+        self.fg.SetLoad('INF')
+        self.fg.SetFrequency(frequency)
+        self.fg.SetAmplitude(amp)
+        self.fg.SetOffset(offset)
+        self.fg.SetOutput(outputstate='on')
 
-    def get_point(self,window=False):
+    def get_iq(self,window=False):
+        ''' Gets the IQ from the software lock in.
+            Return array structure is n_rows x 2 (one for I and one for Q)
+        '''
         return self.sla.getData(num_periods=self.num_lockin_periods, window=window,debug=False)
 
-    def take(self, extra_info = {}, move_to_zero_at_end = True, turn_off_source_on_end = True):
+    def set_frequency(self,freq):
+        print('Setting function generator to frequency = %.2f Hz'%freq)
+        self.fg.SetFrequency(freq)
+        freq_measured = self.fg.GetFrequency()
+        assert freq == freq_measured, print('Function generator frequency not properly set.  Commanded frequency: ', freq, '. Measured frequency: ', freq_measured)
+
+    def take(self, extra_info = {}, turn_off_source_on_end = True):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
 
-        freq_hz_measured = []
-        iq_v_freq = np.empty((self.num_freq,self.sla.ec.nrow,2))
-        
-        for ii, freq in enumerate(self.source_freq_hz):
-            print('Setting function generator to frequency = %.2f Hz'%freq)
-            self.source.SetFrequency(freq)
-            freq_hz_measured.append(self.source.GetFrequency())
-            iq_arr = self.get_point() # nrow x 2 array
-            iq_v_freq[ii,:,:] = iq_arr
+        iq_v_freq = np.empty((len(self.freq_hz),self.sla.ec.nrow,2))
+        for ii, freq in enumerate(self.freq_hz):
+            self.set_frequency(freq)
+            time.sleep(self.waittime_s)
+            iq_v_freq[ii,:,:] = self.get_iq()
+
         post_temp_k = self.adr_gui_control.get_temp_k()
         post_time = time.time()
-
         print('Acquisition complete.')
-        if turn_off_source_on_end: self.source.SetOutput('off')
+        if turn_off_source_on_end: self.fg.SetOutput('off')
+        self.iq_v_freq = iq_v_freq
 
-        self.freq_hz_measured = freq_hz_measured 
-        self.iq_v_freq = iq_v_freq 
-
-        # return ComplexImpedanceSweepData(iq_v_freq = iq_v_freq,
-        #                               row_order=self.row_order,
-        #                               #bayname=self.bayname,
-        #                               #db_cardname=self.db_cardname,
-        #                               column_number=0,
-        #                               source_amp_volt=self.source_amp_v,
-        #                               source_offset_volt=self.source_offset_v,
-        #                               source_frequency_hz=self.source_freq_hz,
-        #                               pre_temp_k=pre_temp_k,
-        #                               post_temp_k=post_temp_k,
-        #                               pre_time_epoch_s=pre_time,
-        #                               post_time_epoch_s=post_time,
-        #                               extra_info=extra_info)
+        return SineSweepData(frequency_hz = self.freq_hz, iq_data = iq_v_freq,
+                                         amp_volt=self.amp_v, offset_volt=self.offset_v,
+                                         row_order=self.row_order,
+                                         column_str = self.column_str
+                                         signal_column_index = self.signal_column_index,
+                                         reference_column_index = self.reference_column_index,
+                                         number_of_lockin_periods = self.num_lockin_periods,
+                                         pre_temp_k=pre_temp_k, post_temp_k=post_temp_k,
+                                         pre_time_epoch_s=pre_time, post_time_epoch_s=post_time,
+                                         extra_info=extra_info)
 
     def plot(self,fignum=1):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
         for ii in range(self.sla.ec.nrow):
-            ax[0][0].plot(self.freq_hz_measured,self.iq_v_freq[:,ii,0],'o-')
-            ax[0][1].plot(self.freq_hz_measured,self.iq_v_freq[:,ii,1],'o-')
-            ax[1][0].plot(self.freq_hz_measured,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
-            ax[1][1].plot(self.freq_hz_measured,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
+            ax[0][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
+            ax[0][1].plot(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
+            ax[1][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
+            ax[1][1].plot(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
 
         # axes labels
         ax[0][0].set_ylabel('I')
@@ -151,7 +156,7 @@ class SineSweep():
         ax[1][0].set_ylabel('I^2+Q^2')
         ax[1][1].set_ylabel('Phase')
         ax[1][0].set_xlabel('Freq (Hz)')
-        ax[1][1].set_xlabel('Freq (Hz)')    
+        ax[1][1].set_xlabel('Freq (Hz)')
 
         ax[1][1].legend(list(range(self.sla.ec.nrow)))
 
@@ -160,4 +165,3 @@ if __name__ == "__main__":
     ss.take()
     ss.plot()
     plt.show()
-
