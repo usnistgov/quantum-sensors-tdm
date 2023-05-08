@@ -19,7 +19,7 @@ from nasa_client import EasyClient
 from instruments import BlueBox, Agilent33220A
 from adr_gui.adr_gui_control import AdrGuiControl
 from cringe.cringe_control import CringeControl
-from iv_data import SineSweepData
+from iv_data import SineSweepData, CzData
 from tools import SoftwareLockinAcquire
 
 import numpy as np
@@ -166,16 +166,25 @@ class ComplexZ(SineSweep):
                          row_order,signal_column_index,reference_column_index,
                          column_str)
 
-        self.detector_bias = detector_bias_list
         self.temp_list_k = temperature_list_k
+        self.db_list = self._handle_db_input(detector_bias_list)
         self.db_cardname = db_cardname
-        self.db_tower_channel = tower_channel
+        self.db_tower_channel = db_tower_channel
 
         # globals hidden from class initialization
         self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
 
         self.cc = self._handle_cringe_control_arg(cringe_control)
         self.set_volt = self._handle_voltage_source_arg(voltage_source)
+
+    def _handle_db_input(self,db_list):
+        if type(db_list[0]) == list:
+            output = db_list
+        else:
+            print('First element of detector_bias_list is not a list.  Using the same detector bias settings for all temperatures.')
+            output = []
+            for ii in range(len(self.temp_list_k)): output.append(db_list)
+        return output
 
     def _handle_cringe_control_arg(self, cringe_control):
         if cringe_control is not None:
@@ -221,32 +230,38 @@ class ComplexZ(SineSweep):
 
     def set_temp(self,temp_k):
         self.adr_gui_control.set_temp_k(float(temp_k))
-        stable = self._is_temp_stable()
+        stable = self._is_temp_stable(temp_k)
         time.sleep(self.temp_settle_delay_s)
         return stable
 
-    def run(self, extra_info = {}, skip_wait_on_first_temp=False):
+    def run(self, skip_wait_on_first_temp=False, extra_info = {}):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k):
+            print('Setting to temperature %.1f mK'%(temp*1000))
             if np.logical_and(ii==0,skip_wait_on_first_temp):
-                self.adr_gui_control.set_temp_k(float(temp_k))
+                self.adr_gui_control.set_temp_k(float(temp))
             else:
                 self.set_temp(temp)
             det_bias_output = []
-            for jj,db in enumerate(self.detector_bias_list):
+            print('Detector bias list: ',self.db_list[ii])
+            for jj,db in enumerate(self.db_list[ii]):
+                print('Setting detector bias to %d '%db)
                 self.set_volt(db)
                 time.sleep(0.1)
                 self.cc.relock_all_locked_fba(self.signal_column_index)
                 time.sleep(0.1)
+                print('Performing Sine Sweep')
                 result = self.take_sweep(extra_info = {}, turn_off_source_on_end = False)
                 det_bias_output.append(result) # want a return data structure that indexes like so: [temp_index,det_bias_index,result]
             temp_output.append(det_bias_output)
 
+        self.fg.SetOutput(outputstate='off')
+
         return CzData(data = temp_output,
-                      detector_bias_list = self.detector_bias,
+                      db_list = self.db_list,
                       temp_list_k = self.temp_list_k,
                       db_cardname = self.db_cardname,
-                      db_tower_channel_str = self.tower_channel,
+                      db_tower_channel_str = self.db_tower_channel,
                       temp_settle_delay_s = self.temp_settle_delay_s,
                       extra_info = extra_info)
 
@@ -269,9 +284,13 @@ if __name__ == "__main__":
                  reference_column_index=1,
                  column_str='A',
                  rfg_ohm = 10.2e3,
-                 detector_bias_list = [10,20],
+                 detector_bias_list = [0,20],
                  temperature_list_k = [0.1,0.11],
                  voltage_source='tower',
                  db_cardname = 'DB',
-                 db_tower_channel='0',
+                 db_tower_channel='2',
                  cringe_control=None)
+
+    output = cz.run(False)
+    output.to_file('foo_cz.json')
+

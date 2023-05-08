@@ -311,7 +311,7 @@ class SineSweepData():
 @dataclass
 class CzData():
     data: List[Any]
-    detector_bias_list: List[int]
+    db_list: List[int]
     temp_list_k: List[float]
     db_cardname: str
     db_tower_channel_str: str
@@ -320,7 +320,7 @@ class CzData():
 
     def to_file(self, filename, overwrite = False):
         if not overwrite:
-            assert not os.path.isfile(filename)
+            assert not os.path.isfile(filename),'File already exists.  Use overwrite=True to overwrite.'
         with open(filename, "w") as f:
             f.write(self.to_json())
 
