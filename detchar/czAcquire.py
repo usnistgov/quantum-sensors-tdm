@@ -248,6 +248,12 @@ class ComplexZ(SineSweep):
 
 if __name__ == "__main__":
     ss = SineSweep(frequency_hz=[10,20,30])
-    ss.take_sweep()
+    output = ss.take_sweep()
     ss.plot()
+    plt.show()
+
+    output.to_file('foo_ss.json',overwrite=True)
+    foo = SineSweepData.from_file('foo_ss.json')
+    foo.plot()
+
     plt.show()

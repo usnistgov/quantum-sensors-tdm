@@ -277,7 +277,7 @@ class SineSweepData():
 
     def to_file(self, filename, overwrite = False):
         if not overwrite:
-            assert not os.path.isfile(filename)
+            assert not os.path.isfile(filename),'File already exists.  Use overwrite=True to overwrite.'
         with open(filename, "w") as f:
             f.write(self.to_json())
 
@@ -288,12 +288,13 @@ class SineSweepData():
 
     def plot(self,fignum=1):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
-        n_freq,n_row,foo = np.shape(self.iq_v_freq)
+        n_freq,n_row,foo = np.shape(self.iq_data)
+        iq_data = np.array(self.iq_data)
         for ii in range(n_row):
-            ax[0][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
-            ax[0][1].plot(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
-            ax[1][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
-            ax[1][1].plot(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
+            ax[0][0].plot(self.frequency_hz,iq_data[:,ii,0],'o-')
+            ax[0][1].plot(self.frequency_hz,iq_data[:,ii,1],'o-')
+            ax[1][0].plot(self.frequency_hz,iq_data[:,ii,0]**2+iq_data[:,ii,1]**2,'o-')
+            ax[1][1].plot(self.frequency_hz,np.arctan(iq_data[:,ii,1]/iq_data[:,ii,0]),'o-')
 
         # axes labels
         ax[0][0].set_ylabel('I')
