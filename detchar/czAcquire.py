@@ -38,7 +38,8 @@ class SineSweep():
                  row_order=None,
                  signal_column_index=0,
                  reference_column_index=1,
-                 column_str='A'):
+                 column_str='A',
+                 rfg_ohm=10.2e3):
 
         self.fg = Agilent33220A() #function generator
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
@@ -55,6 +56,7 @@ class SineSweep():
         self.waittime_s = 0 # time to wait between setting new frequency and acquiring data.
         self.row_order = self._handle_row_to_state(row_order)
         self.column_str = column_str # purely for recording purposes
+        self.rfg_ohm = rfg_ohm # for recording purposes, resistance in series at output of function generator 
         self.iq_v_freq = None
 
         self.init_fg(amp_volt, offset_volt, frequency_hz[0])
@@ -110,6 +112,7 @@ class SineSweep():
                                          amp_volt=self.amp_v, offset_volt=self.offset_v,
                                          row_order=self.row_order,
                                          column_str = self.column_str,
+                                         rfg_ohm = self.rfg_ohm,
                                          signal_column_index = self.signal_column_index,
                                          reference_column_index = self.reference_column_index,
                                          number_of_lockin_periods = self.num_lockin_periods,
@@ -151,6 +154,7 @@ class ComplexZ(SineSweep):
                  signal_column_index=0,
                  reference_column_index=1,
                  column_str='A',
+                 rfg_ohm=10.2e3,
                  detector_bias_list = [10000,20000],
                  temperature_list_k = [0.1],
                  voltage_source='tower',
@@ -247,13 +251,27 @@ class ComplexZ(SineSweep):
                       extra_info = extra_info)
 
 if __name__ == "__main__":
-    ss = SineSweep(frequency_hz=[10,20,30])
-    output = ss.take_sweep()
-    ss.plot()
-    plt.show()
+    # ss = SineSweep(frequency_hz=[10,20,30])
+    # output = ss.take_sweep()
+    # ss.plot()
+    # plt.show()
 
-    output.to_file('foo_ss.json',overwrite=True)
-    foo = SineSweepData.from_file('foo_ss.json')
-    foo.plot()
+    # output.to_file('foo_ss.json',overwrite=True)
+    # foo = SineSweepData.from_file('foo_ss.json')
+    # foo.plot()
 
-    plt.show()
+    # plt.show()
+
+    cz = ComplexZ(amp_volt=0.02, offset_volt=0, frequency_hz=[10,20,30],
+                 num_lockin_periods = 10,
+                 row_order=None,
+                 signal_column_index=0,
+                 reference_column_index=1,
+                 column_str='A',
+                 rfg_ohm = 10.2e3,
+                 detector_bias_list = [10,20],
+                 temperature_list_k = [0.1,0.11],
+                 voltage_source='tower',
+                 db_cardname = 'DB',
+                 db_tower_channel='0',
+                 cringe_control=None)

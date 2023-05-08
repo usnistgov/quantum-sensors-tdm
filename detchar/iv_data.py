@@ -266,6 +266,7 @@ class SineSweepData():
     offset_volt: float
     row_order: List[int]
     column_str: str
+    rfg_ohm: float
     signal_column_index: int
     reference_column_index: int
     number_of_lockin_periods: int
