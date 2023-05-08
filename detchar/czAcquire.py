@@ -57,7 +57,7 @@ class SineSweep():
         self.column_str = column_str # purely for recording purposes
         self.iq_v_freq = None
 
-        self.init_fg(source_amp_volt, source_offset_volt, source_frequency_hz[0])
+        self.init_fg(amp_volt, offset_volt, frequency_hz[0])
 
     def _handle_row_to_state(self,row_order):
         if row_order is not None:
@@ -78,19 +78,25 @@ class SineSweep():
         '''
         return self.sla.getData(num_periods=self.num_lockin_periods, window=window,debug=False)
 
-    def set_frequency(self,freq):
+    def set_frequency(self,freq,diff_percent_tol = .1):
+        ''' set the frequency and check that the frequency set is within diff_percent_tol % of requested. 
+            Why isn't it exact?  Finite # of bits 
+        '''
         print('Setting function generator to frequency = %.2f Hz'%freq)
         self.fg.SetFrequency(freq)
         freq_measured = self.fg.GetFrequency()
-        assert freq == freq_measured, print('Function generator frequency not properly set.  Commanded frequency: ', freq, '. Measured frequency: ', freq_measured)
+        diff_percent = ((freq_measured-freq) / freq)*100  
+        assert abs(diff_percent) < diff_percent_tol, print('Output frequency differs from requested by > diff_percent_tol. Requested: %.5f, output: %.5f'%(freq,freq_measured))
+        return freq_measured
 
     def take_sweep(self, extra_info = {}, turn_off_source_on_end = True):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
 
         iq_v_freq = np.empty((len(self.freq_hz),self.sla.ec.nrow,2))
+        freq_m = []
         for ii, freq in enumerate(self.freq_hz):
-            self.set_frequency(freq)
+            freq_m.append(self.set_frequency(freq))
             time.sleep(self.waittime_s)
             iq_v_freq[ii,:,:] = self.get_iq()
 
@@ -103,7 +109,7 @@ class SineSweep():
         return SineSweepData(frequency_hz = self.freq_hz, iq_data = iq_v_freq,
                                          amp_volt=self.amp_v, offset_volt=self.offset_v,
                                          row_order=self.row_order,
-                                         column_str = self.column_str
+                                         column_str = self.column_str,
                                          signal_column_index = self.signal_column_index,
                                          reference_column_index = self.reference_column_index,
                                          number_of_lockin_periods = self.num_lockin_periods,
@@ -111,13 +117,19 @@ class SineSweep():
                                          pre_time_epoch_s=pre_time, post_time_epoch_s=post_time,
                                          extra_info=extra_info)
 
-    def plot(self,fignum=1):
+    def plot(self,fignum=1,semilogx=True):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
         for ii in range(self.sla.ec.nrow):
-            ax[0][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
-            ax[0][1].plot(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
-            ax[1][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
-            ax[1][1].plot(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
+            if semilogx:
+                ax[0][0].semilogx(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
+                ax[0][1].semilogx(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
+                ax[1][0].semilogx(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
+                ax[1][1].semilogx(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
+            else:
+                ax[0][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0],'o-')
+                ax[0][1].plot(self.freq_hz,self.iq_v_freq[:,ii,1],'o-')
+                ax[1][0].plot(self.freq_hz,self.iq_v_freq[:,ii,0]**2+self.iq_v_freq[:,ii,1]**2,'o-')
+                ax[1][1].plot(self.freq_hz,np.arctan(self.iq_v_freq[:,ii,1]/self.iq_v_freq[:,ii,0]),'o-')
 
         # axes labels
         ax[0][0].set_ylabel('I')
@@ -209,10 +221,10 @@ class ComplexZ(SineSweep):
         time.sleep(self.temp_settle_delay_s)
         return stable
 
-    def run(self, extra_info = {}, skip_wait_on_first_temp=True):
+    def run(self, extra_info = {}, skip_wait_on_first_temp=False):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k):
-            if np.logical_and(ii=0,skip_wait_on_first_temp):
+            if np.logical_and(ii==0,skip_wait_on_first_temp):
                 self.adr_gui_control.set_temp_k(float(temp_k))
             else:
                 self.set_temp(temp)
@@ -226,16 +238,16 @@ class ComplexZ(SineSweep):
                 det_bias_output.append(result) # want a return data structure that indexes like so: [temp_index,det_bias_index,result]
             temp_output.append(det_bias_output)
 
-        return CzData(data = temp_output
+        return CzData(data = temp_output,
                       detector_bias_list = self.detector_bias,
                       temp_list_k = self.temp_list_k,
                       db_cardname = self.db_cardname,
                       db_tower_channel_str = self.tower_channel,
-                      self.temp_settle_delay_s = 30,
+                      temp_settle_delay_s = self.temp_settle_delay_s,
                       extra_info = extra_info)
 
 if __name__ == "__main__":
-    ss = SineSweep()
+    ss = SineSweep(frequency_hz=[10,20,30])
     ss.take_sweep()
     ss.plot()
     plt.show()
