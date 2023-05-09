@@ -328,3 +328,48 @@ class CzData():
     def from_file(cls, filename):
         with open(filename, "r") as f:
             return cls.from_json(f.read())
+
+    def plot(self,semilogx=True):
+        ''' plot a 2x2 of results for data at each temperature '''
+        for ii,temp in enumerate(self.temp_list_k): # loop over temp
+            fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
+            fig2,ax2 = plt.subplots(1,1,num=2*ii+1) 
+
+            fig.suptitle('Temperature = %.1f mK'%(temp*1000))
+            fig2.suptitle('I-Q Temperature = %.1f mK'%(temp*1000))
+            for jj, db in enumerate(self.db_list[ii]): # loop over detector bias
+                ss = self.data[ii][jj]
+                n_freq,n_row,foo = np.shape(ss['iq_data'])
+                iq_data = np.array(ss['iq_data'])
+                
+                # assume that all rows have the same data (faux_mux)
+                row_index = 0
+                if semilogx:
+                    ax[0][0].semilogx(ss['frequency_hz'],iq_data[:,row_index,0],'o-')
+                    ax[0][1].semilogx(ss['frequency_hz'],iq_data[:,row_index,1],'o-')
+                    ax[1][0].semilogx(ss['frequency_hz'],iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
+                    ax[1][1].semilogx(ss['frequency_hz'],np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
+                else:
+                    ax[0][0].plot(ss['frequency_hz'],iq_data[:,row_index,0],'o-')
+                    ax[0][1].plot(ss['frequency_hz'],iq_data[:,row_index,1],'o-')
+                    ax[1][0].plot(ss['frequency_hz'],iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
+                    ax[1][1].plot(ss['frequency_hz'],np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
+
+                # plot I vs Q as second plot
+                ax2.plot(iq_data[:,row_index,0],iq_data[:,row_index,1],'o-')
+                
+            # axes labels
+            ax[0][0].set_ylabel('I')
+            ax[0][1].set_ylabel('Q')
+            ax[1][0].set_ylabel('I^2+Q^2')
+            ax[1][1].set_ylabel('Phase')
+            ax[1][0].set_xlabel('Freq (Hz)')
+            ax[1][1].set_xlabel('Freq (Hz)')
+            ax[1][1].legend(tuple(self.db_list[ii]))
+
+            ax2.set_xlabel('I')
+            ax2.set_ylabel('Q')
+            ax2.set_aspect('equal','box')
+            ax2.legend(tuple(self.db_list[ii]))
+
+
