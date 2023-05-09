@@ -57,6 +57,7 @@ class SineSweep():
         self.row_order = self._handle_row_to_state(row_order)
         self.column_str = column_str # purely for recording purposes
         self.rfg_ohm = rfg_ohm # for recording purposes, resistance in series at output of function generator 
+        self.easy_client_max_numpts = 390000 # easy client seems to crash with higher values
         self.iq_v_freq = None
 
         self.init_fg(amp_volt, offset_volt, frequency_hz[0])
@@ -74,11 +75,11 @@ class SineSweep():
         self.fg.SetOffset(offset)
         self.fg.SetOutput(outputstate='on')
 
-    def get_iq(self,window=False):
+    def get_iq(self,numPts=390000,window=True,num_pts_per_period=None):
         ''' Gets the IQ from the software lock in.
             Return array structure is n_rows x 2 (one for I and one for Q)
         '''
-        return self.sla.getData(num_periods=self.num_lockin_periods, window=window,debug=False)
+        return self.sla.getData(minimumNumPoints=numPts, window=window,debug=False, num_pts_per_period=num_pts_per_period)
 
     def set_frequency(self,freq,diff_percent_tol = .1):
         ''' set the frequency and check that the frequency set is within diff_percent_tol % of requested. 
@@ -100,7 +101,14 @@ class SineSweep():
         for ii, freq in enumerate(self.freq_hz):
             freq_m.append(self.set_frequency(freq))
             time.sleep(self.waittime_s)
-            iq_v_freq[ii,:,:] = self.get_iq()
+            samples_per_period = int(self.sla.ec.sample_rate/freq)
+            max_num_period = self.easy_client_max_numpts//samples_per_period
+            if max_num_period < 10:
+                numpts = self.easy_client_max_numpts 
+            else:
+                numpts = samples_per_period*10  
+            print(numpts)
+            iq_v_freq[ii,:,:] = self.get_iq(numpts,num_pts_per_period=samples_per_period)
 
         post_temp_k = self.adr_gui_control.get_temp_k()
         post_time = time.time()
@@ -273,7 +281,7 @@ class ComplexZ(SineSweep):
                       extra_info = extra_info)
 
 if __name__ == "__main__":
-    ss = SineSweep(amp_volt=.04,frequency_hz=np.logspace(1,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
+    ss = SineSweep(amp_volt=0.04,frequency_hz=np.logspace(0,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
     output = ss.take_sweep()
     ss.plot()
     plt.show()

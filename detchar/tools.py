@@ -451,7 +451,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         if num_pts_per_period is not None:
             num_pts = num_pts_per_period
         else:
-            data = self.ec.getNewData(minimumNumPoints=80000)
+            data = self.ec.getNewData(minimumNumPoints=390000)
             arr = data[self.ref_col_index,0,:,0]
             arr_pp = np.max(arr) - np.min(arr)
             assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2))
@@ -459,23 +459,27 @@ class SoftwareLockinAcquire(SoftwareLockIn):
             num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
         return num_pts
 
-    def getData(self, num_periods=10, window=False,debug=False):
+    def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None):
         '''
         Acquire data and return the locked in signal for each row in one column of data.
 
         input:
+        num_periods: number of periods for lock in
         window: boolean, if true Hanning window applied
         debug: boolean, if true plot some stuff
 
         output: iq_arr, n_row x 2 numpy.array of I and Q
         '''
+        assert minimumNumPoints < 390001, 'minimumNumPoints > 390,000 has been shown to crash the easy client.'
 
         #dataOut[col,row,frame,error=0/fb=1]
-        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 10)
+        #print(self.num_pts_per_period)
+        #dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 100)
+        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 10)
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
             iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],
-                                                window=window,integer_periods=True,num_pts_per_period=self.num_pts_per_period,debug=False))
+                                                window=window,integer_periods=True,num_pts_per_period=num_pts_per_period,debug=False))
 
         if debug:
             for ii in range(self.ec.numRows):
@@ -675,7 +679,7 @@ def test_get_num_points_per_period():
 
 def test_lockin_acq():
     sla = SoftwareLockinAcquire(signal_feedback_or_error='error')
-    sla.getData(num_periods=12, window=False,debug=True)
+    sla.getData(minimumNumPoints=1000, window=False,debug=True)
 
 def test_get_num_points_per_period_squarewave():
     sig,ref = make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='square',plotfig=False)
@@ -683,4 +687,4 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sla.getData(num_periods=10, window=False,debug=True)
+    sla.getData(minimumNumPoints=1000, window=True,debug=True)
