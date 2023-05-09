@@ -53,7 +53,7 @@ class SineSweep():
         self.signal_column_index = signal_column_index
         self.reference_column_index = reference_column_index
         self.num_lockin_periods = num_lockin_periods
-        self.waittime_s = 0 # time to wait between setting new frequency and acquiring data.
+        self.waittime_s = 0.05 # time to wait between setting new frequency and acquiring data.
         self.row_order = self._handle_row_to_state(row_order)
         self.column_str = column_str # purely for recording purposes
         self.rfg_ohm = rfg_ohm # for recording purposes, resistance in series at output of function generator 
@@ -143,6 +143,13 @@ class SineSweep():
         ax[1][1].set_xlabel('Freq (Hz)')
 
         ax[1][1].legend(list(range(self.sla.ec.nrow)))
+
+        fig2,ax2 = plt.subplots(1,1) 
+        for ii in range(self.sla.ec.nrow):
+            ax2.plot(self.iq_v_freq[:,ii,0],self.iq_v_freq[:,ii,1])
+        ax2.set_aspect('equal','box')
+        ax2.set_xlabel('I')
+        ax2.set_ylabel('Q')
 
 class ComplexZ(SineSweep):
     '''
@@ -266,31 +273,31 @@ class ComplexZ(SineSweep):
                       extra_info = extra_info)
 
 if __name__ == "__main__":
-    # ss = SineSweep(frequency_hz=[10,20,30])
-    # output = ss.take_sweep()
-    # ss.plot()
-    # plt.show()
+    ss = SineSweep(amp_volt=.04,frequency_hz=np.logspace(1,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
+    output = ss.take_sweep()
+    ss.plot()
+    plt.show()
 
-    # output.to_file('foo_ss.json',overwrite=True)
+    output.to_file('ss_row7_sc_branch.json',overwrite=True)
     # foo = SineSweepData.from_file('foo_ss.json')
     # foo.plot()
 
     # plt.show()
 
-    cz = ComplexZ(amp_volt=0.02, offset_volt=0, frequency_hz=[10,20,30],
-                 num_lockin_periods = 10,
-                 row_order=None,
-                 signal_column_index=0,
-                 reference_column_index=1,
-                 column_str='A',
-                 rfg_ohm = 10.2e3,
-                 detector_bias_list = [0,20],
-                 temperature_list_k = [0.1,0.11],
-                 voltage_source='tower',
-                 db_cardname = 'DB',
-                 db_tower_channel='2',
-                 cringe_control=None)
+    # cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(1,5,50),
+    #              num_lockin_periods = 10,
+    #              row_order=None,
+    #              signal_column_index=0,
+    #              reference_column_index=1,
+    #              column_str='C',
+    #              rfg_ohm = 10.2e3,
+    #              detector_bias_list = [40000,20000,10000,8000,5000],
+    #              temperature_list_k = [0.1,0.125],
+    #              voltage_source='tower',
+    #              db_cardname = 'DB',
+    #              db_tower_channel='2',
+    #              cringe_control=None)
 
-    output = cz.run(False)
-    output.to_file('foo_cz.json')
+    # output = cz.run(False)
+    # output.to_file('sample_cz.json')
 
