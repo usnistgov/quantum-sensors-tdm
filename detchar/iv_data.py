@@ -287,15 +287,21 @@ class SineSweepData():
         with open(filename, "r") as f:
             return cls.from_json(f.read())
 
-    def plot(self,fignum=1):
+    def plot(self,fignum=1,semilogx=True):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
         n_freq,n_row,foo = np.shape(self.iq_data)
         iq_data = np.array(self.iq_data)
         for ii in range(n_row):
-            ax[0][0].plot(self.frequency_hz,iq_data[:,ii,0],'o-')
-            ax[0][1].plot(self.frequency_hz,iq_data[:,ii,1],'o-')
-            ax[1][0].plot(self.frequency_hz,iq_data[:,ii,0]**2+iq_data[:,ii,1]**2,'o-')
-            ax[1][1].plot(self.frequency_hz,np.arctan(iq_data[:,ii,1]/iq_data[:,ii,0]),'o-')
+            if semilogx:
+                ax[0][0].semilogx(self.frequency_hz,iq_data[:,ii,0],'o-')
+                ax[0][1].semilogx(self.frequency_hz,iq_data[:,ii,1],'o-')
+                ax[1][0].semilogx(self.frequency_hz,iq_data[:,ii,0]**2+iq_data[:,ii,1]**2,'o-')
+                ax[1][1].semilogx(self.frequency_hz,np.arctan(iq_data[:,ii,1]/iq_data[:,ii,0]),'o-')
+            else:
+                ax[0][0].plot(self.frequency_hz,iq_data[:,ii,0],'o-')
+                ax[0][1].plot(self.frequency_hz,iq_data[:,ii,1],'o-')
+                ax[1][0].plot(self.frequency_hz,iq_data[:,ii,0]**2+iq_data[:,ii,1]**2,'o-')
+                ax[1][1].plot(self.frequency_hz,np.arctan(iq_data[:,ii,1]/iq_data[:,ii,0]),'o-')
 
         # axes labels
         ax[0][0].set_ylabel('I')
