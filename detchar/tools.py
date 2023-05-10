@@ -475,7 +475,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         #dataOut[col,row,frame,error=0/fb=1]
         #print(self.num_pts_per_period)
         #dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 100)
-        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 10)
+        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 100)
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
             iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],

@@ -107,7 +107,6 @@ class SineSweep():
                 numpts = self.easy_client_max_numpts 
             else:
                 numpts = samples_per_period*10  
-            print(numpts)
             iq_v_freq[ii,:,:] = self.get_iq(numpts,num_pts_per_period=samples_per_period)
 
         post_temp_k = self.adr_gui_control.get_temp_k()
@@ -199,7 +198,14 @@ class ComplexZ(SineSweep):
             print('First element of detector_bias_list is not a list.  Using the same detector bias settings for all temperatures.')
             output = []
             for ii in range(len(self.temp_list_k)): output.append(db_list)
-        return output
+
+        print(output)
+        # ensure descending order (useful so that only one autobias is needed)
+        output_sorted = []
+        for db in output:
+            db.sort(reverse=True)
+            output_sorted.append(db)
+        return output_sorted
 
     def _handle_cringe_control_arg(self, cringe_control):
         if cringe_control is not None:
@@ -257,17 +263,21 @@ class ComplexZ(SineSweep):
                 self.adr_gui_control.set_temp_k(float(temp))
             else:
                 self.set_temp(temp)
-            det_bias_output = []
             print('Detector bias list: ',self.db_list[ii])
+            print('overbiasing detector, dropping bias down, then waiting 30s')
+            self.set_volt(65535)
+            time.sleep(0.3)
+            self.set_volt(self.db_list[ii][0])
+            time.sleep(30)
+            det_bias_output = []
             for jj,db in enumerate(self.db_list[ii]):
-                print('Setting detector bias to %d '%db)
+                print('Setting detector bias to %d, then relocking'%db)
                 self.set_volt(db)
-                time.sleep(0.1)
                 self.cc.relock_all_locked_fba(self.signal_column_index)
                 time.sleep(0.1)
                 print('Performing Sine Sweep')
                 result = self.take_sweep(extra_info = {}, turn_off_source_on_end = False)
-                det_bias_output.append(result) # want a return data structure that indexes like so: [temp_index,det_bias_index,result]
+                det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
             temp_output.append(det_bias_output)
 
         self.fg.SetOutput(outputstate='off')
@@ -281,31 +291,31 @@ class ComplexZ(SineSweep):
                       extra_info = extra_info)
 
 if __name__ == "__main__":
-    ss = SineSweep(amp_volt=0.04,frequency_hz=np.logspace(0,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
-    output = ss.take_sweep()
-    ss.plot()
-    plt.show()
+    # ss = SineSweep(amp_volt=0.04,frequency_hz=np.logspace(0,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
+    # output = ss.take_sweep()
+    # ss.plot()
+    # plt.show()
 
-    output.to_file('ss_row7_sc_branch.json',overwrite=True)
+    # output.to_file('ss_row7_sc_branch.json',overwrite=True)
     # foo = SineSweepData.from_file('foo_ss.json')
     # foo.plot()
 
     # plt.show()
 
-    # cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(1,5,50),
-    #              num_lockin_periods = 10,
-    #              row_order=None,
-    #              signal_column_index=0,
-    #              reference_column_index=1,
-    #              column_str='C',
-    #              rfg_ohm = 10.2e3,
-    #              detector_bias_list = [40000,20000,10000,8000,5000],
-    #              temperature_list_k = [0.1,0.125],
-    #              voltage_source='tower',
-    #              db_cardname = 'DB',
-    #              db_tower_channel='2',
-    #              cringe_control=None)
+    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,5,100),
+                 num_lockin_periods = 10,
+                 row_order=[7,7,7,7],
+                 signal_column_index=0,
+                 reference_column_index=1,
+                 column_str='C',
+                 rfg_ohm = 10.2e3,
+                 detector_bias_list = [0,40000,20000,10000,8000,5000],
+                 temperature_list_k = [0.16],
+                 voltage_source='tower',
+                 db_cardname = 'DB',
+                 db_tower_channel='2',
+                 cringe_control=None)
 
-    # output = cz.run(False)
-    # output.to_file('sample_cz.json')
+    output = cz.run(True)
+    output.to_file('sample_cz.json')
 
