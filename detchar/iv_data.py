@@ -378,4 +378,99 @@ class CzData():
             ax2.set_aspect('equal','box')
             ax2.legend(tuple(self.db_list[ii]))
 
+    def get_sc_dataset(self,Tc_k=.16):
+        sc_indices = []
+        for dex in np.where(np.array(self.temp_list_k) < Tc_k)[0]:
+            zb_indices = np.where(np.array(self.db_list[dex])==0)[0]
+            if len(zb_indices) >0 :
+                for zb_dex in zb_indices:
+                    sc_indices.append([dex,zb_dex])
+        N = len(sc_indices)
+        if N>1:
+            print('More than one measurement in the superconducting state has been taken.  The indices are: ',sc_indices)
+            print('Using the first measurement in the list for calibration.  Index = ',sc_indices[0])
+            sc_index = sc_indices[0] 
+        elif N==1:
+            sc_index = sc_indices[0]
+        else:
+            raise Exception('No measurement in the superconducting branch found')
+        return np.array(self.data[sc_indices[0][0]][sc_indices[0][1]]['iq_data']), sc_indices
+                    
+    def plotZ(self, temp_k, Tc_k=0.16,semilogx=True,f_max_hz=None):
+        ''' plot the bias circuit subtracted impedance for all detector bias settings taken at temperature temp_k '''
+        assert temp_k in self.temp_list_k, 'Requested temperature is not in temp_list_k'
+        temp_index = np.where(np.array(self.temp_list_k)==temp_k)[0]
+        if len(temp_index)!=1:
+            print('More than one measurement at temperature temp_k.  Analyzing the first measurement')
+        temp_index = temp_index[0]
+        db_list = self.db_list[temp_index]  
+        sc_data, sc_dex = self.get_sc_dataset(Tc_k)
+        data = self.data[temp_index]
+        num_db = len(data)
+        
+        # determine number of independent detector measurements in the mux frame
+        if len(set(data[0]['row_order'])) == 1:
+            num_rows = 1 
+        else:
+            num_rows == len(data[0]['row_order'])
+        
+        # loop over rows/detectors, make plots per detector 
+        for ii in range(num_rows):
+            fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
+            fig2,ax2 = plt.subplots(1,1,num=2*ii+1) 
+            row = data[0]['row_order'][ii]
+            for ff in [fig,fig2]:
+                ff.suptitle('Row%02d, Temperature = %.1f mK'%(data[0]['row_order'][ii],temp_k*1000))
+            
+            # loop over detector biases 
+            for jj,db in enumerate(db_list):
+                if np.logical_and(db==0,temp_k<Tc_k):
+                    continue
+                f = data[jj]['frequency_hz']
+                iq_data = np.array(data[jj]['iq_data'])
+                Z = iq_data - sc_data 
+                if f_max_hz:
+                    dex_max = np.argmin(abs(np.array(f)-f_max_hz))
+                    f=f[:dex_max]
+                    Z=Z[:dex_max,:,:]
+
+                if semilogx:
+                    ax[0][0].semilogx(f, Z[:,ii,0],'o-')
+                    ax[0][1].semilogx(f, Z[:,ii,1],'o-')
+                    ax[1][0].semilogx(f, Z[:,ii,0]**2+Z[:,ii,1]**2,'o-')
+                    ax[1][1].semilogx(f, np.arctan2(Z[:,ii,1],Z[:,ii,0]),'o-')
+                else:
+                    ax[0][0].plot(f, Z[:,ii,0],'o-')
+                    ax[0][1].plot(f, Z[:,ii,1],'o-')
+                    ax[1][0].plot(f, Z[:,ii,0]**2+Z[:,ii,1]**2,'o-')
+                    ax[1][1].plot(f, np.arctan2(Z[:,ii,1],Z[:,ii,0]),'o-')
+                
+                # plot I vs Q as second plot
+                ax2.plot(Z[:,ii,0],Z[:,ii,1],'o-')# plot I vs Q as second plot
+            
+            # axes labels
+            ax[0][0].set_ylabel('I')
+            ax[0][1].set_ylabel('Q')
+            ax[1][0].set_ylabel('I^2+Q^2')
+            ax[1][1].set_ylabel('Phase')
+            ax[1][0].set_xlabel('Freq (Hz)')
+            ax[1][1].set_xlabel('Freq (Hz)')
+            ax[1][1].legend(tuple(db_list))
+
+            ax2.set_xlabel('I')
+            ax2.set_ylabel('Q')
+            ax2.set_aspect('equal','box')
+            ax2.legend(tuple(db_list))# axes labels
+               
+                    
+
+
+            
+        
+
+    	
+    	
+            
+     
+
 

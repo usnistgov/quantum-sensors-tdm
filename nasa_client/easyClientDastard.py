@@ -235,7 +235,8 @@ class EasyClientDastard():
         while True:
             i+=1
             if i>40*self.numChannels:
-                raise Exception("couldn't get the data you wantd")
+                return None # 5/23, fails here due to dropped packets, instead of barfing, return None so that something can be done about it in a larger script
+                #raise Exception("couldn't get the data you wantd")
             header, data = self.getMessage()
             dastardNano = header["unixnano"]
             if delayNano >= 0 and (mytimeNano + delayNano > dastardNano):

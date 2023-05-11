@@ -17,6 +17,7 @@ from nasa_client import EasyClient
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert,square
 from scipy.optimize import curve_fit
+import time
 
 class SignalAnalysis():
     def get_amplitude_of_sinusoid_high_s2n(self,a):
@@ -451,7 +452,19 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         if num_pts_per_period is not None:
             num_pts = num_pts_per_period
         else:
-            data = self.ec.getNewData(minimumNumPoints=390000)
+            ii = 0
+            retries=10
+            while ii < retries:
+                data = self.ec.getNewData(minimumNumPoints=390000)
+                if isinstance(data, (np.ndarray, np.generic)):
+                    break
+                else: 
+                    print('easy_client getNewData failed on attempt number %d'%ii)
+                    time.sleep(.1)
+                    ii+=1 
+                    continue 
+            if ii==retries:
+                raise Exception('getData failed, likely due to dropped packets')
             arr = data[self.ref_col_index,0,:,0]
             arr_pp = np.max(arr) - np.min(arr)
             assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2))
@@ -459,7 +472,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
             num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
         return num_pts
 
-    def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None):
+    def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None,retries=10):
         '''
         Acquire data and return the locked in signal for each row in one column of data.
 
@@ -473,9 +486,24 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         assert minimumNumPoints < 390001, 'minimumNumPoints > 390,000 has been shown to crash the easy client.'
 
         #dataOut[col,row,frame,error=0/fb=1]
-        #print(self.num_pts_per_period)
         #dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 100)
-        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 100)
+
+        # 5/2023 easy client getNewData fails often due to dropped packets (when needing to collect multiple packets)
+        # Here is an attempt to recover from this error, by trying again 
+        ii = 0
+        while ii < retries:
+            dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 100)
+            if isinstance(dataOut, (np.ndarray, np.generic)):
+                break
+            else: 
+                print('easy_client getNewData failed on attempt number %d'%ii)
+                time.sleep(.1)
+                ii+=1 
+                continue 
+        
+        if ii==retries:
+            raise Exception('getData failed, likely due to dropped packets')
+
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
             iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],
@@ -687,4 +715,4 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sla.getData(minimumNumPoints=1000, window=True,debug=True)
+    sla.getData(minimumNumPoints=390000, window=True,debug=False)

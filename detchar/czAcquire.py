@@ -196,10 +196,8 @@ class ComplexZ(SineSweep):
             output = db_list
         else:
             print('First element of detector_bias_list is not a list.  Using the same detector bias settings for all temperatures.')
-            output = []
-            for ii in range(len(self.temp_list_k)): output.append(db_list)
+            output = [db_list]*len(self.temp_list_k)
 
-        print(output)
         # ensure descending order (useful so that only one autobias is needed)
         output_sorted = []
         for db in output:
@@ -302,20 +300,28 @@ if __name__ == "__main__":
 
     # plt.show()
 
+    temp_list_k = [0.11,0.12,0.13,0.14,0.15,0.16,0.19]
+    # construct detector bias list, one for each temperature. 
+    # only include one superconducting state measurement (0 bias below Tc)
+    # only include one normal branch measurement (0 bias above Tc)
+    db_list = [[30000,15000,12500,10000,7500,5000,2000,1000,0]]
+    db_list_more = [db_list[0][:-1]]*(len(temp_list_k)-2) # remove the zero bias because you only need one 
+    db_list.extend(db_list_more)
+    db_list.append([0])
     cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,5,100),
                  num_lockin_periods = 10,
-                 row_order=[7,7,7,7],
+                 row_order=[13,15,19,19],
                  signal_column_index=0,
                  reference_column_index=1,
                  column_str='C',
                  rfg_ohm = 10.2e3,
-                 detector_bias_list = [0,40000,20000,10000,8000,5000],
-                 temperature_list_k = [0.16],
+                 detector_bias_list = db_list,
+                 temperature_list_k = temp_list_k,
                  voltage_source='tower',
                  db_cardname = 'DB',
                  db_tower_channel='2',
                  cringe_control=None)
 
-    output = cz.run(True)
-    output.to_file('sample_cz.json')
+    output = cz.run(False)
+    output.to_file('colC_row13_15_19_cz_fine.json')
 
