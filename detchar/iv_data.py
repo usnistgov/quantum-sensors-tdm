@@ -316,7 +316,7 @@ class SineSweepData():
 @dataclass_json
 @dataclass
 class CzData():
-    data: List[Any]
+    data: List[List[SineSweepData]]
     db_list: List[int]
     temp_list_k: List[float]
     db_cardname: str
@@ -345,21 +345,21 @@ class CzData():
             fig2.suptitle('I-Q Temperature = %.1f mK'%(temp*1000))
             for jj, db in enumerate(self.db_list[ii]): # loop over detector bias
                 ss = self.data[ii][jj]
-                n_freq,n_row,foo = np.shape(ss['iq_data'])
-                iq_data = np.array(ss['iq_data'])
+                n_freq,n_row,foo = np.shape(ss.iq_data)
+                iq_data = np.array(ss.iq_data)
                 
                 # assume that all rows have the same data (faux_mux)
                 row_index = 0
                 if semilogx:
-                    ax[0][0].semilogx(ss['frequency_hz'],iq_data[:,row_index,0],'o-')
-                    ax[0][1].semilogx(ss['frequency_hz'],iq_data[:,row_index,1],'o-')
-                    ax[1][0].semilogx(ss['frequency_hz'],iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
-                    ax[1][1].semilogx(ss['frequency_hz'],np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
+                    ax[0][0].semilogx(ss.frequency_hz,iq_data[:,row_index,0],'o-')
+                    ax[0][1].semilogx(ss.frequency_hz,iq_data[:,row_index,1],'o-')
+                    ax[1][0].semilogx(ss.frequency_hz,iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
+                    ax[1][1].semilogx(ss.frequency_hz,np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
                 else:
-                    ax[0][0].plot(ss['frequency_hz'],iq_data[:,row_index,0],'o-')
-                    ax[0][1].plot(ss['frequency_hz'],iq_data[:,row_index,1],'o-')
-                    ax[1][0].plot(ss['frequency_hz'],iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
-                    ax[1][1].plot(ss['frequency_hz'],np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
+                    ax[0][0].plot(ss.frequency_hz,iq_data[:,row_index,0],'o-')
+                    ax[0][1].plot(ss.frequency_hz,iq_data[:,row_index,1],'o-')
+                    ax[1][0].plot(ss.frequency_hz,iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2,'o-')
+                    ax[1][1].plot(ss.frequency_hz,np.arctan(iq_data[:,row_index,1]/iq_data[:,row_index,0]),'o-')
 
                 # plot I vs Q as second plot
                 ax2.plot(iq_data[:,row_index,0],iq_data[:,row_index,1],'o-')
@@ -394,7 +394,7 @@ class CzData():
             sc_index = sc_indices[0]
         else:
             raise Exception('No measurement in the superconducting branch found')
-        return np.array(self.data[sc_indices[0][0]][sc_indices[0][1]]['iq_data']), sc_indices
+        return np.array(self.data[sc_indices[0][0]][sc_indices[0][1]].iq_data), sc_indices
                     
     def plotZ(self, temp_k, Tc_k=0.16,semilogx=True,f_max_hz=None):
         ''' plot the bias circuit subtracted impedance for all detector bias settings taken at temperature temp_k '''
@@ -405,29 +405,29 @@ class CzData():
         temp_index = temp_index[0]
         db_list = self.db_list[temp_index]  
         sc_data, sc_dex = self.get_sc_dataset(Tc_k)
-        data = self.data[temp_index]
+        data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
         num_db = len(data)
         
         # determine number of independent detector measurements in the mux frame
-        if len(set(data[0]['row_order'])) == 1:
+        if len(set(data[0].row_order)) == 1:
             num_rows = 1 
         else:
-            num_rows == len(data[0]['row_order'])
+            num_rows == len(data[0].row_order)
         
         # loop over rows/detectors, make plots per detector 
         for ii in range(num_rows):
             fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
             fig2,ax2 = plt.subplots(1,1,num=2*ii+1) 
-            row = data[0]['row_order'][ii]
+            row = data[0].row_order[ii]
             for ff in [fig,fig2]:
-                ff.suptitle('Row%02d, Temperature = %.1f mK'%(data[0]['row_order'][ii],temp_k*1000))
+                ff.suptitle('Row%02d, Temperature = %.1f mK'%(data[0].row_order[ii],temp_k*1000))
             
             # loop over detector biases 
             for jj,db in enumerate(db_list):
                 if np.logical_and(db==0,temp_k<Tc_k):
                     continue
-                f = data[jj]['frequency_hz']
-                iq_data = np.array(data[jj]['iq_data'])
+                f = data[jj].frequency_hz
+                iq_data = np.array(data[jj].iq_data)
                 Z = iq_data - sc_data 
                 if f_max_hz:
                     dex_max = np.argmin(abs(np.array(f)-f_max_hz))
