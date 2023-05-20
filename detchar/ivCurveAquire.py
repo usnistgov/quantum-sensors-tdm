@@ -13,6 +13,7 @@ v2: 5/2023 updated to use the tower card detector bias
 
 import yaml, sys, os
 from iv_utils import *
+import matplotlib.pyplot as plt
 
 def plot_iv_groups(iv_temp_sweep_inst,num_in_group=8):
     N = len(iv_temp_sweep_inst.set_temps_k) # number of temp sweeps
@@ -21,7 +22,7 @@ def plot_iv_groups(iv_temp_sweep_inst,num_in_group=8):
         dac,fb_arr = df.xy_arrays_zero_subtracted_at_dac_high()
         n_dac,n_rows = np.shape(fb_arr)
         n_groups = n_rows//num_in_group
-        for jj in range(n_groups): # plot in groups 
+        for jj in range(n_groups+1): # plot in groups 
             plt.figure(jj)
             for kk in range(num_in_group):
                 row_index = jj*num_in_group+kk
