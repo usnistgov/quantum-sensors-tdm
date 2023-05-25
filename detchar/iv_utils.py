@@ -11,8 +11,8 @@ import numpy as np
 import pylab as plt
 import progress.bar
 import os
-#from . iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadTempSweepData, IVCircuit
-from iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
+from .iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadTempSweepData, IVCircuit
+#  from iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
 from instruments import BlueBox
 
 class IVPointTaker():

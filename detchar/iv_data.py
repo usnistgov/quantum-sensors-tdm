@@ -259,6 +259,8 @@ class PolCalSteppedBeamMapData():
     xy_position_list: List[Any]
     data: List[PolCalSteppedSweepData]
 
+### complex impedance / responsivity data classes ------------------------------------------
+
 @dataclass_json
 @dataclass
 class SineSweepData():

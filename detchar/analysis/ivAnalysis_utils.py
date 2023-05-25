@@ -1565,32 +1565,67 @@ class IVColdloadSweepAnalyzer():
 
 if __name__ == "__main__":
 
-    # circuit parameters
-    iv_circuit = IVCircuit(rfb_ohm=5282.0+50.0,
-                           rbias_ohm=10068.0,
-                           rsh_ohm=0.0662,
-                           rx_ohm=0,
-                           m_ratio=8.259,
-                           vfb_gain=1.017/(2**14-1),
-                           vbias_gain=6.5/(2**16-1))
+    # code for a quick IV versus temperature analysis
+    # stuff you should update on case by case
+    path = '/home/pcuser/data/uber_omt/20230517/'
+    fname = 'uber_omt_ColumnA_ivs_20230519_1684529743.json'
+    row_index = 11
+    use_config = True
 
-    path = '/home/pcuser/data/lbird/20210320/'
-    fname = 'lbird_hftv0_ColumnA_ivs_20210413_1618354151.json'
-    row_index = 23
+    # rest should be static
+    df = IVTempSweepData.from_file(path+fname) # df = "data frame"
+    cfg = df.data[0].extra_info['config']
+
+    print('State sequence: ',cfg['detectors']['Rows'])
+    print('Row Select: ',cfg['detectors']['Rows'][row_index])
+
+    if cfg['voltage_bias']['source'] == 'tower':
+        vb_max = 2.5
+    elif cfg['voltage_bias']['source'] == 'bluebox':
+        vb_max = 6.5
+    else:
+        assert False,'unknown voltage bias'
+    
+    # circuit parameters to convert to physical units
+    if use_config:
+        cal = cfg['calnums']
+        rfb_ohm = cal['rfb']+50.0
+        rbias_ohm = cal['rbias']
+        rsh_ohm = cal['rjnoise']
+        mr = cal['mr']
+        vfb_gain = cal['vfb_gain']/(2**14-1)
+
+    else:
+        rfb_ohm = 1698.0+50.0
+        rbias_ohm = 200.0
+        rsh_ohm = 0.000150
+        rx_ohm = 0
+        mr = 15 
+        vfb_gain = 1.017/(2**14-1)
+
+    iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
+                           rbias_ohm=rbias_ohm,
+                           rsh_ohm=rsh_ohm,
+                           rx_ohm=0,
+                           m_ratio=mr,
+                           vfb_gain=vfb_gain,
+                           vbias_gain=vb_max/(2**16-1))
 
     # construct fb_arr versus Tbath for a single row
-    df = IVTempSweepData.from_file(path+fname)
     dac, fb = df.data[0].xy_arrays()
     n_sweeps = len(df.set_temps_k)
     fb_arr = np.zeros((len(dac),n_sweeps))
+    print(df.data[0].extra_info['config'])
     for ii in range(n_sweeps):
         dac, fb = df.data[ii].xy_arrays()
         fb_arr[:,ii] = fb[:,row_index]
 
-    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.985,0.99],iv_circuit=iv_circuit)
+    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=df.set_temps_k, normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
     iv_tsweep.plot_raw(1)
-    iv_tsweep.plot_vipr(None,2)
+    iv_tsweep.plot_vipr(fignum=2)
     iv_tsweep.plot_pr(fig_num=3)
     iv_tsweep.plot_pt(fig_num=4)
+    iv_tsweep.plot_fits(fignum=5)
     print(iv_tsweep.pfits[0])
     plt.show()
