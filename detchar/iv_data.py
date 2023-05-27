@@ -26,7 +26,7 @@ class DataIO():
 # iv data classes -----------------------------------------------------------------------------
 @dataclass_json
 @dataclass
-class IVCurveColumnData():
+class IVCurveColumnData(DataIO):
     nominal_temp_k: float
     pre_temp_k: float
     post_temp_k: float
@@ -112,7 +112,7 @@ class IVTempSweepData(DataIO):
 
 @dataclass_json
 @dataclass
-class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
+class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
     set_cl_temps_k: List[float]
     data: List[IVTempSweepData]
     extra_info: dict
@@ -132,7 +132,7 @@ class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, d
 
 @dataclass_json
 @dataclass
-class IVCircuit():
+class IVCircuit(DataIO):
     rfb_ohm: float # feedback resistor
     rbias_ohm: float # bias resistor
     rsh_ohm: float # shunt resistor
@@ -171,7 +171,7 @@ class IVCircuit():
 
 @dataclass_json
 @dataclass
-class PolCalSteppedSweepData():
+class PolCalSteppedSweepData(DataIO):
     angle_deg_req: List[float]
     angle_deg_meas: List[float]
     iq_v_angle: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
@@ -224,7 +224,7 @@ class PolCalSteppedSweepData():
 
 @dataclass_json
 @dataclass
-class PolCalSteppedBeamMapData():
+class PolCalSteppedBeamMapData(DataIO):
     xy_position_list: List[Any]
     data: List[PolCalSteppedSweepData]
 
@@ -232,7 +232,7 @@ class PolCalSteppedBeamMapData():
 
 @dataclass_json
 @dataclass
-class SineSweepData():
+class SineSweepData(DataIO):
     frequency_hz: List[Any]
     iq_data: List[Any] = dataclasses.field(repr=False)
     amp_volt: float
@@ -277,7 +277,7 @@ class SineSweepData():
 
 @dataclass_json
 @dataclass
-class CzData():
+class CzData(DataIO):
     data: List[List[SineSweepData]]
     db_list: List[int]
     temp_list_k: List[float]
@@ -540,7 +540,60 @@ class CzData():
                
             #embed();sys.exit()
     	
-            
+### noise data classes ---------------------------------------------------------------------
+@dataclass_json
+@dataclass
+class NoiseData(DataIO):
+    freq_hz: List[float] 
+    Pxx: List[Any] = dataclasses.field(repr=False) # averaged PSD with indices [row,sample #]
+    Pxx_all: List[Any] = dataclasses.field(repr=False) # individual PSDs with indices [row, sample #, measurement #]
+    column: str # 'A','B','C', or 'D' for velma system
+    row_sequence: List[int] # state sequence that maps dfb line period order to mux row select 
+    num_averages: int 
+    pre_temp_k: float
+    pre_time_epoch_s: float
+    dfb_bits_to_A: float # convertion of dfb bits to amps 
+    rfb_ohm: float 
+    m_ratio: float  
+    extra_info: dict
+
+    def plot_avg_psd(self,row_index=None,physical_units=True):
+        fig,ax = plt.subplots(1,1)
+        fig.suptitle('Column %s averaged noise'%(self.column))
+        Pxx = np.array(self.Pxx)
+        nrows,nsamples = np.shape(Pxx)
+        if row_index is None:
+            row_index = list(range(nrows))
+        if physical_units:
+            m = self.dfb_bits_to_A**2
+            ax.set_ylabel('PSD (A$^2$/Hz)')
+        else:
+            m=1 
+            ax.set_ylabel('PSD (arb$^2$/Hz)')
+        if type(row_index) == int:
+            ax.loglog(self.freq_hz,Pxx[row_index,:]*m)
+        elif type(row_index) == list:
+            for row in row_index:
+                ax.loglog(self.freq_hz,Pxx[row,:]*m)
+            ax.legend(range(nrows))
+        ax.set_xlabel('Frequency (Hz)')
+
+    def plot_psds_for_row(self,row_index,physical_units=True):
+        fig,ax = plt.subplots(1,1)
+        fig.suptitle('Column %s Row %02d noise'%(self.column,self.row_sequence[row_index]))
+        Pxx_all = np.array(self.Pxx_all)
+        if physical_units:
+            m = self.dfb_bits_to_A 
+            ax.set_ylabel('PSD (A$^2$/Hz)')
+        else:
+            m=1 
+            ax.set_ylabel('PSD (arb$^2$/Hz)')
+        for ii in range(self.num_averages):
+            ax.loglog(self.freq_hz,Pxx_all[row_index,:,ii])
+        ax.set_xlabel('Frequency (Hz)')
+        ax.legend(range(self.num_averages))
+        
+
      
 
 
