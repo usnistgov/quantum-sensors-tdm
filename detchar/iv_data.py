@@ -10,6 +10,19 @@ from numpy.polynomial.polynomial import Polynomial
 import scipy as sp
 from IPython import embed
 
+class DataIO():
+    def to_file(self, filename, overwrite = False):
+        if not overwrite:
+            assert not os.path.isfile(filename), print('File %s already exists.  Use overwrite=True to overwrite.'%filename)
+        with open(filename, "w") as f:
+            f.write(self.to_json())
+
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, "r") as f:
+            return cls.from_json(f.read())
+
+
 # iv data classes -----------------------------------------------------------------------------
 @dataclass_json
 @dataclass
@@ -36,17 +49,6 @@ class IVCurveColumnData():
         plt.xlabel("dac values (arb)")
         plt.ylabel("fb values (arb)")
         plt.title(f"bay {self.bayname}, db_card {self.db_cardname}, nominal_temp_mk {self.nominal_temp_k*1000}")
-
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
 
     def fb_values_array(self):
         return np.vstack(self.fb_values)
@@ -87,20 +89,9 @@ def fit_normal_zero_subtract(x, y, normal_above_x):
 
 @dataclass_json
 @dataclass
-class IVTempSweepData():
+class IVTempSweepData(DataIO):
     set_temps_k: List[float]
     data: List[IVCurveColumnData]
-
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
 
     def plot_row(self, row, zero="dac high"):
         plt.figure()
@@ -125,17 +116,6 @@ class IVColdloadSweepData(): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, d
     set_cl_temps_k: List[float]
     data: List[IVTempSweepData]
     extra_info: dict
-
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
 
     def plot_row(self, row):
         #n=len(set_cl_temps_k)
@@ -210,17 +190,6 @@ class PolCalSteppedSweepData():
     post_time_epoch_s: float
     extra_info: dict
 
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename)
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
-
     def plot(self, rows_per_figure=None):
         ''' rows_per_figure is a list of lists to group detector responses
             to be plotted together.  If None will plot in groups of 8.
@@ -280,17 +249,6 @@ class SineSweepData():
     post_time_epoch_s: int
     extra_info: dict
 
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename),'File already exists.  Use overwrite=True to overwrite.'
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
-
     def plot(self,fignum=1,semilogx=True):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
         n_freq,n_row,foo = np.shape(self.iq_data)
@@ -327,17 +285,6 @@ class CzData():
     db_tower_channel_str: str
     temp_settle_delay_s: float
     extra_info: dict
-
-    def to_file(self, filename, overwrite = False):
-        if not overwrite:
-            assert not os.path.isfile(filename),'File already exists.  Use overwrite=True to overwrite.'
-        with open(filename, "w") as f:
-            f.write(self.to_json())
-
-    @classmethod
-    def from_file(cls, filename):
-        with open(filename, "r") as f:
-            return cls.from_json(f.read())
 
     def plot(self,semilogx=True):
         ''' plot a 2x2 of results for data at each temperature '''
