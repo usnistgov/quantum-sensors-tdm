@@ -1,7 +1,7 @@
-''' 
+'''
 noise.py  - Software to acquire multiplexed noise data with the nistqsptdm package.
-Note microscope has psd function that is great for realtime work.  This software package 
-is suited for storing data and scripting to loop over temperature and bias point. 
+Note microscope has psd function that is great for realtime work.  This software package
+is suited for storing data and scripting to loop over temperature and bias point.
 
 @author JH, 5/2023
 '''
@@ -58,7 +58,7 @@ class DynamicMplCanvas(MplCanvas):
         self.style = "-"
         self.max_points = max_points
         self.set_axis_labels(xlabel, ylabel, title, legend, plotstyle)
-        
+
     def set_axis_labels(self, xlabel="time (s)", ylabel="data (arb)", title="a plot",legend=(), plotstyle='linear'):
         self.xlabel = xlabel
         self.ylabel = ylabel
@@ -112,23 +112,23 @@ class DynamicMplCanvas(MplCanvas):
         self.draw()
 
 class NoiseAcquire():
-    ''' Acquire multiplexed, averaged noise data.  
+    ''' Acquire multiplexed, averaged noise data.
         No sensor setup is done.
     '''
-    def __init__(self, column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz=1, num_averages=10, 
+    def __init__(self, column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz=1, num_averages=10,
                  easy_client=None, adr_gui_control=None):
         self.column = column_str
         self.row_sequence = row_sequence_list # mux row order
         self.m_ratio = m_ratio # mutual inductance ratio of SQ1
-        self.rfb_ohm = rfb_ohm 
-        self.num_averages = num_averages 
+        self.rfb_ohm = rfb_ohm
+        self.num_averages = num_averages
         self.f_min_hz = f_min_hz # requested minimum frequency (affects acquisition time)
 
         self.ec = self._handle_easy_client_arg(easy_client)
         self.adr_gui_control = self._handle_adr_gui_control_arg(adr_gui_control)
         self.numPoints = self._handle_num_points(f_min_hz)
         self.dfb_bits_to_A = ((2**14-1)*m_ratio*(rfb_ohm+50))**-1 # conversion from dfb counts to amps
-        
+
         # initialize main class attributes
         self.measured=False
         self.freqs = None # 1D array
@@ -136,7 +136,7 @@ class NoiseAcquire():
         self.Pxx_all = None
 
     def _handle_num_points(self,f_min_hz,force_power_of_two=True):
-        npts = int(self.ec.sample_rate/f_min_hz) 
+        npts = int(self.ec.sample_rate/f_min_hz)
         if force_power_of_two:
             npts=2**(int(np.log2(npts)))
         return int(npts)
@@ -154,11 +154,11 @@ class NoiseAcquire():
         return AdrGuiControl()
 
     def take(self,extra_info={},showplot=False,force_power_of_two=True):
-        ''' get psds.  Store the averaged PSD as class variable Pxx. 
-            return the fft bins (freqs) and the individual psds for each measurement 
-            in the data structure ret_arr as a numpy array with the data structure 
+        ''' get psds.  Store the averaged PSD as class variable Pxx.
+            return the fft bins (freqs) and the individual psds for each measurement
+            in the data structure ret_arr as a numpy array with the data structure
             (rows,sample,measurement index)
-        ''' 
+        '''
         numPoints = self._handle_num_points(self.f_min_hz,force_power_of_two)
         Pxx_all = np.zeros(((self.ec.numRows,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
         pre_time = time.time()
@@ -170,7 +170,7 @@ class NoiseAcquire():
             (freqs, Pxx_ii) = scipy.signal.periodogram(y_ii[0,:,:,1], fs=self.ec.sample_rate, window='boxcar',
                                                        nfft=None,detrend='constant',scaling='density',axis=-1)
             Pxx_all[:,:,ii]=Pxx_ii
-            
+
         if showplot:
             fig,ax = plt.subplots(1,1)
             ax.loglog(freqs,np.mean(ret_arr[:,:,:],axis=-1).transpose())
@@ -184,7 +184,7 @@ class NoiseAcquire():
         self.Pxx = np.mean(Pxx_all,axis=-1)
         self.Pxx_all = Pxx_all
 
-        return NoiseData(freq_hz=freqs, Pxx=self.Pxx, Pxx_all=Pxx_all, 
+        return NoiseData(freq_hz=freqs, Pxx=self.Pxx, Pxx_all=Pxx_all,
                          column=self.column, row_sequence=self.row_sequence,
                          num_averages=self.num_averages, pre_temp_k=pre_temp_k, pre_time_epoch_s=pre_time,
                          dfb_bits_to_A=self.dfb_bits_to_A, rfb_ohm=self.rfb_ohm, m_ratio=self.m_ratio,
@@ -198,28 +198,28 @@ class NoiseAcquire():
             y=self.Pxx.transpose()*self.dfb_bits_to_A**2
             ax.set_ylabel('PSD (A$^2$/Hz)')
         else:
-            y=self.Pxx.transpose() 
+            y=self.Pxx.transpose()
             ax.set_ylabel('PSD (arb$^2$/Hz)')
         ax.loglog(self.freqs,y)
         ax.set_xlabel('Frequency (Hz)')
         ax.legend(range(self.ec.numRows))
-        
+
 
     def plot_psds_for_row(self,row_index,physical_units=True):
         assert self.measured, 'You have not taken a measurement yet.  Use the take() method.'
         fig,ax = plt.subplots(1,1)
         fig.suptitle('Column %s Row %02d noise'%(self.column,self.row_sequence[row_index]))
         if physical_units:
-            m = self.dfb_bits_to_A 
+            m = self.dfb_bits_to_A
             ax.set_ylabel('PSD (A$^2$/Hz)')
         else:
-            m=1 
+            m=1
             ax.set_ylabel('PSD (arb$^2$/Hz)')
         for ii in range(self.num_averages):
             ax.loglog(self.freqs,self.Pxx_all[row_index,:,ii])
         ax.set_xlabel('Frequency (Hz)')
         ax.legend(range(self.num_averages))
-        
+
 
     # def _init_ui(self):
     #     ''' initialize UI '''
@@ -242,7 +242,120 @@ class NoiseAcquire():
     #         self.MainPlot.add_point(x=time.time()-self.startTime, y=self.temp[ii],line_number=ii)
     #     self.MainPlot.update_figure()
 
-    
+class NoiseSweep(NoiseAcquire):
+    ''' class to collect noise data as a function of temperature and
+        detector bias.
+    '''
+    def __init__(self, column_str, row_sequence_list, m_ratio, rfb_ohm,
+                 f_min_hz=1, num_averages=10,
+                 easy_client=None, adr_gui_control=None,
+                 detector_bias_list = [10000,20000],
+                 temperature_list_k = [0.1],
+                 voltage_source='tower',
+                 db_cardname = 'DB',
+                 db_tower_channel='0',
+                 cringe_control=None):
+
+        super().__init__(column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz, num_averages=,
+                         easy_client, adr_gui_control)
+
+        self.temp_list_k = temperature_list_k
+        self.db_list = self._handle_db_input(detector_bias_list)
+        self.db_cardname = db_cardname
+        self.db_tower_channel = db_tower_channel
+
+        # globals hidden from class initialization
+        self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
+
+        self.cc = self._handle_cringe_control_arg(cringe_control)
+        self.set_volt = self._handle_voltage_source_arg(voltage_source)
+
+    def _handle_db_input(self,db_list):
+        if type(db_list[0]) == list:
+            output = db_list
+        else:
+            print('First element of detector_bias_list is not a list.  Using the same detector bias settings for all temperatures.')
+            output = [db_list]*len(self.temp_list_k)
+
+        # ensure descending order (useful so that only one autobias is needed)
+        output_sorted = []
+        for db in output:
+            db.sort(reverse=True)
+            output_sorted.append(db)
+        return output_sorted
+
+    def _handle_cringe_control_arg(self, cringe_control):
+        if cringe_control is not None:
+             return cringe_control
+        return CringeControl()
+
+    def _handle_voltage_source_arg(self,voltage_source):
+        # set "set_volt" to either tower or bluebox
+        if voltage_source == None or voltage_source == 'tower':
+            set_volt = self.set_tower # 0-2.5V in 2**16 steps
+        elif voltage_source == 'bluebox':
+            self.bb = BlueBox(port='vbox', version='mrk2')
+            set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
+        return set_volt
+
+    def set_tower(self, dacvalue):
+        self.cc.set_tower_channel(self.db_cardname, self.db_tower_channel, int(dacvalue))
+
+    def set_bluebox(self, dacvalue):
+        self.bb.setVoltDACUnits(int(dacvalue))
+
+    def _is_temp_stable(self, setpoint_k, tol=.005, time_out_s=180):
+        ''' determine if the servo has reached the desired temperature '''
+        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"
+        cur_temp=self.adr_gui_control.get_temp_k()
+        it_num=0
+        while abs(cur_temp-setpoint_k)>tol:
+            time.sleep(10)
+            cur_temp=self.adr_gui_control.get_temp_k()
+            print('Current Temp: ' + str(cur_temp))
+            it_num=it_num+1
+            if it_num>round(int(time_out_s/10)):
+                print('exceeded the time required for temperature stability: %d seconds'%(round(int(10*it_num))))
+                return False
+        return True
+
+    def set_temp(self,temp_k):
+        self.adr_gui_control.set_temp_k(float(temp_k))
+        stable = self._is_temp_stable(temp_k)
+        time.sleep(self.temp_settle_delay_s)
+        return stable
+
+    def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, extra_info={}):
+        temp_output = []
+        for ii,temp in enumerate(self.temp_list_k): #loop over temperature list
+            print('Setting to temperature %.1f mK'%(temp*1000))
+            if np.logical_and(ii==0,skip_wait_on_first_temp):
+                self.adr_gui_control.set_temp_k(float(temp))
+            else:
+                self.set_temp(temp)
+            print('Detector bias list: ',self.db_list[ii])
+            if self.db_list[ii][0] != 0: # if detector bias non-zero, autobias device onto transition
+                print('overbiasing detector, dropping bias down, then waiting 30s')
+                self.set_volt(65535)
+                time.sleep(0.3)
+                self.set_volt(self.db_list[ii][0])
+                time.sleep(30)
+            det_bias_output = []
+            for jj,db in enumerate(self.db_list[ii]): # loop over detector bias
+                print('Setting detector bias to %d, then relocking'%db)
+                self.set_volt(db)
+                self.cc.relock_all_locked_fba(self.signal_column_index)
+                time.sleep(0.1)
+                print('Collecting Noise PSD')
+                result = self.take(extra_info={},showplot=False,force_power_of_two=force_power_of_two)
+                det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
+            temp_output.append(det_bias_output)
+
+        return NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
+                              temp_list_k=self.temp_list_k, db_list=self.db_list,
+                              db_cardname=self.db_cardname, db_tower_channel_str=db_tower_channel,
+                              temp_settle_delay_s=self.temp_settle_delay_s,
+                              extra_info=extra_info)
 
 if __name__ == "__main__":
     na = NoiseAcquire('A',[6,7,8,10,12,14,16,18,19,21,22,23], 15.08, 1700,f_min_hz=10, num_averages=10)
@@ -251,5 +364,3 @@ if __name__ == "__main__":
     na.plot_psds_for_row(0,physical_units=True)
     data.to_file('noise_data_example.json')
     plt.show()
-
-
