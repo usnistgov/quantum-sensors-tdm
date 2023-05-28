@@ -22,7 +22,6 @@ class DataIO():
         with open(filename, "r") as f:
             return cls.from_json(f.read())
 
-
 # iv data classes -----------------------------------------------------------------------------
 @dataclass_json
 @dataclass
@@ -544,9 +543,8 @@ class CzData(DataIO):
 @dataclass_json
 @dataclass
 class NoiseData(DataIO):
-    freq_hz: List[float] 
+    freq_hz: List[Any] 
     Pxx: List[Any] = dataclasses.field(repr=False) # averaged PSD with indices [row,sample #]
-    Pxx_all: List[Any] = dataclasses.field(repr=False) # individual PSDs with indices [row, sample #, measurement #]
     column: str # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select 
     num_averages: int 
@@ -557,9 +555,10 @@ class NoiseData(DataIO):
     m_ratio: float  
     extra_info: dict
 
-    def plot_avg_psd(self,row_index=None,physical_units=True):
-        fig,ax = plt.subplots(1,1)
-        fig.suptitle('Column %s averaged noise'%(self.column))
+    def plot_avg_psd(self,row_index=None,physical_units=True,fig=None,ax=None):
+        if fig is None:
+            fig,ax = plt.subplots(1,1)
+            fig.suptitle('Column %s averaged noise'%(self.column))
         Pxx = np.array(self.Pxx)
         nrows,nsamples = np.shape(Pxx)
         if row_index is None:
@@ -577,21 +576,7 @@ class NoiseData(DataIO):
                 ax.loglog(self.freq_hz,Pxx[row,:]*m)
             ax.legend(range(nrows))
         ax.set_xlabel('Frequency (Hz)')
-
-    def plot_psds_for_row(self,row_index,physical_units=True):
-        fig,ax = plt.subplots(1,1)
-        fig.suptitle('Column %s Row %02d noise'%(self.column,self.row_sequence[row_index]))
-        Pxx_all = np.array(self.Pxx_all)
-        if physical_units:
-            m = self.dfb_bits_to_A 
-            ax.set_ylabel('PSD (A$^2$/Hz)')
-        else:
-            m=1 
-            ax.set_ylabel('PSD (arb$^2$/Hz)')
-        for ii in range(self.num_averages):
-            ax.loglog(self.freq_hz,Pxx_all[row_index,:,ii])
-        ax.set_xlabel('Frequency (Hz)')
-        ax.legend(range(self.num_averages))
+        return fig,ax
         
 
      

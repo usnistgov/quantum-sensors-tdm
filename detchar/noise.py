@@ -9,7 +9,7 @@ is suited for storing data and scripting to loop over temperature and bias point
 from nasa_client import EasyClient
 from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
-from iv_data import NoiseData
+from .iv_data import NoiseData
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -153,7 +153,7 @@ class NoiseAcquire():
             return adr_gui_control
         return AdrGuiControl()
 
-    def take(self,extra_info={},showplot=False,force_power_of_two=True):
+    def take(self,extra_info={},force_power_of_two=True):
         ''' get psds.  Store the averaged PSD as class variable Pxx. 
             return the fft bins (freqs) and the individual psds for each measurement 
             in the data structure ret_arr as a numpy array with the data structure 
@@ -171,25 +171,17 @@ class NoiseAcquire():
                                                        nfft=None,detrend='constant',scaling='density',axis=-1)
             Pxx_all[:,:,ii]=Pxx_ii
             
-        if showplot:
-            fig,ax = plt.subplots(1,1)
-            ax.loglog(freqs,np.mean(ret_arr[:,:,:],axis=-1).transpose())
-            ax.set_xlabel('Frequency (Hz)')
-            ax.set_ylabel('PSD')
-            ax.legend(range(self.ec.numRows))
-            plt.show()
-
         self.measured=True
         self.freqs=freqs
         self.Pxx = np.mean(Pxx_all,axis=-1)
         self.Pxx_all = Pxx_all
 
-        return NoiseData(freq_hz=freqs, Pxx=self.Pxx, Pxx_all=Pxx_all, 
+        return NoiseData(freq_hz=freqs, Pxx=self.Pxx, 
                          column=self.column, row_sequence=self.row_sequence,
                          num_averages=self.num_averages, pre_temp_k=pre_temp_k, pre_time_epoch_s=pre_time,
                          dfb_bits_to_A=self.dfb_bits_to_A, rfb_ohm=self.rfb_ohm, m_ratio=self.m_ratio,
                          extra_info=extra_info)
-
+        
     def plot_avg_psds(self,physical_units=True):
         assert self.measured, 'You have not taken a measurement yet.  Use the take() method.'
         fig,ax = plt.subplots(1,1)
