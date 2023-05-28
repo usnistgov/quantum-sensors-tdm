@@ -586,6 +586,7 @@ class NoiseSweepData(DataIO):
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     temp_list_k: List[float]
     db_list: List[int]
+    signal_column_index: int
     db_cardname: str
     db_tower_channel_str: str
     temp_settle_delay_s: float

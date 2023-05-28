@@ -9,7 +9,7 @@ is suited for storing data and scripting to loop over temperature and bias point
 from nasa_client import EasyClient
 from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
-from .iv_data import NoiseData
+from .iv_data import NoiseData, NoiseSweepData
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -243,18 +243,20 @@ class NoiseSweep(NoiseAcquire):
                  easy_client=None, adr_gui_control=None,
                  detector_bias_list = [10000,20000],
                  temperature_list_k = [0.1],
+                 signal_column_index=0,
                  voltage_source='tower',
                  db_cardname = 'DB',
                  db_tower_channel='0',
                  cringe_control=None):
 
-        super().__init__(column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz, num_averages=,
+        super().__init__(column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz, num_averages,
                          easy_client, adr_gui_control)
 
         self.temp_list_k = temperature_list_k
         self.db_list = self._handle_db_input(detector_bias_list)
         self.db_cardname = db_cardname
         self.db_tower_channel = db_tower_channel
+        self.signal_column_index=signal_column_index
 
         # globals hidden from class initialization
         self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
@@ -314,6 +316,7 @@ class NoiseSweep(NoiseAcquire):
     def set_temp(self,temp_k):
         self.adr_gui_control.set_temp_k(float(temp_k))
         stable = self._is_temp_stable(temp_k)
+        print('Temperature has been reached, waiting %d s to stabilize'%self.temp_settle_delay_s)
         time.sleep(self.temp_settle_delay_s)
         return stable
 
@@ -339,13 +342,14 @@ class NoiseSweep(NoiseAcquire):
                 self.cc.relock_all_locked_fba(self.signal_column_index)
                 time.sleep(0.1)
                 print('Collecting Noise PSD')
-                result = self.take(extra_info={},showplot=False,force_power_of_two=force_power_of_two)
+                result = self.take(extra_info={},force_power_of_two=force_power_of_two)
                 det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
             temp_output.append(det_bias_output)
 
         return NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
                               temp_list_k=self.temp_list_k, db_list=self.db_list,
-                              db_cardname=self.db_cardname, db_tower_channel_str=db_tower_channel,
+                              signal_column_index=self.signal_column_index,
+                              db_cardname=self.db_cardname, db_tower_channel_str=self.db_tower_channel,
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
 
