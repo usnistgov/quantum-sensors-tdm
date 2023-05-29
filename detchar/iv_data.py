@@ -591,3 +591,26 @@ class NoiseSweepData(DataIO):
     db_tower_channel_str: str
     temp_settle_delay_s: float
     extra_info: dict
+
+    def plot_bias_for_row(self,row_index,bias=0,physical_units=True,fig=None,ax=None):
+        if fig is None:
+            fig,ax = plt.subplots(1,1)
+            fig.suptitle('Column %s, Row %02d, bias = %d'%(self.column,self.row_sequence[row_index],bias))
+        temp_m = []
+        if physical_units:
+            y_label_str='PSD (A$^2$/Hz)'
+            m=self.data[0][0].dfb_bits_to_A
+        else:
+            y_label_str='PSD (arb$^2$/Hz)'
+            m=1
+        for ii,temp in enumerate(self.temp_list_k):
+            dex = self.db_list[ii].index(bias)
+            df = self.data[ii][dex]
+            temp_m.append(df.pre_temp_k)
+            ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2)
+        ax.set_xlabel('Frquency (Hz)')
+        ax.set_ylabel(y_label_str)
+        ax.legend(self.temp_list_k)
+        print('measured temperatures: ',temp_m)
+
+
