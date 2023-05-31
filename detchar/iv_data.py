@@ -108,7 +108,7 @@ class IVCurveColumnData(DataIO):
             fb[:,i] = fb[:, i]
         return dac_values, fb
 
-    def get_rfrac_for_rows(self,rn_frac_list,rows=None,normal_above_x=None,superconducting_below_x=0,plot=False):
+    def get_dac_at_rfrac_for_rows(self,rn_frac_list,rows=None,normal_above_x=None,superconducting_below_x=0,plot=False):
         ''' return list of list of dac values which correspond to fraction of Rn for each row in rows '''
         fb = self.fb_values_array()
         npts,nrows = np.shape(fb)
