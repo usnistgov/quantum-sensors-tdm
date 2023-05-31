@@ -21,16 +21,27 @@ def iv_to_frac_rn_single(x,y,normal_above_x):
     x_norm = np.array(x)[normal_indices]
     y_norm = np.array(y)[normal_indices]
     [m,b] = np.polyfit(x_norm[::-1],y_norm[::-1],deg=1)
-    r = np.array(x) / (np.array(y)-b) 
+    r = np.array(x) / (np.array(y)-b)
     return r/r[0]
 
-def get_dac_for_frac_rn_single(x,y,normal_above_x=None,superconducting_below_x=0,rn_frac_list=[0.5]):
+def get_dac_for_frac_rn_single(x,y,normal_above_x=None,superconducting_below_x=0,
+                               rn_frac_list=[0.5],plot=False,fig=None,ax=None,fulloutput=False):
     dex = np.where(np.array(x)>superconducting_below_x)
     x=np.array(x)[dex]; y=np.array(y)[dex]
     r = iv_to_frac_rn_single(x,y,normal_above_x)
     dac_list = list(np.interp(rn_frac_list,r[::-1],x[::-1]))
     for ii,dac in enumerate(dac_list): dac_list[ii] = int(dac)
-    return dac_list
+    if plot:
+        if fig is None:
+            fig,ax = plt.subplots(1,1)
+        plt.plot(x,r)
+        plt.plot(dac_list,rn_frac_list,'ro')
+        plt.xlabel('dac value')
+        plt.ylabel('Rn fraction')
+    if fulloutput:
+        return dac_list, x, r
+    else:
+        return dac_list
 
 def fit_normal_zero_subtract(x, y, normal_above_x):
     normal_inds = np.where(x>normal_above_x)[0]
@@ -108,26 +119,28 @@ class IVCurveColumnData(DataIO):
             fb[:,i] = fb[:, i]
         return dac_values, fb
 
-    def get_dac_at_rfrac_for_rows(self,rn_frac_list,rows=None,normal_above_x=None,superconducting_below_x=0,plot=False):
+    def get_dac_at_rfrac_for_rows(self,rows=None,rn_frac_list=[0.5],normal_above_x=None,superconducting_below_x=0,plot=False):
         ''' return list of list of dac values which correspond to fraction of Rn for each row in rows '''
         fb = self.fb_values_array()
         npts,nrows = np.shape(fb)
         if rows is None:
             rows = list(range(nrows))
         elif type(rows)==int:
-            rows=[rows] 
+            rows=[rows]
         dac_at_rn_frac = []
+        if plot:
+            fig,ax=plt.subplots(1,1)
+        else:
+            fig=ax=None
         for ii, row in enumerate(rows):
-            dac_at_rn_frac_ii = get_dac_for_frac_rn_single(self.dac_values,fb[:,row],normal_above_x,superconducting_below_x,rn_frac_list=rn_frac_list)
+            dac_at_rn_frac_ii = get_dac_for_frac_rn_single(self.dac_values,fb[:,row],
+                                                           normal_above_x,superconducting_below_x,
+                                                           rn_frac_list=rn_frac_list,
+                                                           plot=plot,fig=fig,ax=ax)
             dac_at_rn_frac.append(dac_at_rn_frac_ii)
-            if plot:
-                plt.figure(ii)
-                plt.suptitle('Row%02d'%row)
-                r = iv_to_frac_rn_single(self.dac_values,fb[:,row],normal_above_x)
-                plt.plot(self.dac_values,r)
-                plt.plot(dac_at_rn_frac_ii,rn_frac_list,'ro')
-        if plot: plt.show()
-                
+        if plot:
+            plt.legend((rows))
+
         return dac_at_rn_frac
 
 @dataclass_json
@@ -152,6 +165,40 @@ class IVTempSweepData(DataIO):
         plt.ylabel("feedback (arb)")
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
         plt.legend()
+
+    def get_dac_at_rfrac(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_zero=None,superconducting_below_x=0,plot=False):
+        ''' returns List of List of List, i.e. dac_list[temp_index][row_index][rfrac_index] '''
+        dac_list = []
+        for ii,temp in enumerate(self.set_temps_k):
+            iv = self.data[ii]
+            dac_list.append(iv.get_dac_at_rfrac_for_rows(rows=rows,rn_frac_list=rn_frac_list,
+                                         normal_above_x=None,superconducting_below_x=0,plot=plot))
+        return dac_list
+
+    def get_dac_at_rfrac_row_ordered(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_zero=None,superconducting_below_x=0,plot=False):
+        ''' returns List of List of List, i.e. dac_list[row_index][temp_index][rfrac_index] '''
+        dac_list=[]
+        for jj,row in enumerate(rows):
+            dac_list_ii = []
+            if plot:
+                fig,ax=plt.subplots(1,1,fignum=jj)
+                fig.suptitle('Row%02d'%row)
+                ax.set_xlabel('dac values')
+                ax.set_ylabel('Rn Frac')
+
+            for ii,temp in enumerate(self.set_temps_k):
+                iv = self.data[ii]
+                dacs,x,r = iv.get_dac_at_rfrac_for_rows(rows=row,rn_frac_list=rn_frac_list,
+                                                    normal_above_x=None,superconducting_below_x=0,
+                                                    plot=False)
+                dac_list_ii.append(dacs)
+                if plot:
+                    ax.plot(x,r)
+                    ax.plot(dacs,rn_frac_list)
+            dac_list.append(dac_list_ii)
+            if plot: ax.legend((self.set_temps_k))
+
+        return dac_list
 
 @dataclass_json
 @dataclass
@@ -649,7 +696,7 @@ class NoiseSweepData(DataIO):
             y_label_str='PSD (arb$^2$/Hz)'
             m=1
         return m, y_label_str
-        
+
     def plot_bias_for_row(self,row_index,bias=0,physical_units=True,fig=None,ax=None):
         fig,ax = _handle_fig(fig,ax)
         fig.suptitle('Column %s, Row %02d, bias = %d'%(self.column,self.row_sequence[row_index],bias))
