@@ -11,8 +11,8 @@ import numpy as np
 import pylab as plt
 import progress.bar
 import os
-from .iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadTempSweepData, IVCircuit
-#from iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
+from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
+#from .iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
 from instruments import BlueBox
 
 class IVPointTaker():
@@ -339,9 +339,23 @@ def _handle_file_extension(filename, suffix='.json'):
                 new_filename = filename
     return new_filename
 
-def iv_to_frac_rn_array(x, y, superconducting_below_x, normal_above_x):
-    rs = [iv_to_frac_rn_single(x, y[:, i], superconducting_below_x, normal_above_x) for i in range(y.shape[1])]
+def iv_to_frac_rn_array(x, y, normal_above_x):
+    rs = [iv_to_frac_rn_single(x, y[:, i], normal_above_x) for i in range(y.shape[1])]
     return np.vstack(rs).T
+
+def iv_to_frac_rn_single(x,y,normal_above_x):
+    normal_indices = np.where(np.array(x)>normal_above_x)[0]
+    x_norm = np.array(x)[normal_indices]
+    y_norm = np.array(y)[normal_indices]
+    [m,b] = np.polyfit(x_norm[::-1],y_norm[::-1],deg=1)
+    r = np.array(x) / (np.array(y)-b) 
+    return r/r[0]
+
+def get_dac_for_frac_rn_single(x,y,normal_above_x,superconducting_below_x=0,rn_frac_list=[0.5]):
+    dex = np.where(np.array(x)>superconducting_below_x)
+    x=np.array(x)[dex]; y=np.array(y)[dex]
+    r = iv_to_frac_rn_single(x,y,normal_above_x)
+    return np.interp(rn_frac_list,r[::-1],x[::-1])
 
 def sparse_then_fine_dacs(a, b, c, n_ab, n_bc):
     return np.hstack([np.linspace(a, b, n_ab), np.linspace(b, c, n_bc+1)[1:]])

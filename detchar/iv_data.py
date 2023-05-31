@@ -10,6 +10,34 @@ from numpy.polynomial.polynomial import Polynomial
 import scipy as sp
 from IPython import embed
 
+def iv_to_frac_rn_array(x, y, normal_above_x):
+    rs = [iv_to_frac_rn_single(x, y[:, i], normal_above_x) for i in range(y.shape[1])]
+    return np.vstack(rs).T
+
+def iv_to_frac_rn_single(x,y,normal_above_x):
+    if normal_above_x is None:
+        normal_above_x = x[10]
+    normal_indices = np.where(np.array(x)>normal_above_x)[0]
+    x_norm = np.array(x)[normal_indices]
+    y_norm = np.array(y)[normal_indices]
+    [m,b] = np.polyfit(x_norm[::-1],y_norm[::-1],deg=1)
+    r = np.array(x) / (np.array(y)-b) 
+    return r/r[0]
+
+def get_dac_for_frac_rn_single(x,y,normal_above_x=None,superconducting_below_x=0,rn_frac_list=[0.5]):
+    dex = np.where(np.array(x)>superconducting_below_x)
+    x=np.array(x)[dex]; y=np.array(y)[dex]
+    r = iv_to_frac_rn_single(x,y,normal_above_x)
+    dac_list = list(np.interp(rn_frac_list,r[::-1],x[::-1]))
+    for ii,dac in enumerate(dac_list): dac_list[ii] = int(dac)
+    return dac_list
+
+def fit_normal_zero_subtract(x, y, normal_above_x):
+    normal_inds = np.where(x>normal_above_x)[0]
+    pfit_normal = Polynomial.fit(x[normal_inds], y[normal_inds], deg=1)
+    normal_y_intersect = pfit_normal(0)
+    return y-normal_y_intersect
+
 class DataIO():
     def to_file(self, filename, overwrite = False):
         if not overwrite:
@@ -80,11 +108,27 @@ class IVCurveColumnData(DataIO):
             fb[:,i] = fb[:, i]
         return dac_values, fb
 
-def fit_normal_zero_subtract(x, y, normal_above_x):
-    normal_inds = np.where(x>normal_above_x)[0]
-    pfit_normal = Polynomial.fit(x[normal_inds], y[normal_inds], deg=1)
-    normal_y_intersect = pfit_normal(0)
-    return y-normal_y_intersect
+    def get_rfrac_for_rows(self,rn_frac_list,rows=None,normal_above_x=None,superconducting_below_x=0,plot=False):
+        ''' return list of list of dac values which correspond to fraction of Rn for each row in rows '''
+        fb = self.fb_values_array()
+        npts,nrows = np.shape(fb)
+        if rows is None:
+            rows = list(range(nrows))
+        elif type(rows)==int:
+            rows=[rows] 
+        dac_at_rn_frac = []
+        for ii, row in enumerate(rows):
+            dac_at_rn_frac_ii = get_dac_for_frac_rn_single(self.dac_values,fb[:,row],normal_above_x,superconducting_below_x,rn_frac_list=rn_frac_list)
+            dac_at_rn_frac.append(dac_at_rn_frac_ii)
+            if plot:
+                plt.figure(ii)
+                plt.suptitle('Row%02d'%row)
+                r = iv_to_frac_rn_single(self.dac_values,fb[:,row],normal_above_x)
+                plt.plot(self.dac_values,r)
+                plt.plot(dac_at_rn_frac_ii,rn_frac_list,'ro')
+        if plot: plt.show()
+                
+        return dac_at_rn_frac
 
 @dataclass_json
 @dataclass
