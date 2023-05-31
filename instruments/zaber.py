@@ -189,19 +189,34 @@ class Zaber(serial_instrument.SerialInstrument):
             SlowRevs = self.SlowRevs
 
         # high torque low speed
-        self.SetRunningCurrent(self.OpeningCurrent)
-        self.SetTargetVelocity(self.OpeningSpeed)
-        self.SetCurrentPosition(1000000) # makes negative relative moves work
-        self.MoveRelativeThenWait(int(SlowRevs*self.MicroStepsPerRev), self.OpeningSpeed) # open 2 revolutions
-        # time.sleep(SlowRevs/(self.OpeningSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
+        # self.SetRunningCurrent(self.OpeningCurrent) occasionally failing, crashing adr_gui and leaving the system at full mag until
+        # the operator deals with this.  Here impliment multiple attempts.  If it all fails, still proceed with magdown.
+        retries=10
+        ii = 0
+        while ii < retries:
+            try:
+                self.SetRunningCurrent(self.OpeningCurrent) 
+                break
+            except: 
+                print('zaber SetRunningCurrent command failed on attempt %d'%ii)
+                ii+=1
+                time.sleep(.1)
+        if ii==retries:
+            print('zaber SetRunningCurrent command failed on all attempts.  If you are running an adr cycle, it probably will not work.')
+        else:
+            self.SetRunningCurrent(self.OpeningCurrent)
+            self.SetTargetVelocity(self.OpeningSpeed)
+            self.SetCurrentPosition(1000000) # makes negative relative moves work
+            self.MoveRelativeThenWait(int(SlowRevs*self.MicroStepsPerRev), self.OpeningSpeed) # open 2 revolutions
+            # time.sleep(SlowRevs/(self.OpeningSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
 
-        # drop torque , up speed and finish
-        self.SetRunningCurrent(self.ClosingCurrent)
-        self.SetTargetVelocity(self.ClosingSpeed)
-        self.SetCurrentPosition(1000000) # makes negative relative moves work
-        self.MoveRelativeThenWait(int((OpeningRevs-SlowRevs)*self.MicroStepsPerRev), self.ClosingSpeed) # open rest of revs
-        # time.sleep((OpeningRevs-SlowRevs)/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
+            # drop torque , up speed and finish
+            self.SetRunningCurrent(self.ClosingCurrent)
+            self.SetTargetVelocity(self.ClosingSpeed)
+            self.SetCurrentPosition(1000000) # makes negative relative moves work
+            self.MoveRelativeThenWait(int((OpeningRevs-SlowRevs)*self.MicroStepsPerRev), self.ClosingSpeed) # open rest of revs
+            # time.sleep((OpeningRevs-SlowRevs)/(self.ClosingSpeed*self.RevsPerSecAtSpeed1)*1.2) # wait for motion to complete
 
     def CloseHeatSwitch(self, ClosingRevs = None):
 

@@ -1408,6 +1408,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             heater_resistance: resistance attached to the lakeshore370 heater output (this really isn't used)
             pausetime: seconds between heater output voltage steps
         '''
+        print('Magging down.  OPEN THE HEATSWITCH MANUALLY IF YOU ARE RUNNING BECAUSE THE ZABER MOTOR CRASHED ADR_GUI')
         self.demagSetup(channel=channel, heater_resistance=heater_resistance)
 
         magdownsteps = math.ceil(magdowntime*60/pausetime) # steps in seconds
