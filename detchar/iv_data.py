@@ -543,7 +543,7 @@ class CzData(DataIO):
 @dataclass_json
 @dataclass
 class NoiseData(DataIO):
-    freq_hz: List[Any] 
+    freq_hz: List[Any]
     Pxx: List[Any] = dataclasses.field(repr=False) # averaged PSD with indices [row,sample #]
     column: str # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
@@ -577,7 +577,7 @@ class NoiseData(DataIO):
             ax.legend(range(nrows))
         ax.set_xlabel('Frequency (Hz)')
         return fig,ax
-        
+
 @dataclass_json
 @dataclass
 class NoiseSweepData(DataIO):
@@ -592,17 +592,25 @@ class NoiseSweepData(DataIO):
     temp_settle_delay_s: float
     extra_info: dict
 
-    def plot_bias_for_row(self,row_index,bias=0,physical_units=True,fig=None,ax=None):
+    def _handle_fig(self,fig,ax):
         if fig is None:
             fig,ax = plt.subplots(1,1)
-            fig.suptitle('Column %s, Row %02d, bias = %d'%(self.column,self.row_sequence[row_index],bias))
-        temp_m = []
+        return fig,ax
+
+    def _phys_units(self,physical_units):
         if physical_units:
             y_label_str='PSD (A$^2$/Hz)'
             m=self.data[0][0].dfb_bits_to_A
         else:
             y_label_str='PSD (arb$^2$/Hz)'
             m=1
+        return m, y_label_str
+        
+    def plot_bias_for_row(self,row_index,bias=0,physical_units=True,fig=None,ax=None):
+        fig,ax = _handle_fig(fig,ax)
+        fig.suptitle('Column %s, Row %02d, bias = %d'%(self.column,self.row_sequence[row_index],bias))
+        temp_m = []
+        m, y_label_str = self._phys_units(physical_units)
         for ii,temp in enumerate(self.temp_list_k):
             dex = self.db_list[ii].index(bias)
             df = self.data[ii][dex]
@@ -613,4 +621,8 @@ class NoiseSweepData(DataIO):
         ax.legend(self.temp_list_k)
         print('measured temperatures: ',temp_m)
 
-
+    def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None):
+        df = data[temp_index][bias_index]
+        fig,ax = self._handle_fig(fig,ax)
+        m, y_label_str = self._phys_units(physical_units)
+        ax.loglog(df.freqs,np.array(df.Pxx)[row_index,:]*m**2)
