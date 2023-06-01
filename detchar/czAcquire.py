@@ -174,16 +174,22 @@ class ComplexZ(SineSweep):
                  voltage_source='tower',
                  db_cardname = 'DB',
                  db_tower_channel='0',
-                 cringe_control=None):
+                 cringe_control=None,
+                 normal_amp_volt=1.0,
+                 superconducting_amp_volt=0.05,
+                 normal_above_temp_k=0.19):
 
         super().__init__(amp_volt, offset_volt, frequency_hz, num_lockin_periods,
                          row_order,signal_column_index,reference_column_index,
                          column_str)
-
+        self.current_amp_volt = amp_volt
         self.temp_list_k = temperature_list_k
         self.db_list = self._handle_db_input(detector_bias_list)
         self.db_cardname = db_cardname
         self.db_tower_channel = db_tower_channel
+        self.normal_amp_volt = normal_amp_volt 
+        self.superconducting_amp_volt = superconducting_amp_volt 
+        self.normal_above_temp_k = normal_above_temp_k
 
         # globals hidden from class initialization
         self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
@@ -253,6 +259,25 @@ class ComplexZ(SineSweep):
         time.sleep(self.temp_settle_delay_s)
         return stable
 
+    def _handle_amp_for_temp(self,detector_bias,temp):
+        if detector_bias == 0:
+            if temp > self.normal_above_temp_k:
+                print('Normal state detected.  Setting function generator amplitude to %.3f V'%(self.normal_amp_volt))
+                self.fg.SetAmplitude(self.normal_amp_volt)
+                time.sleep(0.1)
+                self.current_amp_volt = self.normal_amp_volt
+            else:
+                print('Superconducting state detected.  Setting function generator amplitude to %.3f V'%(self.superconducting_amp_volt))
+                self.fg.SetAmplitude(self.superconducting_amp_volt)
+                time.sleep(0.1) 
+                self.current_amp_volt = self.superconducting_amp_volt
+        else:
+            if self.current_amp_volt != self.amp_v:
+                print('Setting function generator amplitude back to %.3fV'%(self.amp_v))
+                self.fg.SetAmplitude(self.amp_v)
+                time.sleep(0.1) 
+                self.current_amp_volt = self.amp_v
+
     def run(self, skip_wait_on_first_temp=False, extra_info = {}):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k):
@@ -262,17 +287,23 @@ class ComplexZ(SineSweep):
             else:
                 self.set_temp(temp)
             print('Detector bias list: ',self.db_list[ii])
-            print('overbiasing detector, dropping bias down, then waiting 30s')
-            self.set_volt(65535)
-            time.sleep(0.3)
-            self.set_volt(self.db_list[ii][0])
-            time.sleep(30)
+            if self.db_list[ii][0] != 0: # overbias if detector bias is nonzero
+                print('overbiasing detector, dropping bias down, then waiting 30s')
+                self.set_volt(65535)
+                time.sleep(0.3)
+                self.set_volt(self.db_list[ii][0])
+                time.sleep(30)
+            else:
+                self.set_volt(self.db_list[ii][0])
             det_bias_output = []
             for jj,db in enumerate(self.db_list[ii]):
+                self._handle_amp_for_temp(db,temp)
                 print('Setting detector bias to %d, then relocking'%db)
                 self.set_volt(db)
+                self.fg.SetOutput(outputstate='off')
                 self.cc.relock_all_locked_fba(self.signal_column_index)
                 time.sleep(0.1)
+                self.fg.SetOutput(outputstate='on')
                 print('Performing Sine Sweep')
                 result = self.take_sweep(extra_info = {}, turn_off_source_on_end = False)
                 det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
@@ -286,7 +317,10 @@ class ComplexZ(SineSweep):
                       db_cardname = self.db_cardname,
                       db_tower_channel_str = self.db_tower_channel,
                       temp_settle_delay_s = self.temp_settle_delay_s,
-                      extra_info = extra_info)
+                      extra_info = extra_info,
+                      normal_amp_volt = self.normal_amp_volt,
+                      superconducting_amp_volt = self.superconducting_amp_volt,
+                      normal_above_temp_k = self.normal_above_temp_k)
 
 if __name__ == "__main__":
     # ss = SineSweep(amp_volt=0.04,frequency_hz=np.logspace(0,5,50),column_str='C',num_lockin_periods=10, row_order=[7,7,7,7])
@@ -300,28 +334,37 @@ if __name__ == "__main__":
 
     # plt.show()
 
-    temp_list_k = [0.11,0.12,0.13,0.14,0.15,0.16,0.19]
+    path='/data/uber_omt/20230517/'
+    filename = 'colB_cz_20230601_1.json'
+    comment = 'IV slope = 0'
+    temp_list_k = [0.1,0.2]
+    
     # construct detector bias list, one for each temperature. 
     # only include one superconducting state measurement (0 bias below Tc)
     # only include one normal branch measurement (0 bias above Tc)
-    db_list = [[30000,15000,12500,10000,7500,5000,2000,1000,0]]
-    db_list_more = [db_list[0][:-1]]*(len(temp_list_k)-2) # remove the zero bias because you only need one 
-    db_list.extend(db_list_more)
-    db_list.append([0])
+    # db_list = [[30000,15000,12500,10000,7500,5000,2000,1000,0]]
+    # db_list_more = [db_list[0][:-1]]*(len(temp_list_k)-2) # remove the zero bias because you only need one 
+    # db_list.extend(db_list_more)
+    # db_list.append([0])
+    #db_list = [[14000,11800,9900,8000,0],[0]]
+    db_list = [[13910,16316,16692,14361,12782,0],[0]]
     cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,5,100),
                  num_lockin_periods = 10,
-                 row_order=[13,15,19,19],
+                 row_order=[8,9,11,16,22],
                  signal_column_index=0,
                  reference_column_index=1,
-                 column_str='C',
+                 column_str='B',
                  rfg_ohm = 10.2e3,
                  detector_bias_list = db_list,
                  temperature_list_k = temp_list_k,
                  voltage_source='tower',
                  db_cardname = 'DB',
-                 db_tower_channel='2',
-                 cringe_control=None)
+                 db_tower_channel='1',
+                 cringe_control=None,
+                 normal_amp_volt=1.0,
+                 superconducting_amp_volt=0.05,
+                 normal_above_temp_k=0.19)
 
-    output = cz.run(False)
-    output.to_file('colC_row13_15_19_cz_fine.json')
+    output = cz.run(False,extra_info={'note':comment})
+    output.to_file(path+filename,overwrite=True)
 

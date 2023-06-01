@@ -109,10 +109,14 @@ class IVCommon():
         if showplot:
             fig1 = plt.figure(1) # plot of delta i
             plt.plot(dfb,'o-')
+            plt.xlabel('Index')
+            plt.ylabel('$\Delta$ fb')
             if dex != None: plt.plot(dex,val,'ro')
 
             fig2 = plt.figure(2)
             plt.plot(fb,'o-')
+            plt.xlabel('Index')
+            plt.ylabel('$\Delta$ fb')
             if dex != None: plt.plot(dex,fb[dex],'ro')
             plt.show()
         return dex#,val

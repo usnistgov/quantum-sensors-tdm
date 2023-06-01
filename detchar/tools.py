@@ -715,4 +715,4 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sla.getData(minimumNumPoints=390000, window=True,debug=False)
+    sla.getData(minimumNumPoints=390000, window=True,debug=True)

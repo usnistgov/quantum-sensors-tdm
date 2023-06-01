@@ -143,6 +143,17 @@ class IVCurveColumnData(DataIO):
 
         return dac_at_rn_frac
 
+    def get_rfrac_val_for_dac(self,dac):
+        ''' return List of r_frac(dac) for all rows '''
+        fb = self.fb_values_array()
+        npts,nrows = np.shape(fb)
+        dac_list = []
+        for row in range(nrows):
+            foo,x,r = get_dac_for_frac_rn_single(np.array(self.dac_values),fb[:,row],normal_above_x=None,superconducting_below_x=0,
+                               rn_frac_list=[0.5],fulloutput=True)
+            dac_list.append(np.interp(dac,x[::-1],r[::-1]))
+        return dac_list
+            
 @dataclass_json
 @dataclass
 class IVTempSweepData(DataIO):
@@ -166,16 +177,17 @@ class IVTempSweepData(DataIO):
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
         plt.legend()
 
-    def get_dac_at_rfrac(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_zero=None,superconducting_below_x=0,plot=False):
+    def get_dac_at_rfrac(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_x=None,superconducting_below_x=0,plot=False):
         ''' returns List of List of List, i.e. dac_list[temp_index][row_index][rfrac_index] '''
         dac_list = []
         for ii,temp in enumerate(self.set_temps_k):
             iv = self.data[ii]
             dac_list.append(iv.get_dac_at_rfrac_for_rows(rows=rows,rn_frac_list=rn_frac_list,
-                                         normal_above_x=None,superconducting_below_x=0,plot=plot))
+                                         normal_above_x=normal_above_x,
+                                         superconducting_below_x=superconducting_below_x,plot=plot))
         return dac_list
 
-    def get_dac_at_rfrac_row_ordered(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_zero=None,superconducting_below_x=0,plot=False):
+    def get_dac_at_rfrac_row_ordered(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_x=None,superconducting_below_x=0,plot=False):
         ''' returns List of List of List, i.e. dac_list[row_index][temp_index][rfrac_index] '''
         dac_list=[]
         for jj,row in enumerate(rows):
@@ -188,15 +200,17 @@ class IVTempSweepData(DataIO):
 
             for ii,temp in enumerate(self.set_temps_k):
                 iv = self.data[ii]
-                dacs,x,r = get_dac_for_frac_rn_single(iv.dac_values,iv.fb_values_array()[:,row],normal_above_x=None,superconducting_below_x=0,
-                               rn_frac_list=rn_frac_list,plot=False,fig=None,ax=None,fulloutput=True)
-                print(dacs)
+                dacs,x,r = get_dac_for_frac_rn_single(iv.dac_values,iv.fb_values_array()[:,row],normal_above_x=normal_above_x,
+                                                      superconducting_below_x=superconducting_below_x,
+                                                      rn_frac_list=rn_frac_list,plot=False,fig=None,ax=None,fulloutput=True)
                 dac_list_ii.append(dacs)
                 if plot:
                     ax.plot(x,r)
                     ax.plot(dacs,rn_frac_list,'ro')
             dac_list.append(dac_list_ii)
-            #if plot: ax.legend((self.set_temps_k))
+            if plot: 
+                ax.set_ylim((-0.10,1.5))
+                #ax.legend((self.set_temps_k))
 
         return dac_list
 
@@ -375,8 +389,11 @@ class CzData(DataIO):
     db_tower_channel_str: str
     temp_settle_delay_s: float
     extra_info: dict
+    normal_amp_volt: float = 0
+    superconducting_amp_volt: float = 0
+    normal_above_temp_k: float = 0
 
-    def plot(self,semilogx=True):
+    def plot(self,row_index = 0, semilogx=True):
         ''' plot a 2x2 of results for data at each temperature '''
         for ii,temp in enumerate(self.temp_list_k): # loop over temp
             fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
@@ -389,8 +406,6 @@ class CzData(DataIO):
                 n_freq,n_row,foo = np.shape(ss.iq_data)
                 iq_data = np.array(ss.iq_data)
 
-                # assume that all rows have the same data (faux_mux)
-                row_index = 0
                 if semilogx:
                     ax[0][0].semilogx(ss.frequency_hz,iq_data[:,row_index,0],'o-')
                     ax[0][1].semilogx(ss.frequency_hz,iq_data[:,row_index,1],'o-')
