@@ -181,22 +181,22 @@ class IVTempSweepData(DataIO):
         for jj,row in enumerate(rows):
             dac_list_ii = []
             if plot:
-                fig,ax=plt.subplots(1,1,fignum=jj)
+                fig,ax=plt.subplots(1,1,num=jj)
                 fig.suptitle('Row%02d'%row)
                 ax.set_xlabel('dac values')
                 ax.set_ylabel('Rn Frac')
 
             for ii,temp in enumerate(self.set_temps_k):
                 iv = self.data[ii]
-                dacs,x,r = iv.get_dac_at_rfrac_for_rows(rows=row,rn_frac_list=rn_frac_list,
-                                                    normal_above_x=None,superconducting_below_x=0,
-                                                    plot=False)
+                dacs,x,r = get_dac_for_frac_rn_single(iv.dac_values,iv.fb_values_array()[:,row],normal_above_x=None,superconducting_below_x=0,
+                               rn_frac_list=rn_frac_list,plot=False,fig=None,ax=None,fulloutput=True)
+                print(dacs)
                 dac_list_ii.append(dacs)
                 if plot:
                     ax.plot(x,r)
-                    ax.plot(dacs,rn_frac_list)
+                    ax.plot(dacs,rn_frac_list,'ro')
             dac_list.append(dac_list_ii)
-            if plot: ax.legend((self.set_temps_k))
+            #if plot: ax.legend((self.set_temps_k))
 
         return dac_list
 
