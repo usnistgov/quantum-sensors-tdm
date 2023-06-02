@@ -153,7 +153,7 @@ class IVCurveColumnData(DataIO):
                                rn_frac_list=[0.5],fulloutput=True)
             dac_list.append(np.interp(dac,x[::-1],r[::-1]))
         return dac_list
-            
+
 @dataclass_json
 @dataclass
 class IVTempSweepData(DataIO):
@@ -208,7 +208,7 @@ class IVTempSweepData(DataIO):
                     ax.plot(x,r)
                     ax.plot(dacs,rn_frac_list,'ro')
             dac_list.append(dac_list_ii)
-            if plot: 
+            if plot:
                 ax.set_ylim((-0.10,1.5))
                 #ax.legend((self.set_temps_k))
 
@@ -452,15 +452,34 @@ class CzData(DataIO):
             raise Exception('No measurement in the superconducting branch found')
         return np.array(self.data[sc_indices[0][0]][sc_indices[0][1]].iq_data), sc_indices
 
-    def plotZ(self, temp_k, Tc_k=0.16,semilogx=True,f_max_hz=None):
+    def getZ(self,iq_data,iq_data_sc):
+        ''' return the impedance by subtraction of the the bias circuit response,
+            determined from the response in the superconducting branch.
+            This is the Lindeman method
+        '''
+        # iq_data has shape (nfreq,nrow,2)
+        nfreq,nrow,niq = np.shape(iq_data)
+        Z = np.empty((nfreq,nrow,niq))
+        for ii in range(nrow):
+            z_load = (iq_data[:,ii,0]+1j*iq_data[:,ii,1])**-1
+            z_sc = (iq_data_sc[:,ii,0]+1J*iq_data_sc[:,ii,1])**-1
+            z = z_load - z_sc
+            Z[:,ii,0]=np.real(z)
+            Z[:,ii,1]=np.imag(z)
+        return Z
+
+    def plotZ(self, temp_k, db_indices=None,Tc_k=0.16,semilogx=True,f_max_hz=None):
         ''' plot the bias circuit subtracted impedance for all detector bias settings taken at temperature temp_k '''
         assert temp_k in self.temp_list_k, 'Requested temperature is not in temp_list_k'
         temp_index = np.where(np.array(self.temp_list_k)==temp_k)[0]
         if len(temp_index)!=1:
             print('More than one measurement at temperature temp_k.  Analyzing the first measurement')
         temp_index = temp_index[0]
-        db_list = self.db_list[temp_index]
-        sc_data, sc_dex = self.get_sc_dataset(Tc_k)
+        if db_indices is None:
+            db_list = self.db_list[temp_index]
+        else:
+            db_list = list(np.array(self.db_list[temp_index])[db_indices])
+        iqdata_sc, sc_dex = self.get_sc_dataset(Tc_k)
         data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
         num_db = len(data)
 
@@ -484,7 +503,7 @@ class CzData(DataIO):
                     continue
                 f = data[jj].frequency_hz
                 iq_data = np.array(data[jj].iq_data)
-                Z = iq_data - sc_data
+                Z = self.getZ(iq_data,iqdata_sc)
                 if f_max_hz:
                     dex_max = np.argmin(abs(np.array(f)-f_max_hz))
                     f=f[:dex_max]
@@ -505,16 +524,16 @@ class CzData(DataIO):
                 ax2.plot(Z[:,ii,0],Z[:,ii,1],'o-')# plot I vs Q as second plot
 
             # axes labels
-            ax[0][0].set_ylabel('I')
-            ax[0][1].set_ylabel('Q')
-            ax[1][0].set_ylabel('I^2+Q^2')
+            ax[0][0].set_ylabel('Re{Z}')
+            ax[0][1].set_ylabel('Im{Z}')
+            ax[1][0].set_ylabel('|Z|$^2$')
             ax[1][1].set_ylabel('Phase')
             ax[1][0].set_xlabel('Freq (Hz)')
             ax[1][1].set_xlabel('Freq (Hz)')
             ax[1][1].legend(tuple(db_list))
 
-            ax2.set_xlabel('I')
-            ax2.set_ylabel('Q')
+            ax2.set_xlabel('Re{Z}')
+            ax2.set_ylabel('Im{Z}')
             ax2.set_aspect('equal','box')
             ax2.legend(tuple(db_list))# axes labels
 
@@ -556,7 +575,7 @@ class CzData(DataIO):
             print('More than one measurement at temperature temp_k.  Analyzing the first measurement')
         temp_index = temp_index[0]
         db_list = self.db_list[temp_index]
-        sc_data, sc_dex = self.get_sc_dataset(Tc_k)
+        iqdata_sc, sc_dex = self.get_sc_dataset(Tc_k)
         data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
         num_db = len(data)
 
@@ -580,7 +599,7 @@ class CzData(DataIO):
                     continue
                 f = np.array(data[jj].frequency_hz)
                 iq_data = np.array(data[jj].iq_data)
-                Z = iq_data - sc_data
+                Z = iq_data - iqdata_sc
 
                 if f_max_hz:
                     dex_max = np.argmin(abs(np.array(f)-f_max_hz))
