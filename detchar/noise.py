@@ -9,7 +9,7 @@ is suited for storing data and scripting to loop over temperature and bias point
 from nasa_client import EasyClient
 from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
-from .iv_data import NoiseData, NoiseSweepData
+from iv_data import NoiseData, NoiseSweepData
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -354,9 +354,31 @@ class NoiseSweep(NoiseAcquire):
                               extra_info=extra_info)
 
 if __name__ == "__main__":
-    na = NoiseAcquire('A',[6,7,8,10,12,14,16,18,19,21,22,23], 15.08, 1700,f_min_hz=10, num_averages=10)
-    data = na.take()
-    na.plot_avg_psds(physical_units=True)
-    na.plot_psds_for_row(0,physical_units=True)
-    data.to_file('noise_data_example.json')
-    plt.show()
+    path='/data/uber_omt/20230517/'
+    filename = 'colB_noise_20230606_5.json'
+    skip_wait = False
+    row_sequence_list=[8,9,11,16,22]
+    temp_list_k = [0.1,0.15]
+    db_list = [ [21992, 18203, 16691, 15205, 14042, 12931, 11795,10565, 9904] , 
+                [18511, 14773, 13255, 11898, 10889,  9979,  9049, 8065, 6995, 6406]
+                ]
+    #temp_list_k=[.15]
+    #db_list=[0]
+    comment = 'lsync=256, sett=110,nsamp=144'
+    
+    ns = NoiseSweep(column_str='B',
+                      row_sequence_list=row_sequence_list, 
+                      m_ratio = 15.08,
+                      rfb_ohm = 1700,
+                      f_min_hz = 1, 
+                      num_averages=100,
+                      detector_bias_list = db_list,
+                      temperature_list_k = temp_list_k,
+                      signal_column_index=0,
+                      voltage_source='tower',
+                      db_cardname = 'DB',
+                      db_tower_channel='1',
+                      cringe_control=None)
+    data = ns.run(skip_wait_on_first_temp=skip_wait,extra_info={'comment':comment})
+    data.to_file(path+filename,overwrite=True)
+    print('wrote file %s to disk'%(path+filename))
