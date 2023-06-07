@@ -7,7 +7,7 @@ import pylab as plt
 import collections
 import os
 from numpy.polynomial.polynomial import Polynomial
-import scipy as sp
+from scipy.optimize import leastsq
 from IPython import embed
 
 def iv_to_frac_rn_array(x, y, normal_above_x):
@@ -397,10 +397,10 @@ class CzData(DataIO):
         ''' plot a 2x2 of results for data at each temperature '''
         for ii,temp in enumerate(self.temp_list_k): # loop over temp
             fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
-            fig2,ax2 = plt.subplots(1,1,num=2*ii+1)
+            fig2, ax2 = plt.subplots(1,1,num=2*ii+1)
 
             fig.suptitle('Temperature = %.1f mK'%(temp*1000))
-            fig2.suptitle('I-Q Temperature = %.1f mK'%(temp*1000))
+            fig2.suptitle('I-Q, Temperature = %.1f mK'%(temp*1000))
             for jj, db in enumerate(self.db_list[ii]): # loop over detector bias
                 ss = self.data[ii][jj]
                 n_freq,n_row,foo = np.shape(ss.iq_data)
@@ -452,7 +452,7 @@ class CzData(DataIO):
             raise Exception('No measurement in the superconducting branch found')
         return np.array(self.data[sc_indices[0][0]][sc_indices[0][1]].iq_data), sc_indices
 
-    def getZ(self,iq_data,iq_data_sc):
+    def getZ(self,iq_data,iq_data_sc,subtract_model=False):
         ''' return the impedance by subtraction of the the bias circuit response,
             determined from the response in the superconducting branch.
             This is the Lindeman method
@@ -462,7 +462,16 @@ class CzData(DataIO):
         Z = np.empty((nfreq,nrow,niq))
         for ii in range(nrow):
             z_load = (iq_data[:,ii,0]+1j*iq_data[:,ii,1])**-1
-            z_sc = (iq_data_sc[:,ii,0]+1J*iq_data_sc[:,ii,1])**-1
+            if subtract_model:
+                #p = fit_sc_q(iq_data_sc[:,ii,1],x=None,p0=[1,1])
+                z_sc = (iq_data_sc[:,ii,0]+1j*iq_data_sc[:,ii,1])**-1
+                z_abs = np.real(abs(z_sc))
+                z_abs = z_abs[~np.isnan(z_abs)]
+                z0=np.mean(z_abs[0:5])
+                p = self.fit_sc_q(iq_data_sc[4:,ii,1],x=2*np.pi*np.array(self.data[0][0].frequency_hz)[4:],p0=[1,1])
+                z_sc = z0*(1+1j*2*np.pi*np.array(self.data[0][0].frequency_hz)*p[1])
+            else:
+                z_sc = (iq_data_sc[:,ii,0]+1j*iq_data_sc[:,ii,1])**-1
             z = z_load - z_sc
             Z[:,ii,0]=np.real(z)
             Z[:,ii,1]=np.imag(z)
@@ -503,7 +512,7 @@ class CzData(DataIO):
                     continue
                 f = data[jj].frequency_hz
                 iq_data = np.array(data[jj].iq_data)
-                Z = self.getZ(iq_data,iqdata_sc)
+                Z = self.getZ(iq_data,iqdata_sc,subtract_model=True)
                 if f_max_hz:
                     dex_max = np.argmin(abs(np.array(f)-f_max_hz))
                     f=f[:dex_max]
@@ -537,132 +546,147 @@ class CzData(DataIO):
             ax2.set_aspect('equal','box')
             ax2.legend(tuple(db_list))# axes labels
 
+    def fit_sc_q(self,y,x=None,p0=[1,1],plot=False):
+        if x is None:
+            x = np.array(self.data[0][0].frequency_hz) * 2 * np.pi
+        p,foo = leastsq(self.err_func_sc_q, [1,.01], args=(x,y), full_output=0)
+        if plot:
+            fig,ax = plt.subplots(2,1)
+            ax[0].semilogx(x,y,'r.')
+            y_fit = self.fit_func_sc_q(p,x)
+            y_init = self.fit_func_sc_q(p0,x)
+            ax[0].semilogx(x,y_init,'k--')
+            ax[0].semilogx(x,y_fit,'k-')
+            ax[1].semilogx(x,y-y_fit)
+            ax[1].set_xlabel('Angular Frequency (Rad)')
+            ax[0].set_ylabel('Response')
+            ax[1].set_ylabel('Data - Fit')
+        return p
 
-    def fitFuncSCi(self,p,x):
+    def fit_func_sc_i(self,p,x):
         ''' x must be angular frequency
             p[0] is overall normalization
             p[1] = tau
         '''
         return p[0]*(1+(p[1]*x)**2)**-1
 
-    def fitFuncSCq(self,p,x):
+    def fit_func_sc_q(self,p,x):
         ''' x must be angular frequency
             p[0] = overall normalization
             p[1] = tau
         '''
-        return -p[0]*x*p[1]/(1+(p[1]*x)**2)
+        return p[0]*x*p[1]/(1+(p[1]*x)**2)
 
-    def errFuncSCi(self,p,x,y):
-        return y - self.fitFuncSCi(p,x)
+    def err_func_sc_i(self,p,x,y):
+        return y - self.fit_func_sc_i(p,x)
 
-    def errFuncSCq(self,p,x,y):
-        return y - self.fitFuncSCq(p,x)
+    def err_func_sc_q(self,p,x,y):
+        return y - self.fit_func_sc_q(p,x)
 
     def errFuncSCiq(self,p,x,yI,yQ):
         pI = [p[0],p[2]]
         pQ = [p[1],p[2]]
         return yI - self.fitFuncSCi(pI,x) + yQ - self.fitFuncSCq(pQ,x)
 
-
-    def analyzeZ(self, temp_k, Tc_k=0.16,semilogx=True,f_max_hz=None):
-        ''' take the bias circuit subtracted impedance and fit a 1-pole filter response
-            maybe filter out some noisy frequencies
-            maybe get real crazy and save a plot
-            starting with the shell of plotZ
-        '''
-        temp_index = np.where(np.array(self.temp_list_k)==temp_k)[0]
-        if len(temp_index)!=1:
-            print('More than one measurement at temperature temp_k.  Analyzing the first measurement')
-        temp_index = temp_index[0]
-        db_list = self.db_list[temp_index]
-        iqdata_sc, sc_dex = self.get_sc_dataset(Tc_k)
-        data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
-        num_db = len(data)
-
-        # determine number of independent detector measurements in the mux frame
-        if len(set(data[0].row_order)) == 1:
-            num_rows = 1
-        else:
-            num_rows = len(data[0].row_order)
-
-        # loop over rows/detectors, make plots per detector
-        for ii in range(num_rows):
-            fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
-            fig2,ax2 = plt.subplots(1,1,num=2*ii+1)
-            row = data[0].row_order[ii]
-            for ff in [fig,fig2]:
-                ff.suptitle('Row%02d, Temperature = %.1f mK'%(data[0].row_order[ii],temp_k*1000))
-
-            # loop over detector biases
-            for jj,db in enumerate(db_list):
-                if np.logical_and(db==0,temp_k<Tc_k):
-                    continue
-                f = np.array(data[jj].frequency_hz)
-                iq_data = np.array(data[jj].iq_data)
-                Z = iq_data - iqdata_sc
-
-                if f_max_hz:
-                    dex_max = np.argmin(abs(np.array(f)-f_max_hz))
-                    f=f[:dex_max]
-                    Z=Z[:dex_max,:,:]
-
-                freqhr = np.logspace(np.log10(f[0]),np.log10(f[-1]),10*len(f)) # high resolution frequency for plotting fit
-                # Avoid list of  noisy lines
-                noisy_lines = [] #[43, 54, 110, 175]  # Hz
-                if noisy_lines:
-                    for nnll in noisy_lines:
-                        fmask *= (f < nnll - delta) + (f > nnll  + delta)
-                    f = copy(f[fmask])
-
-                IQfit = sp.optimize.leastsq(self.errFuncSCiq, [-2000, -1000, 1E-3], args=(f * 2 * np.pi, Z[:,ii,0], Z[:,ii,1]), full_output=1)
-                print(jj,db_list[jj],IQfit[4])
-                IQfitIpval = [IQfit[0][0],IQfit[0][2]]
-                IQfitQpval = [IQfit[0][1],IQfit[0][2]]
-                ifithr = self.fitFuncSCi(IQfitIpval, freqhr * 2 * np.pi)
-                qfithr = self.fitFuncSCq(IQfitQpval, freqhr * 2 * np.pi)
-                label = '{}, {:.3f} ms'.format(db_list[jj],IQfit[0][2]*1e3)
-                if semilogx:
-                    iplot = ax[0][0].semilogx(f, Z[:,ii,0],marker='o',ls="None")
-                    thiscolor = iplot[0].get_color()
-                    ax[0][0].semilogx(freqhr, ifithr, ls='-',color = thiscolor)
-                    ax[0][1].semilogx(f, Z[:,ii,1],marker='o',ls="None", color=thiscolor)
-                    ax[0][1].semilogx(freqhr, qfithr, ls='-',color = thiscolor)
-                    ax[1][0].semilogx(f, Z[:,ii,0]**2+Z[:,ii,1]**2,marker='o',ls="None",color = thiscolor)
-                    ax[1][0].semilogx(freqhr, ifithr**2+qfithr**2,ls='-',color = thiscolor)
-                    ax[1][1].semilogx(f, np.unwrap(np.arctan2(Z[:,ii,1],Z[:,ii,0])),marker='o',ls="None",color = thiscolor,label=label)
-                    ax[1][1].semilogx(freqhr, np.unwrap(np.arctan2(qfithr,ifithr)),ls='-',color = thiscolor)
-                else:
-                    iplot = ax[0][0].plot(f, Z[:,ii,0],marker='o',ls="None")
-                    thiscolor = iplot[0].get_color()
-                    ax[0][0].plot(freqhr, ifithr, ls='-',color = thiscolor)
-                    ax[0][1].plot(f, Z[:,ii,1],marker='o',ls="None", color=thiscolor)
-                    ax[0][1].plot(freqhr, qfithr, ls='-',color = thiscolor)
-                    ax[1][0].plot(f, Z[:,ii,0]**2+Z[:,ii,1]**2,marker='o',ls="None",color = thiscolor)
-                    ax[1][0].plot(freqhr, ifithr**2+qfithr**2,ls='-',color = thiscolor)
-                    ax[1][1].plot(f, np.unwrap(np.arctan2(Z[:,ii,1],Z[:,ii,0])),marker='o',ls="None",color = thiscolor,label=label)
-                    ax[1][1].plot(freqhr, np.unwrap(np.arctan2(qfithr,ifithr)),ls='-',color = thiscolor)
-
-                # plot I vs Q as second plot
-                iqplot = ax2.plot(Z[:,ii,0],Z[:,ii,1],marker='o',ls="None",label=label)# plot I vs Q as second plot
-                thiscolor = iqplot[0].get_color()
-                ax2.plot(ifithr,qfithr,marker=None,ls='-',color=thiscolor)
-
-            # axes labels
-            ax[0][0].set_ylabel('I')
-            ax[0][1].set_ylabel('Q')
-            ax[1][0].set_ylabel('I^2+Q^2')
-            ax[1][1].set_ylabel('Phase')
-            ax[1][0].set_xlabel('Freq (Hz)')
-            ax[1][1].set_xlabel('Freq (Hz)')
-            ax[1][1].legend() #tuple(db_list))
-
-            ax2.set_xlabel('I')
-            ax2.set_ylabel('Q')
-            ax2.set_aspect('equal','box')
-
-            ax2.legend() #tuple(db_list))# axes labels
-
-            #embed();sys.exit()
+    # def analyzeZ(self, temp_k, Tc_k=0.16,semilogx=True,f_max_hz=None):
+    #     ''' take the bias circuit subtracted impedance and fit a 1-pole filter response
+    #         maybe filter out some noisy frequencies
+    #         maybe get real crazy and save a plot
+    #         starting with the shell of plotZ
+    #     '''
+    #     temp_index = np.where(np.array(self.temp_list_k)==temp_k)[0]
+    #     if len(temp_index)!=1:
+    #         print('More than one measurement at temperature temp_k.  Analyzing the first measurement')
+    #     temp_index = temp_index[0]
+    #     db_list = self.db_list[temp_index]
+    #     iqdata_sc, sc_dex = self.get_sc_dataset(Tc_k)
+    #     data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
+    #     num_db = len(data)
+    #
+    #     # determine number of independent detector measurements in the mux frame
+    #     if len(set(data[0].row_order)) == 1:
+    #         num_rows = 1
+    #     else:
+    #         num_rows = len(data[0].row_order)
+    #
+    #     # loop over rows/detectors, make plots per detector
+    #     for ii in range(num_rows):
+    #         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
+    #         fig2,ax2 = plt.subplots(1,1,num=2*ii+1)
+    #         row = data[0].row_order[ii]
+    #         for ff in [fig,fig2]:
+    #             ff.suptitle('Row%02d, Temperature = %.1f mK'%(data[0].row_order[ii],temp_k*1000))
+    #
+    #         # loop over detector biases
+    #         for jj,db in enumerate(db_list):
+    #             if np.logical_and(db==0,temp_k<Tc_k):
+    #                 continue
+    #             f = np.array(data[jj].frequency_hz)
+    #             iq_data = np.array(data[jj].iq_data)
+    #             Z = iq_data - iqdata_sc
+    #
+    #             if f_max_hz:
+    #                 dex_max = np.argmin(abs(np.array(f)-f_max_hz))
+    #                 f=f[:dex_max]
+    #                 Z=Z[:dex_max,:,:]
+    #
+    #             freqhr = np.logspace(np.log10(f[0]),np.log10(f[-1]),10*len(f)) # high resolution frequency for plotting fit
+    #             # Avoid list of  noisy lines
+    #             noisy_lines = [] #[43, 54, 110, 175]  # Hz
+    #             if noisy_lines:
+    #                 for nnll in noisy_lines:
+    #                     fmask *= (f < nnll - delta) + (f > nnll  + delta)
+    #                 f = copy(f[fmask])
+    #
+    #             IQfit = sp.optimize.leastsq(self.errFuncSCiq, [-2000, -1000, 1E-3], args=(f * 2 * np.pi, Z[:,ii,0], Z[:,ii,1]), full_output=1)
+    #             print(jj,db_list[jj],IQfit[4])
+    #             IQfitIpval = [IQfit[0][0],IQfit[0][2]]
+    #             IQfitQpval = [IQfit[0][1],IQfit[0][2]]
+    #             ifithr = self.fitFuncSCi(IQfitIpval, freqhr * 2 * np.pi)
+    #             qfithr = self.fitFuncSCq(IQfitQpval, freqhr * 2 * np.pi)
+    #             label = '{}, {:.3f} ms'.format(db_list[jj],IQfit[0][2]*1e3)
+    #             if semilogx:
+    #                 iplot = ax[0][0].semilogx(f, Z[:,ii,0],marker='o',ls="None")
+    #                 thiscolor = iplot[0].get_color()
+    #                 ax[0][0].semilogx(freqhr, ifithr, ls='-',color = thiscolor)
+    #                 ax[0][1].semilogx(f, Z[:,ii,1],marker='o',ls="None", color=thiscolor)
+    #                 ax[0][1].semilogx(freqhr, qfithr, ls='-',color = thiscolor)
+    #                 ax[1][0].semilogx(f, Z[:,ii,0]**2+Z[:,ii,1]**2,marker='o',ls="None",color = thiscolor)
+    #                 ax[1][0].semilogx(freqhr, ifithr**2+qfithr**2,ls='-',color = thiscolor)
+    #                 ax[1][1].semilogx(f, np.unwrap(np.arctan2(Z[:,ii,1],Z[:,ii,0])),marker='o',ls="None",color = thiscolor,label=label)
+    #                 ax[1][1].semilogx(freqhr, np.unwrap(np.arctan2(qfithr,ifithr)),ls='-',color = thiscolor)
+    #             else:
+    #                 iplot = ax[0][0].plot(f, Z[:,ii,0],marker='o',ls="None")
+    #                 thiscolor = iplot[0].get_color()
+    #                 ax[0][0].plot(freqhr, ifithr, ls='-',color = thiscolor)
+    #                 ax[0][1].plot(f, Z[:,ii,1],marker='o',ls="None", color=thiscolor)
+    #                 ax[0][1].plot(freqhr, qfithr, ls='-',color = thiscolor)
+    #                 ax[1][0].plot(f, Z[:,ii,0]**2+Z[:,ii,1]**2,marker='o',ls="None",color = thiscolor)
+    #                 ax[1][0].plot(freqhr, ifithr**2+qfithr**2,ls='-',color = thiscolor)
+    #                 ax[1][1].plot(f, np.unwrap(np.arctan2(Z[:,ii,1],Z[:,ii,0])),marker='o',ls="None",color = thiscolor,label=label)
+    #                 ax[1][1].plot(freqhr, np.unwrap(np.arctan2(qfithr,ifithr)),ls='-',color = thiscolor)
+    #
+    #             # plot I vs Q as second plot
+    #             iqplot = ax2.plot(Z[:,ii,0],Z[:,ii,1],marker='o',ls="None",label=label)# plot I vs Q as second plot
+    #             thiscolor = iqplot[0].get_color()
+    #             ax2.plot(ifithr,qfithr,marker=None,ls='-',color=thiscolor)
+    #
+    #         # axes labels
+    #         ax[0][0].set_ylabel('I')
+    #         ax[0][1].set_ylabel('Q')
+    #         ax[1][0].set_ylabel('I^2+Q^2')
+    #         ax[1][1].set_ylabel('Phase')
+    #         ax[1][0].set_xlabel('Freq (Hz)')
+    #         ax[1][1].set_xlabel('Freq (Hz)')
+    #         ax[1][1].legend() #tuple(db_list))
+    #
+    #         ax2.set_xlabel('I')
+    #         ax2.set_ylabel('Q')
+    #         ax2.set_aspect('equal','box')
+    #
+    #         ax2.legend() #tuple(db_list))# axes labels
+    #
+    #         #embed();sys.exit()
 
 ### noise data classes ---------------------------------------------------------------------
 @dataclass_json
