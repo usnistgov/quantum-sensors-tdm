@@ -102,6 +102,7 @@ class SineSweep():
             freq_m.append(self.set_frequency(freq))
             time.sleep(self.waittime_s)
             samples_per_period = int(self.sla.ec.sample_rate/freq)
+            if samples_per_period==0: samples_per_period=1
             max_num_period = self.easy_client_max_numpts//samples_per_period
             if max_num_period < 10:
                 numpts = self.easy_client_max_numpts 
@@ -335,9 +336,13 @@ if __name__ == "__main__":
     # plt.show()
 
     path='/data/uber_omt/20230517/'
-    filename = 'colB_cz_20230601_1.json'
-    comment = 'IV slope = 0'
-    temp_list_k = [0.1,0.2]
+    filename = 'colA_cz_20230608_sc.json'
+    comment='superconducting data set only'
+    temp_list_k = [0.1,0.15]
+    # db_list = [ [15000,10000,9000,8000,7000,6000,5000,4000,3000],
+    #             [10000,9000,8000,7000,6000,5000,4000,3000,2000,1000],
+    #             [0]]
+    db_list = [ [0],[0]]
     
     # construct detector bias list, one for each temperature. 
     # only include one superconducting state measurement (0 bias below Tc)
@@ -347,10 +352,11 @@ if __name__ == "__main__":
     # db_list.extend(db_list_more)
     # db_list.append([0])
     #db_list = [[14000,11800,9900,8000,0],[0]]
-    db_list = [[13910,16316,16692,14361,12782,0],[0]]
-    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,5,100),
+    #db_list = [[13910,16316,16692,14361,12782,0],[0]]
+    
+    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,4.6,100),
                  num_lockin_periods = 10,
-                 row_order=[8,9,11,16,22],
+                 row_order=[6,7,8,10,12,14,16,18,19,21,22,23],
                  signal_column_index=0,
                  reference_column_index=1,
                  column_str='B',
@@ -359,10 +365,10 @@ if __name__ == "__main__":
                  temperature_list_k = temp_list_k,
                  voltage_source='tower',
                  db_cardname = 'DB',
-                 db_tower_channel='1',
+                 db_tower_channel='0',
                  cringe_control=None,
                  normal_amp_volt=1.0,
-                 superconducting_amp_volt=0.05,
+                 superconducting_amp_volt=0.1,
                  normal_above_temp_k=0.19)
 
     output = cz.run(False,extra_info={'note':comment})
