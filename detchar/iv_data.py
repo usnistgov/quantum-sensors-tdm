@@ -214,6 +214,29 @@ class IVTempSweepData(DataIO):
 
         return dac_list
 
+    def to_txt(self,filename,row_index,temp_index_list=None,zero='dac high'):
+        ''' write IV versus temperature for a single row to a text file '''
+        header_txt='#dac'
+        sub_header='#'
+        X = np.array(self.data[0].dac_values)
+        if temp_index_list is None:
+            temp_list_index = list(range(len(self.set_temps_k)))
+        for ii in temp_list_index:
+            curve =self.data[ii]
+            header_txt=header_txt+', %dmK'%(curve.nominal_temp_k*1e3)
+            t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
+            sub_header=sub_header+', %.1fmK'%t_meas_mK
+            if zero == "origin":
+                x, y = curve.xy_arrays_zero_subtracted_at_origin()
+            elif zero == "dac high":
+                x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
+            else:
+                y=curve.fb_values_array()
+            X=np.vstack((X,y[:,row_index]))
+        X=X.transpose()
+        header = header_txt+'\n'+sub_header
+        np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header)
+
 @dataclass_json
 @dataclass
 class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temps_k, data
@@ -774,16 +797,16 @@ class NoiseSweepData(DataIO):
         ax.set_ylabel(y_label_str)
         ax.legend(db_list)
         print('measured temperatures: ',temp_m)
-        return fig, ax 
+        return fig, ax
 
     def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None):
         df = data[temp_index][bias_index]
         fig,ax = self._handle_fig(fig,ax)
         m, y_label_str = self._phys_units(physical_units)
         ax.loglog(df.freqs,np.array(df.Pxx)[row_index,:]*m**2)
-        return fig, ax 
+        return fig, ax
 
-    def write_data_to_txt(self,filename,row_index,temp,bias_indices=None,physical_units=True):
+    def to_txt(self,filename,row_index,temp,bias_indices=None,physical_units=True):
         m, y_label_str = self._phys_units(physical_units)
         dex = self.temp_list_k.index(temp)
         data = self.data[dex] # this is a list of NoiseSweepData objects, one for each voltage bias
@@ -796,12 +819,7 @@ class NoiseSweepData(DataIO):
         header_txt ='freq (Hz)'
         for ii,db in enumerate(db_list):
             df = data[ii]
-            X=np.vstack((X,np.array(df.Pxx)[row_index,:]*m**2)) 
+            X=np.vstack((X,np.array(df.Pxx)[row_index,:]*m**2))
             header_txt=header_txt+', db=%d'%db
         X=X.transpose()
         np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header_txt)
-
-
-        
-        
-
