@@ -782,3 +782,26 @@ class NoiseSweepData(DataIO):
         m, y_label_str = self._phys_units(physical_units)
         ax.loglog(df.freqs,np.array(df.Pxx)[row_index,:]*m**2)
         return fig, ax 
+
+    def write_data_to_txt(self,filename,row_index,temp,bias_indices=None,physical_units=True):
+        m, y_label_str = self._phys_units(physical_units)
+        dex = self.temp_list_k.index(temp)
+        data = self.data[dex] # this is a list of NoiseSweepData objects, one for each voltage bias
+        if bias_indices==None:
+            db_list=self.db_list[dex]
+        else:
+            db_list=list(np.array(self.db_list)[bias_indices])
+
+        X = np.array(data[0].freq_hz)
+        header_txt ='freq (Hz)'
+        for ii,db in enumerate(db_list):
+            df = data[ii]
+            X=np.vstack((X,np.array(df.Pxx)[row_index,:]*m**2)) 
+            header_txt=header_txt+', db=%d'%db
+        X=X.transpose()
+        np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header_txt)
+
+
+        
+        
+
