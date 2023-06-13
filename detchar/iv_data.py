@@ -244,13 +244,17 @@ class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temp
     data: List[IVTempSweepData]
     extra_info: dict
 
-    def plot_row(self, row):
+    def plot_row(self, row, zero=None):
         #n=len(set_cl_temps_k)
         #plt.figure()
         for ii, tempSweep in enumerate(self.data): # loop over IVTempSweepData instances (ie coldload temperature settings)
             for jj, set_temp_k in enumerate(tempSweep.set_temps_k): # loop over bath temperatures
                 data = tempSweep.data[jj]
-                x = data.dac_values ; y=data.fb_values_array()
+                x = data.dac_values
+                if zero is None:
+                    y=data.fb_values_array()
+                elif zero == "dac high":
+                    x, y = data.xy_arrays_zero_subtracted_at_dac_high()
                 plt.plot(x,y[:,row],label='T_cl = %.1fK; T_b = %.1f'%(self.set_cl_temps_k[ii],data.nominal_temp_k))
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
