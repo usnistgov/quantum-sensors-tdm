@@ -116,7 +116,7 @@ class IVCommon():
             fig2 = plt.figure(2)
             plt.plot(fb,'o-')
             plt.xlabel('Index')
-            plt.ylabel('$\Delta$ fb')
+            plt.ylabel('fb')
             if dex != None: plt.plot(dex,fb[dex],'ro')
             plt.show()
         return dex#,val
@@ -1595,8 +1595,8 @@ def iv_quicklook(filename,row_index,use_config=True):
     # code for a quick IV versus temperature analysis
     # stuff you should update on case by case
     path = '/home/pcuser/data/uber_omt/20230517/'
-    fname = 'uber_omt_ColumnA_ivs_20230519_1684529743.json'
-    row_index = 11
+    fname = 'uber_omt_ColumnB_ivs_20230530_1685505304.json'
+    row_index = 1
     use_config = True
 
     # rest should be static
