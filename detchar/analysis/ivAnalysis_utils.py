@@ -44,14 +44,14 @@ def thermalPower(nu1,nu2,T,F=None):
         top hat band is assumed.
     '''
     try:
-        if F==None: # case for tophat
+        if F is None: # case for tophat
             P = quad(Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
     except: # case for arbitrary passband shape F
         N = len(F)
         nu = np.linspace(nu1,nu2,N)
         integrand = self.Pnu_thermal(nu,T)*F
         P = simps(integrand,nu)
-    return
+    return P
 
 def get_xy_for_row_from_temp_sweep(iv_tempsweep_data,row):
     ''' dac_values is a 1xn vector
@@ -924,21 +924,17 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
         # other useful globals
         self.variable_defs = self.variable_definitions()
-        self.det_name = det_name
-        self.row_name = row_name
+        self.row_name, self.det_name = self._handle_row_det_name(row_name,det_name)
         self.figtitle = self.det_name+', '+self.row_name+' , Tb = %.1f mK'%(self.bath_temp_k*1000)
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
 
         # do analysis of v,i,r,p vectors.  Place main results as globals to class
-        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=True,showplot=False) # remove DC offset
-
-        #self.v,self.i,self.p,self.r = self.get_vipr(showplot=False)
+        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=self.use_ave_offset,showplot=False) # remove DC offset
         v,i,p,r = self.get_vipr(self.dacs, self.fb_align, iv_circuit, showplot=False)
         ro = r / r[0,:]
         self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = v,i,p,r,ro
         self.v, self.i, self.p, self.r, self.bad_data_idx = self.remove_bad_data(v,i,p,r,threshold=self.bad_data_threshold)
         self.ro = self.r/self.r[0,:]
-
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
 
         # get change in power versus change in temperature ("infinitesimal", thus lower case d)
@@ -963,6 +959,13 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
 
     # handle methods ----------------------------------------------------------
+    def _handle_row_det_name(self,row_name,det_name):
+        if row_name is None:
+            row_name = 'Row XX'
+        if det_name is None:
+            det_name = 'Det XX'
+        return row_name, det_name
+
     def _handle_rn_fracs(self,rn_fracs):
         if rn_fracs is None:
             return [0.5,0.6,0.7,0.8,0.9]
@@ -1339,6 +1342,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             figs.append(self.plot_power_change_vs_temperature(include_prediction=True, include_darksubtraction=include_ds))
             if self.analyze_eta:
                 figs.append(self.plot_efficiency(include_darksubtraction=include_ds))
+        else:
+            print('nan found in p_at_rnfrac.  I can not plot power change versus temperature')
 
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta']
@@ -1351,16 +1356,12 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
 class IVColdloadSweepAnalyzer():
     ''' Class to analyze a coldload IV sweep '''
-    def __init__(self,filename_json,detector_map=None,iv_circuit=None):
+    def __init__(self,filename_json,detector_map=None,iv_circuit="from file"):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
         self.data = self.df.data
         self.det_map = detector_map
-        self.iv_circuit = iv_circuit
-        #self.data is a list of IVTempSweepData, one per coldload temperature setpoint
-        #self.data[0].data is a list of IVCurveColumnData, one per bath temperature setpoint
-        #self.data[ii].data[jj], ii is the coldload setpoint temperature index
-        #                        jj is the bath temperature setpoint index
+        self.iv_circuit = self._handle_iv_circuit(iv_circuit)
 
         # globals about coldload temperatures
         self.set_cl_temps_k = self.df.set_cl_temps_k
@@ -1383,6 +1384,34 @@ class IVColdloadSweepAnalyzer():
         # devices
         foo, self.n_rows = np.shape(self.data[0].data[0].fb_values_array())
         self.row_index_list = list(range(self.n_rows))
+
+    def _handle_iv_circuit(self,iv_circuit):
+        if iv_circuit == "from file":
+            cal = self.df.extra_info['config']['calnums']
+            rfb_ohm = cal['rfb']+50.0
+            rbias_ohm = cal['rbias']
+            rsh_ohm = cal['rjnoise']
+            mr = cal['mr']
+            vfb_gain = cal['vfb_gain']/(2**14-1)
+            source = self.df.extra_info['config']['voltage_bias']['source']
+
+            if source == 'tower':
+                vb_max = 2.5
+            elif source == 'bluebox':
+                vb_max=6.5
+            else:
+                assert False, 'What is the maximum voltage of your detector voltage bias source?  I need to know to calibrate to physical units'
+
+            iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
+                                   rbias_ohm=rbias_ohm,
+                                   rsh_ohm=rsh_ohm,
+                                   rx_ohm=0,
+                                   m_ratio=mr,
+                                   vfb_gain=vfb_gain,
+                                   vbias_gain=vb_max/(2**16-1))
+        else:
+            pass
+        return iv_circuit
 
     def print_info(self):
         # Too add in future:
@@ -1411,7 +1440,7 @@ class IVColdloadSweepAnalyzer():
         return self.dac_values, fb
 
     def plot_measured_cl_temps(self):
-        plt.figure(1)
+        plt.figure()
         plt.xlabel('Setpoint Temperature (K)')
         plt.ylabel('Measured Temperature (K)')
         #cl_temp_list = self._package_cl_temp_to_list()
@@ -1421,7 +1450,7 @@ class IVColdloadSweepAnalyzer():
         plt.legend(('ChA pre','ChB pre','ChA post','ChB post'))
         plt.grid()
 
-        plt.figure(2)
+        plt.figure()
         plt.xlabel('Time (arb)')
         plt.ylabel('Temperature (K)')
         x = list(range(self.n_cl_temps))
@@ -1454,7 +1483,7 @@ class IVColdloadSweepAnalyzer():
         #bath_temp_index = self.get_bath_temp_index(bath_temp)
         x = self.data[cl_temp_index].data[bath_temp_index].dac_values
         y = self.data[cl_temp_index].data[bath_temp_index].fb_values_array()[:,row_index]
-        plt.figure(1)
+        plt.figure()
         plt.xlabel('DAC values')
         plt.ylabel('Feedback values')
         plt.plot(x,y,'-')
@@ -1465,7 +1494,7 @@ class IVColdloadSweepAnalyzer():
         if cl_indices==None:
             cl_indices = list(range(self.n_cl_temps))
         x,fb_arr = self.get_cl_sweep_dataset_for_row(row_index,bath_temp_index,cl_indices)
-        plt.figure(1)
+        plt.figure()
         for ii in range(len(cl_indices)):
             dy = fb_arr[0,ii]-fb_arr[0,0]
             plt.plot(self.dac_values, fb_arr[:,ii]-dy)
@@ -1475,27 +1504,26 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
 
-    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices,showfigs=True,savefigs=False):
+    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices=None,\
+                                    rn_fracs=None,showfigs=True,savefigs=False,
+                                    predicted_power_w=None):
+        if cl_indices is None:
+            cl_indices = list(range(len(self.set_cl_temps_k)))
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-        if self.det_map != None:
-
-            device_dict = {'Row%02d'%row_index: self.det_map['Row%02d'%row_index]['devname']}
-            keys = self.det_map['Row%02d'%row_index].keys()
-            passband_dict = {}
-            if 'freq_edges_ghz' in keys:
-                passband_dict['freq_edges_ghz']=self.det_map['Row%02d'%row_index]['freq_edges_ghz']
-            if 'passband_ghz' in keys:
-                passband_dict['passband_ghz']=self.det_map['Row%02d'%row_index]['passband_ghz']
+        if self.det_map:
+            row_name = 'Row%02d'%row_index
+            det_name = self.det_map.get_devname_from_row_index(row_index)
+            dark_power_w=None # need to update this!!!
         else:
-            device_dict=None ; passband_dict = {}
+            row_name=det_name=dark_power_w=None
 
         iva = IVColdloadAnalyzeOneRow(dacs,fb,
-                                      cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
+                                      cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                      device_dict=device_dict,
+                                      row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
-                                      passband_dict=passband_dict)
-        iva.plot_full_analysis(showfigs,savefigs)
+                                      predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
+        iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
 
     def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
@@ -1507,16 +1535,12 @@ class IVColdloadSweepAnalyzer():
         iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                       cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                      device_dict=None,
-                                      iv_circuit=self.iv_circuit,
-                                      passband_dict=None)
+                                      iv_circuit=self.iv_circuit)
 
         iva_dark = IVColdloadAnalyzeOneRow(dacs,fb_dark,
                                       cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),# put in measured values here!
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                      device_dict=None,
-                                      iv_circuit=self.iv_circuit,
-                                      passband_dict=None)
+                                      iv_circuit=self.iv_circuit)
 
         n_rfrac, n_clTemps = np.shape(iva.dP_w)
         for ii in range(n_rfrac):
@@ -1567,8 +1591,7 @@ class IVColdloadSweepAnalyzer():
                 iva.rn_fracs = rn_fracs
             iva.plot_full_analysis(showfigs,savefigs)
 
-if __name__ == "__main__":
-
+def iv_quicklook(filename,row_index,use_config=True):
     # code for a quick IV versus temperature analysis
     # stuff you should update on case by case
     path = '/home/pcuser/data/uber_omt/20230517/'
@@ -1577,7 +1600,7 @@ if __name__ == "__main__":
     use_config = True
 
     # rest should be static
-    df = IVTempSweepData.from_file(path+fname) # df = "data frame"
+    df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']
 
     print('State sequence: ',cfg['detectors']['Rows'])
@@ -1589,7 +1612,7 @@ if __name__ == "__main__":
         vb_max = 6.5
     else:
         assert False,'unknown voltage bias'
-    
+
     # circuit parameters to convert to physical units
     if use_config:
         cal = cfg['calnums']
@@ -1604,7 +1627,7 @@ if __name__ == "__main__":
         rbias_ohm = 200.0
         rsh_ohm = 0.000150
         rx_ohm = 0
-        mr = 15 
+        mr = 15
         vfb_gain = 1.017/(2**14-1)
 
     iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
@@ -1633,3 +1656,12 @@ if __name__ == "__main__":
     iv_tsweep.plot_fits(fignum=5)
     print(iv_tsweep.pfits[0])
     plt.show()
+
+if __name__ == "__main__":
+    fname = '/Users/hubmayr/tmp/20230609/uber_omt_ColumnA_ivs_20230613_1686672234.json'
+    ivcl = IVColdloadSweepAnalyzer(fname)
+    predicted_power_w = []
+    for t in ivcl.set_cl_temps_k:
+        predicted_power_w.append(thermalPower(nu1=77.0e9,nu2=108.0e9,T=t,F=None))
+    ivcl.plot_sweep_analysis_for_row(row_index=17,bath_temp_index=0,cl_indices=None,\
+                                     showfigs=True,savefigs=False,predicted_power_w=np.array(predicted_power_w))
