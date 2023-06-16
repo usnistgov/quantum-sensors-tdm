@@ -428,7 +428,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         self.ec = self._handle_easy_client_arg(easy_client)
         self.sig_col_index = signal_column_index
         self.ref_col_index = reference_column_index
-        self.num_pts_per_period = self._handle_pts_per_period_arg(num_pts_per_period)
+        #self.num_pts_per_period = self._handle_pts_per_period_arg(num_pts_per_period)
         self.signal_feedback_or_error = signal_feedback_or_error
         self.sig_index = self._handle_feedback_or_error_arg(signal_feedback_or_error)
 
@@ -448,29 +448,29 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         easy_client.setupAndChooseChannels()
         return easy_client
 
-    def _handle_pts_per_period_arg(self,num_pts_per_period):
-        if num_pts_per_period is not None:
-            num_pts = num_pts_per_period
-        else:
-            ii = 0
-            retries=10
-            while ii < retries:
-                data = self.ec.getNewData(minimumNumPoints=390000)
-                if isinstance(data, (np.ndarray, np.generic)):
-                    break
-                else: 
-                    print('easy_client getNewData failed on attempt number %d'%ii)
-                    time.sleep(.1)
-                    ii+=1 
-                    continue 
-            if ii==retries:
-                raise Exception('getData failed, likely due to dropped packets')
-            arr = data[self.ref_col_index,0,:,0]
-            arr_pp = np.max(arr) - np.min(arr)
-            assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2))
-            #num_pts = self.get_num_points_per_period(arr,fit_wave=False,debug=False)
-            num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
-        return num_pts
+    # def _handle_pts_per_period_arg(self,num_pts_per_period):
+    #     if num_pts_per_period is not None:
+    #         num_pts = num_pts_per_period
+    #     else:
+    #         ii = 0
+    #         retries=10
+    #         while ii < retries:
+    #             data = self.ec.getNewData(minimumNumPoints=10000)
+    #             if isinstance(data, (np.ndarray, np.generic)):
+    #                 break
+    #             else: 
+    #                 print('easy_client getNewData failed on attempt number %d'%ii)
+    #                 time.sleep(.1)
+    #                 ii+=1 
+    #                 continue 
+    #         if ii==retries:
+    #             raise Exception('getData failed, likely due to dropped packets')
+    #         arr = data[self.ref_col_index,0,:,0]
+    #         arr_pp = np.max(arr) - np.min(arr)
+    #         assert arr_pp > self.ref_pp_min, print('Reference signal amplitude (%.1f )is too low.  Increase and try again.'%(arr_pp/2))
+    #         #num_pts = self.get_num_points_per_period(arr,fit_wave=False,debug=False)
+    #         num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
+    #     return num_pts
 
     def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None,retries=10):
         '''
@@ -496,7 +496,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
             if isinstance(dataOut, (np.ndarray, np.generic)):
                 break
             else: 
-                print('easy_client getNewData failed on attempt number %d'%ii)
+                print('easy_client getNewData(minimumNumPoints = %d) failed on attempt number %d'%(minimumNumPoints,ii))
                 time.sleep(.1)
                 ii+=1 
                 continue 
@@ -715,4 +715,4 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sla.getData(minimumNumPoints=390000, window=True,debug=True)
+    sla.getData(minimumNumPoints=10000, window=True,debug=True)

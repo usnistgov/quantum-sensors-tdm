@@ -85,7 +85,7 @@ class SineSweep():
         ''' set the frequency and check that the frequency set is within diff_percent_tol % of requested. 
             Why isn't it exact?  Finite # of bits 
         '''
-        print('Setting function generator to frequency = %.2f Hz'%freq)
+        #print('Setting function generator to frequency = %.2f Hz'%freq)
         self.fg.SetFrequency(freq)
         freq_measured = self.fg.GetFrequency()
         diff_percent = ((freq_measured-freq) / freq)*100  
@@ -95,21 +95,27 @@ class SineSweep():
     def take_sweep(self, extra_info = {}, turn_off_source_on_end = True):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
-
         iq_v_freq = np.empty((len(self.freq_hz),self.sla.ec.nrow,2))
+        bar = progress.bar.Bar("Sweeping frequency",max=len(self.freq_hz))
         freq_m = []
         for ii, freq in enumerate(self.freq_hz):
             freq_m.append(self.set_frequency(freq))
             time.sleep(self.waittime_s)
             samples_per_period = int(self.sla.ec.sample_rate/freq)
-            if samples_per_period==0: samples_per_period=1
-            max_num_period = self.easy_client_max_numpts//samples_per_period
-            if max_num_period < 10:
-                numpts = self.easy_client_max_numpts 
-            else:
-                numpts = samples_per_period*10  
+            assert(samples_per_period>1), 'too few samples per period. You will alias'
+            numpts = samples_per_period*self.num_lockin_periods
+            if numpts > self.easy_client_max_numpts:
+                print('%d lock-in periods results in numpts > easy_client_max_numpts.  Setting to easy_client_max_numpts=%d'%(self.num_lockin_periods,self.easy_client_max_numpts))
+                numpts = self.easy_client_max_numpts
+            elif numpts < 10000:
+                numpts=10000
+            # print('frequency of tickle: %.3f Hz'%(freq))
+            # print('sample rate: %.3f Hz'%self.sla.ec.sample_rate)
+            # print('samples_per_period: ',samples_per_period)
+            # print('numpts: ',numpts)
             iq_v_freq[ii,:,:] = self.get_iq(numpts,num_pts_per_period=samples_per_period)
-
+            bar.next()
+        bar.finish()
         post_temp_k = self.adr_gui_control.get_temp_k()
         post_time = time.time()
         print('Acquisition complete.')
@@ -257,6 +263,7 @@ class ComplexZ(SineSweep):
     def set_temp(self,temp_k):
         self.adr_gui_control.set_temp_k(float(temp_k))
         stable = self._is_temp_stable(temp_k)
+        print('Waiting %d s for temperature to stabilize'%self.temp_settle_delay_s)
         time.sleep(self.temp_settle_delay_s)
         return stable
 
@@ -335,31 +342,22 @@ if __name__ == "__main__":
 
     # plt.show()
 
-    path='/data/uber_omt/20230517/'
-    filename = 'colA_cz_20230608_sc.json'
-    comment='superconducting data set only'
-    temp_list_k = [0.1,0.15]
-    # db_list = [ [15000,10000,9000,8000,7000,6000,5000,4000,3000],
-    #             [10000,9000,8000,7000,6000,5000,4000,3000,2000,1000],
-    #             [0]]
-    db_list = [ [0],[0]]
+    path='/data/uber_omt/20230609/'
+    filename = 'colA_cz_20230609_4.json'
+    comment='coldload at 12K'
+    skip_wait_on_first_temp=True
+    temp_list_k = [0.1,0.12,0.2]
+    db_list = [[5809, 4952, 4641, 4076, 3615, 3263, 2937, 2609, 2274,0],
+                [4770, 4413, 4074, 3529, 3106, 2789, 2494, 2207, 1918],
+                [0]]
+
     
-    # construct detector bias list, one for each temperature. 
-    # only include one superconducting state measurement (0 bias below Tc)
-    # only include one normal branch measurement (0 bias above Tc)
-    # db_list = [[30000,15000,12500,10000,7500,5000,2000,1000,0]]
-    # db_list_more = [db_list[0][:-1]]*(len(temp_list_k)-2) # remove the zero bias because you only need one 
-    # db_list.extend(db_list_more)
-    # db_list.append([0])
-    #db_list = [[14000,11800,9900,8000,0],[0]]
-    #db_list = [[13910,16316,16692,14361,12782,0],[0]]
-    
-    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(0,4.6,100),
+    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(1,4.6,100),
                  num_lockin_periods = 10,
-                 row_order=[6,7,8,10,12,14,16,18,19,21,22,23],
+                 row_order=[8,9,15,18,28,29],
                  signal_column_index=0,
                  reference_column_index=1,
-                 column_str='B',
+                 column_str='A',
                  rfg_ohm = 10.2e3,
                  detector_bias_list = db_list,
                  temperature_list_k = temp_list_k,
@@ -371,6 +369,6 @@ if __name__ == "__main__":
                  superconducting_amp_volt=0.1,
                  normal_above_temp_k=0.19)
 
-    output = cz.run(False,extra_info={'note':comment})
+    output = cz.run(skip_wait_on_first_temp=skip_wait_on_first_temp,extra_info={'note':comment})
     output.to_file(path+filename,overwrite=True)
 
