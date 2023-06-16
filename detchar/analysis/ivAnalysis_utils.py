@@ -1592,12 +1592,6 @@ class IVColdloadSweepAnalyzer():
             iva.plot_full_analysis(showfigs,savefigs)
 
 def iv_quicklook(filename,row_index,use_config=True):
-    # code for a quick IV versus temperature analysis
-    # stuff you should update on case by case
-    path = '/home/pcuser/data/uber_omt/20230517/'
-    fname = 'uber_omt_ColumnB_ivs_20230530_1685505304.json'
-    row_index = 1
-    use_config = True
 
     # rest should be static
     df = IVTempSweepData.from_file(filename) # df = "data frame"
@@ -1647,7 +1641,7 @@ def iv_quicklook(filename,row_index,use_config=True):
         dac, fb = df.data[ii].xy_arrays()
         fb_arr[:,ii] = fb[:,row_index]
 
-    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=df.set_temps_k, normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
     #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=df.set_temps_k, normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(fignum=2)
