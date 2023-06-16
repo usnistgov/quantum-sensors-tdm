@@ -119,7 +119,7 @@ if is_coldload_sweep():
                                    cl_settemp_timeout_m=10.0,
                                    cl_post_setpoint_waittime_m=cfg['coldload']['cl_post_setpoint_waittime_m'],
                                    skip_first_settle = cfg['coldload']['immediateFirstMeasurement'],
-                                   cool_upon_finish = True, extra_info={'config': cfg, 'exp_status':desc},
+                                   cool_upon_finish = cfg['coldload']['cool_upon_finish'], extra_info={'config': cfg, 'exp_status':desc},
                                    write_while_acquire = True, filename=write_filename)
 else:
     data = ivsweeper.get_sweep(dacs, bath_temps, extra_info={'config':cfg,'exp_status':desc,'row_to_period_map':cfg['detectors']['Rows']})
