@@ -253,8 +253,13 @@ class EasyClientDastard():
                 keys = sorted(datas_dict.keys())
                 k_complete = [k for k in keys if counter[k-firstTriggerFramecount] == self.numChannels]
                 n_have = len(data)*len(k_complete)
-                if n_have >= minimumNumPoints:
+                # if n_have >= minimumNumPoints:
+                #     break
+                if np.logical_and(n_have >= minimumNumPoints,all(np.diff(k_complete)==len(data))):
                     break
+                else:
+                    continue
+
             # print(f"i={i} n_observed={n_observed} counter={counter}")
             # x = header["triggerFramecount"]-firstTriggerFramecount
             # y = x//10000
@@ -278,7 +283,7 @@ class EasyClientDastard():
         # print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
         # print( self.numChannels, self.numRows, self.numColumns)
         # print( "triggerFramecount Counter", counter)
-        assert(all(np.diff(k_complete)==len(data)))
+        #assert(all(np.diff(k_complete)==len(data)))
 
 
         dataOut = np.zeros((self.numColumns, self.numRows, n_have, 2),dtype="int32")
