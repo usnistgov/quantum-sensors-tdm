@@ -1099,19 +1099,6 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         dex = self.rn_fracs.index(rnfrac)
         return self.p_at_rnfrac[dex,:]
 
-    def get_eta_mean_std(self,indices=None):
-        assert self.analyze_eta, 'Analyze_eta=False.  Did you provide a power prediction?'
-        #self.eta_Dp_arr[~np.isnan(clres17.eta_Dp_arr)] self.eta_Dp_arr
-        n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
-        dexs=[] # rn cuts w/out np.nan entries
-        for ii in range(n):
-            if not np.isnan(eta[ii,1:]).any():
-                dexs.append(ii)
-
-        eta_m = np.mean(eta[dexs,1:],axis=0)
-        eta_std = np.std(eta[dexs,1:],axis=0)
-        return eta_m, eta_std
-
     # plotting methods ---------------------------------------------------------
     def plot_raw(self):
         fig, ax = plt.subplots(nrows=1,ncols=2,sharex=False,figsize=(12,8))
@@ -1301,28 +1288,16 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         plt.suptitle(self.figtitle+ ' efficiency')
         return fig
 
-    # def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
-    #     fig = plt.figure(fig_num)
-    #     jj=0
-    #     for ii in range(len(rn_fracs)):
-    #         if not np.isnan(eta[ii,1:]).any():
-    #             plt.plot(cl_dT_k,eta[ii,:],'o-',color=self.colors[jj], label=str(rn_fracs[ii]))
-    #             try:
-    #                 if len(eta_dark_subtracted) > 0:
-    #                     plt.plot(cl_dT_k,eta_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
-    #             except:
-    #                 pass
-    #             jj+=1
-    #     eta_m, eta_std = self.get_eta_mean_std(eta)
-    #     eta_m_ds, eta_std_ds = self.get_eta_mean_std(eta_dark_subtracted)
-    #     plt.errorbar(cl_dT_k[1:],eta_m,eta_std,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
-    #     plt.errorbar(cl_dT_k[1:],eta_m_ds,eta_std_ds,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean ds',linestyle='--')
-    #     plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
-    #     plt.ylabel('Efficiency')
-    #     plt.legend()
-    #     plt.grid()
-    #     plt.title(self.figtitle)
-    #     return fig
+    def plot_mean_efficiency(self):
+        assert self.analyze_eta, 'Analyze_eta=False.  Did you provide a power prediction?'
+        fig, ax = plt.subplots(nrows=1,ncols=1)
+        for XX in [self.eta_Dp_arr,self.eta_dp_arr]:
+            ax.errorbar(self.rn_fracs,XX.mean(1),XX.std(1))
+        ax.set_xlabel('Rn fraction')
+        ax.set_ylabel('Optical Efficiency')
+        ax.legend(('fixed ref','diff'))
+        ax.set_ylim(0,1.1)
+        return fig
 
     def plot_full_analysis(self,include_darksubtraction=True,showfigs=False,savefigs=False):
         ''' Make plots of the full analysis:
@@ -1332,6 +1307,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             4) P versus T_cl
             5) dP vs dT (1 x 2 using both methods)
             6) efficiency
+            7) mean efficiency versus %rn
 
         '''
         if include_darksubtraction and self.dark_analysis:
@@ -1348,6 +1324,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             figs.append(self.plot_power_change_vs_temperature(include_prediction=True, include_darksubtraction=include_ds))
             if self.analyze_eta:
                 figs.append(self.plot_efficiency(include_darksubtraction=include_ds))
+                figs.append(self.plot_mean_efficiency())
         else:
             print('nan found in p_at_rnfrac.  I can not plot power change versus temperature')
 
