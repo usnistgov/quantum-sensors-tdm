@@ -901,6 +901,11 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         predicted_power_w: <list or 1D numpy array> predicted power (in watts) corresponding to each cl_temp, used to determine optical efficiency
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
         rn_fracs: <list of rn fractions to use for electrical power cuts.  If None: default list used.
+
+        The data products (power at fraction of rn) are NxM, where N are the number or rn frac and M
+        is the number of cold load temperatures.  Thus self.p_at_rnfrac[0] gives the power plateau at
+        each temperature for the 0th cut in rn fraction.  The transpose of this (MxN) may be better
+        since plot(x,y) can plot all vectors in y.  Thus matplotlib plot function is "column" oriented.
     '''
 
     # to debug
@@ -1040,7 +1045,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             self.dark_Dp_w = self.dark_power_w - self.dark_power_w[self.T_cl_index]
         if self.analyze_eta:
             self.predicted_Dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
-            self.eta_Dp = self.get_efficiency()
+            self.eta_Dp = self.get_efficiency_at_rnfrac()
 
     def calc_power_differences(self,T_cl_index):
         if self.analyze_eta: # power predictions
@@ -1071,17 +1076,20 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
     def get_efficiency_at_rnfrac(self):
         '''
-        create four global variables that quantify the optical efficiency.
+        create four global variables that quantify the optical efficiency, and one for the dT vector
 
+        DT_eta : BB temp - To.
         eta_Dp_arr_(darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
                                      Array has dimensions n_rfrac  x n_clTemps
         eta_dp_arr_(darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
                                      Array has dimensions n_rfrac  x n_clTemps - 1
         '''
-        self.eta_Dp_arr = self.Dp_at_rnfrac / self.predicted_Dp_w
+        DT = self.cl_DT_k-self.cl_DT_k[self.T_cl_index]
+        self.DT_eta = DT[np.where(DT!=0)[0]] # vector for difference in cold load temp where \eta is evaluated
+        self.eta_Dp_arr = np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
         self.eta_dp_arr = self.dp_at_rnfrac / self.predicted_dp_w
         if self.dark_analysis:
-            self.eta_Dp_arr_darksubtracted = (self.Dp_at_rnfrac - self.dark_Dp_w) / self.predicted_Dp_w
+            self.eta_Dp_arr_darksubtracted = (np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) - np.delete(self.dark_Dp_w,self.T_cl_index,1)) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
             self.eta_dp_arr_darksubtracted = (self.dp_at_rnfrac - self.dark_dp_w) / self.predicted_dp_w
         else:
             self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
@@ -1091,16 +1099,18 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         dex = self.rn_fracs.index(rnfrac)
         return self.p_at_rnfrac[dex,:]
 
-    # def get_eta_mean_std(self,eta):
-    #     n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
-    #     dexs=[] # rn cuts w/out np.nan entries
-    #     for ii in range(n):
-    #         if not np.isnan(eta[ii,1:]).any():
-    #             dexs.append(ii)
-    #
-    #     eta_m = np.mean(eta[dexs,1:],axis=0)
-    #     eta_std = np.std(eta[dexs,1:],axis=0)
-    #     return eta_m, eta_std
+    def get_eta_mean_std(self,indices=None):
+        assert self.analyze_eta, 'Analyze_eta=False.  Did you provide a power prediction?'
+        #self.eta_Dp_arr[~np.isnan(clres17.eta_Dp_arr)] self.eta_Dp_arr
+        n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
+        dexs=[] # rn cuts w/out np.nan entries
+        for ii in range(n):
+            if not np.isnan(eta[ii,1:]).any():
+                dexs.append(ii)
+
+        eta_m = np.mean(eta[dexs,1:],axis=0)
+        eta_std = np.std(eta[dexs,1:],axis=0)
+        return eta_m, eta_std
 
     # plotting methods ---------------------------------------------------------
     def plot_raw(self):
@@ -1117,7 +1127,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax[0].legend((self.cl_temps_k),loc='upper right')
 
     def plot_vipr(self):
-        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(10.5,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
             ax[0].plot(self.v_orig[:,ii],self.i_orig[:,ii],'-',color=self.colors[ii])
@@ -1143,12 +1153,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # ax[0].set_ylim((0,np.max(self.i)*1.1))
         # ax[1].set_xlim((0,np.max(self.v)*1.1))
         # ax[1].set_ylim((0,np.max(self.p)*1.1))
-        # ax[2].set_xlim((0,np.max(self.p)*1.1))
-        # ax[2].set_ylim((0,np.max(self.r[0,:])*1.1))
-        # ax[3].set_xlim((0,np.max(self.v)*1.1))
-        # ax[3].set_ylim((0,np.max(self.r[0,:])*1.1))
-        #ax[3].set_xlim((0,np.max(p)*1.1))
-        #ax[3].set_ylim((0,1.1))
+        for ii in [2,3]:
+            ax[ii].set_ylim(0,1.2*self.r[0,0])
 
         figXX.suptitle(self.figtitle+'  IV, PV, RP, RV')
         ax[0].legend(tuple(self.cl_temps_k),loc='upper right')
@@ -1207,7 +1213,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         plt.ylabel('P$_o$ - P')
         plt.legend()
         plt.grid()
-        plt.title(self.figtitle + 'Dp vs T')
+        plt.title(self.figtitle + ' Dp vs T')
         return fig
 
     def plot_dpdt(self, include_prediction=True, include_darksubtraction=True):
@@ -1272,10 +1278,10 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                ax[0].plot(self.cl_DT_k,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[0].plot(self.DT_eta,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
-                    ax[0].plot(self.cl_DT_k,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                    ax[0].plot(self.DT_eta,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                     ax[1].plot(x,self.eta_dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
 
@@ -1524,6 +1530,7 @@ class IVColdloadSweepAnalyzer():
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
+        return iva
 
     def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
