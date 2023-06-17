@@ -1074,25 +1074,49 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         DP_w = (p_at_rnfrac[:,dex] - p_at_rnfrac.transpose()).transpose()
         return DT_k, DP_w, dex
 
-    def get_efficiency_at_rnfrac(self):
+    def get_efficiency_at_rnfrac(self,method='fixed reference'):
         '''
-        create four global variables that quantify the optical efficiency, and one for the dT vector
-
+        create six global variables that quantify the optical efficiency, and one for the dT vector.
+        Global variables are:
         DT_eta : BB temp - To.
-        eta_Dp_arr_(darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
+        eta_Dp_arr(_darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
                                      Array has dimensions n_rfrac  x n_clTemps
-        eta_dp_arr_(darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
+        eta_dp_arr(_darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
                                      Array has dimensions n_rfrac  x n_clTemps - 1
+        eta_mean(_darksubtracted): 1x n_clTemps vector.  mean of all temperature points
+        eta_std(_darksubtracted): 1x n_clTemps vector.  Standard deviation of all temperature points
+
+        Input "method" is either 'fixed reference' or 'differential' to determine eta_mean and eta_std
         '''
         DT = self.cl_DT_k-self.cl_DT_k[self.T_cl_index]
         self.DT_eta = DT[np.where(DT!=0)[0]] # vector for difference in cold load temp where \eta is evaluated
         self.eta_Dp_arr = np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
         self.eta_dp_arr = self.dp_at_rnfrac / self.predicted_dp_w
+        if method == 'fixed reference':
+            self.eta_mean = self.eta_Dp_arr.mean(1)
+            self.eta_std = self.eta_Dp_arr.std(1)
+        elif method == 'differential':
+            self.eta_mean = self.eta_dp_arr.mean(1)
+            self.eta_std = self.eta_dp_arr.std(1)
+        else:
+            self.eta_mean = self.eta_std = None
+            print('Unknown efficiency method: ',method)
+
         if self.dark_analysis:
             self.eta_Dp_arr_darksubtracted = (np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) - np.delete(self.dark_Dp_w,self.T_cl_index,1)) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
             self.eta_dp_arr_darksubtracted = (self.dp_at_rnfrac - self.dark_dp_w) / self.predicted_dp_w
+            if method == 'fixed reference':
+                self.eta_mean_darksubtracted = self.eta_Dp_arr_darksubtracted.mean(1)
+                self.eta_std_darksubtracted = self.eta_Dp_arr_darksubtracted.std(1)
+            elif method == 'differential':
+                self.eta_mean_darksubtracted = self.eta_dp_arr_darksubtracted.mean(1)
+                self.eta_std_darksubtracted = self.eta_dp_arr_darksubtracted.std(1)
+            else:
+                self.eta_mean_darksubtracted = self.eta_std_darksubtracted = None
+                print('Unknown efficiency method: ',method)
         else:
             self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
+            self.eta_mean_darksubtracted = self.eta_std_darksubtracted = None
 
     def get_power_vector_for_rnfrac(self,rnfrac):
         assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
