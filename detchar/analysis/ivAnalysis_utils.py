@@ -908,9 +908,6 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         since plot(x,y) can plot all vectors in y.  Thus matplotlib plot function is "column" oriented.
     '''
 
-    # to debug
-    # axis limits and NaN for plot_vipr
-
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
                  iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None):
@@ -1036,7 +1033,11 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         defs['eta_dp_arr'] = '2D optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
         defs['eta_Dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k, using the `fixed reference` method.'
         defs['eta_dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
-
+        defs['eta_mean'] = 'mean optical efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_std'] = 'standard deviation of efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_mean_darksubtracted'] = 'dark power subtracted mean optical efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_std_darksubtracted'] = 'dark subtracted standard deviation of efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['DT_eta'] = 'Difference in coldload temperature from reference.  The x axis for eta.'
         return defs
 
     def update_T_cl_index(self,T_cl_index):
@@ -1297,7 +1298,6 @@ class IVColdloadAnalyzeOneRow(IVCommon):
                 jj+=1
 
         ax[0].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
-        #ax[0].set_xlabel('T$_{cl}$')
         ax[0].set_ylabel('Optical Efficiency')
         ax[0].grid('on')
         ax[0].set_title('Fixed Reference Method')
@@ -1307,8 +1307,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax[1].grid('on')
         ax[1].set_title('Differential Method')
         ax[1].set_ylim(0,1)
-
-        ax[1].legend()#self.rn_fracs)
+        ax[1].legend()
         plt.suptitle(self.figtitle+ ' efficiency')
         return fig
 
@@ -1533,10 +1532,13 @@ class IVColdloadSweepAnalyzer():
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
 
-    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices):
+    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices=None):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
             This is often useful for dark subtraction
         '''
+        if cl_indices==None:
+            cl_indices = list(range(self.n_cl_temps))
+
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
         dacs,fb_dark = self.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
 
@@ -1550,13 +1552,13 @@ class IVColdloadSweepAnalyzer():
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       iv_circuit=self.iv_circuit)
 
-        n_rfrac, n_clTemps = np.shape(iva.dP_w)
-        for ii in range(n_rfrac):
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:],'bo-')
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva_dark.dP_w[ii,:],'ko-')
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:]-iva_dark.dP_w[ii,:],'bo--')
-
-        plt.show()
+        fig, ax = plt.subplots(1,1)
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.Dp_at_rnfrac.transpose(),'bo-')
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva_dark.Dp_at_rnfrac.transpose(),'ko-')
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.Dp_at_rnfrac.transpose()-iva_dark.Dp_at_rnfrac.transpose(),'bo--')
+        ax.set_xlabel('T$_{cl}$')
+        ax.set_ylabel('dP')
+        return fig
 
     def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
