@@ -850,10 +850,12 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         predicted_power_w: <list or 1D numpy array> predicted power (in watts) corresponding to each cl_temp, used to determine optical efficiency
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
         rn_fracs: <list of rn fractions to use for electrical power cuts.  If None: default list used.
-    '''
 
-    # to debug
-    # axis limits and NaN for plot_vipr
+        The data products (power at fraction of rn) are NxM, where N are the number or rn frac and M
+        is the number of cold load temperatures.  Thus self.p_at_rnfrac[0] gives the power plateau at
+        each temperature for the 0th cut in rn fraction.  The transpose of this (MxN) may be better
+        since plot(x,y) can plot all vectors in y.  Thus matplotlib plot function is "column" oriented.
+    '''
 
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
@@ -980,7 +982,11 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         defs['eta_dp_arr'] = '2D optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
         defs['eta_Dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k, using the `fixed reference` method.'
         defs['eta_dp_arr_darksubtracted'] = '2D dark subtracted optical efficiency array of dimensions n_rn_fracs x cl_temps_k-1, using the `differential` method.'
-
+        defs['eta_mean'] = 'mean optical efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_std'] = 'standard deviation of efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_mean_darksubtracted'] = 'dark power subtracted mean optical efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['eta_std_darksubtracted'] = 'dark subtracted standard deviation of efficiency for each rn_frac (1 x n_rn_fracs)'
+        defs['DT_eta'] = 'Difference in coldload temperature from reference.  The x axis for eta.'
         return defs
 
     def update_T_cl_index(self,T_cl_index):
@@ -989,7 +995,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             self.dark_Dp_w = self.dark_power_w - self.dark_power_w[self.T_cl_index]
         if self.analyze_eta:
             self.predicted_Dp_w = self.predicted_power_w - self.predicted_power_w[T_cl_index]
-            self.eta_Dp = self.get_efficiency()
+            self.eta_Dp = self.get_efficiency_at_rnfrac()
 
     def calc_power_differences(self,T_cl_index):
         if self.analyze_eta: # power predictions
@@ -1018,38 +1024,54 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         DP_w = (p_at_rnfrac[:,dex] - p_at_rnfrac.transpose()).transpose()
         return DT_k, DP_w, dex
 
-    def get_efficiency_at_rnfrac(self):
+    def get_efficiency_at_rnfrac(self,method='fixed reference'):
         '''
-        create four global variables that quantify the optical efficiency.
-
-        eta_Dp_arr_(darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
+        create six global variables that quantify the optical efficiency, and one for the dT vector.
+        Global variables are:
+        DT_eta : BB temp - To.
+        eta_Dp_arr(_darksubtracted): optical efficiency from power relative to a fixed T_cl temp (fixed method).
                                      Array has dimensions n_rfrac  x n_clTemps
-        eta_dp_arr_(darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
+        eta_dp_arr(_darksubtracted): optical efficiency from change in power from neighboring T_cl data points (differential method).
                                      Array has dimensions n_rfrac  x n_clTemps - 1
+        eta_mean(_darksubtracted): 1x n_clTemps vector.  mean of all temperature points
+        eta_std(_darksubtracted): 1x n_clTemps vector.  Standard deviation of all temperature points
+
+        Input "method" is either 'fixed reference' or 'differential' to determine eta_mean and eta_std
         '''
-        self.eta_Dp_arr = self.Dp_at_rnfrac / self.predicted_Dp_w
+        DT = self.cl_DT_k-self.cl_DT_k[self.T_cl_index]
+        self.DT_eta = DT[np.where(DT!=0)[0]] # vector for difference in cold load temp where \eta is evaluated
+        self.eta_Dp_arr = np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
         self.eta_dp_arr = self.dp_at_rnfrac / self.predicted_dp_w
+        if method == 'fixed reference':
+            self.eta_mean = self.eta_Dp_arr.mean(1)
+            self.eta_std = self.eta_Dp_arr.std(1)
+        elif method == 'differential':
+            self.eta_mean = self.eta_dp_arr.mean(1)
+            self.eta_std = self.eta_dp_arr.std(1)
+        else:
+            self.eta_mean = self.eta_std = None
+            print('Unknown efficiency method: ',method)
+
         if self.dark_analysis:
-            self.eta_Dp_arr_darksubtracted = (self.Dp_at_rnfrac - self.dark_Dp_w) / self.predicted_Dp_w
+            self.eta_Dp_arr_darksubtracted = (np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) - np.delete(self.dark_Dp_w,self.T_cl_index,1)) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
             self.eta_dp_arr_darksubtracted = (self.dp_at_rnfrac - self.dark_dp_w) / self.predicted_dp_w
+            if method == 'fixed reference':
+                self.eta_mean_darksubtracted = self.eta_Dp_arr_darksubtracted.mean(1)
+                self.eta_std_darksubtracted = self.eta_Dp_arr_darksubtracted.std(1)
+            elif method == 'differential':
+                self.eta_mean_darksubtracted = self.eta_dp_arr_darksubtracted.mean(1)
+                self.eta_std_darksubtracted = self.eta_dp_arr_darksubtracted.std(1)
+            else:
+                self.eta_mean_darksubtracted = self.eta_std_darksubtracted = None
+                print('Unknown efficiency method: ',method)
         else:
             self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
+            self.eta_mean_darksubtracted = self.eta_std_darksubtracted = None
 
     def get_power_vector_for_rnfrac(self,rnfrac):
         assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
         dex = self.rn_fracs.index(rnfrac)
         return self.p_at_rnfrac[dex,:]
-
-    # def get_eta_mean_std(self,eta):
-    #     n,m = np.shape(eta) # n = %rn cut index, m = Tcl index
-    #     dexs=[] # rn cuts w/out np.nan entries
-    #     for ii in range(n):
-    #         if not np.isnan(eta[ii,1:]).any():
-    #             dexs.append(ii)
-    #
-    #     eta_m = np.mean(eta[dexs,1:],axis=0)
-    #     eta_std = np.std(eta[dexs,1:],axis=0)
-    #     return eta_m, eta_std
 
     # plotting methods ---------------------------------------------------------
     def plot_raw(self):
@@ -1066,7 +1088,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax[0].legend((self.cl_temps_k),loc='upper right')
 
     def plot_vipr(self):
-        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+        figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(10.5,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in range(self.n_cl_temps):
             ax[0].plot(self.v_orig[:,ii],self.i_orig[:,ii],'-',color=self.colors[ii])
@@ -1092,12 +1114,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # ax[0].set_ylim((0,np.max(self.i)*1.1))
         # ax[1].set_xlim((0,np.max(self.v)*1.1))
         # ax[1].set_ylim((0,np.max(self.p)*1.1))
-        # ax[2].set_xlim((0,np.max(self.p)*1.1))
-        # ax[2].set_ylim((0,np.max(self.r[0,:])*1.1))
-        # ax[3].set_xlim((0,np.max(self.v)*1.1))
-        # ax[3].set_ylim((0,np.max(self.r[0,:])*1.1))
-        #ax[3].set_xlim((0,np.max(p)*1.1))
-        #ax[3].set_ylim((0,1.1))
+        for ii in [2,3]:
+            ax[ii].set_ylim(0,1.2*self.r[0,0])
 
         figXX.suptitle(self.figtitle+'  IV, PV, RP, RV')
         ax[0].legend(tuple(self.cl_temps_k),loc='upper right')
@@ -1156,7 +1174,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         plt.ylabel('P$_o$ - P')
         plt.legend()
         plt.grid()
-        plt.title(self.figtitle + 'Dp vs T')
+        plt.title(self.figtitle + ' Dp vs T')
         return fig
 
     def plot_dpdt(self, include_prediction=True, include_darksubtraction=True):
@@ -1221,15 +1239,14 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                ax[0].plot(self.cl_DT_k,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[0].plot(self.DT_eta,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
-                    ax[0].plot(self.cl_DT_k,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
+                    ax[0].plot(self.DT_eta,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                     ax[1].plot(x,self.eta_dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
 
         ax[0].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
-        #ax[0].set_xlabel('T$_{cl}$')
         ax[0].set_ylabel('Optical Efficiency')
         ax[0].grid('on')
         ax[0].set_title('Fixed Reference Method')
@@ -1239,33 +1256,20 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax[1].grid('on')
         ax[1].set_title('Differential Method')
         ax[1].set_ylim(0,1)
-
-        ax[1].legend()#self.rn_fracs)
+        ax[1].legend()
         plt.suptitle(self.figtitle+ ' efficiency')
         return fig
 
-    # def plot_efficiency(self,cl_dT_k, eta, rn_fracs, fig_num=1, eta_dark_subtracted=None):
-    #     fig = plt.figure(fig_num)
-    #     jj=0
-    #     for ii in range(len(rn_fracs)):
-    #         if not np.isnan(eta[ii,1:]).any():
-    #             plt.plot(cl_dT_k,eta[ii,:],'o-',color=self.colors[jj], label=str(rn_fracs[ii]))
-    #             try:
-    #                 if len(eta_dark_subtracted) > 0:
-    #                     plt.plot(cl_dT_k,eta_dark_subtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
-    #             except:
-    #                 pass
-    #             jj+=1
-    #     eta_m, eta_std = self.get_eta_mean_std(eta)
-    #     eta_m_ds, eta_std_ds = self.get_eta_mean_std(eta_dark_subtracted)
-    #     plt.errorbar(cl_dT_k[1:],eta_m,eta_std,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean')
-    #     plt.errorbar(cl_dT_k[1:],eta_m_ds,eta_std_ds,color='k',linewidth=2,ecolor='k',elinewidth=2,label='mean ds',linestyle='--')
-    #     plt.xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
-    #     plt.ylabel('Efficiency')
-    #     plt.legend()
-    #     plt.grid()
-    #     plt.title(self.figtitle)
-    #     return fig
+    def plot_mean_efficiency(self):
+        assert self.analyze_eta, 'Analyze_eta=False.  Did you provide a power prediction?'
+        fig, ax = plt.subplots(nrows=1,ncols=1)
+        for XX in [self.eta_Dp_arr,self.eta_dp_arr]:
+            ax.errorbar(self.rn_fracs,XX.mean(1),XX.std(1))
+        ax.set_xlabel('Rn fraction')
+        ax.set_ylabel('Optical Efficiency')
+        ax.legend(('fixed ref','diff'))
+        ax.set_ylim(0,1.1)
+        return fig
 
     def plot_full_analysis(self,include_darksubtraction=True,showfigs=False,savefigs=False):
         ''' Make plots of the full analysis:
@@ -1275,6 +1279,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             4) P versus T_cl
             5) dP vs dT (1 x 2 using both methods)
             6) efficiency
+            7) mean efficiency versus %rn
 
         '''
         if include_darksubtraction and self.dark_analysis:
@@ -1291,6 +1296,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             figs.append(self.plot_power_change_vs_temperature(include_prediction=True, include_darksubtraction=include_ds))
             if self.analyze_eta:
                 figs.append(self.plot_efficiency(include_darksubtraction=include_ds))
+                figs.append(self.plot_mean_efficiency())
         else:
             print('nan found in p_at_rnfrac.  I can not plot power change versus temperature')
 
@@ -1473,11 +1479,15 @@ class IVColdloadSweepAnalyzer():
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
+        return iva
 
-    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices):
+    def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices=None):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
             This is often useful for dark subtraction
         '''
+        if cl_indices==None:
+            cl_indices = list(range(self.n_cl_temps))
+
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
         dacs,fb_dark = self.get_cl_sweep_dataset_for_row(row_index=dark_row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
 
@@ -1491,13 +1501,13 @@ class IVColdloadSweepAnalyzer():
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       iv_circuit=self.iv_circuit)
 
-        n_rfrac, n_clTemps = np.shape(iva.dP_w)
-        for ii in range(n_rfrac):
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:],'bo-')
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva_dark.dP_w[ii,:],'ko-')
-            plt.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.dP_w[ii,:]-iva_dark.dP_w[ii,:],'bo--')
-
-        plt.show()
+        fig, ax = plt.subplots(1,1)
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.Dp_at_rnfrac.transpose(),'bo-')
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva_dark.Dp_at_rnfrac.transpose(),'ko-')
+        ax.plot(np.array(self.set_cl_temps_k)[cl_indices],iva.Dp_at_rnfrac.transpose()-iva_dark.Dp_at_rnfrac.transpose(),'bo--')
+        ax.set_xlabel('T$_{cl}$')
+        ax.set_ylabel('dP')
+        return fig
 
     def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
