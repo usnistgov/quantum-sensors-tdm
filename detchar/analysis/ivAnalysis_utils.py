@@ -302,14 +302,18 @@ class IVCommon():
             self.plot_vipr([v,i,p,r])
         return v,i,p,r
 
-    def plot_vipr_method(self,v,i,p,r,fignum=1,figtitle=None,figlegend=None):
+    def plot_vipr_method(self,v,i,p,r,fignum=1,figtitle=None,figlegend=None,row_indices=None):
 
-        n,m=np.shape(i)
+        if type(row_indices) == int:
+            row_indices = [row_indices]
+        if row_indices is None:
+            n,m=np.shape(i)
+            rows = list(range(m)) 
 
         # fig 1, 2x2 of converted IV
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
-        for ii in range(m):
+        for ii in row_indices:
             ax[0].plot(v[:,ii],i[:,ii])
             ax[1].plot(v[:,ii],p[:,ii])
             ax[2].plot(r[:,ii],p[:,ii])
@@ -337,12 +341,12 @@ class IVCommon():
         # plot range limits
         #ax[0].set_xlim((np.min(v)*1.1,np.max(v)*1.1))
         #ax[0].set_ylim((np.min(i)*1.1,np.max(i)*1.1))
-        ax[1].set_xlim((0,np.max(v)*1.1))
-        ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,r[0,0]*1.1))
-        ax[2].set_ylim((0,np.max(p)*1.1))
-        ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,r[0,0]*1.1))
+        # ax[1].set_xlim((0,np.max(v)*1.1))
+        # ax[1].set_ylim((0,np.max(p)*1.1))
+        # ax[2].set_xlim((0,r[0,0]*1.1))
+        # ax[2].set_ylim((0,np.max(p)*1.1))
+        # ax[3].set_xlim((0,np.max(v)*1.1))
+        # ax[3].set_ylim((0,r[0,0]*1.1))
 
         for ii in range(4):
             ax[ii].grid('on')
@@ -386,7 +390,7 @@ class IVCommon():
             result[:,ii] = YY
         return result
 
-class IVCurveColumnDataExplore():
+class IVCurveColumnDataExplore(IVCommon):
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
     def __init__(self,iv_curve_column_data,iv_circuit=None):
         # fixed globals
@@ -400,8 +404,13 @@ class IVCurveColumnDataExplore():
         self.n_pts, self.n_rows = np.shape(self.y_raw)
 
         # data converted to physical units
-        self.phys_units = self._handle_physical_units()
-        self.labels = self._handle_labels(self.phys_units)
+        self.fb_align = self.fb_align_and_remove_offset(self.x_raw,self.y_raw,n_normal_pts=10,
+                                                        use_ave_offset=None,showplot=False)
+        self.v,self.i,self.p,self.r = self.get_vipr(self.x_raw, self.fb_align, iv_circuit=iv_circuit, showplot=False)
+        self.ro = self.r / self.r[0,:]
+        self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
+        self.ro_clean = self.r_clean / self.r_clean[0,:]
+        self.labels = self._handle_labels(iv_circuit)
 
     # data manipulation methods --------------------------------------------------------
     def _handle_iv_circuit(self, iv_circuit):
@@ -432,23 +441,9 @@ class IVCurveColumnDataExplore():
             vmax = 6.5
         return vmax
 
-
-    def _handle_physical_units(self):
-        y = self.remove_offset(False)
-        if self.iv_circuit is not None:
-            self.v, self.i = self.convert_to_physical_units(self.x_raw,y)
-            phys_units = True
-        else:
-            self.i = y
-            self.v = np.empty((self.n_pts,self.n_rows))
-            for ii in range(self.n_rows):
-                self.v[:,ii] = self.x_raw
-            phys_units = False
-        return phys_units
-
-    def _handle_labels(self,phys_units):
+    def _handle_labels(self,iv_circuit):
         labels = {}
-        if phys_units:
+        if iv_circuit is not None:
             labels['iv']={'x':'Vbias (V)',
                           'y':'Current (A)'}
             labels['vp']={'x':'Vbias (V)',
@@ -522,55 +517,9 @@ class IVCurveColumnDataExplore():
         plt.legend(tuple(range(self.n_rows)),loc='upper right')
         return fig
 
-    def plot_vipr(self,fig_num=1, figtitle=None):
-        #v=v*self.vipr_scaling[0]; i=i*self.vipr_scaling[1]; p=p*self.vipr_scaling[2]; r=r*self.vipr_scaling[3]
-        v = self.v
-        i = self.i
-        p = v*i
-        r = v/i
-
-        # fig 1, 2x2 of converted IV
-        #fig = plt.figure(fig_num)
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fig_num)
-        ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
-        for ii in range(self.n_rows):
-            ax[0].plot(v[:,ii],i[:,ii])
-            ax[1].plot(v[:,ii],p[:,ii])
-            ax[2].plot(r[:,ii],p[:,ii])
-            #ax[3].plot(p[:,ii],r[:,ii]/r[-2,ii])
-            ax[3].plot(v[:,ii],r[:,ii])
-
-        ax[0].set_xlabel(self.labels['iv']['x'])
-        ax[0].set_ylabel(self.labels['iv']['y'])
-        ax[1].set_xlabel(self.labels['vp']['x'])
-        ax[1].set_ylabel(self.labels['vp']['y'])
-        ax[2].set_xlabel(self.labels['rp']['x'])
-        ax[2].set_ylabel(self.labels['rp']['y'])
-        ax[3].set_xlabel(self.labels['vr']['x'])
-        ax[3].set_ylabel(self.labels['vr']['y'])
-
-        #xlabels = ['V (V)','V (V)','P (W)','V (V)']
-        #ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
-        # for ii in range(4):
-        #     ax[ii].set_xlabel(xlabels[ii])
-        #     ax[ii].set_ylabel(ylabels[ii])
-        #     ax[ii].grid()
-
-        # plot range limits
-        ax[0].set_xlim((0,np.max(v)*1.1))
-        ax[0].set_ylim((0,np.max(i)*1.1))
-        ax[1].set_xlim((0,np.max(v)*1.1))
-        ax[1].set_ylim((0,np.max(p)*1.1))
-        ax[2].set_xlim((0,np.max(r[0,:])*1.1))
-        ax[2].set_ylim((0,np.max(p)*1.1))
-        ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,np.max(r[0,:])*1.1))
-        #ax[3].set_xlim((0,np.max(p)*1.1))
-        #ax[3].set_ylim((0,1.1))
-
-        if figtitle is not None:
-            fig.suptitle(figtitle)
-        return fig
+    def plot_vipr_for_row(self,row=None,fig_num=1,figtitle=None):
+        ''' row can be list of rows or an integer.  If None, plot them all '''
+        self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
 
     def plot_dy(self):
         dy = np.diff(self.i,axis=0)
