@@ -22,11 +22,10 @@ class DetectorMap():
         ncol = len(header)
         map_dict = {}
         for ii, line in enumerate(lines):
-            line = line[0:-1].split(',')
-            #line = line.split(',')
+            line = line.rstrip().split(',')
             map_dict['Row%02d'%(int(line[0]))] = {}
             for jj in range(1,ncol):
-                #print(jj)
+
                 map_dict['Row%02d'%(int(line[0]))][str(header[jj])] = str(line[jj])
         map_dict = self._clean_map_dict(map_dict)
         return map_dict
