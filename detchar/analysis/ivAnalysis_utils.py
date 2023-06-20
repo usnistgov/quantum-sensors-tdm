@@ -401,15 +401,16 @@ class IVCurveColumnDataExplore(IVCommon):
 
         # the raw data for one column and dimensionality
         self.x_raw, self.y_raw = self.data.xy_arrays_zero_subtracted_at_dac_high() # raw units
-        self.n_pts, self.n_rows = np.shape(self.y_raw)
 
         # data converted to physical units
-        self.fb_align = self.fb_align_and_remove_offset(self.x_raw,self.y_raw,n_normal_pts=10,
-                                                        use_ave_offset=None,showplot=False)
-        self.v,self.i,self.p,self.r = self.get_vipr(self.x_raw, self.fb_align, iv_circuit=iv_circuit, showplot=False)
-        self.ro = self.r / self.r[0,:]
-        self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
-        self.ro_clean = self.r_clean / self.r_clean[0,:]
+        self.fb_align = self.fb_align_and_remove_offset(self.x_raw,self.y_raw,n_normal_pts=self.n_normal_pts,
+                                                        use_ave_offset=False,showplot=False)
+        self.v,self.i,self.p,self.r = self.get_vipr(self.data.dac_values, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
+        # self.ro = self.r / self.r[0,:]
+        # self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
+        # self.ro_clean = self.r_clean / self.r_clean[0,:]
+
+        self.n_pts, self.n_rows = np.shape(self.fb_align)
         self.labels = self._handle_labels(iv_circuit)
 
     # data manipulation methods --------------------------------------------------------
@@ -472,24 +473,6 @@ class IVCurveColumnDataExplore(IVCommon):
                           'y':'$\delta{I}/\delta{P}$ (DAC)'}
         return labels
 
-    def remove_offset(self,showplot=False):
-        x = self.x_raw[::-1][-self.n_normal_pts:]
-        yr = self.y_raw[::-1,:]
-        yr = yr[-self.n_normal_pts:,:]
-        m, b = np.polyfit(x,yr,deg=1)
-        y = self.y_raw - b
-        if m[0]<0: y = -1*y
-
-        if showplot:
-            for ii in range(self.n_rows):
-                plt.plot(self.x_raw,y[:,ii])
-            plt.show()
-        return y
-
-    def convert_to_physical_units(self,x,y):
-        assert self.iv_circuit is not None, 'You must supply an iv_circuit to convert to physical units!'
-        return self.iv_circuit.to_physical_units(x,y)
-
     def get_responsivity(self):
         v = np.diff(self.v,axis=0)+self.v[:-1,:]
         di = np.diff(self.i, axis=0)
@@ -498,6 +481,13 @@ class IVCurveColumnDataExplore(IVCommon):
         return v, resp
 
     # plotting methods --------------------------------------
+    def plot_raw_allrow(self):
+        self.data.plot()
+
+    def plot_vipr_for_row(self,row=None,fig_num=1,figtitle=None):
+        ''' row can be list of rows or an integer.  If None, plot them all '''
+        self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
+
     def plot_iv(self, fig_num=1):
         fig = plt.figure(fig_num)
         for ii in range(self.n_rows):
@@ -516,10 +506,6 @@ class IVCurveColumnDataExplore(IVCommon):
         plt.ylabel(self.labels['responsivity']['y'])
         plt.legend(tuple(range(self.n_rows)),loc='upper right')
         return fig
-
-    def plot_vipr_for_row(self,row=None,fig_num=1,figtitle=None):
-        ''' row can be list of rows or an integer.  If None, plot them all '''
-        self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
 
     def plot_dy(self):
         dy = np.diff(self.i,axis=0)
