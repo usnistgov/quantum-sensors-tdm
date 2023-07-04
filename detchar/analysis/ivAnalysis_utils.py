@@ -1530,6 +1530,11 @@ class IVColdloadSweepAnalyzer():
         if cl_indices is None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
 
+        for row in row_list:
+            if row not in self.row_sequence:
+                print('Row%02d was not measured.  Will not plot'%row)
+                row_list.remove(row)
+
         ivas=[]
         for ii,row in enumerate(row_list):
             if self.det_map:
@@ -1553,6 +1558,11 @@ class IVColdloadSweepAnalyzer():
         if legend: ax.legend(row_list)
         ax.grid()
         return fig, ax
+
+    def plot_DpDt_for_position(self,position,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True):
+        row_list = self.det_map.rows_in_position(position,True,True)
+        fig,ax = self.plot_DpDt_for_rows(row_list,bath_temp_index,cl_indices,rn_frac,legend)
+        return fig,ax
 
     def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices=None):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
