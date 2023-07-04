@@ -1362,6 +1362,14 @@ class IVColdloadSweepAnalyzer():
         cl_temp_list.append(list(self.measured_cl_temps_k[:,1]))
         return cl_temp_list
 
+    def _row_to_sequence_index(self,row_index):
+        ''' Because the TDM electronics has an arbitrary state sequence, the row order
+            can be anything.  This method finds the position of row_index within the
+            arbitrary state sequence self.row_sequence.  Mostly useful in get_cl_sweep_dataset_for_row()
+        '''
+        assert row_index in self.row_sequence, print('Row %d'%row_index, ' is not in the row_sequence:',self.row_sequence)
+        return self.row_sequence.index(row_index)
+
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
 
@@ -1370,7 +1378,8 @@ class IVColdloadSweepAnalyzer():
             cl_indices = list(range(self.n_cl_temps))
         fb = np.zeros((self.n_dac_values,len(cl_indices)))
         for ii,cl_idx in enumerate(cl_indices):
-            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,row_index]
+            dex = self._row_to_sequence_index(row_index)
+            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,dex]
         return self.dac_values, fb
 
     def print_info(self):
@@ -1509,12 +1518,41 @@ class IVColdloadSweepAnalyzer():
 
         iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                       cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
+                                      #cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,1],
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
+
+    def plot_DpDt_for_rows(self,row_list,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True):
+        if cl_indices is None:
+            cl_indices = list(range(len(self.set_cl_temps_k)))
+
+        ivas=[]
+        for ii,row in enumerate(row_list):
+            if self.det_map:
+                row_name = 'Row%02d'%row
+                det_name = self.det_map.get_devname_from_row_index(row)
+            else:
+                row_name=det_name=None
+            dacs,fb = self.get_cl_sweep_dataset_for_row(row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+            iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                          cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
+                                          bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                          row_name=row_name, det_name=det_name,
+                                          iv_circuit=self.iv_circuit,
+                                          predicted_power_w=None,dark_power_w=None,rn_fracs=[rn_frac])
+            ivas.append(iva)
+        fig,ax = plt.subplots(1,1)
+        for iva in ivas:
+            ax.plot(iva.cl_DT_k,iva.Dp_at_rnfrac[0,:],'o-')#,color=self.colors[jj],label=str(self.rn_fracs[ii]))
+        ax.set_xlabel('T$_{cl}$ - %.1f K'%iva.cl_temps_k[iva.T_cl_index])
+        ax.set_ylabel('P$_o$ - P')
+        if legend: ax.legend(row_list)
+        ax.grid()
+        return fig, ax
 
     def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices=None):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.

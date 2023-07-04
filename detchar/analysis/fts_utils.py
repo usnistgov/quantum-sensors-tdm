@@ -1218,7 +1218,7 @@ class Passband(PassbandMetrics):
     def peak_normalize(self,a):
         return a/np.max(a)
 
-    def plot(self,fig_num=1,normalize = True):
+    def plot(self,fig_num=None,normalize = True):
         # in future, and self weighted normalization
         fig,ax = plt.subplots(num=fig_num)
         legend_labels=[]
