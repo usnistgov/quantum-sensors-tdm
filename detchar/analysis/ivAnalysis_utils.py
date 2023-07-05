@@ -1536,9 +1536,10 @@ class IVColdloadSweepAnalyzer():
                 iva.rn_fracs = rn_fracs
             iva.plot_full_analysis(showfigs,savefigs)
 
-def iv_quicklook(filename,row_index,use_config=True):
+def iv_quicklook(filename,row_index,use_config=True,temp_indices=None):
 
-    # rest should be static
+    
+
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']
 
@@ -1552,6 +1553,8 @@ def iv_quicklook(filename,row_index,use_config=True):
     else:
         assert False,'unknown voltage bias'
 
+    if temp_indices is None:
+        temp_indices = range(len(df.set_temps_k))
     # circuit parameters to convert to physical units
     if use_config:
         cal = cfg['calnums']
@@ -1586,8 +1589,12 @@ def iv_quicklook(filename,row_index,use_config=True):
         dac, fb = df.data[ii].xy_arrays()
         fb_arr[:,ii] = fb[:,row_index]
 
-    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=df.set_temps_k, normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
-    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=df.set_temps_k, normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+    # for ii,dex in enumerate(temp_indices):
+    #     dac, fb = df.data[dex].xy_arrays()
+    #     fb_arr[:,ii] = fb[:,row_index]
+
+    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=np.array(df.set_temps_k)[temp_indices], normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(fignum=2)
     iv_tsweep.plot_pr(fig_num=3)
