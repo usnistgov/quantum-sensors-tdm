@@ -942,42 +942,77 @@ class FtsMeasurementSet():
             measurement_scan_list: nested <list> of scans for each "measurement"
 
         NOMENCLATURE:
+            scan: one sweep of the FTS
             Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
             Measurement: N repeat scans for a given detector
-            scan: one sweep of the FTS
+
     '''
     def __init__(self, path):
         self.path = path
         if path[-1] != '/':
             self.path = path+'/'
-        self.filename_list = self.get_filenames(path)
-        self.all_scans = self.get_all_scans()
-        self.prefix_set = self.get_prefix_set() # normally the row select
+        self.filename_list = self._get_filenames(path)
+        self.all_scans = self._get_all_scans()
+        self.prefix_set = self._get_prefix_set() # normally the row select
         self.num_scans = len(self.filename_list)
-        self.measurements, self.measurement_filenames, self.measurement_scan_list = self.get_fts_measurements() # nested list of FTS measurement filenames
+        self.measurements, self.measurement_filenames, self.measurement_scan_list = self._get_fts_measurements() # nested list of FTS measurement filenames
         self.num_measurements = len(self.measurements)
 
-    def get_measurement_indices_for_prefix(self,prefix):
-        assert prefix in self.prefix_set, print(prefix,' not in prefix_set')
-        idx = []
-        for ii in range(self.num_measurements):
-            if self.measurements[ii].file_prefix == prefix:
-                idx.append(ii)
-        return idx
+    # helper magic methods -----------------------------------------------------
+    def _get_filenames(self,path):
+        files = self._gather_csv(path)
+        files = self._sort_measurements_by_number(files)
+        return files
 
-    def get_all_scans(self):
+    def _gather_csv(self,path):
+        files=[]
+        for file in os.listdir(path):
+            if file.endswith(".csv"):
+                #print file.split('_')
+                if file.split('_')[-1]=='ifg.csv' and 'avg' not in file:
+                    files.append(file)
+        return files
+
+    def _sort_measurements_by_number(self, filename_list):
+        ''' filenames in files assumed to be of the form XX_YY_ZZ_..., where ZZ is the 4 digit measurement number.
+            Sort in ascending order by measurement number.
+            Assumes no duplicate measurement numbers.
+        '''
+        runs=[]
+        orderedfiles=[]
+        for file in filename_list:
+            runs.append(file.split('_')[2])
+        for run in sorted(runs):
+            for file in filename_list:
+                if file.split('_')[2]==run:
+                    orderedfiles.append(file)
+        return orderedfiles
+
+    def _get_all_scans(self):
         scans = []
         for file in self.filename_list:
             scans.append(load_fts_scan_fromfile(self.path+file))
         return scans
 
-    def get_prefix_set(self):
+    def _get_prefix_set(self):
         prefix_list = []
         for scan in self.all_scans:
             prefix_list.append(scan.file_prefix)
         return set(prefix_list)
 
-    def get_fts_measurements(self):
+    def _isSingleDate(self):
+        ''' returns boolean if the folder has scans taken on more than
+            one date
+        '''
+        result = True
+        date = self.filename_list[0].split('_')[1]
+        for fname in self.filename_list:
+            if fname.split('_')[1] != date:
+                result = False
+                break
+        return result
+
+    def _get_fts_measurements(self):
         ''' Group individual scans into measurements '''
         ii = 0
         fts_meas_filenames=[]
@@ -993,8 +1028,42 @@ class FtsMeasurementSet():
             ii = ii + scan.num_scans
         return fts_meas, fts_meas_filenames, fts_meas_scans
 
+    # helper methods -----------------------------------------------------------
+    def get_measurement_indices_for_prefix(self,prefix):
+        assert prefix in self.prefix_set, print(prefix,' not in prefix_set')
+        idx = []
+        for ii in range(self.num_measurements):
+            if self.measurements[ii].file_prefix == prefix:
+                idx.append(ii)
+        return idx
+
+    def get_scans_from_prefix_and_filenumber(self,prefix,num):
+        assert self._isSingleDate(), "The measurement set contains data from more than one day"
+        filename = prefix+'_'+self.filename_list[0].split('_')[1]+'_'+num+'_ifg.csv'
+        assert filename in self.filename_list, 'filename %s does not exist in the measurement set'%filename
+        dex=self.filename_list.index(filename)
+        scan = self.all_scans[dex] # get the scan for the file in question
+
+        # now find all scans for this measurement
+        file_number_list = list(np.arange(scan.num_scans) + scan.file_number - scan.current_scan)
+        file_names = []
+        scan_list = []
+        for file_number in file_number_list:
+            fname = prefix+'_'+self.filename_list[0].split('_')[1]+'_%04d'%file_number+'_ifg.csv'
+            file_names.append(fname)
+            scan_list.append(self.all_scans[self.filename_list.index(fname)])
+        return file_names, scan_list
+
+    def print_measurement_metadata(self):
+        print('\n')
+        for ii in range(len(self.measurements)):
+            print('Measurement number: ',ii)
+            self.measurements[ii].print_measurement_metadata()
+            print('\n')
+
+    # plotting methods ---------------------------------------------------------
     def plot_all_measurements(self,fig_num=1,showfig=True,savefig=False):
-        ''' plot/save all measurement ifgs and spectra '''
+        ''' plot all measurement ifgs and spectra '''
         for ii, measurement in enumerate(self.measurements):
             measurement.print_measurement_metadata()
             measurement.plot_ifgs(fig_num=fig_num+2*ii)
@@ -1014,77 +1083,24 @@ class FtsMeasurementSet():
                 plt.plot(measurement.f,measurement.S_mean)
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
+        return fig
 
-        plt.show()
-
-    def get_scans_from_prefix_and_filenumber(self,prefix,num):
-        assert self.isSingleDate(), "The measurement set contains data from more than one day"
-        filename = prefix+'_'+self.filename_list[0].split('_')[1]+'_'+num+'_ifg.csv'
-        assert filename in self.filename_list, 'filename %s does not exist in the measurement set'%filename
-        dex=self.filename_list.index(filename)
-        scan = self.all_scans[dex] # get the scan for the file in question
-
-        # now find all scans for this measurement
-        file_number_list = list(np.arange(scan.num_scans) + scan.file_number - scan.current_scan)
-        file_names = []
-        scan_list = []
-        for file_number in file_number_list:
-            fname = prefix+'_'+self.filename_list[0].split('_')[1]+'_%04d'%file_number+'_ifg.csv'
-            file_names.append(fname)
-            scan_list.append(self.all_scans[self.filename_list.index(fname)])
-        return file_names, scan_list
-
-    def isSingleDate(self):
-        ''' returns boolean if the folder has scans taken on more than
-            one date
-        '''
-        result = True
-        date = self.filename_list[0].split('_')[1]
-        for fname in self.filename_list:
-            if fname.split('_')[1] != date:
-                result = False
-                break
-        return result
-
-    def get_filenames(self,path):
-        files = self.gather_csv(path)
-        files = self.sort_measurements_by_number(files)
-        return files
-
-    def gather_csv(self,path):
-        files=[]
-        for file in os.listdir(path):
-            if file.endswith(".csv"):
-                #print file.split('_')
-                if file.split('_')[-1]=='ifg.csv' and 'avg' not in file:
-                    files.append(file)
-        return files
-
-    def cull_index_range(self, files):
-        run_nums=[]
-        new_files=[]
-        for ii in range(dex_start,dex_end+1):
-            run_nums.append('%04d'%ii)
-
-        for file in files:
-            if file.split('_')[2] in run_nums:
-                new_files.append(file)
-        return new_files
-
-    def sort_measurements_by_number(self, filename_list):
-        ''' filenames in files assumed to be of the form XX_YY_ZZ_..., where ZZ is the 4 digit measurement number.
-            Sort in ascending order by measurement number.
-            Assumes no duplicate measurement numbers.
-        '''
-        runs=[]
-        orderedfiles=[]
-        for file in filename_list:
-            runs.append(file.split('_')[2])
-        for run in sorted(runs):
-            for file in filename_list:
-                if file.split('_')[2]==run:
-                    orderedfiles.append(file)
-        return orderedfiles
+    def plot_measurements(self,measurement_indices=None,ylog=False,normalize=True,xlim=None,phase_corrected=True):
+        if measurement_indices is None:
+            measurement_indices = list(range(len(self.measurements)))
+        fig,ax = plt.subplots(1,1)
+        for ii in measurement_indices:
+            m=self.measurements[ii]
+            if phase_corrected: x=m.f_phase_corr ; y=m.S_phase_corr
+            else: x=m.f ; y=m.S_mean
+            if normalize: y = IfgToSpectrum().peak_normalize(x,y,x_range=[10,10000])
+            if ylog: ax.semilogy(x,y)
+            else: ax.plot(x,y)
+        if xlim is not None:
+            ax.set_xlim(xlim)
+        ax.set_xlabel('Frequency (GHz)')
+        ax.set_ylabel('Response (arb)')
+        return fig,ax
 
 class PassbandMetrics():
     def __cull_range(self,x,y,x_range):
@@ -1202,7 +1218,7 @@ class Passband(PassbandMetrics):
     def peak_normalize(self,a):
         return a/np.max(a)
 
-    def plot(self,fig_num=1,normalize = True):
+    def plot(self,fig_num=None,normalize = True):
         # in future, and self weighted normalization
         fig,ax = plt.subplots(num=fig_num)
         legend_labels=[]
@@ -1385,6 +1401,7 @@ class Passband(PassbandMetrics):
 class PassbandModel():
     def __init__(self,txtfilename,delimiter=','):
         self.txtfilename = txtfilename
+        self.delimiter=delimiter
         self.n_freqs, self.n_cols, self.header, self.model = self.from_file(self.txtfilename,delimiter)
         self.f_ghz = self.model[:,0]
 
@@ -1393,7 +1410,7 @@ class PassbandModel():
         f=open(txtfilename,'r')
         header_raw = f.readline()
         f.close()
-        header = header_raw[0:-1].split('\t')
+        header = header_raw.rstrip().split(self.delimiter)
         n_freqs, n_cols = np.shape(model)
         return n_freqs, n_cols, header, model
 
@@ -1405,29 +1422,35 @@ class PassbandModel():
 
     def plot_model(self,fig_num=1):
         plt.figure(fig_num)
-        for ii in range(1,self.n_cols):
-            plt.plot(self.model[:,0],self.model[:,ii],label=self.header[ii])
+        for ii in list(range(1,self.n_cols)):
+            print(ii)
+            plt.plot(self.f_ghz,self.model[:,ii],label=self.header[ii])
         plt.xlabel(self.header[0])
         plt.ylabel('Response')
         plt.legend()
         #plt.show()
 
 if __name__ == "__main__":
-    path = '/Users/hubmayr/projects/lbird/HFTdesign/hft_v0/modeled_response/' # on Hannes' machine
-    filename='hftv0_hft2_diplexer_model.txt'
-    pbm = PassbandModel(path+filename)
-    #pbm.plot_model()
-    #plt.show()
-
-    d=np.load('measured_spectrum_example.npz')
-    f_ghz = d['f']
-    S = d['B']
-    f_range_ghz = [175,300]
-    # plt.plot(f_ghz,np.real(S))
-    # plt.show()
-
-    pb = Passband(f_measure_ghz=f_ghz,S_measure_complex=S,f_model_ghz=pbm.f_ghz,S_model=pbm.model[:,2],f_range_ghz=f_range_ghz)
-    print(type(pb))
-    pb.plot_PvTs(temp_k_list=list(range(4,12)),f_mask=f_range_ghz,freq_edges_ghz=[200,275],fig_num=1)
-    pb.print_passband_metrics()
+    path = '/Users/hubmayr/projects/uber_omt/data/fts/20230623/' # on Hannes' machine
+    fms = FtsMeasurementSet(path)
+    fms.print_measurement_metadata()
+    fig,ax=fms.plot_measurements([1,3,5,6],ylog=False,phase_corrected=False)
     plt.show()
+
+    # filename='hftv0_hft2_diplexer_model.txt'
+    # pbm = PassbandModel(path+filename)
+    # #pbm.plot_model()
+    # #plt.show()
+    #
+    # d=np.load('measured_spectrum_example.npz')
+    # f_ghz = d['f']
+    # S = d['B']
+    # f_range_ghz = [175,300]
+    # # plt.plot(f_ghz,np.real(S))
+    # # plt.show()
+    #
+    # pb = Passband(f_measure_ghz=f_ghz,S_measure_complex=S,f_model_ghz=pbm.f_ghz,S_model=pbm.model[:,2],f_range_ghz=f_range_ghz)
+    # print(type(pb))
+    # pb.plot_PvTs(temp_k_list=list(range(4,12)),f_mask=f_range_ghz,freq_edges_ghz=[200,275],fig_num=1)
+    # pb.print_passband_metrics()
+    # plt.show()

@@ -308,7 +308,7 @@ class IVCommon():
             row_indices = [row_indices]
         if row_indices is None:
             n,m=np.shape(i)
-            rows = list(range(m)) 
+            rows = list(range(m))
 
         # fig 1, 2x2 of converted IV
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
@@ -1296,13 +1296,14 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             #fig.clf()
 
 class IVColdloadSweepAnalyzer():
-    ''' Class to analyze a coldload IV sweep '''
+    ''' Class to analyze a column of data in a coldload IV sweep '''
     def __init__(self,filename_json,detector_map=None,iv_circuit="from file"):
         self.df = IVColdloadSweepData.from_file(filename_json)
         self.filename = filename_json
         self.data = self.df.data
         self.det_map = detector_map
         self.iv_circuit = self._handle_iv_circuit(iv_circuit)
+        self.row_sequence = self.df.extra_info['config']['detectors']['Rows']
 
         # globals about coldload temperatures
         self.set_cl_temps_k = self.df.set_cl_temps_k
@@ -1326,6 +1327,7 @@ class IVColdloadSweepAnalyzer():
         foo, self.n_rows = np.shape(self.data[0].data[0].fb_values_array())
         self.row_index_list = list(range(self.n_rows))
 
+    # helper magic methods -----------------------------------------------------
     def _handle_iv_circuit(self,iv_circuit):
         if iv_circuit == "from file":
             cal = self.df.extra_info['config']['calnums']
@@ -1354,20 +1356,19 @@ class IVColdloadSweepAnalyzer():
             pass
         return iv_circuit
 
-    def print_info(self):
-        # Too add in future:
-        # 1) date/time of start/end of data
-        # 2) Did data complete?
-        print('Coldload set temperatures: ',self.set_cl_temps_k)
-        print('Measured coldload temperatures: ',self.measured_cl_temps_k)
-        print('ADR set temperatures: ',self.set_bath_temps_k)
-        print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
-
     def _package_cl_temp_to_list(self):
         cl_temp_list = []
         cl_temp_list.append(list(self.measured_cl_temps_k[:,0]))
         cl_temp_list.append(list(self.measured_cl_temps_k[:,1]))
         return cl_temp_list
+
+    def _row_to_sequence_index(self,row_index):
+        ''' Because the TDM electronics has an arbitrary state sequence, the row order
+            can be anything.  This method finds the position of row_index within the
+            arbitrary state sequence self.row_sequence.  Mostly useful in get_cl_sweep_dataset_for_row()
+        '''
+        assert row_index in self.row_sequence, print('Row %d'%row_index, ' is not in the row_sequence:',self.row_sequence)
+        return self.row_sequence.index(row_index)
 
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
@@ -1377,9 +1378,66 @@ class IVColdloadSweepAnalyzer():
             cl_indices = list(range(self.n_cl_temps))
         fb = np.zeros((self.n_dac_values,len(cl_indices)))
         for ii,cl_idx in enumerate(cl_indices):
-            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,row_index]
+            dex = self._row_to_sequence_index(row_index)
+            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,dex]
         return self.dac_values, fb
 
+    def print_info(self):
+        # Too add in future:
+        # 1) date/time of start/end of data
+        # 2) Did data complete?
+        print('Coldload set temperatures: ',self.set_cl_temps_k)
+        print('Measured coldload temperatures: ',self.measured_cl_temps_k)
+        print('ADR set temperatures: ',self.set_bath_temps_k)
+        print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
+
+    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
+        assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
+
+        # first collect dark responses for each pixel and place in dark_Ps dictionary
+        dark_keys, dark_rows = self.det_map.get_keys_and_indices_of_type(type_str='dark')
+        print(dark_rows)
+        dark_indices = []
+        for row in dark_rows:
+            try: dark_indices.append(self.row_sequence.index(row))
+            except: pass
+        dark_Ps = {}
+        for idx in dark_indices:
+            row_name = 'Row%02d'%idx
+            row_dict = self.det_map.map_dict[row_name]
+            dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=idx,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+            iva_dark = IVColdloadAnalyzeOneRow(dacs,fb,
+                                               cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                               bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                               row_name=row_name, det_name=self.det_map.get_devname_from_row_index(idx),
+                                               iv_circuit=self.iv_circuit,
+                                               predicted_power_w=None, dark_power_w=None)
+            dark_Ps[str(row_dict['position'])]=iva_dark.get_power_vector_for_rnfrac(dark_rnfrac)
+
+        # now loop over all rows
+        for row in self.row_index_list:
+            row_name = 'Row%02d'%row
+            row_dict = self.det_map.map_dict['Row%02d'%(row)]
+            print('Row%02d'%(row),': ',row_dict)
+            dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+            if row_dict['type']=='optical':
+                dark_P = dark_Ps[str(row_dict['position'])]
+            else:
+                dark_P = None
+
+            iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                          cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                          bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                          row_name=row_name, det_name=self.det_map.get_devname_from_row_index(row),
+                                          iv_circuit=self.iv_circuit,
+                                          predicted_power_w=None,
+                                          dark_power_w=dark_P)
+
+            if rn_fracs is not None:
+                iva.rn_fracs = rn_fracs
+            iva.plot_full_analysis(showfigs,savefigs)
+
+    # plotting methods ---------------------------------------------------------
     def plot_measured_cl_temps(self):
         plt.figure()
         plt.xlabel('Setpoint Temperature (K)')
@@ -1460,12 +1518,81 @@ class IVColdloadSweepAnalyzer():
 
         iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                       cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
+                                      #cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,1],
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
+
+    def _predicted_power(self,cl_temps,f_edges_ghz):
+        predicted_power_w = []
+        for t in cl_temps:
+            predicted_power_w.append(thermalPower(f_edges_ghz[0]*1e9,f_edges_ghz[1]*1e9,t))
+        return np.array(predicted_power_w)
+
+    def plot_DpDt_for_rows(self,row_list,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True,
+                                predicted_power_w=None,print_efficiency=True):
+        ''' plot the change in power for change in cold load temperature for rows in
+            row_list.
+        '''
+        if cl_indices is None:
+            cl_indices = list(range(len(self.set_cl_temps_k)))
+
+        for row in row_list:
+            if row not in self.row_sequence:
+                print('Row%02d was not measured.  Will not plot'%row)
+                row_list.remove(row)
+
+        ivas=[]
+        legend_txt=[]
+        for ii,row in enumerate(row_list):
+            if self.det_map:
+                row_name = 'Row%02d'%row
+                det_name = self.det_map.get_devname_from_row_index(row)
+                legend_txt.append(det_name)
+                if self.det_map.map_dict[row_name]['freq_edges_ghz'] is not None:
+                    predicted_power_w = self._predicted_power(np.array(self.set_cl_temps_k)[cl_indices],self.det_map.map_dict[row_name]['freq_edges_ghz'])
+            else:
+                row_name=det_name=None
+                legend_txt.append(row)
+            dacs,fb = self.get_cl_sweep_dataset_for_row(row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+            iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                          cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
+                                          bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                          row_name=row_name, det_name=det_name,
+                                          iv_circuit=self.iv_circuit,
+                                          predicted_power_w=predicted_power_w,dark_power_w=None,rn_fracs=[rn_frac])
+            ivas.append(iva)
+        fig,ax = plt.subplots(1,1)
+        for iva in ivas:
+            ax.plot(iva.cl_DT_k,iva.Dp_at_rnfrac[0,:],'o-')#,color=self.colors[jj],label=str(self.rn_fracs[ii]))
+        if predicted_power_w is not None:
+            bands = []
+            ls=['solid','dotted','dashed','dashdot']
+            for ii,row in enumerate(row_list):
+                band = self.det_map.map_dict['Row%02d'%row]['band']
+                if np.logical_and(band is not None, band not in bands):
+                    ax.plot(ivas[ii].cl_DT_k,ivas[ii].predicted_Dp_w,color='k',linestyle=ls[len(bands)])
+                    legend_txt.append(band+' prediction')
+                    bands.append(band)
+        ax.set_xlabel('T$_{cl}$ - %.1f K'%iva.cl_temps_k[iva.T_cl_index])
+        ax.set_ylabel('P$_o$ - P')
+
+        if legend: ax.legend(legend_txt)
+        ax.grid()
+
+        if np.logical_and(print_efficiency,predicted_power_w is not None):
+            for ii,row in enumerate(row_list):
+                if ivas[ii].analyze_eta:
+                    print('%s, %s, eta = %.3f'%(ivas[ii].row_name,ivas[ii].det_name,ivas[ii].eta_mean[0].mean()))
+        return fig, ax
+
+    def plot_DpDt_for_position(self,position,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True):
+        row_list = self.det_map.rows_in_position(position,True,True)
+        fig,ax = self.plot_DpDt_for_rows(row_list,bath_temp_index,cl_indices,rn_frac,legend)
+        return fig,ax
 
     def plot_pt_delta_diff(self,row_index,dark_row_index,bath_temp_index,cl_indices=None):
         ''' plot the difference in the change in power verus the change in cold load temperature between two bolometers.
@@ -1495,50 +1622,7 @@ class IVColdloadSweepAnalyzer():
         ax.set_ylabel('dP')
         return fig
 
-    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
-        assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
-
-        # first collect dark responses for each pixel and place in dark_Ps dictionary
-        dark_keys, dark_indices = self.det_map.get_keys_and_indices_of_type(type_str='dark')
-        dark_Ps = {}
-        for idx in dark_indices:
-            row_name = 'Row%02d'%idx
-            row_dict = self.det_map.map_dict[row_name]
-            dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=idx,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-            iva_dark = IVColdloadAnalyzeOneRow(dacs,fb,
-                                               cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
-                                               bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                               row_name=row_name, det_name=self.det_map.get_devname_from_row_index(idx),
-                                               iv_circuit=self.iv_circuit,
-                                               predicted_power_w=None, dark_power_w=None)
-            dark_Ps[str(row_dict['position'])]=iva_dark.get_power_vector_for_rnfrac(dark_rnfrac)
-
-        # now loop over all rows
-        for row in self.row_index_list:
-            row_name = 'Row%02d'%row
-            row_dict = self.det_map.map_dict['Row%02d'%(row)]
-            print('Row%02d'%(row),': ',row_dict)
-            dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-            if row_dict['type']=='optical':
-                dark_P = dark_Ps[str(row_dict['position'])]
-            else:
-                dark_P = None
-
-            iva = IVColdloadAnalyzeOneRow(dacs,fb,
-                                          cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
-                                          bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                          row_name=row_name, det_name=self.det_map.get_devname_from_row_index(row),
-                                          iv_circuit=self.iv_circuit,
-                                          predicted_power_w=None,
-                                          dark_power_w=dark_P)
-
-            if rn_fracs is not None:
-                iva.rn_fracs = rn_fracs
-            iva.plot_full_analysis(showfigs,savefigs)
-
-def iv_quicklook(filename,row_index,use_config=True,temp_indices=None):
-
-    
+def iv_quicklook(filename,row_index,use_config=True):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']

@@ -22,11 +22,10 @@ class DetectorMap():
         ncol = len(header)
         map_dict = {}
         for ii, line in enumerate(lines):
-            line = line[0:-1].split(',')
-            #line = line.split(',')
+            line = line.rstrip().split(',')
             map_dict['Row%02d'%(int(line[0]))] = {}
             for jj in range(1,ncol):
-                #print(jj)
+
                 map_dict['Row%02d'%(int(line[0]))][str(header[jj])] = str(line[jj])
         map_dict = self._clean_map_dict(map_dict)
         return map_dict
@@ -57,20 +56,42 @@ class DetectorMap():
                 if val == 'None':
                     self.map_dict[row][subkey] = None
 
-    def get_devname_from_row_index(self,row_index):
-        return self.map_dict['Row%02d'%row_index]['devname']
-
     def get_rowdict_from_keyval(self,key,val,dict=None):
+        ''' return a dictionary of all rows that satisfy key=val.
+            i.e. get_rowdict_from_keyval('position',1) would return a
+            dictionary with all rows in position 1
+        '''
         mydict={}
-        if dict is not None:
-            pass
-        else:
+        if dict is None:
             dict = self.map_dict
 
         for (row, subdict) in dict.items():
             if subdict[key] == val:
                 mydict[row]=self.map_dict[row]
         return mydict
+
+    def rows_in_position(self,position_int,return_row_integers=True,exclude_squid_channels=True):
+        ''' return a list of rows in position_int.  If return_row_integers=True,
+            a list of integers is returned (i.e. 0 is returned for 'Row00').  If false,
+            a list of strings like "RowXX" is returned.
+        '''
+        row_list = list(self.get_rowdict_from_keyval('position',position_int).keys())
+        if exclude_squid_channels:
+            for row in row_list:
+                if self.map_dict[row]['type'] not in ['optical','dark','Optical','Dark']:
+                    row_list.remove(row)
+        if return_row_integers:
+            row_list = self._convert_row_name_to_integer(row_list)
+        return row_list
+
+    def _convert_row_name_to_integer(self,row_name_list):
+        mylist=[]
+        for row in row_name_list:
+            mylist.append(int(row.split('Row')[-1]))
+        return mylist
+
+    def get_devname_from_row_index(self,row_index):
+        return self.map_dict['Row%02d'%row_index]['devname']
 
     def get_rowdict_from_keyval_list(self,search_list):
         ''' Returns the subset of map_dict that has a series of key,value pairs.
