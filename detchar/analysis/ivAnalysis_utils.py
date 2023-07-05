@@ -1526,7 +1526,17 @@ class IVColdloadSweepAnalyzer():
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
 
-    def plot_DpDt_for_rows(self,row_list,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True):
+    def _predicted_power(self,cl_temps,f_edges_ghz):
+        predicted_power_w = []
+        for t in cl_temps:
+            predicted_power_w.append(thermalPower(f_edges_ghz[0]*1e9,f_edges_ghz[1]*1e9,t))
+        return np.array(predicted_power_w)
+
+    def plot_DpDt_for_rows(self,row_list,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True,
+                                predicted_power_w=None,print_efficiency=True):
+        ''' plot the change in power for change in cold load temperature for rows in
+            row_list.
+        '''
         if cl_indices is None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
 
@@ -1536,27 +1546,47 @@ class IVColdloadSweepAnalyzer():
                 row_list.remove(row)
 
         ivas=[]
+        legend_txt=[]
         for ii,row in enumerate(row_list):
             if self.det_map:
                 row_name = 'Row%02d'%row
                 det_name = self.det_map.get_devname_from_row_index(row)
+                legend_txt.append(det_name)
+                if self.det_map.map_dict[row_name]['freq_edges_ghz'] is not None:
+                    predicted_power_w = self._predicted_power(np.array(self.set_cl_temps_k)[cl_indices],self.det_map.map_dict[row_name]['freq_edges_ghz'])
             else:
                 row_name=det_name=None
+                legend_txt.append(row)
             dacs,fb = self.get_cl_sweep_dataset_for_row(row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
             iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                           cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
                                           bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                           row_name=row_name, det_name=det_name,
                                           iv_circuit=self.iv_circuit,
-                                          predicted_power_w=None,dark_power_w=None,rn_fracs=[rn_frac])
+                                          predicted_power_w=predicted_power_w,dark_power_w=None,rn_fracs=[rn_frac])
             ivas.append(iva)
         fig,ax = plt.subplots(1,1)
         for iva in ivas:
             ax.plot(iva.cl_DT_k,iva.Dp_at_rnfrac[0,:],'o-')#,color=self.colors[jj],label=str(self.rn_fracs[ii]))
+        if predicted_power_w is not None:
+            bands = []
+            ls=['solid','dotted','dashed','dashdot']
+            for ii,row in enumerate(row_list):
+                band = self.det_map.map_dict['Row%02d'%row]['band']
+                if np.logical_and(band is not None, band not in bands):
+                    ax.plot(ivas[ii].cl_DT_k,ivas[ii].predicted_Dp_w,color='k',linestyle=ls[len(bands)])
+                    legend_txt.append(band+' prediction')
+                    bands.append(band)
         ax.set_xlabel('T$_{cl}$ - %.1f K'%iva.cl_temps_k[iva.T_cl_index])
         ax.set_ylabel('P$_o$ - P')
-        if legend: ax.legend(row_list)
+
+        if legend: ax.legend(legend_txt)
         ax.grid()
+
+        if np.logical_and(print_efficiency,predicted_power_w is not None):
+            for ii,row in enumerate(row_list):
+                if ivas[ii].analyze_eta:
+                    print('%s, %s, eta = %.3f'%(ivas[ii].row_name,ivas[ii].det_name,ivas[ii].eta_mean[0].mean()))
         return fig, ax
 
     def plot_DpDt_for_position(self,position,bath_temp_index=0,cl_indices=None,rn_frac=0.8,legend=True):
