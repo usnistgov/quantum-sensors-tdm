@@ -105,6 +105,7 @@ class EasyClientDastard():
             self.nSamp = d["DastardOutput"]["Nsamp"]
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
             self.sequenceLength = d["DastardOutput"]["SequenceLength"]
+            self.linePeriod = d["DastardOutput"]["Lsync"]
         if topic == "TRIGGER":
             self._oldTriggerDict = d[0]
 
@@ -115,11 +116,8 @@ class EasyClientDastard():
         self._connectRPC()
         self._connectStatusSub()
         self._getStatus()
-        # header, data = self.getMessage()
-        # self.samplePeriod = header["samplePeriod"]
-        # self.nPresamples = header["npresamples"]
-        # self.linePeriodSeconds = self.samplePeriod/self.numRows
-        # self.linePeriod = int(round(self.linePeriodSeconds*self.clockMhz*1e6))
+        self.linePeriodSeconds = self.linePeriod/self.clockMhz
+        self.samplePeriod = self.linePeriodSeconds*self.numRows
         print(self)
 
     @property
@@ -129,13 +127,14 @@ class EasyClientDastard():
 
 
 
+    def tdmChannelNumber(self, col, row):
+        return 1+col*self.numRows+row
 
+    # def fbChannelIndex(self, col, row):
+    #     return 2*(col*self.numRows+row)+1
 
-    def fbChannelIndex(self, col, row):
-        return 2*(col*self.numRows+row)+1
-
-    def errorChannelIndex(self, col, row):
-        return 2*(col*self.numRows+row)
+    # def errorChannelIndex(self, col, row):
+    #     return 2*(col*self.numRows+row)
 
     def setMixToZero(self):
         self.setMix(0)
@@ -155,14 +154,17 @@ class EasyClientDastard():
         return result_npz_path
     
     def newStyleDataToOldStyleData(self, data):
-        # the numbers here use channel index, not channel number!!
-        n = len(data["chan0"])
+        # the numbers here use channel number not index
+        if "chan0" in data:
+            n = len(data["chan0"]) # simpulsesource does this
+        if "chan1" in data:
+            n = len(data["chan1"]) # tdm source with lancero does this
         dataOut = np.zeros((self.numColumns, self.numRows, n, 2),dtype="int32")
         if self.sourceName == "Lancero":
             for col in range(self.numColumns):
                 for row in range(self.numRows):
-                    dataOut[col,row, :, 0] = data[f"chan{self.errorChannelIndex(col, row)}"]
-                    dataOut[col,row, :, 1] = data[f"chan{self.fbChannelIndex(col, row)}"]
+                    dataOut[col,row, :, 0] = data[f"err{self.tdmChannelNumber(col, row)}"]
+                    dataOut[col,row, :, 1] = data[f"chan{self.tdmChannelNumber(col, row)}"]
         else:
             for row in range(self.numChannels):
                 dataOut[0, row, :, 1] = data[f"chan{row}"]
@@ -174,10 +176,12 @@ class EasyClientDastard():
         # wait for the file to exist
         import os
         tstart = time.time()
+        expect_s = self.samplePeriod*npts
+        too_long_s = 1.1*expect_s+5
         while not os.path.isfile(npz_filename):
             time.sleep(0.1)
             elapsed_s = time.time()-tstart
-            if elapsed_s>10:
+            if elapsed_s>too_long_s:
                 raise Exception("took too long")
         
         # now the file exists, lets open it
@@ -185,7 +189,7 @@ class EasyClientDastard():
         return data
 
 
-    def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = True, sendMode = 0, toVolts=False, divideNsamp=True):
+    def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True):
         time.sleep(delaySeconds)
         data = self.getNewData2(minimumNumPoints)
         dataOut = self.newStyleDataToOldStyleData(data)
