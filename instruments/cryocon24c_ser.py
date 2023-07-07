@@ -7,6 +7,7 @@ import sys
 from . import serial_instrument
 from .lookup import Lookup
 from time import sleep
+from instruments import retry
 import math
 import numpy
 from threading import Lock
@@ -25,7 +26,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
     def __init__(self, port='cryocon1', baud=9600, shared=True):
         '''Constructor  The PAD (Primary GPIB Address) is the only required parameter '''
 
-        super(Cryocon24c_ser, self).__init__(port, baud, shared, readtimeout=0.25)
+        super(Cryocon24c_ser, self).__init__(port, baud, shared, readtimeout=15)
         
         self.id_string = ""
         self.manufacturer = 'Cryocon'
@@ -37,6 +38,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
     #
 
     # xxx beckerd - this one has stuff for serial comm failure, but not others ... why?
+    @retry(tries=5)
     def getTemperature(self, channel, verbose=False):
         ''' Get temperature from a given channel as a float '''
 
@@ -56,6 +58,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
         return temperature
 
 
+    @retry()
     def getHeaterPower(self, channel=1):
         ''' Get temperature from a given channel as a float '''
 
@@ -65,6 +68,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
 
         return power
 
+    @retry()
     def setLoopThermometer(self, loop, thermometer):
         '''Set the thermometer for a loop '''
 
@@ -74,6 +78,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
         print(commandstring)
         print(result)
 
+    @retry(tries=3)
     def setTemperature(self, channel, temp):
         '''Set temperature to a given channel '''
 
@@ -86,6 +91,7 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
         else:
             print('Not a valid temperature')
 
+    @retry()
     def getTemperatureSetpoint(self, channel):
         '''Get temperature setpoint for a given channel '''
 
@@ -96,32 +102,38 @@ class Cryocon24c_ser(serial_instrument.SerialInstrument):
             raise Exception("response should end with K")
         return float(ans[:-3])
 
+    @retry()
     def STOP(self):
         '''Stop regulating the temperature'''
         commandstring = 'STOP'
         self.ask(commandstring)
 
+    @retry()
     def CONTrol(self):
   
         commandstring = 'CONT'
         self.ask(commandstring)
         # sleep(5)
 
+    @retry()
     def getControl(self):
 
         commandstring = 'CONT?'
         return self.ask(commandstring).strip()
 
+    @retry()
     def setHeaterRange(self, loop, Vrange):
 	
         commandstring = 'LOOP ' + str(loop) + ':RANGe ' + str(Vrange)
         self.ask(commandstring)
 
+    @retry()
     def setHeaterOut(self, loop, Vpercent):
 
         commandstring = 'LOOP ' + str(loop) + ':PMANual ' + str(Vpercent)
         self.ask(commandstring)
 
+    @retry()
     def setToManual(self, loop = 1):
 	
         commandstring = 'LOOP ' + str(loop) + ':TYPe ' + 'MAN'

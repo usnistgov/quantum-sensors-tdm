@@ -69,8 +69,8 @@ class SerialInstrument(instrument.Instrument):
         '''
         self.write(string.encode())
         result = self.read()
-        print(f"asking : {string}")
-        print(f"result: {result}")
+        # print(f"asking : {string}")
+        # print(f"result: {result}")
         float_result = np.nan
         if len(result) > 0:
             float_result = float(result)

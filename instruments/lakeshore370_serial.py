@@ -28,7 +28,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         '''Constructor  The PAD (Primary GPIB Address) is the only required parameter '''
 
         super(Lakeshore370, self).__init__(port, bytesize=serial.SEVENBITS, parity=serial.PARITY_ODD,
-        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.05, readtimeout=0.05)
+        stopbits=serial.STOPBITS_ONE, min_time_between_writes=0.05, readtimeout=15)
 
         # GPIB identity string of the instrument
         self.id_string = "LSCI,MODEL370,370447,09272005"
@@ -70,42 +70,31 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return resistance
 
+    @retry()
     def setControlMode(self, controlmode = 'off'):
         ''' Set control mode 'off', 'zone', 'open' or 'closed' '''
 
-        #switch = {
-        #    'closed' : '1',
-        #    'zone' : '2',
-        #    'open' : '3',
-        #    'off' : '4'
-        #}
-
-        commandstring = b'CMODE ' + self.control_mode_switch.get(controlmode)
+        commandstring = b'CMODE ' + self.control_mode_switch.get(controlmode).encode()
         self.write(commandstring)
 
+    @retry()
     def getControlMode(self):
         ''' Get control mode 'off', 'zone', 'open' or 'closed' '''
 
-        #switch = {
-        #    '1' : 'closed',
-        #    '2' : 'zone',
-        #    '3' : 'open',
-        #    '4' : 'off'
-        #}
-
         commandstring = b'CMODE?'
         result = self.ask(commandstring).rstrip()
-        #mode = switch.get(result, 'com error')
-        mode = self.control_mode_switch.get_key(result)
+        modes = self.control_mode_switch.get_key(result)
 
-        return mode[0]
+        return modes[0]
 
+    @retry()
     def setPIDValues(self, P=1, I=1, D=0):
         ''' Set P, I and D values where I and D are i nunits of seconds '''
 
         commandstring = 'PID ' + str(P) + ', ' + str(I) + ', ' + str(D)
         self.write(commandstring)
 
+    @retry()
     def getPIDValues(self):
         '''Returns P,I and D values as floats where is I and D have units of seconds '''
 
@@ -119,6 +108,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return PIDvalues
 
+    @retry()
     def setManualHeaterOut(self, heatpercent=0):
         ''' Set the manual heater output as a percent of heater range '''
 
@@ -147,12 +137,14 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return heaterout
 
+    @retry()
     def setTemperatureSetPoint(self, setpoint=0.010):
         ''' Set the temperature set point in units of Kelvin '''
 
         commandstring = 'SETP ' + str(setpoint)
         self.write(commandstring)
 
+    @retry()
     def getTemperatureSetPoint(self):
         ''' Get the temperature set point in units of Kelvin '''
 
@@ -162,6 +154,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return setpoint
 
+    @retry()
     def setHeaterRange(self, range=10):
         ''' Set the temperature heater range in units of mA '''
 
@@ -187,6 +180,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'HTRRNG ' + str(rangestring)
         result = self.write(commandstring)
 
+    @retry()
     def getHeaterRange(self):
         ''' Get the temperature heater range in units of mA '''
 
@@ -208,6 +202,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return htrrange
 
+    @retry()
     def setControlPolarity(self, polarity = 'unipolar'):
         ''' Set the heater output polarity 'unipolar' or 'bipolar' '''
 
@@ -219,6 +214,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CPOL ' + switch.get(polarity,'0')
         self.write(commandstring)
 
+    @retry()
     def getControlPolarity(self):
         ''' Get the heater output polarity 'unipolar' or 'bipolar' '''
 
@@ -233,6 +229,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 
         return polarity
 
+    @retry()
     def setScan(self, channel = 1, autoscan = 'off'):
         ''' Set the channel autoscanner 'on' or 'off' '''
 
@@ -244,6 +241,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'SCAN ' + str(channel) + ', ' + switch.get(autoscan,'0')
         self.write(commandstring)
 
+    @retry()
     def setRamp(self, rampmode = 'on' , ramprate = 0.1):
         ''' Set the ramp mode to 'on' or 'off' and specify ramp rate in Kelvin/minute'''
 
@@ -255,7 +253,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'RAMP ' + switch.get(rampmode,'1') + ', ' + str(ramprate)
         self.write(commandstring)
 
-
+    @retry()
     def getRamp(self):
         ''' Get the ramp mode either 'on' or 'off' and the ramp rate in Kelvin/minute '''
 
@@ -270,6 +268,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             raise ValueError(f'Ramp status = {results[0]} when expecting on or off')
         return ramp
 
+    @retry()
     def setTemperatureControlSetup(self, channel = 1, units = 'Kelvin', maxrange = 10, 
         delay_s = 2, htrres = 1, output = 'current', filterread = 'unfiltered'):
         '''
@@ -314,6 +313,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'CSET ' + str(channel) + ', ' + switchfilter.get(filterread,'0') + ', ' + switchunits.get(units,'1') + ', ' + str(delay_s) + ', ' + switchoutput.get(output,'1') + ', ' + rangestring + ', ' + str(htrres)
         self.write(commandstring)
 
+    @retry()
     def setReadChannelSetup(self, channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 63.2e3,autorange = 'off', excitation = 'on'):
         '''
         Sets the measurment parameters for a given channel, in 'current' or 'voltage' excitation mode, excitation range in Amps or Volts, resistance range in ohms
@@ -457,11 +457,12 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         commandstring = 'RDGRNG ' + str(channel) + ', ' + switchmode.get(mode,'1') + ', ' + exciterangestring + ',' + resistancerangestring + ',' + switchautorange.get(autorange,'0') + ', ' + switchexcitation.get(excitation,'0')
         self.write(commandstring)
 
+    @retry()
     def getHeaterStatus(self):
 
         switch = {
-            '0' : 'no error',
-            '1' : 'heater open error'
+            b'0' : 'no error',
+            b'1' : 'heater open error'
         }
 
         commandstring = 'HTRST?'
@@ -490,6 +491,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
         self.setReadChannelSetup(channel = 1, mode = 'current', exciterange = 10e-9, resistancerange = 2e3,autorange = 'on')
 
 
+    @retry()
     def setupPID(self, exciterange=3.16e-9, therm_control_channel=1, ramprate=0.05, heater_resistance=1,heater_range=100,setpoint=0.035):
         '''Setup the lakeshore for temperature regulation '''
         self.setScan(channel = therm_control_channel, autoscan = 'off')
@@ -512,7 +514,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
 # Public Calibration Methods
 
     def sendStandardRuOxCalibration(self):
-        pass
+        raise Exception("not implemented")
 
     def sendCalibrationFromArrays(self, rData, tData, curveindex, thermname='Cernox 1030', serialnumber='x0000',\
                             temp_lim=300, tempco = 1, units=4, makeFig = False):
@@ -775,15 +777,10 @@ class Lakeshore370(serial_instrument.SerialInstrument):
     def SetControlMode(self, controlmode = 'off'):
         ''' Set control mode 'off', 'zone', 'open' or 'closed' '''
 
-        #switch = {
-        #    'closed' : '1',
-        #    'zone' : '2',
-        #    'open' : '3',
-        #    'off' : '4'
-        #}
 
-        #commandstring = 'CMODE ' + switch.get(controlmode,'4')
-        commandstring = 'CMODE ' + self.control_mode_switch.get(controlmode,'4')
+        # the .get makes it default to off
+        mode_str = self.control_mode_switch.get(controlmode,b'4')
+        commandstring = f"CMODE {mode_str.decode()}"
         self.write(commandstring)
 
     def GetControlMode(self):

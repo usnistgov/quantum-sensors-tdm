@@ -124,7 +124,6 @@ class KPACGui(QMainWindow):
         #self.task_cycle  = TaskWaking(5, self.call_full_cycle, self.cycle_done)
         self.task_cycle  = Task(self.call_full_cycle, self.cycle_done)
         self.task_he3_test  = Task(self.call_he3_test, self.he3_test_done)
-        self.task_slow_charcoal_close = Task(self.call_slow_charcoal_close, self.slow_charcoal_close_done)
 
         #
         # Read status of certain components
@@ -190,7 +189,6 @@ class KPACGui(QMainWindow):
 
         self.pb_ramp_down.clicked.connect(self.ramp_down)
 
-        self.pb_charcoal_close_start.clicked.connect(self.slow_charcoal_close)
 
         self.pb_ramp.clicked.connect(self.ramp_magnet)
 
@@ -216,10 +214,6 @@ class KPACGui(QMainWindow):
         self.KPAC.sig_pot_hs_open_done.connect(lambda: self.l_cycle_status_open_pot_hs.setText('Done'))
 
         self.KPAC.sig_charcoal_heating_done.connect(lambda: self.l_cycle_status_turn_off_charcoal.setText('Done'))
-
-        self.KPAC.sig_charcoal_careful_close_ok.connect(lambda: self.l_cycle_status_close_charcoal.setText('In Progress'))
-        self.KPAC.sig_charcoal_careful_close_wait.connect(lambda: self.l_cycle_status_close_charcoal.setText('Waiting to cool'))
-        self.KPAC.sig_charcoal_careful_close_done.connect(lambda: self.l_cycle_status_close_charcoal.setText('Done'))
 
         self.KPAC.sig_adr_hs_open_start.connect(lambda: self.l_cycle_status_open_adr_hs.setText('In Progress'))
         self.KPAC.sig_adr_hs_open_done.connect(lambda: self.l_cycle_status_open_adr_hs.setText('Done'))
@@ -253,22 +247,6 @@ class KPACGui(QMainWindow):
         self.charcoal_position = 0
         self.l_charcoal_position.setText('Position: %s' % self.charcoal_position)
 
-    def slow_charcoal_close(self):
-        self.gb_charcoal_close.setEnabled(False)
-        self.l_slow_charcoal_close_status.setText('In Progress')
-        self.task_slow_charcoal_close.start()
-
-    def call_slow_charcoal_close(self):
-        self.KPAC.slow_charcoal_close(float(self.le_charcoal_close_fast_turns.text()),
-                                      float(self.le_charcoal_close_stage1_turns.text()),
-                                      float(self.le_charcoal_close_stage1_temp.text()),
-                                      float(self.le_charcoal_close_stage2_temp.text()),
-                                      float(self.le_charcoal_close_full_close_temp.text()),
-                                      float(self.le_charcoal_close_step_time.text()))
-        
-    def slow_charcoal_close_done(self):
-        self.gb_charcoal_close.setEnabled(True)
-        self.l_slow_charcoal_close_status.setText('Done')
     
     # 
     # Ramping
@@ -329,6 +307,8 @@ class KPACGui(QMainWindow):
         self.task_he3_test.start()
 
     def call_he3_test(self):
+        print("call_he3_test")
+        print(f"{self.KPAC.cc.getTemperature(1)=}")
         self.KPAC.he3_test(float(self.le_he3_test_hold_time.text())*60,
                            self.cb_he3_test_apply_heat.isChecked(),
                            float(self.le_he3_test_heat_start_temp.text()),

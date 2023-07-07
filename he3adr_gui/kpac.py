@@ -52,9 +52,9 @@ class KPAC(QObject):
             self.lsh = kcg_test.lakeshore()
             # self.email = tes_mail.TESMail()
         else:
-            self.cc = Cryocon24c_ser(port='cryocon1')
+            self.cc = Cryocon24c_ser(port='cryocon1', shared=True)
             try:
-                self.cc2 = Cryocon24c_ser(port='cryocon2')
+                self.cc2 = Cryocon24c_ser(port='cryocon2', shared=True)
             except Exception as ex:
                 print(ex)
                 self.cc2 = None
@@ -67,6 +67,8 @@ class KPAC(QObject):
             self.lj = labjack.Labjack()
             # self.email = tes_mail.TESMail()
 
+        print(f"{self.cc.shared=}")
+        print(f"{self.lsh.shared=}")
         # Times at which we have polled for temp/voltage/current/pressure
         self.poll_times = []
 
@@ -272,7 +274,7 @@ class KPAC(QObject):
         return self.lsh.getControlMode()
 
     def calc_mag_steps(self, start, end, time, pausetime):
-        num_steps = time / pausetime
+        num_steps = int(time // pausetime)
         return numpy.linspace(start, end, num_steps).tolist()
         
     
@@ -326,8 +328,7 @@ class KPAC(QObject):
             curr_3k_temp = self.cc.getTemperature('C')
             if curr_3k_temp > max_temp:
                 # Send out warning emails
-                self.email.sendEmail('pcuser@686thzlab', alert_emails, 'KPAC Problem',
-                                     '3 K stage is too hot ({}) and in danger of quenching the magnet. Ramping down from {} % to prevent a quench.' % (curr_3k_temp, ivalue))
+                print(f'3 K stage is too hot ({curr_3k_temp}) and in danger of quenching the magnet. Ramping down from {i_values} % to prevent a quench.')
 
                 # Ramp down to stop quench
                 self.ramp_magnet(0, (mag_time-index*pausetime), pausetime)
@@ -411,9 +412,7 @@ class KPAC(QObject):
     sig_charcoal_heating_start = pyqtSignal()
     sig_charcoal_heating_done = pyqtSignal()
             
-    def slow_close_is_done(self):
-        self.slow_close_done = True
-    
+
     def ramp_down_is_done(self):
         self.ramp_down_done = True
     
@@ -477,16 +476,9 @@ class KPAC(QObject):
         self.disable_cryocon_control()
         self.sig_charcoal_heating_done.emit()
 
-        self.slow_close_done = False
         self.ramp_down_done = False
 
-        task_slow_close  = Task(lambda: self.slow_charcoal_close(char_fast_turns,
-                                                                 char_stage1_turns,
-                                                                 char_stage1_temp,
-                                                                 char_stage2_temp,
-                                                                 char_full_close_temp,
-                                                                 char_step_time),
-                                self.slow_close_is_done)
+
         task_ramp_down = Task(lambda: self.ramp_down(mag_precool_temp,
                                                      mag_ramp_target,
                                                      mag_ramp_time,
@@ -494,245 +486,16 @@ class KPAC(QObject):
                                                      settle_time),
                               self.ramp_down_is_done)
 
-        task_slow_close.start()
+        self.closeCharcoalHeatSwitch()
+        ## here we're just closing the charcoal heatswitch instead of slow closing it
+        ## will we need something more fancy?
+        for i in range(10):
+            print("TASK START!!!!")
         task_ramp_down.start()
 
-        print((self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished()))
-        while not (self.slow_close_done and self.ramp_down_done):
-            print((self.slow_close_done, self.ramp_down_done, task_slow_close.isRunning(), task_slow_close.isFinished(), task_ramp_down.isRunning(), task_ramp_down.isFinished()))
-            time.sleep(10)
 
-        #self.close_charcoal_and_mag_down(char_fast_turns, char_stage1_turns, char_stage1_temp, char_stage2_temp,
-                                         #char_full_close_temp, char_step_time,
-                                         #mag_precool_temp, mag_ramp_target, mag_ramp_time, mag_step_time)
-
-    
-    sig_charcoal_careful_close_ok = pyqtSignal()
-    sig_charcoal_careful_close_wait = pyqtSignal()
-    sig_charcoal_careful_close_done = pyqtSignal()
-    
     sig_mag_down_temp_wait = pyqtSignal()
     sig_mag_down_open_wait = pyqtSignal()
     
-    def slow_charcoal_close(self, char_fast_turns, char_stage1_turns, char_stage1_temp, char_stage2_temp,
-                            char_full_close_temp, char_step_time):
-
-        '''
-        Closing the charcoal heat switch. We want to following the following rules:
-
-           * For roughly the 1st 1/2 turn after the heat switch touches, we want to be
-             very careful not to let the 3K plate too warm. So we close by 1/20 turn, but
-             if we ever go above 3.8 K, we back off by 1/10 turn, and don't move the
-             switch again until we are back below 3.8 K.
-           * After that, we are more lenient; we allow the temperature to rise above 5.0 K
-             before backing off by 1/10 turn.
-           * If, at any point, the charcoal temperature falls below 10 K, we want to
-             immediately close the heat switch all the way.
-           * Steps are 15 s long
-
-        A state machine might be the simplest way to implement this, so that is what I've done here.
-        '''
-
-        # charcoal state identifiers
-        STATE_CHAR_CLOSING_OK = 1    # We are closing the charcoal heat switch, and everything is fine
-        STATE_CHAR_CLOSING_WAIT = 2  # We are closing the charcoal heat switch, but the 3K plate got too hot, and we are waiting for it to cool
-        STATE_CHAR_END = 99          # We are done closing the charcoal heat switch, so nothing else to do
-        
-        # It is helpful to keep track of how many turns the charcoal
-        # heat switch has already been closed. This can be used to
-        # make decisions about how to proceed.
-        char_turns = 0
-
-        char_state = STATE_CHAR_CLOSING_OK
-
-        while not char_state == STATE_CHAR_END:
-
-            print(("slow_charcoal_close", char_state))
-
-            if char_state == STATE_CHAR_CLOSING_OK:
-
-                self.sig_charcoal_careful_close_ok.emit()
-                
-                temp_char = self.cc.getTemperature('B')
-                temp_3k = self.cc.getTemperature('C')
-            
-                if char_turns <= 0:
-                    self.move_charcoal_relative(-char_fast_turns)
-                    char_turns += char_fast_turns
-                elif char_turns >= 12:
-                    char_state = STATE_CHAR_END
-                elif ( (char_turns <= (char_fast_turns + char_stage1_turns) and temp_3k >= char_stage1_temp) or
-                       (char_turns >  (char_fast_turns + char_stage1_turns) and temp_3k >= char_stage2_temp) ):
-                    self.move_charcoal_relative(0.1)
-                    char_turns += -0.1
-                    char_state = STATE_CHAR_CLOSING_WAIT
-                elif temp_char < char_full_close_temp:
-                    self.move_charcoal_relative(-(12 - char_turns))
-                    char_state = STATE_CHAR_END
-                else:
-                    self.move_charcoal_relative(-0.05)
-                    char_turns += 0.05
-                        
-            elif char_state == STATE_CHAR_CLOSING_WAIT:
-
-                self.sig_charcoal_careful_close_wait.emit()
-
-                temp_char = self.cc.getTemperature('B')
-                temp_3k = self.cc.getTemperature('C')
-            
-                if ( (char_turns <= (char_fast_turns + char_stage1_turns) and temp_3k < char_stage1_temp) or
-                     (char_turns >  (char_fast_turns + char_stage1_turns) and temp_3k < char_stage2_temp) ):
-                    char_state = STATE_CHAR_CLOSING_OK
-                            
-            elif char_state == STATE_CHAR_END:
-                
-                self.sig_charcoal_careful_close_done.emit()
-
-            else:
-                # xxx should never reach this point,
-                # so raise exception?
-                pass
-                
-    
-            time.sleep(char_step_time)
-            print(("slow_charcoal_close end:", char_state))
-        
-        self.sig_charcoal_careful_close_done.emit()
-        
-    '''
-CYCLE_INIT_HS_CLOSE = 2
-CYCLE_OPEN_CHARCOAL = 3
-CYCLE_START_CHARCOAL_HEAT = 4
-CYCLE_WAIT_COOL_PLATE = 5
-CYCLE_RAMP_UP_MAGNET = 6
-CYCLE_SOAK_MAGNET = 7
-CYCLE_END = 999
-
-next_cycle = { CYCLE_INIT_HS_CLOSE: CYCLE_OPEN_CHARCOAL,
-               CYCLE_OPEN_CHARCOAL: CYCLE_START_CHARCOAL_HEAT,
-               CYCLE_START_CHARCOAL_HEAT: CYCLE_END,
-               CYCLE_START_CHARCOAL_HEAT: CYCLE_WAIT_COOL_PLATE,
-               CYCLE_WAIT_COOL_PLATE: CYCLE_RAMP_UP_MAGNET,
-               CYCLE_RAMP_UP_MAGNET: CYCLE_SOAK_MAGNET,
-               CYCLE_SOAK_MAGNET: CYCLE_END,
-               CYCLE_END: CYCLE_INIT_HS_CLOSE
-               }
-        
-    cycle_state = CYCLE_INIT_HS_CLOSE
-
-    def full_cycle_in_progress(self, should_continue):
-        print 'full_cycle: start', should_continue, self.cycle_state
-
-        if not should_continue:
-            return False
-        else:
-            if self.cycle_state == CYCLE_START:
-
-                # initialization for the cycle
-                
-                
-                
-            if self.cycle_state == CYCLE_INIT_HS_CLOSE:
-
-                self.i_values = None
-                self.ramp
-                
-                self.closeADRHeatSwitch()
-                self.closePotHeatSwitch()
-
-                self.cycle_state = next_cycle[self.cycle_state]
-                should_continue = True
-
-            elif self.cycle_state == CYCLE_OPEN_CHARCOAL:
-
-                self.openCharcoalHeatSwitch()
-
-                self.cycle_state = next_cycle[self.cycle_state]
-                should_continue = True
-
-            elif self.cycle_state == CYCLE_START_CHARCOAL_HEAT:
-
-                self.write_cryocon_control(30, 55)
-                self.enable_cryocon_control()
-                self.sig_charcoal_heating_start.emit()
-
-                self.cycle_state = next_cycle[self.cycle_state]
-                should_continue = True
-
-            elif self.cycle_state == CYCLE_WAIT_COOL:
-
-                if self.getTemperature('C') < self.ramp_star_temp
-                    self.cycle_state = next_cycle[self.cycle_state]
-                should_continue = True
-            
-            elif self.cycle_state == CYCLE_RAMP_UP_MAGNET:
-
-                if self.i_values == None:
-                    self.lsh.MagUpSetup(heater_resistance = 100)
-
-                    ramp_start = self.lsh.getManualHeaterOut() 
-        
-                    # initial current
-                    IOut = self.lj.getAnalogInput(2)*2 		
-                    
-                    i_values = self.calc_mag_steps(ramp_start, self.ramp_target, self.ramp_step_size)
-        
-                    if i_end > i_start:
-                        self.sig_ramp_up_start.emit()
-                    else:
-                        self.sig_ramp_down_start.emit()
-                
-
-                # Check for too-hot 3 K plate. If this happens, we
-                # could be quenching and need to ramp back down
-                if self.cc.getTemperature('C') > self.ramp_max_temp:
-                    # xxx notify admins
-                    self.cycle_state = CYCLE_EMERG_RAMP_DOWN
-                    should_continue = True
-                    
-                # xxx need a check that ADR current is actually
-                # increasing
-                
-                if len(i_values) > 0:
-                    ivalue = i_values.pop(0)
-                    self.lsh.setManualHeaterOut(i_value)
-                    self.sig_ramp_value.emit(i_value)
-                    should_continue = True
-                else:
-                    self.cycle_state = next_cycle[self.cycle_state]
-                    should_continue = True
-
-            elif self.cycle_state == CYCLE_EMERG_RAMP_DOWN:
-                if i_values == None:
-                    # xxx this shold not happen, must report error
-
-                if len(i_values) > 0:
-                    ivalue = i_values.pop(0)
-                    self.lsh.setManualHeaterOut(i_value)
-                    self.sig_ramp_value.emit(i_value)
-                    should_continue = True
-                else:
-                    self.cycle_state = next_cycle[self.cycle_state]
-                    should_continue = True
-                
-
-                
-            elif self.cycle_state == CYCLE_SOAK_MAGNET:
-                    
-
-            elif self.cycle_state == CYCLE_END:
-
-                pass
-
-                
-    
-            #self.magnet_ramp_careful(75, 1*60, 2, 3.2, 6.0, 1*60)
-
-            should_continue = not (self.cycle_state == CYCLE_END)
-            self.cycle_state = next_cycle[self.cycle_state]
-            print 'full_cycle: end', should_continue, self.cycle_state
-            return should_continue
-    '''
-
-       
-        
+ 
+   
