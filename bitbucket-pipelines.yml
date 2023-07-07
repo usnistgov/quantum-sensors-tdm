@@ -4,8 +4,8 @@ pipelines:
       - step:
           caches:
             - pip
-          name: python 3.7
-          image: python:3.7.2
+          name: python 3.10
+          image: python:3.10.0
           script: # Modify the commands below to build your repository.
             - apt-get update && apt-get install -y python3-pyqt5
             - pip install --upgrade pip
