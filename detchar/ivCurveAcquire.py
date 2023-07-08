@@ -5,6 +5,9 @@ top-level script to acquire an iv curve data set.
 usage:
 ./ivCurveAquire.py <config_file> <description>
 
+Configuration: setup mux in cringe, ensure adr_gui is running, edit an iv.config file, 
+issue command above.
+
 @author JH 
 v0: 2/2021
 v1: 4/2021 updated to allow plotting and to take IV curve at current temperature 
