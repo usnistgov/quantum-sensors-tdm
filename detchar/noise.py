@@ -354,19 +354,17 @@ class NoiseSweep(NoiseAcquire):
                               extra_info=extra_info)
 
 if __name__ == "__main__":
-    path='/data/uber_omt/20230517/'
-    filename = 'colB_noise_20230606_5.json'
+    path='/data/uber_omt/20230609/'
+    filename = 'colA_noise_20230614_1.json'
     skip_wait = False
-    row_sequence_list=[8,9,11,16,22]
-    temp_list_k = [0.1,0.15]
-    db_list = [ [21992, 18203, 16691, 15205, 14042, 12931, 11795,10565, 9904] , 
-                [18511, 14773, 13255, 11898, 10889,  9979,  9049, 8065, 6995, 6406]
-                ]
-    #temp_list_k=[.15]
-    #db_list=[0]
+    row_sequence_list=[8,9,15,18,28,29] 
+    temp_list_k = [0.1,0.12,0.2]
+    db_list = [[5809, 4952, 4641, 4076, 3615, 3263, 2937, 2609, 2274,0],
+                [4770, 4413, 4074, 3529, 3106, 2789, 2494, 2207, 1918],
+                [0]]
     comment = 'lsync=256, sett=110,nsamp=144'
     
-    ns = NoiseSweep(column_str='B',
+    ns = NoiseSweep(column_str='A',
                       row_sequence_list=row_sequence_list, 
                       m_ratio = 15.08,
                       rfb_ohm = 1700,
@@ -377,7 +375,7 @@ if __name__ == "__main__":
                       signal_column_index=0,
                       voltage_source='tower',
                       db_cardname = 'DB',
-                      db_tower_channel='1',
+                      db_tower_channel='0',
                       cringe_control=None)
     data = ns.run(skip_wait_on_first_temp=skip_wait,extra_info={'comment':comment})
     data.to_file(path+filename,overwrite=True)

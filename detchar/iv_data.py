@@ -82,7 +82,7 @@ class IVCurveColumnData(DataIO):
     pre_shock_dac_value: float
 
     def plot(self):
-        plt.figure()
+        #plt.figure()
         plt.plot(self.dac_values, self.fb_values)
         plt.xlabel("dac values (arb)")
         plt.ylabel("fb values (arb)")

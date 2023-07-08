@@ -282,6 +282,7 @@ def main():
 
     app = PyQt5.QtWidgets.QApplication(sys.argv)
     mainWin = adrTempMonitorGui(cc_channels=None)
+    #mainWin = adrTempMonitorGui()
     mainWin.show()
     sys.exit(app.exec_())
 

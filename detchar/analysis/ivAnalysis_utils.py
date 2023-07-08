@@ -308,7 +308,7 @@ class IVCommon():
             row_indices = [row_indices]
         if row_indices is None:
             n,m=np.shape(i)
-            rows = list(range(m))
+            row_indices = list(range(m))
 
         # fig 1, 2x2 of converted IV
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
@@ -346,7 +346,7 @@ class IVCommon():
         # ax[2].set_xlim((0,r[0,0]*1.1))
         # ax[2].set_ylim((0,np.max(p)*1.1))
         # ax[3].set_xlim((0,np.max(v)*1.1))
-        # ax[3].set_ylim((0,r[0,0]*1.1))
+        ax[3].set_ylim((0,r[0,0]*1.1))
 
         for ii in range(4):
             ax[ii].grid('on')
@@ -1622,7 +1622,7 @@ class IVColdloadSweepAnalyzer():
         ax.set_ylabel('dP')
         return fig
 
-def iv_quicklook(filename,row_index,use_config=True):
+def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']
@@ -1639,6 +1639,11 @@ def iv_quicklook(filename,row_index,use_config=True):
 
     if temp_indices is None:
         temp_indices = range(len(df.set_temps_k))
+    temp_list_k = np.array(df.set_temps_k)[temp_indices]
+
+    if rn_fracs is None:
+        rn_fracs=[0.5,0.6,0.7,0.8]
+
     # circuit parameters to convert to physical units
     if use_config:
         cal = cfg['calnums']
@@ -1666,19 +1671,16 @@ def iv_quicklook(filename,row_index,use_config=True):
 
     # construct fb_arr versus Tbath for a single row
     dac, fb = df.data[0].xy_arrays()
-    n_sweeps = len(df.set_temps_k)
-    fb_arr = np.zeros((len(dac),n_sweeps))
-    print(df.data[0].extra_info['config'])
-    for ii in range(n_sweeps):
-        dac, fb = df.data[ii].xy_arrays()
+    fb_arr = np.zeros((len(dac),len(temp_indices)))
+    for ii,dex in enumerate(temp_indices):
+        dac, fb = df.data[dex].xy_arrays()
         fb_arr[:,ii] = fb[:,row_index]
 
-    # for ii,dex in enumerate(temp_indices):
-    #     dac, fb = df.data[dex].xy_arrays()
-    #     fb_arr[:,ii] = fb[:,row_index]
-
-    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=np.array(df.set_temps_k)[temp_indices], normal_resistance_fractions=[0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
-    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+    # do the analysis
+    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=temp_list_k, normal_resistance_fractions=rn_fracs,iv_circuit=iv_circuit)
+    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
+   
+    # plot
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(fignum=2)
     iv_tsweep.plot_pr(fig_num=3)
