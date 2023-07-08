@@ -93,6 +93,12 @@ class DetectorMap():
     def get_devname_from_row_index(self,row_index):
         return self.map_dict['Row%02d'%row_index]['devname']
 
+    def bands_in_row_list(self,row_list):
+        bands = []
+        for row in row_list:
+            bands.append(self.map_dict['Row%02d'%row]['band'])
+        return set(bands)
+
     def get_rowdict_from_keyval_list(self,search_list):
         ''' Returns the subset of map_dict that has a series of key,value pairs.
             Note that the order of [key,value] pairs in search_list matters.

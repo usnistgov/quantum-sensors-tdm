@@ -1085,10 +1085,11 @@ class FtsMeasurementSet():
         plt.ylabel('Response (arb)')
         return fig
 
-    def plot_measurements(self,measurement_indices=None,ylog=False,normalize=True,xlim=None,phase_corrected=True):
+    def plot_measurements(self,measurement_indices=None,ylog=False,normalize=True,xlim=None,phase_corrected=True,fig=None,ax=None):
         if measurement_indices is None:
             measurement_indices = list(range(len(self.measurements)))
-        fig,ax = plt.subplots(1,1)
+        if np.logical_and(fig is None, ax is None):
+            fig,ax = plt.subplots(1,1)
         for ii in measurement_indices:
             m=self.measurements[ii]
             if phase_corrected: x=m.f_phase_corr ; y=m.S_phase_corr
