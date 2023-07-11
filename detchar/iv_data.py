@@ -376,7 +376,14 @@ class PolCalSteppedSweepData(DataIO):
 @dataclass
 class PolCalSteppedBeamMapData(DataIO):
     xy_position_list: List[Any]
-    iq_v_angle: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
+    data: List[PolCalSteppedSweepData]
+    extra_info: dict
+
+@dataclass_json
+@dataclass
+class BeamMapSingleGridAngleData(DataIO):
+    xy_position_list: List[Any]
+    iq_v_pos: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
     grid_angle_deg: float 
     source_amp_volt: float
     source_offset_volt: float
@@ -388,12 +395,22 @@ class PolCalSteppedBeamMapData(DataIO):
     num_lockin_periods: int 
     extra_info: dict
 
-@dataclass_json
-@dataclass
-class BeamMapSingleGridAngleData(DataIO):
-    xy_position_list: List[Any]
-    data: List[PolCalSteppedSweepData]
-    extra_info: dict
+    def plot(self):
+        fig,ax = plt.subplots(3,1)
+        y = np.array(self.iq_v_pos)
+        n,m,o = np.shape(y)
+        for row in range(m):
+            ax[0].plot(np.array(self.iq_v_pos)[:,row,0],'o-',label=row)
+            ax[1].plot(np.array(self.iq_v_pos)[:,row,1],'o-',label=row)
+            ax[2].plot(np.sqrt(np.array(self.iq_v_pos)[:,row,0]**2+np.array(self.iq_v_pos)[:,row,1]**2),'o-',label=row)
+        ax[0].set_ylabel('I (DAC)')
+        ax[1].set_ylabel('Q (DAC)')
+        ax[2].set_ylabel('Amplitude (DAC)')
+        ax[2].set_xlabel('Angle (deg)')
+        ax[1].legend()
+        
+        
+
 
 ### complex impedance / responsivity data classes ------------------------------------------
 

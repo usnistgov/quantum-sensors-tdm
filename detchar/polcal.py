@@ -6,7 +6,7 @@
     @author JH 7/2021, based on Jay's software for legacy electronics.
 '''
 
-from iv_data import PolCalSteppedSweepData, PolCalSteppedBeamMapData
+from iv_data import PolCalSteppedSweepData, PolCalSteppedBeamMapData, BeamMapSingleGridAngleData
 
 from nasa_client import EasyClient
 from instruments import BlueBox, Velmex, Agilent33220A, AerotechXY
@@ -20,42 +20,29 @@ import os
 from tools import SoftwareLockinAcquire
 import matplotlib.pyplot as plt
 
-def test_for_signal(N_lockins=5):
-    pc = PolcalSteppedSweep(angle_deg_list=[0],
-                 source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
-                 num_lockin_periods = 10,
-                 row_order=None,
-                 grid_motor=None,
-                 initialize_grid_motor=False)
-    
-    N=N_lockins
-    iq_arr = []
-    for ii in range(N):
-        iq_arr.append(pc.get_point()) # nrow x 2 array
-    
-    pc.source.SetOutput(outputstate='off')
+class SourceInit():
+    ''' class to initialize the function generator, tailored to driving the HawkEye IR source.  
+        Hardware is to use blue bias box that combines a DC and AC signal from a function 
+        generator, and sends this to the IR source
+    ''' 
+    def __init__(self,source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0):
+        self.source_amp_v = source_amp_volt
+        self.source_offset_v = source_offset_volt
+        self.source_freq_hz = source_frequency_hz
+        self.source = Agilent33220A()
+        self.init_source(source_amp_volt, source_offset_volt, source_frequency_hz)
 
-    iq_arr2 = []
-    for ii in range(N):
-        iq_arr2.append(pc.get_point())
+    def init_source(self, amp, offset, frequency):
+        #self.source.SetFunction(function = 'sine')
+        self.source.SetFunction(function = 'square')
+        self.source.SetLoad('INF')
+        self.source.SetFrequency(frequency)
+        self.source.SetAmplitude(amp)
+        self.source.SetOffset(offset)
+        self.source.SetOutput(outputstate='on')
 
-    nrow,col = np.shape(iq_arr[0])
     
-    for ii in range(nrow):
-        plt.figure(ii)
-        for jj in range(N):
-            amp_on = np.sqrt(iq_arr[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
-            amp_off = np.sqrt(iq_arr2[jj][ii,0]**2 + iq_arr[jj][ii,1]**2)  
-            plt.plot(jj,amp_on,'bo')
-            plt.plot(jj,amp_off,'ro')
-        plt.legend(('source on','source off'))
-        plt.xlabel('measurement index')
-        plt.ylabel('Amplitude response')
-        plt.title('Row index %d'%(ii))
-
-    plt.show()
-    
-class PolcalSteppedSweep():
+class PolcalSteppedSweep(SourceInit):
     ''' Acquire polcal at stepped, fixed absolute angles '''
     def __init__(self, angle_deg_list,
                  source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
@@ -64,25 +51,22 @@ class PolcalSteppedSweep():
                  grid_motor=None,
                  initialize_grid_motor=True):
 
+        super().__init__(source_amp_volt, source_offset_volt, source_frequency_hz) # initialize the function generator
+
         # hardware and class initialization
         self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
                                          signal_feedback_or_error='feedback')
-        self.source = Agilent33220A()
+        
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
-        self.init_source(source_amp_volt, source_offset_volt, source_frequency_hz)
         self.grid_motor = self._handle_grid_motor_arg(grid_motor,initialize_grid_motor)
 
         # input parameters
         self.angles = self._handle_angle_arg(angle_deg_list)
         self.num_angles = len(self.angles)
-        self.source_amp_v = source_amp_volt
-        self.source_offset_v = source_offset_volt
-        self.source_freq_hz = source_frequency_hz
         assert num_lockin_periods >=2,'More than 2 periods needed.'
         self.num_lockin_periods = num_lockin_periods
         self._handle_num_points(num_lockin_periods)
         self.waittime_s = 0.1 # time to wait between setting grid angle and acquiring data
-
         self.row_order = self._handle_row_to_state(row_order)
 
     def _handle_grid_motor_arg(self,grid_motor,initialize_grid_motor):
@@ -114,15 +98,6 @@ class PolcalSteppedSweep():
             print('samples_per_period: ',self.samples_per_period)
             print('number of lockin periods: ',self.num_lockin_periods)
             print('number of points',self.num_points)
-
-    def init_source(self, amp, offset, frequency):
-        #self.source.SetFunction(function = 'sine')
-        self.source.SetFunction(function = 'square')
-        self.source.SetLoad('INF')
-        self.source.SetFrequency(frequency)
-        self.source.SetAmplitude(amp)
-        self.source.SetOffset(offset)
-        self.source.SetOutput(outputstate='on')
 
     def get_point(self,window=False):
         return self.sla.getData(minimumNumPoints=self.num_points, window=window,debug=False,num_pts_per_period=self.samples_per_period)
@@ -199,36 +174,28 @@ class PolCalSteppedBeamMap(PolcalSteppedSweep):
             data_list.append(data)
         return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list,extra_info=extra_info)
 
-class BeamMapSingleGridAngle():
+class BeamMapSingleGridAngle(SourceInit):
     ''' 1D cut for a polarized beam map chopping using the IR source. '''
     def __init__(self,xy_position_list, grid_angle,
                  source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
                  num_lockin_periods=5,
                  row_order=None,
-                 doXYinit=True,
+                 home_xy=True,
                  grid_motor=None):
-
-        # store globals
+        
         self.xy_pos_list = xy_position_list
         self.grid_angle = grid_angle 
-        self.source_amp_volt = source_amp_volt
-        self.source_offset_volt = source_offset_volt
-        self.source_frequency_hz = source_frequency_hz
         self.num_lockin_periods= num_lockin_periods
-
         self.x_velocity_mmps = self.y_velocity_mmps = 25 # velocity of xy motion in mm per s
 
-        # initialize instruments: TDM lock-in data acq, XY stage, wire grid motor, function generator, adr_control
+        # initialize instruments: function generator, TDM lock-in data acq, XY stage, wire grid motor, adr_control
+        super().__init__(source_amp_volt, source_offset_volt, source_frequency_hz) # initialize the function generator
         self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
                                          signal_feedback_or_error='feedback')
         self._handle_num_points(num_lockin_periods)
         self.xy = AerotechXY() # initialize XY stage
-        if doXYinit:
-            self.xy.initialize()
-            self.xy.set_wait_mode('MOVEDONE')
+        self.xy.initialize(home=home_xy)
         self.grid_motor = self._handle_grid_motor_arg(grid_motor) #initialize the wire grid polarizer 
-        self.source = Agilent33220A()
-        self.init_source(source_amp_volt,source_offset_volt,source_frequency_hz)
         self.adr_gui_control = AdrGuiControl()
 
     def _handle_grid_motor_arg(self,grid_motor):
@@ -236,15 +203,6 @@ class BeamMapSingleGridAngle():
             return grid_motor
         else:
             return Velmex(doInit=True)
-
-    def init_source(self, amp, offset, frequency):
-        #self.source.SetFunction(function = 'sine')
-        self.source.SetFunction(function = 'square')
-        self.source.SetLoad('INF')
-        self.source.SetFrequency(frequency)
-        self.source.SetAmplitude(amp)
-        self.source.SetOffset(offset)
-        self.source.SetOutput(outputstate='on')
 
     def _handle_num_points(self,num_lockin_periods,verbose=False):
         self.sampling_rate = self.sla.ec.clockMhz*1e6/self.sla.ec.linePeriod/self.sla.ec.nrow # num samples/sec 
@@ -260,33 +218,37 @@ class BeamMapSingleGridAngle():
     def get_point(self,window=False):
         return self.sla.getData(minimumNumPoints=self.num_points, window=window,debug=False,num_pts_per_period=self.samples_per_period)
     
-    def acquire(self, extra_info = {}, window=False):
+    def acquire(self, extra_info = {}, window=False, xy_shutdown_on_complete=False):
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
         self.grid_motor.move_absolute(self.grid_angle,wait=True) # move grid into position.
 
-        iq_v_pos = np.empty((self.num_angles,self.sla.ec.nrow,2))
+        iq_v_pos = np.empty((len(self.xy_pos_list),self.sla.ec.nrow,2))
         for ii, xy_pos in enumerate(self.xy_pos_list): # loop over XY positions
             print('Moving XY stage to position: ',xy_pos)
             self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
-            print('Measuring lock-in signal)
+            print('Doing lock-in measurement')
             iq_arr = self.get_point(window) 
             iq_v_pos[ii,:,:] = iq_arr
         
         post_temp_k = self.adr_gui_control.get_temp_k()
         post_time = time.time()
-        res = PolCalSteppedBeamMapData(xy_position_list=self.xy_position_list,
-                                       iq_v_pos=iq_v_pos,
-                                       grid_angle_deg=self.grid_angle,
-                                       source_amp_volt=self.source_amp_volt,
-                                       source_offset_volt=self.source_offset_volt,
-                                       source_frequency_hz=self.source_frequency_hz,
-                                       pre_temp_k=pre_temp_k,
-                                       post_temp_k=post_temp_k,
-                                       pre_time_epoch_s=pre_time,
-                                       post_time_epoch_s=post_time
-                                       num_lockin_periods=self.num_lockin_periods,
-                                       extra_info=extra_info)
+        res = BeamMapSingleGridAngleData(xy_position_list=self.xy_pos_list,
+                                        iq_v_pos=iq_v_pos,
+                                        grid_angle_deg=self.grid_angle,
+                                        source_amp_volt=self.source_amp_v,
+                                        source_offset_volt=self.source_offset_v,
+                                        source_frequency_hz=self.source_freq_hz,
+                                        pre_temp_k=pre_temp_k,
+                                        post_temp_k=post_temp_k,
+                                        pre_time_epoch_s=pre_time,
+                                        post_time_epoch_s=post_time,
+                                        num_lockin_periods=self.num_lockin_periods,
+                                        extra_info=extra_info)
+        if xy_shutdown_on_complete:
+            xy.shutdown()
+
+        
         return res 
 
 def pol_to_xy_coordinates(xp,yp,theta_deg,pixel_center):
@@ -322,7 +284,7 @@ def test_make_xy_list():
         print(xy)
 
 if __name__ == "__main__":
-    # filename='/data/uber_omt/20230621/polcal_s4pixel_r6c8w0_150ghz_best2.json'
+    # filename='test.json'
     # extra_info = {'exp_setup':'cmbs4 pixel, db=20000, tb=400mK, on-axis after peak-up on signal of 90A'}
     # angles = list(range(0,360,10))
     # pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 5,row_order=[0,2,3,4,5,6],source_frequency_hz=5.0)
@@ -331,15 +293,21 @@ if __name__ == "__main__":
     # pc_data.plot()
 
     pixel_center = [325.3, 310.64] # center of pixel 
-    xp = np.arange(-10,11,5)
-    x,y = pol_to_xy_coordinates(xp,[0]*len(xp),160,pixel_center)
+    xp = np.arange(-50,51,10)
+    grid_angle = 160
+    x,y = pol_to_xy_coordinates(xp,[0]*len(xp),grid_angle,pixel_center)
     xy_position_list=xy_to_list(x,y)
     print(xy_position_list)
-    pcbm = PolCalSteppedBeamMap(xy_position_list, angle_deg_list=[90],
+
+    bm = BeamMapSingleGridAngle(xy_position_list, grid_angle,
+                                source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
+                                num_lockin_periods=5,
                                 row_order=[0,2,3,4,5,6],
-                                doXYinit=False)
-    bm = pcbm.acquire()
-    bm.to_file('test_beammap_write.json')
+                                home_xy=False,
+                                grid_motor=None)
+   
+    res = bm.acquire()
+    res.to_file('test_beammap_write.json',overwrite=True)
 
 
     

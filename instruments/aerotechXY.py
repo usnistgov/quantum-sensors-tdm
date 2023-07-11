@@ -6,6 +6,7 @@ ported to python3 7/2021 from XY.py written JH 10/20/2011
 
 import socket
 import time
+import numpy as np
 
 class AerotechXY(object):
     '''
@@ -53,9 +54,13 @@ class AerotechXY(object):
         self.AsciiCmdNakChar = AsciiCmdNakChar
         self.AsciiCmdFaultChar = AsciiCmdFaultChar
         self.AsciiCmdTimeoutChar = AsciiCmdTimeoutChar
+        self.pause_after_motion_stop = 0.1
+        self.post_command_sleep = 0.1
+        self.home_speed_mmps=20
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__connect__()
+        
 
     def __connect__(self):
         self.client_socket.connect((self.motor_controller_IP, self.motor_controller_port))
@@ -63,7 +68,7 @@ class AerotechXY(object):
     def __SendStr__(self,string):
         foo = string+self.AsciiCmdEOSChar
         answer = self.client_socket.send(foo.encode())
-        return answer
+        time.sleep(self.post_command_sleep)
 
     def close_connection(self):
         self.client_socket.close()
@@ -77,15 +82,11 @@ class AerotechXY(object):
         self.__SendStr__('WAIT MOVEDONE')
         self.__SendStr__(CMD2)
 
-    def azimuth_scan(self,xi,xf,yi,yf,v,sleeptime=.1):
+    def azimuth_scan(self,xi,xf,yi,yf,v):
         self.move_absolute(xi,yi, v, v,True)
-        time.sleep(sleeptime)
         self.__SendStr__('WAIT INPOS X Y')
-        time.sleep(sleeptime)
         self.move_absolute(xf,yf,v,v,True)
-        time.sleep(sleeptime)
         self.__SendStr__('WAIT INPOS X Y')
-        time.sleep(sleeptime)
         self.move_absolute(xi,yi, v, v, True)
         #time.sleep(sleeptime)
         #self.__SendStr__('WAIT INPOS X Y')
@@ -120,31 +121,25 @@ class AerotechXY(object):
             self.__SendStr__('DISABLE X')
             self.__SendStr__('DISABLE Y')
 
-    def set_wait_mode(mode='MOVEDONE'):
+    def set_wait_mode(self,mode='MOVEDONE'):
         assert mode in ['MOVEDONE','NOWAIT','INPOS'], 'mode must be MOVEDONE,NOWAIT,or INPOS'
-        self.__SendStr('WAIT MODE '+mode)
+        self.__SendStr__('WAIT MODE '+mode)
 
     def initialize(self,home=True):
         print('initializing the XY stage.')
+        self.set_wait_mode(mode='MOVEDONE')
         self.enable_axis('X')
-        time.sleep(1)
         self.enable_axis('Y')
-        time.sleep(1)
         if home:
             print('Homing X and Y')
             self.home('both')
 
     def shutdown(self):
         print('Shutting down the XY stage.  Homing X and Y...')
-        self.home('X')
-        time.sleep(10)
-        self.home('Y')
-        time.sleep(10)
+        self.home('both')
         print('Disabling the axes and closing communications')
         self.disable_axis('X')
-        time.sleep(1)
         self.disable_axis('Y')
-        time.sleep(1)
         self.close_connection()
         print('shutdown complete')
 
@@ -160,39 +155,62 @@ class AerotechXY(object):
         elif axis=='both':
             self.__SendStr__('HOME X')
             self.__SendStr__('HOME Y')
+        x,y=self.get_position()
+        t=np.max([x,y])/self.home_speed_mmps
+        time.sleep(t+self.pause_after_motion_stop)
 
-    def move_incremental(self,x_displacement,y_displacement,x_velocity=25,y_velocity=25,verbose=False):
+    def move_incremental(self,dx,dy,vx_mmps=25,vy_mmps=25,verbose=False,wait=True):
         ''' Incremental movement '''
-        if x_displacement==None:
-            string='MOVEINC Y'+str(y_displacement)+' F'+str(y_velocity)
-        elif y_displacement==None:
-            string='MOVEINC X'+str(x_displacement)+' F'+str(x_velocity)
-        else:
-            string='MOVEINC X'+str(x_displacement)+' F'+str(x_velocity)+' Y'+str(y_displacement)+' F'+str(y_velocity)
-
+        # if dx is None:
+        #     string='MOVEINC Y'+str(dy)+' F'+str(vy_mmps)
+        # elif dy is None:
+        #     string='MOVEINC X'+str(dx)+' F'+str(vx_mmps)
+        # else:
+        #     string='MOVEINC X'+str(dx)+' F'+str(vx_mmps)+' Y'+str(dy)+' F'+str(vy_mmps)
+        string='MOVEINC X'+str(dx)+' F'+str(vx_mmps)+' Y'+str(dy)+' F'+str(vy_mmps)
         if verbose:
             print('sending following string to ensemble: ',string)
         self.__SendStr__(string)
+        if wait:
+            t=np.max([abs(dx)/vx_mmps,abs(dy)/vy_mmps])
+            time.sleep(t+self.pause_after_motion_stop)        
 
-    def move_absolute(self,x_displacement,y_displacement,x_velocity=25,y_velocity=25,verbose=False):
+    def move_absolute(self,x,y,vx_mmps=25,vy_mmps=25,verbose=False,wait=True):
         ''' Absolute movement '''
-        if x_displacement==None:
-            string='MOVEABS Y'+str(y_displacement)+' F'+str(y_velocity)
-        elif y_displacement==None:
-            string='MOVEABS X'+str(x_displacement)+' F'+str(x_velocity)
-        else:
-            string='MOVEABS X'+str(x_displacement)+' F'+str(x_velocity)+' Y'+str(y_displacement)+' F'+str(y_velocity)
-
+        # if x==None:
+        #     string='MOVEABS Y'+str(y)+' F'+str(vy_mmps)
+        # elif y==None:
+        #     string='MOVEABS X'+str(x)+' F'+str(vx_mmps)
+        # else:
+        #     string='MOVEABS X'+str(x)+' F'+str(x)+' Y'+str(vy_mmps)+' F'+str(vx_mmps)
+        assert np.logical_and(x<=400,x>=0),'Postion out of range.  X limits 0--400'
+        assert np.logical_and(y<=400,y>=0),'Postion out of range.  Y limits 0--400'
+        
+        string='MOVEABS X'+str(x)+' F'+str(vx_mmps)+' Y'+str(y)+' F'+str(vy_mmps)
         if verbose:
             print('sending following string to ensemble: ',string)
         self.__SendStr__(string)
-
-    def get_position(self,sleeptime=.01):
+        if wait:
+            x0,y0=self.get_position()
+            t=np.max([abs(x-x0)/vx_mmps,abs(y-y0)/vy_mmps])
+            time.sleep(t+self.pause_after_motion_stop)
+        
+    def get_position(self):
         #self.client_socket.recv(1000) # clear the current buffer of returns from the controller
         x=self.__SendStr__('PFBK X')
-        time.sleep(sleeptime)
         y=self.__SendStr__('PFBK Y')
-        time.sleep(sleeptime)
         ret_string = self.client_socket.recv(1000)
+        #print(ret_string.decode())
         xy_raw = self.parse_return(ret_string.decode())[-3:-1]
         return float(xy_raw[0].split('%')[-1]),float(xy_raw[1].split('%')[-1])
+
+if __name__ == "__main__":
+    xy = AerotechXY()
+    print(xy.get_position())
+    xy.initialize(home=False)
+    print('moving to 100,0')
+    xy.move_absolute(x=100,y=0,vx_mmps=10)
+    print('I ought to be finished moving now')
+    # time.sleep(3)
+    # xy.shutdown()
+    

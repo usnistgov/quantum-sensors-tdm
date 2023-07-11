@@ -320,7 +320,7 @@ class Velmex(serial_instrument.SerialInstrument):
         self.write(self._cmdstr_move_rel(angle_deg,self.index_per_second,self.motor_id))
         if wait: self._wait_for_move_to_complete(angle_deg)
 
-    def move_absolute(self,angle_deg,wait=False):
+    def move_absolute(self,angle_deg,wait=True):
         '''
         Index the motor to absolute angle angle_deg.
         '''
