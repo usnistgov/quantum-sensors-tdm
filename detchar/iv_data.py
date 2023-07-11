@@ -342,9 +342,9 @@ class PolCalSteppedSweepData(DataIO):
         for ii,row_list in enumerate(rows_per_figure):
             fig,ax = plt.subplots(3,num=ii)
             for row in row_list:
-                ax[0].plot(self.angle_deg_meas,self.iq_v_angle[:,row,0],'o-',label=row)
-                ax[1].plot(self.angle_deg_meas,self.iq_v_angle[:,row,1],'o-',label=row)
-                ax[2].plot(self.angle_deg_meas,np.sqrt(self.iq_v_angle[:,row,0]**2+self.iq_v_angle[:,ii,1]**2),'o-',label=row)
+                ax[0].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,0],'o-',label=row)
+                ax[1].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,1],'o-',label=row)
+                ax[2].plot(self.angle_deg_meas,np.sqrt(np.array(self.iq_v_angle)[:,row,0]**2+np.array(self.iq_v_angle)[:,row,1]**2),'o-',label=row)
             ax[0].set_ylabel('I (DAC)')
             ax[1].set_ylabel('Q (DAC)')
             ax[2].set_ylabel('Amplitude (DAC)')
@@ -353,11 +353,47 @@ class PolCalSteppedSweepData(DataIO):
             ax[0].set_title('Column %d, Group %d'%(self.column_number,ii))
         plt.show()
 
+    def fit_row_index(self,row_index,plot=True,fig=None,ax=None):
+        ''' fit response versus pol angle to a sine wave '''
+        data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)
+        fit_func = lambda x: x[0]*np.sin(x[1]*np.array(self.angle_deg_meas)+x[2]) + x[3]
+        optimize_func = lambda x: fit_func(x) - data
+        est_amp, est_freq, est_phase, est_offset = leastsq(optimize_func, [np.max(data)/2, 2*np.pi/180, 0, np.max(data)/2])[0]
+        depol = (est_offset-abs(est_amp))/(abs(est_amp)+est_offset)
+        print('Polarization isolation = ',1-depol)
+        if plot:
+            if np.logical_and(fig is None,ax is None):
+                fig,ax = plt.subplots(1,1)
+                fig.suptitle('Row%02d, index=%d'%(self.row_order[row_index],row_index))
+            ax.plot(self.angle_deg_meas,data,'o')
+            ax.plot(self.angle_deg_meas,fit_func([est_amp,est_freq,est_phase,est_offset]),'k--')
+            ax.set_xlabel('Polarization Angle (deg)')
+            ax.set_ylabel('Response (arb)')
+        return est_amp,est_freq,est_phase,est_offset,[fig,ax]
+
+
 @dataclass_json
 @dataclass
 class PolCalSteppedBeamMapData(DataIO):
     xy_position_list: List[Any]
+    iq_v_angle: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
+    grid_angle_deg: float 
+    source_amp_volt: float
+    source_offset_volt: float
+    source_frequency_hz: float
+    pre_temp_k: float
+    post_temp_k: float
+    pre_time_epoch_s: float
+    post_time_epoch_s: float
+    num_lockin_periods: int 
+    extra_info: dict
+
+@dataclass_json
+@dataclass
+class BeamMapSingleGridAngleData(DataIO):
+    xy_position_list: List[Any]
     data: List[PolCalSteppedSweepData]
+    extra_info: dict
 
 ### complex impedance / responsivity data classes ------------------------------------------
 

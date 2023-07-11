@@ -21,17 +21,22 @@ class AerotechXY(object):
 
     For this to work, the following setup is needed:
 
-    --- Controller ---
+    --- Controller --- (note may need to "connect" then hit "retrieve parameters" icon on top toolbare)
     1) In Parameters->Controller->Communication change the following parameters:
         AsciiCmdEnable, enable Ethernet Socket 1
     2) In Parameters->Controller->Communication->Ethernet->Sockets change the following:
         InetSock1Port to 8000
         InetSock1Flags to TCP server
     3) AsciiCmdEnable must be set to true
+
+    To view current Aerotech connection settings:
+    On windows box from within Ensemble IDE (XY stage motio control icon on desktop):
+    Tools -> Configuration Manager -> click Entire Network "Ensemble" to view  
+
     '''
 
 #'132.163.82.11'
-    def __init__(self, motor_controller_IP='192.168.0.11', motor_controller_port=8000,
+    def __init__(self, motor_controller_IP='192.168.30.100', motor_controller_port=8000,
                  AsciiCmdEOSChar='\n', AsciiCmdAckChar='%',
                  AsciiCmdNakChar='!',AsciiCmdFaultChar='#',
                  AsciiCmdTimeoutChar='$'):
@@ -56,7 +61,8 @@ class AerotechXY(object):
         self.client_socket.connect((self.motor_controller_IP, self.motor_controller_port))
 
     def __SendStr__(self,string):
-        answer = self.client_socket.send(string+' '+self.AsciiCmdEOSChar)
+        foo = string+self.AsciiCmdEOSChar
+        answer = self.client_socket.send(foo.encode())
         return answer
 
     def close_connection(self):
@@ -114,18 +120,19 @@ class AerotechXY(object):
             self.__SendStr__('DISABLE X')
             self.__SendStr__('DISABLE Y')
 
-    def initialize(self):
+    def set_wait_mode(mode='MOVEDONE'):
+        assert mode in ['MOVEDONE','NOWAIT','INPOS'], 'mode must be MOVEDONE,NOWAIT,or INPOS'
+        self.__SendStr('WAIT MODE '+mode)
+
+    def initialize(self,home=True):
         print('initializing the XY stage.')
         self.enable_axis('X')
         time.sleep(1)
         self.enable_axis('Y')
         time.sleep(1)
-        print('Homing X and Y')
-        self.home('X')
-        time.sleep(10)
-        self.home('Y')
-        time.sleep(10)
-        print('done')
+        if home:
+            print('Homing X and Y')
+            self.home('both')
 
     def shutdown(self):
         print('Shutting down the XY stage.  Homing X and Y...')
@@ -187,5 +194,5 @@ class AerotechXY(object):
         y=self.__SendStr__('PFBK Y')
         time.sleep(sleeptime)
         ret_string = self.client_socket.recv(1000)
-        xy_raw = self.parse_return(ret_string)[-3:-1]
+        xy_raw = self.parse_return(ret_string.decode())[-3:-1]
         return float(xy_raw[0].split('%')[-1]),float(xy_raw[1].split('%')[-1])

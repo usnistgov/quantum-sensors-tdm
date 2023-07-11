@@ -412,7 +412,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         The references comes from another dfb card input
     '''
     def __init__(self, easy_client=None, signal_column_index=0,reference_column_index=1,
-                 signal_feedback_or_error='feedback',num_pts_per_period=None):
+                 signal_feedback_or_error='feedback'):
         '''
         input:
         easy_client: instance of easyClient
@@ -420,7 +420,6 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         reference_column_index: column index in EasyClient.getNewData return which corresponds to the reference
         signal_feedback_or_error: 'feedback' or 'error', defines which vector describes the signal.
                                   Typical use case is 'feedback', which is default.
-        num_pts_per_period: <int> or if None determined from data.
         '''
         # constant globals
         self.ref_pp_min = 100
@@ -472,7 +471,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
     #         num_pts = self.get_num_points_per_period_squarewave(arr,debug=False)
     #     return num_pts
 
-    def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None,retries=10):
+    def getData(self, minimumNumPoints=390000, window=False,debug=False,num_pts_per_period=None):
         '''
         Acquire data and return the locked in signal for each row in one column of data.
 
@@ -483,34 +482,14 @@ class SoftwareLockinAcquire(SoftwareLockIn):
 
         output: iq_arr, n_row x 2 numpy.array of I and Q
         '''
-        assert minimumNumPoints < 390001, 'minimumNumPoints > 390,000 has been shown to crash the easy client.'
-
-        #dataOut[col,row,frame,error=0/fb=1]
-        #dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = num_periods*self.num_pts_per_period, exactNumPoints = False, retries = 100)
-
-        # 5/2023 easy client getNewData fails often due to dropped packets (when needing to collect multiple packets)
-        # Here is an attempt to recover from this error, by trying again 
-        ii = 0
-        while ii < retries:
-            dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True, retries = 100)
-            if isinstance(dataOut, (np.ndarray, np.generic)):
-                break
-            else: 
-                print('easy_client getNewData(minimumNumPoints = %d) failed on attempt number %d'%(minimumNumPoints,ii))
-                time.sleep(.1)
-                ii+=1 
-                continue 
-        
-        if ii==retries:
-            raise Exception('getData failed, likely due to dropped packets')
-
+        dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True) # dataOut[col,row,frame,error=0/fb=1]
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
             iq_arr[ii,:] = np.array(self.lockin_func(dataOut[self.sig_col_index,ii,:,self.sig_index],dataOut[self.ref_col_index,ii,:,0],
                                                 window=window,integer_periods=True,num_pts_per_period=num_pts_per_period,debug=False))
 
         if debug:
-            for ii in range(self.ec.numRows):
+            for ii in [2]:#range(self.ec.numRows):
                 ref_amp = self.get_amplitude_of_squarewave(dataOut[self.ref_col_index,ii,:,0],debug=False)
                 #ref_amp = self.get_amplitude_of_sinusoid(dataOut[reference_column_index,ii,:,0],nbins=2,debug=True)
                 sig_amp = self.get_amplitude_of_sinusoid(dataOut[self.sig_col_index,ii,:,self.sig_index],nbins=2,debug=False)
@@ -518,11 +497,20 @@ class SoftwareLockinAcquire(SoftwareLockIn):
                 print('Row index %02d: (I, Q) = (%.3e,%.3e)'%(ii,iq_arr[ii,0],iq_arr[ii,1]))
                 print('lock-in amplitude: ',lock_in_amp,'\nsignal amplitude: ',sig_amp, '\nref_amp: ',ref_amp)
 
-                plt.figure(ii)
-                plt.title('Row index = %02d'%ii)
-                plt.plot(dataOut[self.sig_col_index,ii,:,self.sig_index]-np.mean(dataOut[self.sig_col_index,ii,:,self.sig_index]),label='signal')
-                plt.plot(dataOut[self.ref_col_index,ii,:,0]-np.mean(dataOut[self.ref_col_index,ii,:,0]),label='reference')
-                plt.legend()
+                ref = dataOut[self.ref_col_index,ii,:,0] 
+                ref_ac = ref - np.mean(ref)
+                sig = dataOut[self.sig_col_index,ii,:,self.sig_index]
+                sig_ac = sig - np.mean(sig) 
+
+                fig,ax = plt.subplots(2,1)
+                fig.suptitle('Row index = %02d'%ii)
+                ax[0].plot(sig,label='signal')
+                ax[0].plot(ref,label='reference (0-4095,1V)')
+                ax[0].set_ylabel('raw counts')
+                ax[0].legend()
+                ax[1].plot(sig_ac,label='signal')
+                ax[1].plot(ref_ac/np.max(ref_ac)*np.max(sig_ac),label='reference')
+                ax[1].set_xlabel('sample #')
                 plt.show()
         return iq_arr
 
@@ -715,4 +703,7 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sla.getData(minimumNumPoints=10000, window=True,debug=True)
+    sampling_rate = int(125e6/128/6) # number of samples per second
+    f = 5 # Hz 
+    samples_per_period = int(sampling_rate/f)
+    sla.getData(minimumNumPoints=20*samples_per_period, window=False,debug=True,num_pts_per_period=None)

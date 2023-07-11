@@ -484,12 +484,12 @@ class IVCurveColumnDataExplore(IVCommon):
     def plot_raw_allrow(self):
         self.data.plot()
 
-    def plot_vipr_for_row(self,row=None,fig_num=1,figtitle=None):
+    def plot_vipr_for_row(self,row=None,fignum=1,figtitle=None):
         ''' row can be list of rows or an integer.  If None, plot them all '''
         self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
 
-    def plot_iv(self, fig_num=1):
-        fig = plt.figure(fig_num)
+    def plot_iv(self, fignum=1):
+        fig = plt.figure(fignum)
         for ii in range(self.n_rows):
             plt.plot(self.v[:,ii],self.i[:,ii],label='%02d'%ii)
         plt.xlabel(self.labels['iv']['x'])
@@ -497,8 +497,8 @@ class IVCurveColumnDataExplore(IVCommon):
         plt.legend(loc='upper right')
         return fig
 
-    def plot_responsivity(self,fig_num=1):
-        fig = plt.figure(fig_num)
+    def plot_responsivity(self,fignum=1):
+        fig = plt.figure(fignum)
         v,r = self.get_responsivity()
         #for ii in range(self.n_rows):
         plt.plot(v,r)
@@ -537,8 +537,8 @@ class IVSetAnalyzeRow(IVCommon):
             figtitle: title of figure
         '''
         # options
-        self.n_normal_pts = 50
-        self.use_ave_offset = True
+        self.n_normal_pts = 10
+        self.use_ave_offset = False
         #self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
         #self.vipr_scaling = [1e6,1e6,1e12,1e3]
 
@@ -558,9 +558,9 @@ class IVSetAnalyzeRow(IVCommon):
         #self.v,self.i,self.p,self.r,ro = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=0.5)
         #self.ro = self.r / self.r[0,:]
 
-    def power_difference_analysis(self,fig_num=1):
+    def power_difference_analysis(self,fignum=1):
 
-        fig,ax = plt.subplots(2,num=fig_num)#,figsize=(45,5))
+        fig,ax = plt.subplots(2,num=fignum)#,figsize=(45,5))
         for ii in range(self.num_sweeps):
             ax[0].plot(self.r[:,ii]*1000,self.p[:,ii]*1e12,label=ii)
 
@@ -594,8 +594,8 @@ class IVSetAnalyzeRow(IVCommon):
 
         return y
 
-    def plot_raw(self,fig_num=1):
-        figXX = plt.figure(fig_num)
+    def plot_raw(self,fignum=1):
+        figXX = plt.figure(fignum)
         for ii in range(self.num_sweeps):
             plt.plot(self.dacs, self.fb_raw[:,ii])
         #plt.plot(self.dacs,self.fb_raw)
@@ -640,8 +640,8 @@ class IVSetAnalyzeColumn():
     def plot_row(self,row_index,to_physical_units=True):
         dac, fb = self.get_data_for_row(row_index)
         iv_set = IVSetAnalyzeRow(dac,fb,state_list=self.state_list,iv_circuit=self.iv_circuit,figtitle='Row%02d'%row_index)
-        iv_set.plot_raw(fig_num=1)
-        iv_set.plot_vipr(fig_num=2)
+        iv_set.plot_raw(fignum=1)
+        iv_set.plot_vipr(fignum=2)
         plt.show()
 
 class IVversusADRTempOneRow(IVSetAnalyzeRow):
@@ -701,11 +701,11 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
     #         result[:,ii] = YY
     #     return result
 
-    def plot_pr(self,fig_num=1):
+    def plot_pr(self,fignum=1):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
         # FIG1: P versus R/Rn
-        fig = plt.figure(fig_num)
+        fig = plt.figure(fignum)
         plt.plot(self.ro_clean, self.p_clean,'-') # plots for all Tbath
         plt.plot(self.rn_fracs,self.p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
@@ -722,9 +722,9 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         #plt.title(self.figtitle)
         return fig
 
-    def plot_pt(self,fig_num=2,include_fits=True):
+    def plot_pt(self,fignum=2,include_fits=True):
         # power plateau (evaluated at each rn_frac) versus T_cl
-        fig = plt.figure(fig_num)
+        fig = plt.figure(fignum)
         llabels=[]
         temp_arr = np.linspace(np.min(self.temp_list_k),np.max(self.temp_list_k),100)
         for ii in range(self.num_rn_fracs):
@@ -1683,11 +1683,50 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
     # plot
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(fignum=2)
-    iv_tsweep.plot_pr(fig_num=3)
-    iv_tsweep.plot_pt(fig_num=4)
+    iv_tsweep.plot_pr(fignum=3)
+    iv_tsweep.plot_pt(fignum=4)
     iv_tsweep.plot_fits(fignum=5)
     print(iv_tsweep.pfits[0])
     plt.show()
+
+def iv_chop(file1,file2,row_index,temp_indices=[0,0],state_list=None,iv_circuit=None):
+    ''' file 1 - file 2 '''
+    iv1=IVTempSweepData.from_file(file1)
+    iv2=IVTempSweepData.from_file(file2)
+    if iv_circuit is None: iv_circuit=iv_circuit_from_file(iv1)
+    ivchop = IVSetAnalyzeColumn([iv1.data[temp_indices[0]],iv2.data[temp_indices[1]]],state_list=state_list,iv_circuit=iv_circuit) #instance of IVSetAnalyzeColumn
+    ivchop.plot_row(row_index,to_physical_units=True)
+
+def iv_circuit_from_file(iv_temp_sweep_data):
+    if type(iv_temp_sweep_data) is str:
+        df = IVTempSweepData.from_file(filename) # df = "data frame"
+    else:
+        df = iv_temp_sweep_data 
+    cfg = df.data[0].extra_info['config']
+    cal = cfg['calnums']
+    rfb_ohm = cal['rfb']+50.0
+    rbias_ohm = cal['rbias']
+    rsh_ohm = cal['rjnoise']
+    mr = cal['mr']
+    vfb_gain = cal['vfb_gain']/(2**14-1)
+    source = cfg['voltage_bias']['source']
+
+    if source == 'tower':
+        vb_max = 2.5
+    elif source == 'bluebox':
+        vb_max=6.5
+    else:
+        assert False, 'What is the maximum voltage of your detector voltage bias source?  I need to know to calibrate to physical units'
+
+    iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
+                           rbias_ohm=rbias_ohm,
+                           rsh_ohm=rsh_ohm,
+                           rx_ohm=0,
+                           m_ratio=mr,
+                           vfb_gain=vfb_gain,
+                           vbias_gain=vb_max/(2**16-1))
+    return iv_circuit
+    
 
 if __name__ == "__main__":
     fname = '/Users/hubmayr/tmp/20230609/uber_omt_ColumnA_ivs_20230613_1686672234.json'

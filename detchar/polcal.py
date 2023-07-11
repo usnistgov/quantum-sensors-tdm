@@ -55,21 +55,18 @@ def test_for_signal(N_lockins=5):
 
     plt.show()
     
-        
-    
-
 class PolcalSteppedSweep():
     ''' Acquire polcal at stepped, fixed absolute angles '''
     def __init__(self, angle_deg_list,
                  source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5.0,
-                 num_lockin_periods = 10,
+                 num_lockin_periods = 5,
                  row_order=None,
                  grid_motor=None,
                  initialize_grid_motor=True):
 
         # hardware and class initialization
         self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
-                                         signal_feedback_or_error='feedback',num_pts_per_period=None)
+                                         signal_feedback_or_error='feedback')
         self.source = Agilent33220A()
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
         self.init_source(source_amp_volt, source_offset_volt, source_frequency_hz)
@@ -81,7 +78,9 @@ class PolcalSteppedSweep():
         self.source_amp_v = source_amp_volt
         self.source_offset_v = source_offset_volt
         self.source_freq_hz = source_frequency_hz
+        assert num_lockin_periods >=2,'More than 2 periods needed.'
         self.num_lockin_periods = num_lockin_periods
+        self._handle_num_points(num_lockin_periods)
         self.waittime_s = 0.1 # time to wait between setting grid angle and acquiring data
 
         self.row_order = self._handle_row_to_state(row_order)
@@ -105,6 +104,17 @@ class PolcalSteppedSweep():
             self.grid_motor.check_angle_safe(angle) # ensure IR source wires not over-twisted
         return self.grid_motor.angle_list_to_stepper_resolution(angle_deg_list)
 
+    def _handle_num_points(self,num_lockin_periods,verbose=False):
+        self.sampling_rate = self.sla.ec.clockMhz*1e6/self.sla.ec.linePeriod/self.sla.ec.nrow # num samples/sec 
+        self.samples_per_period = int(self.sampling_rate/self.source_freq_hz)  
+        self.num_points = self.samples_per_period*self.num_lockin_periods
+        if verbose:
+            print('sampling rate (1/s) :', self.sampling_rate)
+            print('Source frequency: ',self.source_freq_hz)
+            print('samples_per_period: ',self.samples_per_period)
+            print('number of lockin periods: ',self.num_lockin_periods)
+            print('number of points',self.num_points)
+
     def init_source(self, amp, offset, frequency):
         #self.source.SetFunction(function = 'sine')
         self.source.SetFunction(function = 'square')
@@ -115,9 +125,13 @@ class PolcalSteppedSweep():
         self.source.SetOutput(outputstate='on')
 
     def get_point(self,window=False):
-        return self.sla.getData(num_periods=self.num_lockin_periods, window=window,debug=False)
+        return self.sla.getData(minimumNumPoints=self.num_points, window=window,debug=False,num_pts_per_period=self.samples_per_period)
 
-    def get_polcal(self, extra_info = {}, move_to_zero_at_end = True, turn_off_source_on_end = True):
+    def get_polcal(self, extra_info = {}, move_to_zero_at_end = True, turn_off_source_on_end = True, source_on=True):
+        if source_on:
+            self.source.SetOutput(outputstate='on')
+        else:
+            self.source.SetOutput(outputstate='off')
         pre_time = time.time()
         pre_temp_k = self.adr_gui_control.get_temp_k()
 
@@ -160,7 +174,7 @@ class PolCalSteppedBeamMap(PolcalSteppedSweep):
     ''' Acquire PolcalSteppedSweep for x,y positions '''
     def __init__(self,xy_position_list, angle_deg_list,
                  source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
-                 num_lockin_periods=10,
+                 num_lockin_periods=5,
                  row_order=None,
                  doXYinit=True):
 
@@ -173,20 +187,159 @@ class PolCalSteppedBeamMap(PolcalSteppedSweep):
         self.xy = AerotechXY() #
         if doXYinit:
             self.xy.initialize()
+            self.xy.set_wait_mode('MOVEDONE')
 
     def acquire(self, extra_info = {}):
         data_list = []
         for ii, xy_pos in enumerate(self.xy_pos_list):
+            print('Moving XY stage to position: ',xy_pos)
             self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
-            data_list.append(self.get_polcal(extra_info = extra_info,move_to_zero_at_end = False))
-        return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list)
+            print('Acquiring response versus polarization angle')
+            data = self.get_polcal(extra_info = extra_info, move_to_zero_at_end = False, turn_off_source_on_end = False, source_on=True)
+            data_list.append(data)
+        return PolCalSteppedBeamMapData(xy_position_list = self.xy_pos_list, data=data_list,extra_info=extra_info)
+
+class BeamMapSingleGridAngle():
+    ''' 1D cut for a polarized beam map chopping using the IR source. '''
+    def __init__(self,xy_position_list, grid_angle,
+                 source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
+                 num_lockin_periods=5,
+                 row_order=None,
+                 doXYinit=True,
+                 grid_motor=None):
+
+        # store globals
+        self.xy_pos_list = xy_position_list
+        self.grid_angle = grid_angle 
+        self.source_amp_volt = source_amp_volt
+        self.source_offset_volt = source_offset_volt
+        self.source_frequency_hz = source_frequency_hz
+        self.num_lockin_periods= num_lockin_periods
+
+        self.x_velocity_mmps = self.y_velocity_mmps = 25 # velocity of xy motion in mm per s
+
+        # initialize instruments: TDM lock-in data acq, XY stage, wire grid motor, function generator, adr_control
+        self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=0,reference_column_index=1,
+                                         signal_feedback_or_error='feedback')
+        self._handle_num_points(num_lockin_periods)
+        self.xy = AerotechXY() # initialize XY stage
+        if doXYinit:
+            self.xy.initialize()
+            self.xy.set_wait_mode('MOVEDONE')
+        self.grid_motor = self._handle_grid_motor_arg(grid_motor) #initialize the wire grid polarizer 
+        self.source = Agilent33220A()
+        self.init_source(source_amp_volt,source_offset_volt,source_frequency_hz)
+        self.adr_gui_control = AdrGuiControl()
+
+    def _handle_grid_motor_arg(self,grid_motor):
+        if grid_motor is not None:
+            return grid_motor
+        else:
+            return Velmex(doInit=True)
+
+    def init_source(self, amp, offset, frequency):
+        #self.source.SetFunction(function = 'sine')
+        self.source.SetFunction(function = 'square')
+        self.source.SetLoad('INF')
+        self.source.SetFrequency(frequency)
+        self.source.SetAmplitude(amp)
+        self.source.SetOffset(offset)
+        self.source.SetOutput(outputstate='on')
+
+    def _handle_num_points(self,num_lockin_periods,verbose=False):
+        self.sampling_rate = self.sla.ec.clockMhz*1e6/self.sla.ec.linePeriod/self.sla.ec.nrow # num samples/sec 
+        self.samples_per_period = int(self.sampling_rate/self.source_freq_hz)  
+        self.num_points = self.samples_per_period*self.num_lockin_periods
+        if verbose:
+            print('sampling rate (1/s) :', self.sampling_rate)
+            print('Source frequency: ',self.source_freq_hz)
+            print('samples_per_period: ',self.samples_per_period)
+            print('number of lockin periods: ',self.num_lockin_periods)
+            print('number of points',self.num_points)
+
+    def get_point(self,window=False):
+        return self.sla.getData(minimumNumPoints=self.num_points, window=window,debug=False,num_pts_per_period=self.samples_per_period)
+    
+    def acquire(self, extra_info = {}, window=False):
+        pre_time = time.time()
+        pre_temp_k = self.adr_gui_control.get_temp_k()
+        self.grid_motor.move_absolute(self.grid_angle,wait=True) # move grid into position.
+
+        iq_v_pos = np.empty((self.num_angles,self.sla.ec.nrow,2))
+        for ii, xy_pos in enumerate(self.xy_pos_list): # loop over XY positions
+            print('Moving XY stage to position: ',xy_pos)
+            self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
+            print('Measuring lock-in signal)
+            iq_arr = self.get_point(window) 
+            iq_v_pos[ii,:,:] = iq_arr
+        
+        post_temp_k = self.adr_gui_control.get_temp_k()
+        post_time = time.time()
+        res = PolCalSteppedBeamMapData(xy_position_list=self.xy_position_list,
+                                       iq_v_pos=iq_v_pos,
+                                       grid_angle_deg=self.grid_angle,
+                                       source_amp_volt=self.source_amp_volt,
+                                       source_offset_volt=self.source_offset_volt,
+                                       source_frequency_hz=self.source_frequency_hz,
+                                       pre_temp_k=pre_temp_k,
+                                       post_temp_k=post_temp_k,
+                                       pre_time_epoch_s=pre_time,
+                                       post_time_epoch_s=post_time
+                                       num_lockin_periods=self.num_lockin_periods,
+                                       extra_info=extra_info)
+        return res 
+
+def pol_to_xy_coordinates(xp,yp,theta_deg,pixel_center):
+    ''' xp,yp: 1D array like of same length listing coordinates in detector polarization frame 
+        theta_deg: the angle in degrees between the detector polarization axis and the x-axis of the XY stage 
+        pixel_center = (Xo,Yo), location of pixel center in XY stage coordiante system
+    '''
+    assert len(xp)==len(yp), 'xp and yp must be the same length'
+    c,s = np.cos(theta_deg*np.pi/180), np.sin(theta_deg*np.pi/180)
+    R = np.array(((c,s),(-s,c)))
+    x=[]; y=[]
+    for ii in range(len(xp)): # this for loop isn't needed, but I'm too stupid to figure it out right now.
+        xi,yi = np.matmul(R,np.array([[xp[ii]],[yp[ii]]]))
+        x.append(xi[0]+pixel_center[0])
+        y.append(yi[0]+pixel_center[1])
+    return x,y
+
+def xy_to_list(x,y):
+    assert len(x)==len(y), 'x and y must be of same length'
+    xy_list = []
+    for ii in range(len(x)):
+        xy_list.append([x[ii],y[ii]])
+    return xy_list
+
+def test_make_xy_list():
+    xp=[-5,-4,-3,-2,-1,0,1,2,3,4,5]
+    yp=[0]*11
+    theta_deg=160
+    pixel_center = [326.4663, 306.12]
+    x,y = pol_to_xy_coordinates(xp,yp,theta_deg,pixel_center)
+    xy_list = xy_to_list(x,y)
+    for xy in xy_list:
+        print(xy)
 
 if __name__ == "__main__":
-    angles = list(range(0,360,10))
-    #angles = [50,40,-40,20,110]
-    pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 10)
-    pc_data = pcss.get_polcal()
-    pc_data.to_file('test_polcal_data',overwrite=True)
-    pc_data.plot()
+    # filename='/data/uber_omt/20230621/polcal_s4pixel_r6c8w0_150ghz_best2.json'
+    # extra_info = {'exp_setup':'cmbs4 pixel, db=20000, tb=400mK, on-axis after peak-up on signal of 90A'}
+    # angles = list(range(0,360,10))
+    # pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 5,row_order=[0,2,3,4,5,6],source_frequency_hz=5.0)
+    # pc_data = pcss.get_polcal(extra_info=extra_info,source_on=True)
+    # pc_data.to_file(filename,overwrite=False)
+    # pc_data.plot()
 
-    #test_for_signal()
+    pixel_center = [325.3, 310.64] # center of pixel 
+    xp = np.arange(-10,11,5)
+    x,y = pol_to_xy_coordinates(xp,[0]*len(xp),160,pixel_center)
+    xy_position_list=xy_to_list(x,y)
+    print(xy_position_list)
+    pcbm = PolCalSteppedBeamMap(xy_position_list, angle_deg_list=[90],
+                                row_order=[0,2,3,4,5,6],
+                                doXYinit=False)
+    bm = pcbm.acquire()
+    bm.to_file('test_beammap_write.json')
+
+
+    
