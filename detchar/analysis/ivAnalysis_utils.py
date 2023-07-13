@@ -1726,7 +1726,33 @@ def iv_circuit_from_file(iv_temp_sweep_data):
                            vfb_gain=vfb_gain,
                            vbias_gain=vb_max/(2**16-1))
     return iv_circuit
-    
+
+def make_iv_circuit(extra_info):
+    assert 'config' in list(extra_info.keys()), 'no configuration file found'
+    cfg = extra_info['config']
+    cal = cfg['calnums']
+    rfb_ohm = cal['rfb']+50.0
+    rbias_ohm = cal['rbias']
+    rsh_ohm = cal['rjnoise']
+    mr = cal['mr']
+    vfb_gain = cal['vfb_gain']/(2**14-1)
+    source = cfg['voltage_bias']['source']
+    if source == 'tower':
+        vb_max = 2.5
+    elif source == 'bluebox':
+        vb_max=6.5
+    else:
+        assert False, 'What is the maximum voltage of your detector voltage bias source?  I need to know to calibrate to physical units'
+
+    iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
+                           rbias_ohm=rbias_ohm,
+                           rsh_ohm=rsh_ohm,
+                           rx_ohm=0,
+                           m_ratio=mr,
+                           vfb_gain=vfb_gain,
+                           vbias_gain=vb_max/(2**16-1))
+
+    return iv_circuit
 
 if __name__ == "__main__":
     fname = '/Users/hubmayr/tmp/20230609/uber_omt_ColumnA_ivs_20230613_1686672234.json'
