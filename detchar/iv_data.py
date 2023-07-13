@@ -49,6 +49,33 @@ def fit_normal_zero_subtract(x, y, normal_above_x):
     normal_y_intersect = pfit_normal(0)
     return y-normal_y_intersect
 
+def make_iv_circuit(extra_info):
+    assert 'config' in list(extra_info.keys()), 'no configuration file found'
+    cfg = extra_info['config']
+    cal = cfg['calnums']
+    rfb_ohm = cal['rfb']+50.0
+    rbias_ohm = cal['rbias']
+    rsh_ohm = cal['rjnoise']
+    mr = cal['mr']
+    vfb_gain = cal['vfb_gain']/(2**14-1)
+    source = cfg['voltage_bias']['source']
+    if source == 'tower':
+        vb_max = 2.5
+    elif source == 'bluebox':
+        vb_max=6.5
+    else:
+        assert False, 'What is the maximum voltage of your detector voltage bias source?  I need to know to calibrate to physical units'
+
+    iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
+                           rbias_ohm=rbias_ohm,
+                           rsh_ohm=rsh_ohm,
+                           rx_ohm=0,
+                           m_ratio=mr,
+                           vfb_gain=vfb_gain,
+                           vbias_gain=vb_max/(2**16-1))
+
+    return iv_circuit
+
 class DataIO():
     def to_file(self, filename, overwrite = False):
         if not overwrite:
@@ -214,25 +241,40 @@ class IVTempSweepData(DataIO):
 
         return dac_list
 
-    def to_txt(self,filename,row_index,temp_index_list=None,zero='dac high'):
+    def _has_config(self):
+        if 'config' in list(self.data[0].extra_info.keys()): return True 
+        else: return False
+
+    def to_txt(self,filename,row_index,temp_index_list=None,zero='dac high',convert=True):
         ''' write IV versus temperature for a single row to a text file '''
-        header_txt='#dac'
+        if convert: 
+            assert self._has_config(), 'The data structure does not contain configuration file / calibration numbers to convert to physical units'
+            iv_circuit = make_iv_circuit(self.data[0].extra_info) 
+        else:
+            header_txt='#dac'
+            X = np.array(self.data[0].dac_values) # big X is the main 2D array to write to file
         sub_header='#'
-        X = np.array(self.data[0].dac_values)
+        X=np.empty
         if temp_index_list is None:
             temp_list_index = list(range(len(self.set_temps_k)))
-        for ii in temp_list_index:
+        for ii in temp_list_index: # loop over all temperatures in list
             curve =self.data[ii]
-            header_txt=header_txt+', %dmK'%(curve.nominal_temp_k*1e3)
-            t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
-            sub_header=sub_header+', %.1fmK'%t_meas_mK
-            if zero == "origin":
+            if zero == "origin": #y is n_dac x n_row array
                 x, y = curve.xy_arrays_zero_subtracted_at_origin()
             elif zero == "dac high":
                 x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
             else:
                 y=curve.fb_values_array()
-            X=np.vstack((X,y[:,row_index]))
+            y=y[:,row_index] # since y is n_dac x n_row array
+            if convert: # need to record both v, and i since dac -> v unique per temperature
+                v,i = iv_circuit.to_physical_units(curve.dac_values,y)
+                X=np.vstack((X,v)) 
+                X=np.vstack((X,i))
+            else: # only one vector of dac required.
+                X = np.vstack(X,y) 
+            header_txt=header_txt+', %dmK'%(curve.nominal_temp_k*1e3)
+            t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
+            sub_header=sub_header+', %.1fmK'%t_meas_mK
         X=X.transpose()
         header = header_txt+'\n'+sub_header
         np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header)
@@ -263,7 +305,7 @@ class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temp
 
 @dataclass_json
 @dataclass
-class IVCircuit(DataIO):
+class IVCircuit():
     rfb_ohm: float # feedback resistor
     rbias_ohm: float # bias resistor
     rsh_ohm: float # shunt resistor
@@ -289,6 +331,9 @@ class IVCircuit(DataIO):
         return ites, vtes
 
     def to_physical_units(self,dac_values,fb_array):
+        ''' return voltage bias across and current through TES. 
+            both dac_values and fb_array are 1D vectors 
+        '''
         y = fb_array*self.vfb_gain *(self.rfb_ohm*self.m_ratio)**-1
         I = dac_values*self.vbias_gain/self.rbias_ohm # current sent to TES bias network
         n,m = np.shape(y)
@@ -395,8 +440,9 @@ class BeamMapSingleGridAngleData(DataIO):
     num_lockin_periods: int 
     extra_info: dict
 
-    def plot(self):
-        fig,ax = plt.subplots(3,1)
+    def plot(self,fig=None,ax=None):
+        if np.logical_and(fig is None, ax is None):
+            fig,ax = plt.subplots(3,1)
         y = np.array(self.iq_v_pos)
         n,m,o = np.shape(y)
         for row in range(m):
@@ -408,7 +454,22 @@ class BeamMapSingleGridAngleData(DataIO):
         ax[2].set_ylabel('Amplitude (DAC)')
         ax[2].set_xlabel('Angle (deg)')
         ax[1].legend()
-        
+        return fig,ax
+
+    def plot_xy(self,fig=None,ax=None):
+        if np.logical_and(fig is None, ax is None):
+            fig,ax = plt.subplots()
+        x=[];y=[]
+        for pos in self.xy_position_list:
+            x.append(pos[0])
+            y.append(pos[1])
+
+        ax.plot(x,y,'o-')
+        ax.set_xlabel('X (mm)')
+        ax.set_ylabel('Y (mm)')
+        ax.grid('on')
+        return fig,ax
+
         
 
 
@@ -880,3 +941,7 @@ class NoiseSweepData(DataIO):
             header_txt=header_txt+', db=%d'%db
         X=X.transpose()
         np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header_txt)
+
+if __name__ == '__main__':
+    iv = IVTempSweepData.from_file('/data/uber_omt/20230621/uber_omt_ColumnA_ivs_20230712_1689192757.json')
+    iv.to_txt(filename='foo.txt.',row_index=0,temp_index_list=None,zero='dac high',convert=True)
