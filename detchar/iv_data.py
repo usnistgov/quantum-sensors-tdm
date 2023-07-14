@@ -242,41 +242,47 @@ class IVTempSweepData(DataIO):
         return dac_list
 
     def _has_config(self):
-        if 'config' in list(self.data[0].extra_info.keys()): return True 
+        if 'config' in list(self.data[0].extra_info.keys()): return True
         else: return False
 
     def to_txt(self,filename,row_index,temp_index_list=None,zero='dac high',convert=True):
         ''' write IV versus temperature for a single row to a text file '''
-        if convert: 
+        if convert:
             assert self._has_config(), 'The data structure does not contain configuration file / calibration numbers to convert to physical units'
-            iv_circuit = make_iv_circuit(self.data[0].extra_info) 
+            iv_circuit = make_iv_circuit(self.data[0].extra_info)
+            header_txt=''
+
         else:
-            header_txt='#dac'
+            header_txt='dac'
             X = np.array(self.data[0].dac_values) # big X is the main 2D array to write to file
-        sub_header='#'
-        X=np.empty
+        sub_header=''
         if temp_index_list is None:
             temp_list_index = list(range(len(self.set_temps_k)))
         for ii in temp_list_index: # loop over all temperatures in list
             curve =self.data[ii]
+            t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
             if zero == "origin": #y is n_dac x n_row array
                 x, y = curve.xy_arrays_zero_subtracted_at_origin()
             elif zero == "dac high":
                 x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
             else:
                 y=curve.fb_values_array()
-            y=y[:,row_index] # since y is n_dac x n_row array
+
             if convert: # need to record both v, and i since dac -> v unique per temperature
-                v,i = iv_circuit.to_physical_units(curve.dac_values,y)
-                X=np.vstack((X,v)) 
-                X=np.vstack((X,i))
+                v,i = iv_circuit.to_physical_units(np.array(curve.dac_values),y)
+                if ii == 0: X=np.vstack((v[:,row_index],i[:,row_index]))
+                else: X=np.vstack((X,v[:,row_index],i[:,row_index]))
+                header_txt=header_txt+',v (%dmK), i (%dmK)'%(curve.nominal_temp_k*1e3,curve.nominal_temp_k*1e3)
+                sub_header=sub_header+', ,%.1fmK'%t_meas_mK
             else: # only one vector of dac required.
-                X = np.vstack(X,y) 
-            header_txt=header_txt+', %dmK'%(curve.nominal_temp_k*1e3)
-            t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
-            sub_header=sub_header+', %.1fmK'%t_meas_mK
+                X = np.vstack((X,y[:,row_index]))
+                header_txt=header_txt+', fb_dac %dmK'%(curve.nominal_temp_k*1e3)
+                sub_header=sub_header+', %.1fmK'%t_meas_mK
         X=X.transpose()
-        header = header_txt+'\n'+sub_header
+        if convert:
+            header_txt = header_txt[1:]
+            sub_header=sub_header[1:]
+        header = 'Row%02d; row sequence index = %d\n'%(self.data[0].extra_info['config']['detectors']['Rows'][row_index],row_index)+header_txt+'\n'+'temp measured' + sub_header
         np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header)
 
 @dataclass_json
@@ -331,13 +337,14 @@ class IVCircuit():
         return ites, vtes
 
     def to_physical_units(self,dac_values,fb_array):
-        ''' return voltage bias across and current through TES. 
-            both dac_values and fb_array are 1D vectors 
+        ''' return voltage bias across and current through TES.
+            both dac_values and fb_array are 1D vectors
         '''
         y = fb_array*self.vfb_gain *(self.rfb_ohm*self.m_ratio)**-1
         I = dac_values*self.vbias_gain/self.rbias_ohm # current sent to TES bias network
         n,m = np.shape(y)
         x = np.zeros((n,m))
+        # v_bias will be different for each sensor depending on resisistance, so create v_b for each row
         for ii in range(m):
             #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm[ii]) # for future for unique rx per sensor
             x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
@@ -429,7 +436,7 @@ class PolCalSteppedBeamMapData(DataIO):
 class BeamMapSingleGridAngleData(DataIO):
     xy_position_list: List[Any]
     iq_v_pos: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
-    grid_angle_deg: float 
+    grid_angle_deg: float
     source_amp_volt: float
     source_offset_volt: float
     source_frequency_hz: float
@@ -437,7 +444,7 @@ class BeamMapSingleGridAngleData(DataIO):
     post_temp_k: float
     pre_time_epoch_s: float
     post_time_epoch_s: float
-    num_lockin_periods: int 
+    num_lockin_periods: int
     extra_info: dict
 
     def plot(self,fig=None,ax=None):
@@ -470,7 +477,7 @@ class BeamMapSingleGridAngleData(DataIO):
         ax.grid('on')
         return fig,ax
 
-        
+
 
 
 ### complex impedance / responsivity data classes ------------------------------------------
@@ -943,5 +950,9 @@ class NoiseSweepData(DataIO):
         np.savetxt(filename,X,fmt='%.18e',delimiter=',',newline='\n',header=header_txt)
 
 if __name__ == '__main__':
-    iv = IVTempSweepData.from_file('/data/uber_omt/20230621/uber_omt_ColumnA_ivs_20230712_1689192757.json')
-    iv.to_txt(filename='foo.txt.',row_index=0,temp_index_list=None,zero='dac high',convert=True)
+    file = '/Users/hubmayr/projects/uber_omt/data/uber_omt_ColumnA_ivs_20230711_1689136813.json'
+    iv = IVTempSweepData.from_file(file)
+    n,m = np.shape(iv.data[0].fb_values)
+    print(n,m)
+    #for ii in range(len(iv.data[0].))
+    #iv.to_txt(filename='foo.txt',row_index=0,temp_index_list=None,zero='dac high',convert=False)
