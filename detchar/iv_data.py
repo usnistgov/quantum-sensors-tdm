@@ -373,54 +373,67 @@ class PolCalSteppedSweepData(DataIO):
     post_time_epoch_s: float
     extra_info: dict
 
-    def plot(self, rows_per_figure=None):
+    def plot(self,row_index=None,fig=None,ax=None):
         ''' rows_per_figure is a list of lists to group detector responses
             to be plotted together.  If None will plot in groups of 8.
         '''
-        if rows_per_figure is not None:
-            pass
-        else:
-            num_in_group = 8
-            n_angles,n_rows,n_iq = np.shape(self.iq_v_angle)
-            n_groups = n_rows//num_in_group + 1
-            rows_per_figure=[]
-            for jj in range(n_groups):
-                tmp_list = []
-                for kk in range(num_in_group):
-                    row_index = jj*num_in_group+kk
-                    if row_index>=n_rows: break
-                    tmp_list.append(row_index)
-                rows_per_figure.append(tmp_list)
-        for ii,row_list in enumerate(rows_per_figure):
-            fig,ax = plt.subplots(3,num=ii)
-            for row in row_list:
-                ax[0].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,0],'o-',label=row)
-                ax[1].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,1],'o-',label=row)
-                ax[2].plot(self.angle_deg_meas,np.sqrt(np.array(self.iq_v_angle)[:,row,0]**2+np.array(self.iq_v_angle)[:,row,1]**2),'o-',label=row)
-            ax[0].set_ylabel('I (DAC)')
-            ax[1].set_ylabel('Q (DAC)')
-            ax[2].set_ylabel('Amplitude (DAC)')
-            ax[2].set_xlabel('Angle (deg)')
-            ax[1].legend()
-            ax[0].set_title('Column %d, Group %d'%(self.column_number,ii))
-        plt.show()
+        npts,nrows,iq = np.shape(self.iq_v_angle)
+        if fig is None:
+            fig,ax=plt.subplots(3,1)
+        if row_index is None:
+            row_index=range(nrows)
+        elif type(row_index) is int:
+            row_index=[row_index]
 
-    def fit_row_index(self,row_index,plot=True,fig=None,ax=None):
+        for row in row_index:
+            ax[0].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,0],'o-',label=row)
+            ax[1].plot(self.angle_deg_meas,np.array(self.iq_v_angle)[:,row,1],'o-',label=row)
+            ax[2].plot(self.angle_deg_meas,np.sqrt(np.array(self.iq_v_angle)[:,row,0]**2+np.array(self.iq_v_angle)[:,row,1]**2),'o-',label=row)
+        ax[0].set_ylabel('I (DAC)')
+        ax[1].set_ylabel('Q (DAC)')
+        ax[2].set_ylabel('Amplitude (DAC)')
+        ax[2].set_xlabel('Angle (deg)')
+        ax[1].legend()
+        return fig,ax
+
+    def fit_row_index(self,row_index,plot=True,fig=None,ax=None,debias=None,normalize=True):
         ''' fit response versus pol angle to a sine wave '''
-        data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)
+        if debias is None:
+            data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)
+        else: 
+            data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)-debias
         fit_func = lambda x: x[0]*np.sin(x[1]*np.array(self.angle_deg_meas)+x[2]) + x[3]
         optimize_func = lambda x: fit_func(x) - data
         est_amp, est_freq, est_phase, est_offset = leastsq(optimize_func, [np.max(data)/2, 2*np.pi/180, 0, np.max(data)/2])[0]
         depol = (est_offset-abs(est_amp))/(abs(est_amp)+est_offset)
-        print('Polarization isolation = ',1-depol)
+        print('Polarization Efficiency = ',1-depol)
         if plot:
             if np.logical_and(fig is None,ax is None):
-                fig,ax = plt.subplots(1,1)
+                fig,ax = plt.subplots(2,1)
                 fig.suptitle('Row%02d, index=%d'%(self.row_order[row_index],row_index))
-            ax.plot(self.angle_deg_meas,data,'o')
-            ax.plot(self.angle_deg_meas,fit_func([est_amp,est_freq,est_phase,est_offset]),'k--')
-            ax.set_xlabel('Polarization Angle (deg)')
-            ax.set_ylabel('Response (arb)')
+            
+            fit = fit_func([est_amp,est_freq,est_phase,est_offset])
+            if normalize:
+                data = data/(est_offset+abs(est_amp))
+                fit = fit/(est_offset+abs(est_amp))
+                ax[0].set_ylim((0,1.05))
+
+            ax[0].plot(self.angle_deg_meas,data,'o')
+            ax[0].plot(self.angle_deg_meas,fit,'k--')
+            ax[1].plot(self.angle_deg_meas,data-fit,'o')
+            ax[1].set_xlabel('Polarization Angle (deg)')
+            ax[0].set_ylabel('Response (arb)')
+            ax[1].set_ylabel('data-fit')
+            
+            ax[0].grid('on')
+            ax[1].grid('on')
+
+            fig2,ax2 = plt.subplots(1,1)
+            ax2.hist(data-fit)
+            ax2.set_xlabel('Fit residuals')
+            ax2.set_ylabel('Frequency')
+            ax2.grid('on')
+
         return est_amp,est_freq,est_phase,est_offset,[fig,ax]
 
 
@@ -447,7 +460,7 @@ class BeamMapSingleGridAngleData(DataIO):
     num_lockin_periods: int
     extra_info: dict
 
-    def plot(self,fig=None,ax=None):
+    def plot_iq(self,fig=None,ax=None):
         if np.logical_and(fig is None, ax is None):
             fig,ax = plt.subplots(3,1)
         y = np.array(self.iq_v_pos)
@@ -459,7 +472,6 @@ class BeamMapSingleGridAngleData(DataIO):
         ax[0].set_ylabel('I (DAC)')
         ax[1].set_ylabel('Q (DAC)')
         ax[2].set_ylabel('Amplitude (DAC)')
-        ax[2].set_xlabel('Angle (deg)')
         ax[1].legend()
         return fig,ax
 
@@ -475,6 +487,37 @@ class BeamMapSingleGridAngleData(DataIO):
         ax.set_xlabel('X (mm)')
         ax.set_ylabel('Y (mm)')
         ax.grid('on')
+        ax.set_xlim((0,400))
+        ax.set_ylim((0,400))
+        ax.set_aspect('equal')
+        return fig,ax
+
+    def make_r_arr(self):
+        [x0,y0]=self.xy_position_list[0]
+        r=[]
+        for xy in self.xy_position_list:
+            r.append(np.sqrt((x0-xy[0])**2+(y0-xy[1])**2))
+        return np.array(r)
+
+    def plot_row(self,row=None,fig=None,ax=None):
+        npts,nrows,iq_len=np.shape(self.iq_v_pos)
+        amp = np.sqrt(np.array(self.iq_v_pos)[:,:,0]**2+np.array(self.iq_v_pos)[:,:,1]**2)
+        r = self.make_r_arr()
+        if row is None:
+            row_list = range(nrows)
+        elif type(row) is int:
+            row_list=[row]
+        else:
+            row_list = row
+        if np.logical_and(fig is None, ax is None):
+            fig,ax = plt.subplots(1,1)
+        y = np.array(self.iq_v_pos)
+        n,m,o = np.shape(y)
+        for row in row_list:
+            ax.plot(r,amp[:,row],'o-',label=row)
+        ax.set_ylabel('Amplitude (DAC)')
+        ax.set_xlabel('Position (mm)')
+        ax.legend()
         return fig,ax
 
 
