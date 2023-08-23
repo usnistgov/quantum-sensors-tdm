@@ -1,7 +1,7 @@
 import json
 import itertools
 import socket
-DEBUG = False
+DEBUG = True
 
 class JSONClient(object):
     def __init__(self, addr, codec=json, qtParent = None):

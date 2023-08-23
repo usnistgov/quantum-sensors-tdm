@@ -6,7 +6,7 @@ import collections
 import json
 import numpy as np
 
-DEBUG = False
+DEBUG = True
 rpc_client_for_easy_client.DEBUG = False
 
 SUMMARY_HEADER_DTYPE=np.dtype([("chan",np.uint16),("headerVersion",np.uint8),
@@ -41,16 +41,6 @@ class EasyClientDastard():
         self.statusSub.setsockopt_string(zmq.SUBSCRIBE, "")
         self.messagesSeen = collections.Counter()
 
-    def _connectRecordSub(self, verbose):
-        """ connect to the record update port of dastard """
-        self.recordSub = self.context.socket(zmq.SUB)
-        self.recordSubAddress = "tcp://%s:%d" % (self.host, self.baseport+2)
-        self.recordSub.RCVTIMEO = 1000
-        self.recordSub.RCVHWM = 5000
-        self.recordSub.LINGER = 0
-        self.recordSub.connect(self.recordSubAddress)
-        if verbose: print(("Collecting records from dastard at %s" % self.recordSubAddress))
-        self.recordSub.setsockopt_string(zmq.SUBSCRIBE, "")
 
     def _connectRPC(self):
         """ connect to the rpc port of dastard """
@@ -79,8 +69,10 @@ class EasyClientDastard():
                     self.numRows = self.sequenceLength
                     self.numColumns = self.numChannels//(2*self.numRows)
                     assert self.numChannels%(2*self.numRows) == 0
-                else:
-                    raise Exception(f"source {self.sourceName} not yet supported")
+                if self.sourceName == "SimPulses":
+                    self.numColumns = 1
+                    self.numRows = self.numChannels
+                    self.linePeriod = "N/A"
                 print("returned from _getStatus")
                 return
         raise Exception(f"didn't get source and status messages, messagesSeen: {self.messagesSeen}")
@@ -113,88 +105,36 @@ class EasyClientDastard():
             self.nSamp = d["DastardOutput"]["Nsamp"]
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
             self.sequenceLength = d["DastardOutput"]["SequenceLength"]
+            self.linePeriod = d["DastardOutput"]["Lsync"]
         if topic == "TRIGGER":
             self._oldTriggerDict = d[0]
-
-    def restoreOldTriggerSettings(self):
-        configLengths  = {"Nsamp": self._oldNSamples, "Npre": self._oldNPresamples}
-        self.rpc.call("SourceControl.ConfigurePulseLengths", configLengths)
-        self.rpc.call("SourceControl.ConfigureTriggers", self._oldTriggerDict)
-        self._restoredOldTriggerSettings = True
-
-
-    def _configDastardAutoTrigs(self):
-        """ configure dastard to have auto trigger with about 1/20th of a second record lengths """
-        configLengths  = {"Nsamp": 10000, "Npre": 5000}
-        self.rpc.call("SourceControl.ConfigurePulseLengths", configLengths)
-        configTriggers = {"AutoTrigger":True,
-                  "AutoDelay":int(0),
-                  "ChannelIndices":self.channelIndicies}
-        # sending new trigger settings should reset the last trigger value in Dastard
-        # so all channels trigge at the same starting point
-        print(f"configTriggers {configTriggers}")
-        self.rpc.call("SourceControl.ConfigureTriggers", configTriggers)
-        # possibly should be using CoupleErrToFB here
 
 
     def setupAndChooseChannels(self, streamFbChannels = True, streamErrorChannels = True):
         """ sets up the server to stream all Fb Channels or all error channels or both
         """
-        self._connectStatusSub()
         self._connectRPC()
+        self._connectStatusSub()
         self._getStatus()
-        self._configDastardAutoTrigs()
-        self._connectRecordSub(verbose=True)
-        header, data = self.getMessage()
-        self.samplePeriod = header["samplePeriod"]
-        self.nPresamples = header["npresamples"]
-        self.linePeriodSeconds = self.samplePeriod/self.numRows
-        self.linePeriod = int(round(self.linePeriodSeconds*self.clockMhz*1e6))
+        self.linePeriodSeconds = self.linePeriod/self.clockMhz
+        self.samplePeriod = self.linePeriodSeconds*self.numRows
         print(self)
 
     @property
     def channelIndicies(self):
         return list(range(self.numChannels))
 
-    def getSummaryPackets(self):
-        raise Exception("not implmented (there are no summary packets in dastard)")
 
 
-    def clearSocket(self):
-        """ recieve all messages queued on the sub socket and throw them away """
-        # close and reconnect to flush the recieve side buffer
-        # recieve data until there is no more data to recieve to
-        self.recordSub.close() # close socket and reconnect, rely on ZMQ_LINGER=0
-        self._connectRecordSub(verbose=False)
-        # https://stackoverflow.com/questions/43771830/zeromq-packets-being-lost-even-after-setting-hwm-and-bufsize
-        # says never set SENDHWM = 1
-        # dastard has SENDHWM = 10 and a channel with buffer size 500
-        # while True:
-        #     try:
-        #         self.recordSub.recv(zmq.NOBLOCK)
-        #     except zmq.ZMQError:
-        #         break
-        # return
 
-    def getMessage(self, sendMode=0):
-        h, m = self.recordSub.recv_multipart()
-        header = np.frombuffer(h,RECORD_HEADER_DTYPE)[0]
-        if sendMode == 0:
-            if header["chan"]%2==0:
-                data = np.frombuffer(m, np.int16)
-            else:
-                data = np.frombuffer(m, np.uint16)
-        else:
-            raise Exception("sendMode {} not implemented".format(sendMode))
-        assert header["nsamples"] == len(data)
-        assert header["headerVersion"] == 0
-        return header, data
+    def tdmChannelNumber(self, col, row):
+        return 1+col*self.numRows+row
 
-    def fbChannelIndex(self, col, row):
-        return 2*(col*self.numRows+row)+1
+    # def fbChannelIndex(self, col, row):
+    #     return 2*(col*self.numRows+row)+1
 
-    def errorChannelIndex(self, col, row):
-        return 2*(col*self.numRows+row)
+    # def errorChannelIndex(self, col, row):
+    #     return 2*(col*self.numRows+row)
 
     def setMixToZero(self):
         self.setMix(0)
@@ -208,96 +148,51 @@ class EasyClientDastard():
                   "MixFractions": mixFractions.flatten().tolist()}
         self.rpc.call("SourceControl.ConfigureMixFraction", config)
 
-    def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True, retries = 3):
-        '''
-        getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0)
-        returns dataOut[col,row,frame,error=0/fb=1]
-        rejects data taken within delaySeconds of calling getNewData, used to ensure new data
-        returns at least minimumNumPoints frames
-        if exactNumPoints is True, returns exactly minimumNumPoints frames, but does throw away data to achieve this
-        sendMode corresponds to dfb07_card setting (or "raw" for diagnostic mode from server")
-        retries - how many times to retry upon an error
-        '''
+    def requestData(self, nsamples):
+        config = {"N":int(nsamples)}
+        result_npz_path = self.rpc.call("SourceControl.StoreRawDataBlock", nsamples)
+        return result_npz_path
+    
+    def newStyleDataToOldStyleData(self, data):
+        # the numbers here use channel number not index
+        if "chan0" in data:
+            n = len(data["chan0"]) # simpulsesource does this
+        if "chan1" in data:
+            n = len(data["chan1"]) # tdm source with lancero does this
+        dataOut = np.zeros((self.numColumns, self.numRows, n, 2),dtype="int32")
+        if self.sourceName == "Lancero":
+            for col in range(self.numColumns):
+                for row in range(self.numRows):
+                    dataOut[col,row, :, 0] = data[f"err{self.tdmChannelNumber(col, row)}"]
+                    dataOut[col,row, :, 1] = data[f"chan{self.tdmChannelNumber(col, row)}"]
+        else:
+            for row in range(self.numChannels):
+                dataOut[0, row, :, 1] = data[f"chan{row}"]
+        return dataOut
 
-        if self._restoredOldTriggerSettings:
-            self.setupAndChooseChannels()
 
-        delayNano=int(delaySeconds*1e9)
-        mytimeNano = time.time()*1e9
-        self.clearSocket()
-        counter = collections.Counter()
-        firstTriggerFramecount = None
-        target_triggerFramecount = -1 # impossible framecount
-        # map triggerFramecount to a list containing data for each channel
-        datas_dict = collections.defaultdict(lambda: [None]*self.numChannels)
-        i = 0
-        n_thrown_away_for_delay_seconds = 0
-        # tstart = time.time()
-        while True:
-            i+=1
-            if i>400*self.numChannels:
-                raise Exception("couldn't get the data you wantd")
-            header, data = self.getMessage()
-            dastardNano = header["unixnano"]
-            if delayNano >= 0 and (mytimeNano + delayNano > dastardNano):
-                n_thrown_away_for_delay_seconds+=1
-                continue
-            # if delayNano < 0 accept any data
-            if firstTriggerFramecount is None:
-                firstTriggerFramecount=header["triggerFramecount"]
-                fristTriggerUnixNano=header["unixnano"]
-            counter[header["triggerFramecount"]-firstTriggerFramecount] += 1
-            n_observed = counter[header["triggerFramecount"]-firstTriggerFramecount]
-            datas_dict[header["triggerFramecount"]][header["chan"]] = data
-            if n_observed == self.numChannels:
-                # check if we have enough samples
-                keys = sorted(datas_dict.keys())
-                k_complete = [k for k in keys if counter[k-firstTriggerFramecount] == self.numChannels]
-                n_have = len(data)*len(k_complete)
-                if n_have >= minimumNumPoints:
-                    break
-            # print(f"i={i} n_observed={n_observed} counter={counter}")
-            # x = header["triggerFramecount"]-firstTriggerFramecount
-            # y = x//10000
-            # ch = header["chan"]
-            # nsamp = len(data)
-            # dt = (time.time()-tstart)*1000
-            # unixnano = header["unixnano"]
-            # dtb = (time.time()*1000-unixnano*1e-6)
-            # print(f"timestamp={y} chan={ch} nsamp={nsamp} dt={dt:.2f}ms dtb={dtb:.2f}ms")
-            # if dt>200:
-            #     raise Exception()
-            # v = list(counter.values())
-            # j = np.argmax(v)
-            # fc = list(counter.keys())[j]
-            # print(i, fc, v[j])
+    def getNewData2(self, npts):
+        npz_filename = self.requestData(npts)
+        # wait for the file to exist
+        import os
+        tstart = time.time()
+        expect_s = self.samplePeriod*npts
+        too_long_s = 1.1*expect_s+5
+        while not os.path.isfile(npz_filename):
+            time.sleep(0.1)
+            elapsed_s = time.time()-tstart
+            if elapsed_s>too_long_s:
+                raise Exception("took too long")
         
-        # print( "keys",keys)
-        # print( "lengths", [len(datas_dict[k]) for k in keys])
-        # print( "k_complete", k_complete)
-        # print( "n_have", n_have)
-        # print( "n_thrown_away_for_delay_seconds", n_thrown_away_for_delay_seconds)
-        # print( self.numChannels, self.numRows, self.numColumns)
-        # print( "triggerFramecount Counter", counter)
-        assert(all(np.diff(k_complete)==len(data))), "dropped packet or some other sort of data corruption"
+        # now the file exists, lets open it
+        data = np.load(npz_filename)        
+        return data
 
 
-        dataOut = np.zeros((self.numColumns, self.numRows, n_have, 2),dtype="int32")
-        for col in range(self.numColumns):
-            for row in range(self.numRows):
-                errorIndex = self.errorChannelIndex(col, row)
-                fbIndex = self.fbChannelIndex(col, row)
-                # [col, row, frame, 0=error/1=feedback]
-                j=0    
-                for k in k_complete:
-                    data_error = datas_dict[k][errorIndex]
-                    data_fb = datas_dict[k][fbIndex]
-                    n = len(data_fb)
-                    assert(len(data_error)==n)
-                    dataOut[col,row,j:j+n,0] = data_error
-                    dataOut[col,row,j:j+n,1] = data_fb
-                    j += len(data_fb)
-
+    def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True):
+        time.sleep(delaySeconds)
+        data = self.getNewData2(minimumNumPoints)
+        dataOut = self.newStyleDataToOldStyleData(data)
 
         if sendMode != "raw":
             dataOut[:,:,:,1]=dataOut[:,:,:,1]>>2 # ignore 2 lsbs (frame bit and trigger)
@@ -311,8 +206,6 @@ class EasyClientDastard():
 
         if exactNumPoints:
             dataOut = dataOut[:,:,:minimumNumPoints,:]
-        self._lastGetNewDataFirstTriggerFramecount = firstTriggerFramecount
-        self._lastGetNewDataFirstTriggerUnixNano = fristTriggerUnixNano
         return dataOut
 
 
@@ -353,12 +246,11 @@ class EasyClientDastard():
         return "EasyClientDastard {} columns X {} rows, linePeriod {}, clockMhz {}, nsamp {}".format(self.ncol,self.nrow,self.lsync,self.clockMhz, self.nsamp)
 
 if __name__ == '__main__':
-    if False:
+    if True:
         import pylab as plt
         plt.ion()
         plt.close("all")
         c = EasyClientDastard()
-        c.clearSocket()
         sendModes = [0]
         sendModes = ["raw",0,1,2]
         for sendMode in sendModes:
