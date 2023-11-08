@@ -1070,20 +1070,20 @@ class FtsMeasurementSet():
             measurement.plot_spectra(fig_num=fig_num+2*ii+1)
             plt.show()
 
-    def plot_all_measurements_for_prefix(self,prefix='rs03',fig_num=1):
+    def plot_all_measurements_for_prefix(self,prefix='rs03',fig_num=1,normalize=False):
         assert prefix in list(self.prefix_set), print(prefix + 'not in prefix_set: '%self.prefix_set)
-        fig = plt.figure(fig_num)
-        fig.suptitle(prefix)
+        plt.title(prefix)
         for ii, measurement in enumerate(self.measurements):
             if prefix == measurement.file_prefix:
                 plt.subplot(211)
                 plt.plot(measurement.x,measurement.y_mean,label=measurement.file_number_list[0])
                 plt.legend(loc='upper right')
                 plt.subplot(212)
-                plt.plot(measurement.f,measurement.S_mean)
+                if normalize: S = IfgToSpectrum().peak_normalize(measurement.f,measurement.S_mean,x_range=[10,10000])
+                else: S = measurement.S_mean
+                plt.plot(measurement.f,S)
         plt.xlabel('Frequency (GHz)')
         plt.ylabel('Response (arb)')
-        return fig
 
     def plot_measurements(self,measurement_indices=None,ylog=False,normalize=True,xlim=None,phase_corrected=True,fig=None,ax=None):
         if measurement_indices is None:
