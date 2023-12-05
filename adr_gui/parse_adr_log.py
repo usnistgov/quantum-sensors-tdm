@@ -39,51 +39,63 @@ class AdrLogParser():
         f.close()
         
         if line[0]=='#':
-            names = line[1:].rstrip().split(',')
+            self.header = line[1:].rstrip().split(',')
             # cols: date/time, epoch time (s), sensor #1, sensor #2, ... number of columns can vary
             self.logtype = 'full'
-            df = pd.read_csv(self.path+self.logfile,names=names) 
+            df = pd.read_csv(self.path+self.logfile,header=0,names=self.header) 
 
         else:
             # cols: date/time, epoch time (s), adr temp, heater output
             self.logtype = 'adr_gui'
-            names = ['date','epoch_time','adr','heater']
-            df = pd.read_csv(self.path+self.logfile,header=None,names=names) 
+            self.header = ['date','epoch_time','adr','heater']
+            df = pd.read_csv(self.path+self.logfile,names=self.header) 
         return df
 
     def print_metadata(self):
         print('ADR log file %s is of type %s and spans %s -- %s.'%(self.path+self.logfile,self.logtype,self.datetime_start_str,self.datetime_end_str))
         for column in self.df.columns[2:]:
             print(column, ' min | max = %.4f | %.4f'%(self.df[column].min(),self.df[column].max()))
-        # print('ADR log file: %s spans %s -- %s'%(self.path+self.logfile,self.datetime_start_str,self.datetime_end_str))
-        # print('The min (max) ADR temperature is %.1f mK (%.1f)'%(self.df.iloc[:,2].min()*1000,self.df.iloc[:,2].max()*1000))
-        # print('The min (max) heater output is %.1f (%.1f)'%(self.df.iloc[:,3].min(),self.df.iloc[:,3].max()))
+            #print(column, self.df[column][0])
 
-    def plot(self,fig=None,ax=None):
-        # if index==2:
-        #     ylabel='ADR temp (K)'
-        # elif index==3:
-        #     ylabel='Heater output'
-        # else:
-        #     print('index must be 2 (adr temp) or 3 (heater output)')
+    def plot(self,time_hrs=True,semilog=False):
+        ''' plot data as function of epoch time '''
+        fig,ax1 = plt.subplots()
+        fig.suptitle(self.logfile)
+        
+        if time_hrs:
+            ax1.set_xlabel('Time (hrs)')
+            t = (self.df.iloc[:,1]-self.df.iloc[0,1])/3600
+        else:
+            ax1.set_xlabel('epoch time (s)')
+            t = self.df.iloc[:,1]
 
+        if semilog:
+            plot = ax1.semilogy
+        else:
+            plot = ax1.plot
         if self.logtype == 'adr_gui':
-            if np.logical_and(fig is None, ax is None):
-                fig,ax1 = plt.subplots()
-                fig.suptitle(self.logfile)
-                ax1.set_xlabel('epoch time (s)')
-                color = 'tab:blue'
-                ax1.set_ylabel('adr temp (K)',color=color)
-                ax1.plot(self.df.iloc[:,1],self.df.iloc[:,2],color=color)
-                ax1.tick_params(axis='y', labelcolor=color)
-                ax1.grid('on')
+            color = 'tab:blue'
+            ax1.set_ylabel('adr temp (K)',color=color)
+            plot(t,self.df.iloc[:,2],color=color)
+            ax1.tick_params(axis='y', labelcolor=color)
+            ax1.grid('on')
 
-                ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis  
-                color = 'tab:red'
-                ax2.set_ylabel('heater out (%)',color=color)  # we already handled the x-label with ax1
-                ax2.plot(self.df.iloc[:,1],self.df.iloc[:,3],color=color)
-                ax2.tick_params(axis='y', labelcolor=color)
-                fig.tight_layout()  # otherwise the right y-label is slightly clipped
+            ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis  
+            color = 'tab:red'
+            ax2.set_ylabel('heater out (%)',color=color)  # we already handled the x-label with ax1
+            if semilog:
+                ax2.semilogy(t,self.df.iloc[:,3],color=color)
+            else:
+                ax2.plot(t,self.df.iloc[:,3],color=color)
+            ax2.tick_params(axis='y', labelcolor=color)
+            fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+        elif self.logtype == 'full':
+            ax1.set_ylabel('Temperature (K)')
+            for ii in range(2,len(self.df.columns)):
+                plot(t,self.df.iloc[:,ii],label=self.header[ii])
+            ax1.grid('on')
+            ax1.legend()
 
 if __name__ == "__main__":
     al = AdrLogParser()
