@@ -66,7 +66,7 @@ class PolcalSteppedSweep(SourceInit):
         assert num_lockin_periods >=2,'More than 2 periods needed.'
         self.num_lockin_periods = num_lockin_periods
         self._handle_num_points(num_lockin_periods)
-        self.waittime_s = 0.1 # time to wait between setting grid angle and acquiring data
+        self.waittime_s = 1.0 # time to wait between setting grid angle and acquiring data
         self.row_order = self._handle_row_to_state(row_order)
 
     def _handle_grid_motor_arg(self,grid_motor,initialize_grid_motor):
@@ -118,6 +118,7 @@ class PolcalSteppedSweep(SourceInit):
             m_angle = self.grid_motor.get_current_position()
             measured_angles.append(m_angle)
             print('Motor at angle = %.2f.  Grabbing data'%m_angle)
+            time.sleep(self.waittime_s)
             iq_arr = self.get_point() # nrow x 2 array
             iq_v_angle[ii,:,:] = iq_arr
         post_temp_k = self.adr_gui_control.get_temp_k()
@@ -227,6 +228,7 @@ class BeamMapSingleGridAngle(SourceInit):
         for ii, xy_pos in enumerate(self.xy_pos_list): # loop over XY positions
             print('Moving XY stage to position: ',xy_pos)
             self.xy.move_absolute(xy_pos[0],xy_pos[1],self.x_velocity_mmps,self.y_velocity_mmps)
+            time.sleep(1)
             print('Doing lock-in measurement')
             iq_arr = self.get_point(window) 
             iq_v_pos[ii,:,:] = iq_arr
@@ -284,30 +286,53 @@ def test_make_xy_list():
         print(xy)
 
 if __name__ == "__main__":
-    # filename='test.json'
-    # extra_info = {'exp_setup':'cmbs4 pixel, db=20000, tb=400mK, on-axis after peak-up on signal of 90A'}
-    # angles = list(range(0,360,10))
-    # pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 5,row_order=[0,2,3,4,5,6],source_frequency_hz=5.0)
-    # pc_data = pcss.get_polcal(extra_info=extra_info,source_on=True)
-    # pc_data.to_file(filename,overwrite=False)
-    # pc_data.plot()
+    filename='/data/uber_omt/20230715/polcal_20230719_p2_m3.json'
+    extra_info = {'exp_setup':'xy=[313.5,300]; centered on pixel 2, db=19000, tb=300mK, source off'}
+    angles = list(range(0,360,10))
+    row_order = [19,20,21,22]#list(range(32))
+    pcss = PolcalSteppedSweep(angle_deg_list=angles,num_lockin_periods = 5,row_order=row_order,source_frequency_hz=5.0)
+    pc_data = pcss.get_polcal(extra_info=extra_info,source_on=False)
+    pc_data.to_file(filename,overwrite=False)
+    pc_data.plot()
+    plt.show()
 
-    pixel_center = [325.3, 310.64] # center of pixel 
-    xp = np.arange(-50,51,10)
-    grid_angle = 160
-    x,y = pol_to_xy_coordinates(xp,[0]*len(xp),grid_angle,pixel_center)
-    xy_position_list=xy_to_list(x,y)
-    print(xy_position_list)
+    # pixel_center = [325.3, 310.64] # center of pixel 
+    
+    # theta_cut = 0
+    #x,y = pol_to_xy_coordinates(xp,[0]*len(xp),theta_cut,pixel_center)
+    #xy_position_list=xy_to_list(x,y)
 
-    bm = BeamMapSingleGridAngle(xy_position_list, grid_angle,
-                                source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
-                                num_lockin_periods=5,
-                                row_order=[0,2,3,4,5,6],
-                                home_xy=False,
-                                grid_motor=None)
+    # # # some scripting useful for finding pixel center -----------------------------
+    # # # find center in X 
+    # grid_angle = 0 # 160: 150GHz A polarized, 70=150GHz B polarized
+
+    # # peak expected at(312.5,302.5)
+    # # cut in X
+    
+    # # y0=302.5
+    # # x_list=list(range(250,350,5))
+    # # xy_position_list=[]
+    # # for x in x_list:
+    # #     xy_position_list.append([x,y0])
+
+    # # cut in Y
+    # x0=313.5
+    # y_list = list(range(250,351,5))
+    # xy_position_list=[]
+    # for y in y_list:
+    #     xy_position_list.append([x0,y])
+
+    # extra_info={'notes':'finding pixel center of P2, cut in Y-axis'}
+
+    # bm = BeamMapSingleGridAngle(xy_position_list, grid_angle,
+    #                             source_amp_volt=3.0, source_offset_volt=1.5, source_frequency_hz=5,
+    #                             num_lockin_periods=5,
+    #                             row_order=list(range(32)),
+    #                             home_xy=False,
+    #                             grid_motor=None)
    
-    res = bm.acquire()
-    res.to_file('test_beammap_write.json',overwrite=True)
+    # res = bm.acquire(extra_info=extra_info)
+    # res.to_file('/data/uber_omt/20230715/beammap_p2_m3.json',overwrite=True)
 
 
     
