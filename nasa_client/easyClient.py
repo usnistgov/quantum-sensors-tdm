@@ -2,7 +2,7 @@ from . import easyClientNDFB
 from . import easyClientDastard
 
 
-def EasyClient(host='localhost', port=2011, clockmhz=50, setupOnInit=True):
+def EasyClient(host='localhost', port=2011, clockmhz=125, setupOnInit=True):
     """ returns either an easyClientNDFB or an easyClientDastard
     tries to connect to dastard first, then returns NDFB on fail """
     if port == 2011:
