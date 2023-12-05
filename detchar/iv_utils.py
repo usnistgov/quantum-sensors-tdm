@@ -324,17 +324,17 @@ class IVColdloadSweeper():
             self.ccon.setControlState('off')
         return IVColdloadSweepData(set_cl_temps_k, datas, extra_info)
 
-def _handle_file_extension(filename, suffix='.json'):
+def _handle_file_extension(filename, suffix='json'):
     if filename==None:
-        new_filename='tempfile'+suffix
+        new_filename='tempfile.'+suffix
     else:
         fname_split = filename.split('.')
         if len(fname_split)==1:
-            new_filename = filename+suffix
+            new_filename = filename+'.'+suffix
         elif len(fname_split)==2:
             fext = fname_split[1]
             if fext != suffix:
-                new_filename = filename + suffix
+                new_filename = filename + '.' + suffix
             else:
                 new_filename = filename
     return new_filename
