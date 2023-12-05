@@ -649,7 +649,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         elif self.lastHOut == 0.0:
             LIMIT = 4.1
             if self.lastTemp_K>LIMIT:
-                print(f"in GoingToMagUp state, but temp = {self.lastTempK} is too high, needs to be below {LIMIT}")
+                print(f"in GoingToMagUp state, but temp = {self.lastTemp_K} is too high, needs to be below {LIMIT}")
             else:
                 time.sleep(5.0)
                 self.SIG_startMagUp.emit()
