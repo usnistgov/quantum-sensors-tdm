@@ -996,6 +996,6 @@ if __name__ == '__main__':
     file = '/Users/hubmayr/projects/uber_omt/data/uber_omt_ColumnA_ivs_20230711_1689136813.json'
     iv = IVTempSweepData.from_file(file)
     n,m = np.shape(iv.data[0].fb_values)
-    print(n,m)
-    #for ii in range(len(iv.data[0].))
-    #iv.to_txt(filename='foo.txt',row_index=0,temp_index_list=None,zero='dac high',convert=False)
+    for ii in range(m):
+        for convert in [True,False]:
+            iv.to_txt(filename='cmbs4_second_transition_row%02d.txt'%iv.data[0].extra_info['config']['detectors']['Rows'][row_index],row_index=0,temp_index_list=None,zero='dac high',convert=False)
