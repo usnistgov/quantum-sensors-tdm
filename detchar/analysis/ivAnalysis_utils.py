@@ -1072,6 +1072,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
         fig.suptitle(self.figtitle+'  raw IV')
         ax[0].legend((self.cl_temps_k),loc='upper right')
+        return fig
 
     def plot_vipr(self):
         figXX, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(10.5,8))
@@ -1257,7 +1258,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax.set_ylim(0,1.1)
         return fig
 
-    def plot_full_analysis(self,include_darksubtraction=True,showfigs=False,savefigs=False):
+    def plot_full_analysis(self,include_darksubtraction=True,showfigs=False,savefigs=False,path=''):
         ''' Make plots of the full analysis:
             1) raw IV, one curve per coldload temperature
             2) vipr, (2x2 plot if IV, PV, RP, RV), on curve per coldload temperature
@@ -1289,6 +1290,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         if savefigs:
             fig_appendix=['raw','vipr','pr','pt','dpt','eta']
             for ii,fig in enumerate(figs):
+                print(ii, fig_appendix[ii])
                 fig.savefig(self.row_name+'_%d_'%ii+fig_appendix[ii]+'.png')
         if showfigs: plt.show()
         #for fig in figs:
@@ -1391,12 +1393,19 @@ class IVColdloadSweepAnalyzer():
         print('ADR set temperatures: ',self.set_bath_temps_k)
         print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
 
-    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7):
+    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
+                      skipsquidchannels=True):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
 
+        dark_rows = self.det_map.get_row_nums_from_keyval_list([['type','dark']])
+        if skipsquidchannels:
+            row_indices = self.det_map.get_row_nums_from_keyval_list([['type','optical']]) # optical rows
+            row_indices.extend(dark_rows)
+            row_indices = sorted(row_indices)
+        else:
+            row_indices = self.row_index_list
+
         # first collect dark responses for each pixel and place in dark_Ps dictionary
-        dark_keys, dark_rows = self.det_map.get_keys_and_indices_of_type(type_str='dark')
-        print(dark_rows)
         dark_indices = []
         for row in dark_rows:
             try: dark_indices.append(self.row_sequence.index(row))
@@ -1415,7 +1424,7 @@ class IVColdloadSweepAnalyzer():
             dark_Ps[str(row_dict['position'])]=iva_dark.get_power_vector_for_rnfrac(dark_rnfrac)
 
         # now loop over all rows
-        for row in self.row_index_list:
+        for row in row_indices:
             row_name = 'Row%02d'%row
             row_dict = self.det_map.map_dict['Row%02d'%(row)]
             print('Row%02d'%(row),': ',row_dict)
@@ -1435,7 +1444,7 @@ class IVColdloadSweepAnalyzer():
 
             if rn_fracs is not None:
                 iva.rn_fracs = rn_fracs
-            iva.plot_full_analysis(showfigs,savefigs)
+            iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
 
     # plotting methods ---------------------------------------------------------
     def plot_measured_cl_temps(self):
