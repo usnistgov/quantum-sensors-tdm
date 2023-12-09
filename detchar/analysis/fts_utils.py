@@ -943,8 +943,9 @@ class FtsMeasurementSet():
 
         NOMENCLATURE:
             scan: one sweep of the FTS
-            Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
             Measurement: N repeat scans for a given detector
+            Measurement Set: a collection of scans spanning detectors and multiple scans per configuration
+            
 
     '''
     def __init__(self, path):
