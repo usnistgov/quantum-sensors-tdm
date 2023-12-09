@@ -1,3 +1,7 @@
+''' detector_map.py 
+    handle mapping readout channels to detectors and positions on a 4-pixel optical board
+'''
+
 class DetectorMap():
     ''' Map readout channels to detector characteristics '''
     def __init__(self,filename=None):
@@ -6,8 +10,9 @@ class DetectorMap():
         '''
         self.filename = filename
         self.map_dict = self.from_file(self.filename)
-        self.keys = self.map_dict.keys()
+        self.keys = list(self.map_dict.keys())
         self._handle_none_in_dict()
+        self.subkeys = list(self.map_dict[self.keys[0]].keys())
 
 
     def from_file(self,filename):
@@ -56,6 +61,14 @@ class DetectorMap():
                 if val == 'None':
                     self.map_dict[row][subkey] = None
 
+    def _convert_row_name_to_integer(self,row_name_list):
+        mylist=[]
+        for row in row_name_list:
+            mylist.append(int(row.split('Row')[-1]))
+        return mylist
+
+    # --------------------------------------------------------
+
     def get_rowdict_from_keyval(self,key,val,dict=None):
         ''' return a dictionary of all rows that satisfy key=val.
             i.e. get_rowdict_from_keyval('position',1) would return a
@@ -84,12 +97,6 @@ class DetectorMap():
             row_list = self._convert_row_name_to_integer(row_list)
         return row_list
 
-    def _convert_row_name_to_integer(self,row_name_list):
-        mylist=[]
-        for row in row_name_list:
-            mylist.append(int(row.split('Row')[-1]))
-        return mylist
-
     def get_devname_from_row_index(self,row_index):
         return self.map_dict['Row%02d'%row_index]['devname']
 
@@ -100,7 +107,8 @@ class DetectorMap():
         return set(bands)
 
     def get_rowdict_from_keyval_list(self,search_list):
-        ''' Returns the subset of map_dict that has a series of key,value pairs.
+        ''' Returns the subset of map_dict that has a series of key,value pairs within search_list.
+            i.e. search_list =[[key1,val1],[key2,val2],...]
             Note that the order of [key,value] pairs in search_list matters.
             The 0th key,value pair in search_list will be performed first.
         '''
@@ -127,19 +135,28 @@ class DetectorMap():
     def get_mapval_for_row_index(self,row_index):
         return self.map_dict['Row%02d'%row_index]
 
-    # are the methods below useful or obsolete?
+    def print_data_for_position(self,position=1):
+        ''' method to print the rows and fields of each row for all within a spatial pixel (ie position) ''' 
+        mydict = self.get_rowdict_from_keyval('position',position)
+        header = 'Row'
+        for key in self.subkeys:
+            header = header + '\t'+key
+        print(header)
+        for row in mydict.keys():
+            txt=row
+            for key in self.subkeys:
+                txt=txt+'\t'+str(mydict[row][key])
+            print(txt)
 
-    def get_onerow_device_dict(self,row_index):
-        return {'Row%02d'%row_index:self.map_dict['Row%02d'%row_index]['devname']}
+    def get_row_from_position_band_pol(self,position,band,pol,fmt='int'):
+        mydict = self.get_rowdict_from_keyval_list([['position',position],['band',band],['polarization',pol]])
+        row_name = list(mydict.keys())[0]
+        if fmt=='name':
+            return row_name 
+        elif fmt=='int':
+            return int(row_name.split('Row')[-1])
 
-    def get_keys_and_indices_of_type(self,type_str='dark'):
-        print('Warning.  Direct row to index mapping assumed (ie index of Row02 is 2)')
-        idx=[]; keys=[]
-        for key in self.map_dict.keys():
-            if self.map_dict[key]['type']==type_str:
-                keys.append(key)
-                idx.append(int(key.split('Row')[1]))
-        return keys, idx
+
 
 if __name__ == "__main__":
     #dm = DetectorMap(filename='detector_map_run20210607.csv')
