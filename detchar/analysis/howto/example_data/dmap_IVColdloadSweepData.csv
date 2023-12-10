@@ -1,0 +1,33 @@
+row,devname,type,position,f_low,f_high,band,polarization
+0,NC,squid,4,None,None,None,None
+1,taurus-high (7:5:0) 350D,dark,4,None,None,None,None
+2,taurus-high (7:5:0) 280D,dark,4,None,None,None,None
+3,taurus-high (7:5:0) 350X,optical,4,315,390,350,A
+4,taurus-high (7:5:0) 280Y,optical,4,245,315,280,B
+5,taurus-high (7:5:0) 280X,optical,4,245,315,280,A
+6,taurus-high (7:5:0) 350Y,optical,4,315,390,350,B
+7,NC,squid,4,None,None,None,None
+8,NC,squid,4,None,None,None,None
+9,taurus-high (9:1:0) 280D,dark,3,None,None,None,None
+10,taurus-high (9:1:0) 350X,optical,3,315,390,350,A
+11,NC,squid,3,None,None,None,None
+12,NC,squid,3,None,None,None,None
+13,taurus-high (9:1:0) 280Y,optical,3,245,315,280,B
+14,taurus-high (9:1:0) 280X,optical,3,245,315,280,A
+15,taurus-high (9:1:0) 350Y,optical,3,315,390,350,B
+16,NC,squid,2,None,None,None,None
+17,taurus-low (1:2:0) 220D,dark,2,None,None,None,None
+18,taurus-low (1:2:0) 150D,dark,2,None,None,None,None
+19,taurus-low (1:2:0) 220X,optical,2,190,245,220,A
+20,taurus-low (1:2:0) 150Y,optical,2,130,170,150,B
+21,taurus-low (1:2:0) 150X,optical,2,130,170,150,A
+22,taurus-low (1:2:0) 220Y,optical,2,190,245,220,B
+23,NC,squid,1,None,None,None,None
+24,taurus-low (7:6:0) 220D,dark,1,None,None,None,None
+25,taurus-low (7:6:0) 150D,dark,1,None,None,None,None
+26,taurus-low (7:6:0) 220X,optical,1,190,245,220,A
+27,taurus-low (7:6:0) 150Y,optical,1,130,170,150,B
+28,taurus-low (7:6:0) 150X,optical,1,130,170,150,A
+29,taurus-low (7:6:0) 220Y,optical,1,190,245,220,B
+30,NC,squid,1,None,None,None,None
+31,NC,squid,1,None,None,None,None
