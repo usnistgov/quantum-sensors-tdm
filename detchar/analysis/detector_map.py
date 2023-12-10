@@ -90,9 +90,12 @@ class DetectorMap():
         '''
         row_list = list(self.get_rowdict_from_keyval('position',position_int).keys())
         if exclude_squid_channels:
-            for row in row_list:
-                if self.map_dict[row]['type'] not in ['optical','dark','Optical','Dark']:
-                    row_list.remove(row)
+            sqdex = []
+            for ii, row in enumerate(row_list):
+                if self.map_dict[row]['type'] in ['optical','dark','Optical','Dark']:
+                    sqdex.append(ii)
+            row_list = [row_list[ii] for ii in sqdex] 
+            
         if return_row_integers:
             row_list = self._convert_row_name_to_integer(row_list)
         return row_list
