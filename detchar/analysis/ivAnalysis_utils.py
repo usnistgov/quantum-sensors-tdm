@@ -1512,9 +1512,8 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
 
-    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices=None,\
-                                    rn_fracs=None,showfigs=True,savefigs=False,
-                                    predicted_power_w=None):
+    def sweep_analysis_for_row(self,row_index,bath_temp_index,
+                                    cl_indices=None,rn_fracs=None,predicted_power_w=None):
         if cl_indices is None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
@@ -1527,13 +1526,22 @@ class IVColdloadSweepAnalyzer():
 
         iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                       cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
-                                      #cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,1],
+                                      #cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,0],
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
+        return iva
+        
+    
+    def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices=None,\
+                                    rn_fracs=None,showfigs=True,savefigs=False,
+                                    predicted_power_w=None):
+        iva = self.sweep_analysis_for_row(row_index,bath_temp_index,
+                                    cl_indices,rn_fracs,predicted_power_w)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
+        
 
     def _predicted_power(self,cl_temps,f_edges_ghz):
         predicted_power_w = []

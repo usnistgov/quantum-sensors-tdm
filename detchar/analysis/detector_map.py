@@ -159,7 +159,14 @@ class DetectorMap():
         elif fmt=='int':
             return int(row_name.split('Row')[-1])
 
-
+    def get_bands_for_position(self,position):
+        # get [low,high] band within the pixel
+        bands = []
+        for row in self.rows_in_position(position):
+            bands.append(self.map_dict['Row%02d'%row]['band'])
+        bands = list(set([y for y in bands if y != None]))
+        bands = sorted([int(i) for i in bands])
+        return bands
 
 if __name__ == "__main__":
     #dm = DetectorMap(filename='detector_map_run20210607.csv')
