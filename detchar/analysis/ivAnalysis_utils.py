@@ -1639,6 +1639,93 @@ class IVColdloadSweepAnalyzer():
         ax.set_ylabel('dP')
         return fig
 
+    def plot_DpDt_for_position2(self,position,bath_temp_index=0,cl_indices=None,rfrac=0.8):
+        ''' plot the summary change in power per change in cold load temperature (from reference temperature)
+            for all detectors within a pixel at position.  This method requires a complete detector map.
+
+            This is redundant with plot_DpDt_for_position.  Aesthetic differences.   
+        '''
+        self.det_map.print_data_for_position(position)
+        assert self.det_map != None, 'Must have a detector map to plot_DpDt_for_position'
+        bath_temp_index=0
+        if cl_indices is None:
+            cl_indices = list(range(len(self.set_cl_temps_k)))
+        bands = self.det_map.get_bands_for_position(position)
+
+        # get order: darks, lowest frequency A,B highest frequency A, B
+        row_indices = self.det_map.get_row_nums_from_keyval_list([['position',position],['type','dark']])
+        for band in bands:
+            for pol in ['A','B']:
+                row_indices.extend(self.det_map.get_row_nums_from_keyval_list([['position',position],['band',str(band)],['polarization',pol]]))
+        
+        fig,ax = plt.subplots()
+        ax.set_ylabel('P$_o$ - P')
+        low_band_color = '#1f77b4'
+        high_band_color = '#ff7f0e'
+        dark_color = "tab:grey"#('k',0.5) #'#2ca02c'
+        A_style = 'o' 
+        B_style = 'v' 
+        dark_count = 0
+        for ii, row_dex in enumerate(row_indices):
+            if self.det_map.map_dict['Row%02d'%row_dex]['type'] not in ['Optical','optical']:
+                ppower = None
+            else: 
+                ppower = self.get_predicted_power_for_row(row_dex,cl_indices)
+    
+            iva_row = self.sweep_analysis_for_row(row_dex,bath_temp_index,cl_indices,
+                                                  rn_fracs=np.array([rfrac]),predicted_power_w=ppower)
+            
+            # poorly written below to handling plotting visuals
+            if self.det_map.map_dict['Row%02d'%row_dex]['type']=='dark':
+                dark_count=dark_count+1
+                color = dark_color
+                if dark_count>1:
+                    ls = '*'
+                else:
+                    ls='+'
+            elif self.det_map.map_dict['Row%02d'%row_dex]['band'] == str(bands[0]):
+                color = low_band_color
+            elif self.det_map.map_dict['Row%02d'%row_dex]['band'] == str(bands[1]):
+                color = high_band_color 
+
+            if self.det_map.map_dict['Row%02d'%row_dex]['polarization'] == 'A':
+                ls = A_style
+            elif self.det_map.map_dict['Row%02d'%row_dex]['polarization'] == 'B':
+                ls = B_style
+    
+            # now actually plot it
+            ax.plot(iva_row.cl_DT_k,iva_row.Dp_at_rnfrac[0,:],label=self.det_map.map_dict['Row%02d'%row_dex]['devname'],color=color,marker=ls)
+            if ii==0:
+                ax.set_xlabel('T$_{cl}$ - %.1f K'%iva_row.cl_temps_k[iva_row.T_cl_index])
+
+            if self.det_map.map_dict['Row%02d'%row_dex]['type']=='optical':
+                print(self.det_map.map_dict['Row%02d'%row_dex]['devname'], 'eta = ',iva_row.eta_Dp_arr[~np.isnan(iva_row.eta_Dp_arr)].mean()) 
+
+        # add tophat prediction 
+        for band in bands:
+            if band == bands[0]:
+                color = low_band_color
+            elif band == bands[1]:
+                color = high_band_color 
+            rr = self.det_map.get_row_nums_from_keyval_list([['position',position],['band',str(band)]])
+            p = self.get_predicted_power_for_row(rr[0],cl_indices)
+            ax.plot(iva_row.cl_DT_k,p-p[0],color=color,label='tophat %s band'%band,linestyle='-',alpha=0.5)
+    
+        ax.legend(fontsize=8)
+        ax.grid()
+        fig.suptitle('Position %d '%position+' '.join(self.det_map.map_dict['Row%02d'%row_indices[-1]]['devname'].split(' ')[0:2]))
+        return fig,ax
+
+    def get_predicted_power_for_row(self,row_index,cl_indices):
+        ''' return top-hat-band predicted power to be used to determine optical efficiency '''
+        [fstart,fend] = self.det_map.map_dict['Row%02d'%row_index]['freq_edges_ghz']
+        predicted_power_w = []
+        for t in np.array(self.post_cl_temps_k)[cl_indices,0]:
+            predicted_power_w.append(thermalPower(fstart*1e9,fend*1e9,t))
+        return np.array(predicted_power_w)
+
+#######################################
+
 def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
