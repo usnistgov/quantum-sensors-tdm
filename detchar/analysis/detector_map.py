@@ -160,7 +160,8 @@ class DetectorMap():
             return int(row_name.split('Row')[-1])
 
     def get_bands_for_position(self,position):
-        # get [low,high] band within the pixel
+        ''' return [low,high] band within the pixel in int format '''
+            
         bands = []
         for row in self.rows_in_position(position):
             bands.append(self.map_dict['Row%02d'%row]['band'])
