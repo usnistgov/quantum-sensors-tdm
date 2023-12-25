@@ -98,9 +98,20 @@ class AdrLogParser():
             ax1.legend()
 
 if __name__ == "__main__":
-    al = AdrLogParser()
+    import argparse
+    def make_parser():
+        parser = argparse.ArgumentParser(description='Plot ADR temperature log file')
+        parser.add_argument('--filename', type=str, default=None,
+                        help='logfile name, not full path.')
+        parser.add_argument('--logplot', type=bool, default=False,
+                        help='plot on logscale.  Boolean')
+        args = parser.parse_args()
+        return args
+
+    args=make_parser()
+    al = AdrLogParser(args.filename)
     al.print_metadata()
-    al.plot()
+    al.plot(semilog=args.logplot)
     plt.show()
 
     
