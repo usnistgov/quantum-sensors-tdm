@@ -271,18 +271,20 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         
 
 def main():
-    # import sys
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--fastmag",help="remove mag up and down times for testing",action="store_true")
-    # args=parser.parse_args()
-    # if args.fastmag:
-    #     min_mag_time=0
-    # else:
-    #     min_mag_time=20
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(
+                    prog='ADR Temperature Monitor',
+                    description='Monitors temperatures in Velma cryostat mostly for cooldown and warm up')
+    parser.add_argument("--include_coldload",type=bool,help="boolean to include monitoring cold load channels with the cryocon 22.",default=False)
+    args=parser.parse_args()
+    
 
     app = PyQt5.QtWidgets.QApplication(sys.argv)
-    mainWin = adrTempMonitorGui(cc_channels=None)
-    #mainWin = adrTempMonitorGui()
+    if args.include_coldload:
+        mainWin = adrTempMonitorGui()
+    else:
+        mainWin = adrTempMonitorGui(cc_channels=None)
     mainWin.show()
     sys.exit(app.exec_())
 
