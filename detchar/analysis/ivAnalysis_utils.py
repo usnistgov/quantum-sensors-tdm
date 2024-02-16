@@ -850,6 +850,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=True # use a global offset to align fb, not individual per curve
         self.rn_fracs = self._handle_rn_fracs(rn_fracs) # slices in Rn space to compute electrical power versus temperature
+        self.rn_fracs_legend = self._make_rn_fracs_legend_()
         self.n_rn_fracs = len(self.rn_fracs)
         self.bad_data_threshold = 1
 
@@ -857,6 +858,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.dacs = dac_values
         self.fb = fb_array # NxM array of feedback values.  Columns are per coldload temperature
         self.cl_temps_k = cl_temps_k
+        self.cl_temps_k_legend = self._make_cl_temps_k_legend_()
         self.bath_temp_k = bath_temp_k
 
         # other useful globals
@@ -890,7 +892,12 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.analyze_eta, self.predicted_power_w, self.predicted_Dp_w, self.predicted_dp_w = self._handle_power_input(predicted_power_w)
 
         # get efficiency
-        if self.analyze_eta: self.get_efficiency_at_rnfrac()
+        if self.analyze_eta:
+            self.get_efficiency_at_rnfrac()
+            self.eta_for_rfrac = self.get_efficiency_from_fit(self.Dp_at_rnfrac)
+            if self.dark_analysis:
+                Dp_at_rnfrac_darksubtracted = self.Dp_at_rnfrac - self.dark_Dp_w
+                self.eta_for_rfrac_darksubtracted = self.get_efficiency_from_fit(Dp_at_rnfrac_darksubtracted)
 
         # plotting stuff
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
@@ -905,7 +912,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
     def _handle_rn_fracs(self,rn_fracs):
         if rn_fracs is None:
-            return [0.5,0.6,0.7,0.8,0.9]
+            return [0.3,0.4,0.5,0.6,0.7,0.8]
         else:
             return rn_fracs
 
@@ -918,6 +925,18 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             Dp = dp = None
             analyze = False
         return analyze, p_in, Dp, dp
+
+    def _make_cl_temps_k_legend_(self):
+        XX = []
+        for temp in self.cl_temps_k:
+            XX.append(str('%.1fK'%temp))
+        return XX
+
+    def _make_rn_fracs_legend_(self):
+        XX = []
+        for r in self.rn_fracs:
+            XX.append(str('%.02f'%r))
+        return XX
 
     # helper methods -----------------------------------------------------------
     def variable_definitions(self):
@@ -1039,7 +1058,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             print('Unknown efficiency method: ',method)
 
         if self.dark_analysis:
-            self.eta_Dp_arr_darksubtracted = (np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) - np.delete(self.dark_Dp_w,self.T_cl_index,1)) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
+            self.eta_Dp_arr_darksubtracted = (np.delete(self.Dp_at_rnfrac,self.T_cl_index,1) - np.delete(self.dark_Dp_w,self.T_cl_index)) / self.predicted_Dp_w[np.where(self.predicted_Dp_w!=0)[0]]
             self.eta_dp_arr_darksubtracted = (self.dp_at_rnfrac - self.dark_dp_w) / self.predicted_dp_w
             if method == 'fixed reference':
                 self.eta_mean_darksubtracted = self.eta_Dp_arr_darksubtracted.mean(1)
@@ -1053,6 +1072,37 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         else:
             self.eta_Dp_arr_darksubtracted = self.eta_dp_arr_darksubtracted = None
             self.eta_mean_darksubtracted = self.eta_std_darksubtracted = None
+
+    def get_efficiency_from_fit(self,Dp_at_rnfrac,showplot=False):
+        ''' determine optical efficiency by minimizing dp_predicted * eta - dp_measured.
+            Return np.array of length number of rfracs
+        '''
+
+        # fitfunc = lambda v,dp_predict: v[0]*dp_predict+v[1]
+        # errfunc = lambda v,dp_predict,dp_meas: v[0]*dp_predict+v[1]-dp_meas
+
+        fitfunc = lambda v,dp_predict: v*dp_predict
+        errfunc = lambda v,dp_predict,dp_meas: v*dp_predict-dp_meas
+
+        if showplot:
+            fig,ax=plt.subplots(2,1)
+            ax[0].set_ylabel('$\Delta{P}$ [W]')
+            ax[1].set_ylabel('residuals')
+            ax[1].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
+
+        etas = []
+        for ii in range(self.n_rn_fracs):
+            #lsq = leastsq(errfunc,[1,.1], args=(self.predicted_Dp_w,self.Dp_at_rnfrac[ii,:]),full_output=1)
+            lsq = leastsq(errfunc,[1], args=(self.predicted_Dp_w,Dp_at_rnfrac[ii,:]),full_output=1)
+            pfit, pcov, infodict, errmsg, success = lsq
+            etas.append(pfit[0])
+
+            if showplot:
+                ax[0].plot(self.cl_DT_k,Dp_at_rnfrac[ii,:],'o')
+                ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-')
+                ax[0].plot(self.cl_DT_k,fitfunc(pfit,self.predicted_Dp_w),'k--')
+                ax[1].plot(self.cl_DT_k,errfunc(pfit,self.predicted_Dp_w,Dp_at_rnfrac[ii,:]),'o--')
+        return np.array(etas)
 
     def get_power_vector_for_rnfrac(self,rnfrac):
         assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
@@ -1071,7 +1121,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         ax[1].set_ylabel('Feedback values (offset removed)')
 
         fig.suptitle(self.figtitle+'  raw IV')
-        ax[0].legend((self.cl_temps_k),loc='upper right')
+        ax[0].legend((self.cl_temps_k_legend),loc='upper right')
         return fig
 
     def plot_vipr(self):
@@ -1105,7 +1155,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             ax[ii].set_ylim(0,1.2*self.r[0,0])
 
         figXX.suptitle(self.figtitle+'  IV, PV, RP, RV')
-        ax[0].legend(tuple(self.cl_temps_k),loc='upper right')
+        ax[0].legend(tuple(self.cl_temps_k_legend),loc='upper right')
         return figXX
 
     def plot_pr(self):
@@ -1124,7 +1174,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         plt.xlabel('Normalized Resistance')
         plt.ylabel('Power')
         #plt.title(plottitle)
-        plt.legend((self.cl_temps_k))
+        plt.legend((self.cl_temps_k_legend))
         plt.grid()
         plt.title(self.figtitle+' P vs R')
         return fig
@@ -1136,7 +1186,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.p_at_rnfrac[ii,:]).any():
                 plt.plot(self.cl_temps_k,self.p_at_rnfrac[ii,:],'o-')
-                llabels.append(self.rn_fracs[ii])
+                llabels.append('%.2f'%(self.rn_fracs[ii]))
         plt.xlabel('T$_{cl}$ (K)')
         plt.ylabel('TES power plateau')
         plt.legend((llabels))
@@ -1153,7 +1203,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.Dp_at_rnfrac[ii,:]).any():
-                plt.plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                plt.plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label='%.2f'%(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
                     plt.plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:]-self.dark_Dp_w,'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
@@ -1174,7 +1224,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                plt.plot(x,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                plt.plot(x,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label='%.2f'%(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
                     plt.plot(x,self.dp_at_rnfrac[ii,:]-self.dark_dp_w,'o--',color=self.colors[jj],label='_nolegend_')
                 jj+=1
@@ -1197,7 +1247,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                ax[0].plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[0].plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label='%.2f'%(self.rn_fracs[ii]))
                 ax[1].plot(x,self.dp_at_rnfrac[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
                     ax[0].plot(self.cl_DT_k,self.Dp_at_rnfrac[ii,:]-self.dark_Dp_w,'o--',color=self.colors[jj],label='_nolegend_')
@@ -1226,8 +1276,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.dp_at_rnfrac[ii,:]).any():
-                ax[0].plot(self.DT_eta,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
-                ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label=str(self.rn_fracs[ii]))
+                ax[0].plot(self.DT_eta,self.eta_Dp_arr[ii,:],'o-',color=self.colors[jj],label='%.2f'%(self.rn_fracs[ii]))
+                ax[1].plot(x,self.eta_dp_arr[ii,:],'o-',color=self.colors[jj],label='%.2f'%(self.rn_fracs[ii]))
                 if include_darksubtraction and self.dark_analysis:
                     ax[0].plot(self.DT_eta,self.eta_Dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
                     ax[1].plot(x,self.eta_dp_arr_darksubtracted[ii,:],'o--',color=self.colors[jj],label='_nolegend_')
@@ -1250,11 +1300,18 @@ class IVColdloadAnalyzeOneRow(IVCommon):
     def plot_mean_efficiency(self):
         assert self.analyze_eta, 'Analyze_eta=False.  Did you provide a power prediction?'
         fig, ax = plt.subplots(nrows=1,ncols=1)
-        for XX in [self.eta_Dp_arr,self.eta_dp_arr]:
-            ax.errorbar(self.rn_fracs,XX.mean(1),XX.std(1))
+        ax.plot(self.rn_fracs,self.eta_for_rfrac,'o-',color=self.colors[0],label='fit')
+        labels=['fixed ref','diff']
+        for ii,XX in enumerate([self.eta_Dp_arr,self.eta_dp_arr]):
+            ax.errorbar(self.rn_fracs,XX.mean(1),XX.std(1),linestyle='-',color=self.colors[ii+1],label=labels[ii])
+        if self.dark_analysis:
+            ax.plot(self.rn_fracs,self.eta_for_rfrac_darksubtracted,'o--',color=self.colors[0])
+            for ii,XX in enumerate([self.eta_Dp_arr_darksubtracted,self.eta_dp_arr_darksubtracted]):
+                ax.errorbar(self.rn_fracs,XX.mean(1),XX.std(1),linestyle='--',color=self.colors[ii+1])
+
         ax.set_xlabel('Rn fraction')
         ax.set_ylabel('Optical Efficiency')
-        ax.legend(('fixed ref','diff'))
+        ax.legend()
         ax.set_ylim(0,1.1)
         return fig
 
@@ -1393,6 +1450,57 @@ class IVColdloadSweepAnalyzer():
         print('ADR set temperatures: ',self.set_bath_temps_k)
         print('use plot_measured_cl_temps() and plot_measured_bath_temps() to determine if set temperatures were achieved')
 
+    def sweep_analysis_for_row(self,row_index,bath_temp_index,
+                                    cl_indices=None,rn_fracs=None,predicted_power_w=None,
+                                    dark_power_w='auto'):
+        if cl_indices is None:
+            cl_indices = list(range(len(self.set_cl_temps_k)))
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+
+        if self.det_map:
+            row_name = 'Row%02d'%row_index
+            det_name = self.det_map.get_devname_from_row_index(row_index)
+            if dark_power_w is 'auto':
+                position = self.det_map.map_dict[row_name]['position']
+                dark_power_w = self.get_dark_power_w_(position,bath_temp_index,cl_indices)
+        else:
+            row_name=det_name=dark_power_w=None
+
+        iva = IVColdloadAnalyzeOneRow(dacs,fb,
+                                      cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,0],
+                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                      row_name=row_name, det_name=det_name,
+                                      iv_circuit=self.iv_circuit,
+                                      predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
+        return iva
+
+    def get_dark_power_w_(self,position,bath_temp_index,cl_indices,rn_frac=0.7):
+        def test_multiple_darks(dPs,threshold=0.1):
+            d = np.diff(dPs,axis=0)[0]
+            m  = np.mean(dPs,axis=0)
+            XX = d[1:]/m[1:]
+            if any(num > threshold for num in abs(XX)):
+                print('WARNING: multiple dark bolometers within pixel have response different by > threshold = ',threshold)
+
+        dark_rows = self.det_map.get_row_nums_from_keyval_list([['position',position],['type','dark']])
+        if len(dark_rows)==0:
+            print('No dark rows found a position ',position)
+            dark_power_w = None
+        elif len(dark_rows)==1:
+            foo = self.sweep_analysis_for_row(drow,bath_temp_index,cl_indices,rn_frac)
+            dark_power_w = foo.get_power_vector_for_rnfrac(rn_frac)
+        else:
+            print('multiple dark rows found at position %d: '%(position), dark_rows)
+            print('Default is to use the lowest index dark')
+            dark_power_w = []
+            dPs = []
+            for drow in dark_rows:
+                foo = self.sweep_analysis_for_row(drow,bath_temp_index,cl_indices,[rn_frac],dark_power_w=None)
+                dPs.append(foo.Dp_at_rnfrac[0,:])
+            dark_power_w = foo.get_power_vector_for_rnfrac(rn_frac)
+            test_multiple_darks(dPs)
+        return dark_power_w
+
     def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
                       skipsquidchannels=True):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
@@ -1512,28 +1620,9 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
 
-    def sweep_analysis_for_row(self,row_index,bath_temp_index,
-                                    cl_indices=None,rn_fracs=None,predicted_power_w=None):
-        if cl_indices is None:
-            cl_indices = list(range(len(self.set_cl_temps_k)))
-        dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
-        if self.det_map:
-            row_name = 'Row%02d'%row_index
-            det_name = self.det_map.get_devname_from_row_index(row_index)
-            dark_power_w=None # need to update this!!!
-        else:
-            row_name=det_name=dark_power_w=None
 
-        iva = IVColdloadAnalyzeOneRow(dacs,fb,
-                                      cl_temps_k=np.array(self.set_cl_temps_k)[cl_indices],# put in measured values here!
-                                      #cl_temps_k = np.array(self.post_cl_temps_k)[cl_indices,0],
-                                      bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                      row_name=row_name, det_name=det_name,
-                                      iv_circuit=self.iv_circuit,
-                                      predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
-        return iva
-        
-    
+
+
     def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices=None,\
                                     rn_fracs=None,showfigs=True,savefigs=False,
                                     predicted_power_w=None):
@@ -1541,7 +1630,7 @@ class IVColdloadSweepAnalyzer():
                                     cl_indices,rn_fracs,predicted_power_w)
         iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
         return iva
-        
+
 
     def _predicted_power(self,cl_temps,f_edges_ghz):
         predicted_power_w = []
@@ -1643,9 +1732,9 @@ class IVColdloadSweepAnalyzer():
         ''' plot the summary change in power per change in cold load temperature (from reference temperature)
             for all detectors within a pixel at position.  This method requires a complete detector map.
 
-            This is redundant with plot_DpDt_for_position.  Aesthetic differences.   
+            This is redundant with plot_DpDt_for_position.  Aesthetic differences.
         '''
-        self.det_map.print_data_for_position(position)
+        #self.det_map.print_data_for_position(position)
         assert self.det_map != None, 'Must have a detector map to plot_DpDt_for_position'
         bath_temp_index=0
         if cl_indices is None:
@@ -1657,24 +1746,24 @@ class IVColdloadSweepAnalyzer():
         for band in bands:
             for pol in ['A','B']:
                 row_indices.extend(self.det_map.get_row_nums_from_keyval_list([['position',position],['band',str(band)],['polarization',pol]]))
-        
+
         fig,ax = plt.subplots()
         ax.set_ylabel('P$_o$ - P')
         low_band_color = '#1f77b4'
         high_band_color = '#ff7f0e'
         dark_color = "tab:grey"#('k',0.5) #'#2ca02c'
-        A_style = 'o' 
-        B_style = 'v' 
+        A_style = 'o'
+        B_style = 'v'
         dark_count = 0
         for ii, row_dex in enumerate(row_indices):
             if self.det_map.map_dict['Row%02d'%row_dex]['type'] not in ['Optical','optical']:
                 ppower = None
-            else: 
+            else:
                 ppower = self.get_predicted_power_for_row(row_dex,cl_indices)
-    
+
             iva_row = self.sweep_analysis_for_row(row_dex,bath_temp_index,cl_indices,
                                                   rn_fracs=np.array([rfrac]),predicted_power_w=ppower)
-            
+
             # poorly written below to handling plotting visuals
             if self.det_map.map_dict['Row%02d'%row_dex]['type']=='dark':
                 dark_count=dark_count+1
@@ -1686,31 +1775,31 @@ class IVColdloadSweepAnalyzer():
             elif self.det_map.map_dict['Row%02d'%row_dex]['band'] == str(bands[0]):
                 color = low_band_color
             elif self.det_map.map_dict['Row%02d'%row_dex]['band'] == str(bands[1]):
-                color = high_band_color 
+                color = high_band_color
 
             if self.det_map.map_dict['Row%02d'%row_dex]['polarization'] == 'A':
                 ls = A_style
             elif self.det_map.map_dict['Row%02d'%row_dex]['polarization'] == 'B':
                 ls = B_style
-    
+
             # now actually plot it
             ax.plot(iva_row.cl_DT_k,iva_row.Dp_at_rnfrac[0,:],label=self.det_map.map_dict['Row%02d'%row_dex]['devname'],color=color,marker=ls)
             if ii==0:
                 ax.set_xlabel('T$_{cl}$ - %.1f K'%iva_row.cl_temps_k[iva_row.T_cl_index])
 
             if self.det_map.map_dict['Row%02d'%row_dex]['type']=='optical':
-                print(self.det_map.map_dict['Row%02d'%row_dex]['devname'], 'eta = ',iva_row.eta_Dp_arr[~np.isnan(iva_row.eta_Dp_arr)].mean()) 
+                print(self.det_map.map_dict['Row%02d'%row_dex]['devname'], 'eta = ',iva_row.eta_Dp_arr[~np.isnan(iva_row.eta_Dp_arr)].mean())
 
-        # add tophat prediction 
+        # add tophat prediction
         for band in bands:
             if band == bands[0]:
                 color = low_band_color
             elif band == bands[1]:
-                color = high_band_color 
+                color = high_band_color
             rr = self.det_map.get_row_nums_from_keyval_list([['position',position],['band',str(band)]])
             p = self.get_predicted_power_for_row(rr[0],cl_indices)
             ax.plot(iva_row.cl_DT_k,p-p[0],color=color,label='tophat %s band'%band,linestyle='-',alpha=0.5)
-    
+
         ax.legend(fontsize=8)
         ax.grid()
         fig.suptitle('Position %d '%position+' '.join(self.det_map.map_dict['Row%02d'%row_indices[-1]]['devname'].split(' ')[0:2]))
@@ -1783,7 +1872,7 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
     # do the analysis
     iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=temp_list_k, normal_resistance_fractions=rn_fracs,iv_circuit=iv_circuit)
     #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
-   
+
     # plot
     iv_tsweep.plot_raw(1)
     iv_tsweep.plot_vipr(fignum=2)
@@ -1805,7 +1894,7 @@ def iv_circuit_from_file(iv_temp_sweep_data):
     if type(iv_temp_sweep_data) is str:
         df = IVTempSweepData.from_file(filename) # df = "data frame"
     else:
-        df = iv_temp_sweep_data 
+        df = iv_temp_sweep_data
     cfg = df.data[0].extra_info['config']
     cal = cfg['calnums']
     rfb_ohm = cal['rfb']+50.0
