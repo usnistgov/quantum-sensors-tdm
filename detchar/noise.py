@@ -23,6 +23,7 @@ import PyQt5.uic
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.figure import Figure
+import argparse
 
 class MplCanvas(FigureCanvasQTAgg):
     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
@@ -362,6 +363,20 @@ class NoiseSweep(NoiseAcquire):
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
 
+def _make_parser_():
+    parser = argparse.ArgumentParser(description='Take and plot noise spectrum.')
+    parser.add_argument('--row_sequence', type=list, help='Order of row selects sampled within the TDM frame.',default=None)
+    parser.add_argument('--rows_to_plot', type=list, help='Which rows will be plotted',default=None)
+    parser.add_argument('--column_str', type=str, help='Column string.  For accounting/documentation only.',default='A')
+    parser.add_argument('--physical_untis', type=bool, help='Convert y axis to physical units',default=True)
+    parser.add_argument('--m_ratio', type=float, help='mutual inductance ratio. Only used if physical_units=True',default=15.08)
+    parser.add_argument('--rfb_ohm', type=float, help='Feedback resistance in Ohms. Onlu used if physical_units=True',default=207)
+    parser.add_argument('--f_min_hz', type=float, help='Lowest frequency bin in PSD.  Determines length of data acquired.',default=1)
+    parser.add_argument('--num_averages', type=int, help='Number of PSDs to take and average',default=10)
+    
+    args = parser.parse_args()
+    return args
+
 if __name__ == "__main__":
     # path='/data/uber_omt/20230609/'
     # filename = 'colA_noise_20230614_1.json'
@@ -390,10 +405,21 @@ if __name__ == "__main__":
     # data.to_file(path+filename,overwrite=True)
     # print('wrote file %s to disk'%(path+filename))
 
-    nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
-                 easy_client=None, adr_gui_control=None)
+    args = _make_parser_()
+    if args.row_sequence is None:
+        row_sequence = list(range(32))
+    else: 
+        row_sequency = args.row_sequency 
+    nn = NoiseAcquire(column_str=args.column_str, row_sequence_list=row_sequence, m_ratio=args.m_ratio, rfb_ohm=args.rfb_ohm, 
+                      f_min_hz=args.f_min_hz, num_averages=args.num_averages)
     nn.take()
-    nn.plot_avg_psds(rows=[19,20,21,22,26,27,28,29])
-    plt.show()
+    nn.plot_avg_psds(rows=args.rows_to_plot)
+    # plt.show()
+
+    # nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
+    #              easy_client=None, adr_gui_control=None)
+    # nn.take()
+    # nn.plot_avg_psds(rows=[19,20,21,22,26,27,28,29])
+    # plt.show()
 
     
