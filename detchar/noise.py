@@ -136,7 +136,7 @@ class NoiseAcquire():
         self.Pxx_all = None
 
     def _handle_num_points(self,f_min_hz,force_power_of_two=True):
-        npts = int(self.ec.sample_rate/f_min_hz)
+        npts = int(self.ec.sample_rate*1e6/f_min_hz)
         if force_power_of_two:
             npts=2**(int(np.log2(npts)))
         return int(npts)
@@ -166,8 +166,8 @@ class NoiseAcquire():
 
         for ii in range(self.num_averages):
             print('Noise PSD, average number = %d'%ii)
-            y_ii = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = numPoints, exactNumPoints = True, retries = 1)
-            (freqs, Pxx_ii) = scipy.signal.periodogram(y_ii[0,:,:,1], fs=self.ec.sample_rate, window='boxcar',
+            y_ii = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = numPoints, exactNumPoints = True)
+            (freqs, Pxx_ii) = scipy.signal.periodogram(y_ii[0,:,:,1], fs=self.ec.sample_rate*1e6, window='boxcar',
                                                        nfft=None,detrend='constant',scaling='density',axis=-1)
             Pxx_all[:,:,ii]=Pxx_ii
             
@@ -181,23 +181,32 @@ class NoiseAcquire():
                          num_averages=self.num_averages, pre_temp_k=pre_temp_k, pre_time_epoch_s=pre_time,
                          dfb_bits_to_A=self.dfb_bits_to_A, rfb_ohm=self.rfb_ohm, m_ratio=self.m_ratio,
                          extra_info=extra_info)
-        
-    def plot_avg_psds(self,physical_units=True):
+
+    def _handle_rows(self,rows):
+        if rows is None:
+            return self.row_sequence
+        else:
+            return list(rows)
+
+    def plot_avg_psds(self,rows=None,physical_units=True):
         assert self.measured, 'You have not taken a measurement yet.  Use the take() method.'
         fig,ax = plt.subplots(1,1)
         fig.suptitle('Column %s averaged noise'%(self.column))
         if physical_units:
-            y=self.Pxx.transpose()*self.dfb_bits_to_A**2
+            y=self.Pxx*self.dfb_bits_to_A**2
             ax.set_ylabel('PSD (A$^2$/Hz)')
         else:
-            y=self.Pxx.transpose()
+            y=self.Pxx
             ax.set_ylabel('PSD (arb$^2$/Hz)')
-        ax.loglog(self.freqs,y)
+        
+        for row in rows:
+            ax.loglog(self.freqs,y[row,:],label=row)
         ax.set_xlabel('Frequency (Hz)')
-        ax.legend(range(self.ec.numRows))
+        ax.legend()
 
 
     def plot_psds_for_row(self,row_index,physical_units=True):
+        ''' plot the individual PSDs for a single row '''
         assert self.measured, 'You have not taken a measurement yet.  Use the take() method.'
         fig,ax = plt.subplots(1,1)
         fig.suptitle('Column %s Row %02d noise'%(self.column,self.row_sequence[row_index]))
@@ -354,29 +363,37 @@ class NoiseSweep(NoiseAcquire):
                               extra_info=extra_info)
 
 if __name__ == "__main__":
-    path='/data/uber_omt/20230609/'
-    filename = 'colA_noise_20230614_1.json'
-    skip_wait = False
-    row_sequence_list=[8,9,15,18,28,29] 
-    temp_list_k = [0.1,0.12,0.2]
-    db_list = [[5809, 4952, 4641, 4076, 3615, 3263, 2937, 2609, 2274,0],
-                [4770, 4413, 4074, 3529, 3106, 2789, 2494, 2207, 1918],
-                [0]]
-    comment = 'lsync=256, sett=110,nsamp=144'
+    # path='/data/uber_omt/20230609/'
+    # filename = 'colA_noise_20230614_1.json'
+    # skip_wait = False
+    # row_sequence_list=[8,9,15,18,28,29] 
+    # temp_list_k = [0.1,0.12,0.2]
+    # db_list = [[5809, 4952, 4641, 4076, 3615, 3263, 2937, 2609, 2274,0],
+    #             [4770, 4413, 4074, 3529, 3106, 2789, 2494, 2207, 1918],
+    #             [0]]
+    # comment = 'lsync=256, sett=110,nsamp=144'
     
-    ns = NoiseSweep(column_str='A',
-                      row_sequence_list=row_sequence_list, 
-                      m_ratio = 15.08,
-                      rfb_ohm = 1700,
-                      f_min_hz = 1, 
-                      num_averages=100,
-                      detector_bias_list = db_list,
-                      temperature_list_k = temp_list_k,
-                      signal_column_index=0,
-                      voltage_source='tower',
-                      db_cardname = 'DB',
-                      db_tower_channel='0',
-                      cringe_control=None)
-    data = ns.run(skip_wait_on_first_temp=skip_wait,extra_info={'comment':comment})
-    data.to_file(path+filename,overwrite=True)
-    print('wrote file %s to disk'%(path+filename))
+    # ns = NoiseSweep(column_str='A',
+    #                   row_sequence_list=row_sequence_list, 
+    #                   m_ratio = 15.08,
+    #                   rfb_ohm = 1700,
+    #                   f_min_hz = 1, 
+    #                   num_averages=100,
+    #                   detector_bias_list = db_list,
+    #                   temperature_list_k = temp_list_k,
+    #                   signal_column_index=0,
+    #                   voltage_source='tower',
+    #                   db_cardname = 'DB',
+    #                   db_tower_channel='0',
+    #                   cringe_control=None)
+    # data = ns.run(skip_wait_on_first_temp=skip_wait,extra_info={'comment':comment})
+    # data.to_file(path+filename,overwrite=True)
+    # print('wrote file %s to disk'%(path+filename))
+
+    nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
+                 easy_client=None, adr_gui_control=None)
+    nn.take()
+    nn.plot_avg_psds(rows=[19,20,21,22,26,27,28,29])
+    plt.show()
+
+    
