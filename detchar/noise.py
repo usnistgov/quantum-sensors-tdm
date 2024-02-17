@@ -191,6 +191,7 @@ class NoiseAcquire():
 
     def plot_avg_psds(self,rows=None,physical_units=True):
         assert self.measured, 'You have not taken a measurement yet.  Use the take() method.'
+        rows = self._handle_rows(rows)
         fig,ax = plt.subplots(1,1)
         fig.suptitle('Column %s averaged noise'%(self.column))
         if physical_units:
@@ -366,9 +367,9 @@ class NoiseSweep(NoiseAcquire):
 def _make_parser_():
     parser = argparse.ArgumentParser(description='Take and plot noise spectrum.')
     parser.add_argument('--row_sequence', type=list, help='Order of row selects sampled within the TDM frame.',default=None)
-    parser.add_argument('--rows_to_plot', type=list, help='Which rows will be plotted',default=None)
+    parser.add_argument('--rows_to_plot', '--list', type=int, nargs='+', help='Which rows will be plotted',default=None)
     parser.add_argument('--column_str', type=str, help='Column string.  For accounting/documentation only.',default='A')
-    parser.add_argument('--physical_untis', type=bool, help='Convert y axis to physical units',default=True)
+    parser.add_argument('--physical_units', type=bool, help='Convert y axis to physical units',default=True)
     parser.add_argument('--m_ratio', type=float, help='mutual inductance ratio. Only used if physical_units=True',default=15.08)
     parser.add_argument('--rfb_ohm', type=float, help='Feedback resistance in Ohms. Onlu used if physical_units=True',default=207)
     parser.add_argument('--f_min_hz', type=float, help='Lowest frequency bin in PSD.  Determines length of data acquired.',default=1)
@@ -412,9 +413,11 @@ if __name__ == "__main__":
         row_sequency = args.row_sequency 
     nn = NoiseAcquire(column_str=args.column_str, row_sequence_list=row_sequence, m_ratio=args.m_ratio, rfb_ohm=args.rfb_ohm, 
                       f_min_hz=args.f_min_hz, num_averages=args.num_averages)
+    print(args.rows_to_plot)
     nn.take()
+    
     nn.plot_avg_psds(rows=args.rows_to_plot)
-    # plt.show()
+    plt.show()
 
     # nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
     #              easy_client=None, adr_gui_control=None)
