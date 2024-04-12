@@ -946,24 +946,32 @@ class NoiseSweepData(DataIO):
             m=1
         return m, y_label_str
 
-    def plot_row_for_temp(self,row_index,temp,bias_indices=None,list=None,physical_units=True,fig=None,ax=None):
+    def plot_row(self,row_index,temp,bias_indices=None,list=None,physical_units=True,fig=None,ax=None):
         fig,ax = self._handle_fig(fig,ax)
-        fig.suptitle('Column %s, Row %02d, T=%d mK'%(self.column,self.row_sequence[row_index],temp*1000))
+        fig.suptitle('Column %s, Row %02d'%(self.column,self.row_sequence[row_index]))
         temp_m = []
         m, y_label_str = self._phys_units(physical_units)
-        dex = self.temp_list_k.index(temp)
-        data = self.data[dex]
-        if bias_indices==None:
-            db_list=self.db_list[dex]
+        if type(temp) == float or type(temp) == int:
+            temp_indices = [self.temp_list_k.index(temp)]
         else:
-            db_list=list(np.array(self.db_list)[bias_indices])
-        for ii,db in enumerate(db_list):
-            df = data[ii]
-            temp_m.append(df.pre_temp_k)
-            ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2)
+            temp_indices=[]
+            for t in temp:
+                temp_indices.append(self.temp_list_k.index(t))
+        
+        for jj,dex in enumerate(temp_indices):
+            data = self.data[dex]
+            if bias_indices==None:
+                db_list=self.db_list[dex]
+            else:
+                db_list=list(np.array(self.db_list)[bias_indices])
+            
+            for ii,db in enumerate(db_list):
+                df = data[ii]
+                temp_m.append(df.pre_temp_k)
+                ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2,label='temp %d, bias %.2f'%(df.pre_temp_k*1000,db))
         ax.set_xlabel('Frquency (Hz)')
         ax.set_ylabel(y_label_str)
-        ax.legend(db_list)
+        ax.legend()
         print('measured temperatures: ',temp_m)
         return fig, ax
 
