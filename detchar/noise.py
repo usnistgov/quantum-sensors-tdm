@@ -270,7 +270,7 @@ class NoiseSweep(NoiseAcquire):
         self.signal_column_index=signal_column_index
 
         # globals hidden from class initialization
-        self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
+        self.temp_settle_delay_s = 60 # wait time after commanding an ADR set point
 
         self.cc = self._handle_cringe_control_arg(cringe_control)
         self.set_volt = self._handle_voltage_source_arg(voltage_source)
@@ -351,7 +351,7 @@ class NoiseSweep(NoiseAcquire):
                 print('Setting detector bias to %d, then relocking'%db)
                 self.set_volt(db)
                 self.cc.relock_all_locked_fba(self.signal_column_index)
-                time.sleep(0.1)
+                time.sleep(1)
                 print('Collecting Noise PSD')
                 result = self.take(extra_info={},force_power_of_two=force_power_of_two)
                 det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
