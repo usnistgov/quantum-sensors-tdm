@@ -1,0 +1,12 @@
+Files in executable_scripts should be placed within /usr/local/bin/ 
+Change the owner to the main user with chown and make them executable with chmod.
+
+Example, lets say you want to be able to acquire noise data by issuing a single command within a bash shell.
+The file noise_quicklook has commands to do this.  Do the following
+
+sudo cp noise_quicklook /usr/local/bin/noise_quicklook
+sudo chown pcuser:pcuser /usr/local/bin/noise_quicklook
+sudo chmod +x /usr/local/bin/noise_quicklook
+
+Then from anywhere within a bash shell, try noise_quicklook --help.
+You should be able to see with the command call options are.
