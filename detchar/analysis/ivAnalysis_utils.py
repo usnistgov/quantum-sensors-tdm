@@ -311,7 +311,7 @@ class IVCommon():
             row_indices = list(range(m))
 
         # fig 1, 2x2 of converted IV
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
         for ii in row_indices:
             ax[0].plot(v[:,ii],i[:,ii])
