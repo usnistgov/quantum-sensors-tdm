@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np 
 from scipy.optimize import curve_fit
 from scipy.constants import k as kb
+from detchar.iv_data import NoiseSweepData
 
 class FitNoiseSingle():
     ''' Fit a measurement of current noise density to a single pole roll-off model.  
@@ -179,9 +180,28 @@ class FitNoiseTemperatureSweep():
         print('Resistance is %.3f microOhms'%(R_ohms*1e6))
         return R_ohms  
 
+def noise_sweep_data_parser(noisesweepdata_filename,detbias_index=0,row_sequence_index=0,temp_list=None):
+    ''' helps parse the raw NoiseSweepData json file into the structure that FitNoiseTemperatureSweep expects '''
+    ns = NoiseSweepData.from_file(noisesweepdata_filename)
+    m, y_label_str = ns._phys_units(True)
+    if temp_list is None:
+        ntemps = len(ns.temp_list_k)
+        temp_list = ns.temp_list_k
+    else:
+        ntemps = len(temp_list)
+
+    npts= len(ns.data[0][detbias_index].freq_hz)
+    Ixx = np.zeros((npts,ntemps))
+    meas_temp=[]
+    for ii,temp in enumerate(temp_list):
+        dex = ns.temp_list_k.index(temp)
+        Ixx[:,ii] = np.array(ns.data[dex][0].Pxx[row_sequence_index])*m**2
+        meas_temp.append(ns.data[dex][0].pre_temp_k)
+    return FitNoiseTemperatureSweep(np.array(ns.data[0][0].freq_hz),Ixx,meas_temp)
+
 if __name__ == "__main__":
-    from detchar.iv_data import NoiseSweepData
-    ns=NoiseSweepData.from_file('/data/uber_omt/20240329/rsh_noise4.json')
+    # from detchar.iv_data import NoiseSweepData
+    # ns=NoiseSweepData.from_file('/data/uber_omt/20240329/rsh_noise4.json')
     # df = ns.data[4][0]
     # m, y_label_str = ns._phys_units(True)
     # fns=FitNoiseSingle(np.array(df.freq_hz),np.array(df.Pxx)[0,:]*m**2)
@@ -190,13 +210,7 @@ if __name__ == "__main__":
     # fns.fit(showplot=True,verbose=True)
     # plt.show()
 
-    m, y_label_str = ns._phys_units(True)
-    ntemps = len(ns.temp_list_k)
-    nrows,npts = np.shape(ns.data[0][0].Pxx)
-    Ixx = np.zeros((npts,ntemps))
-    for ii in range(ntemps):
-        Ixx[:,ii] = np.array(ns.data[ii][0].Pxx[0])*m**2
-    fnts = FitNoiseTemperatureSweep(np.array(ns.data[0][0].freq_hz),Ixx,ns.temp_list_k)
+    fnts = noise_sweep_data_parser('/data/uber_omt/20240329/rsh_noise4.json')
     fnts.plot()
     plt.show() 
     fnts.fit(to_remove=[60,120,180,300,420,540,660,780],bw=[30,1,2,4,1,1,2,1],showplot=True)
