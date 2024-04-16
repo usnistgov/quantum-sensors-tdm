@@ -160,7 +160,7 @@ class FitNoiseTemperatureSweep():
         ylabels = ['white noise (A$^2$/Hz) ','time constant (s)','readout noise (A$^2$/Hz)']
         for ii in range(3):
             ax[ii].set_ylabel(ylabels[ii])
-        ax[2].set_ylabel('Temperature (K)')
+        ax[2].set_xlabel('Temperature (K)')
         plt.tight_layout()
 
     def get_R(self,showplot=False):
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     # fns.fit(showplot=True,verbose=True)
     # plt.show()
 
-    fnts = noise_sweep_data_parser('/data/uber_omt/20240329/rsh_noise4.json')
+    fnts = noise_sweep_data_parser('/data/uber_omt/20240329/rsh_noise2.json')
     fnts.plot()
     plt.show() 
     fnts.fit(to_remove=[60,120,180,300,420,540,660,780],bw=[30,1,2,4,1,1,2,1],showplot=True)
