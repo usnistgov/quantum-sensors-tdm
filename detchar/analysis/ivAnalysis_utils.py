@@ -234,25 +234,32 @@ class IVCommon():
         m, b = np.polyfit(x,y,deg=1)
         return m,b,fb_align
 
-    def fb_align_and_remove_offset(self,dacs,fb_arr,n_normal_pts=10,use_ave_offset=True,showplot=False):
-        ''' Remove DC offset from a set of IV curves and ensure IV is right side up
+    def fb_align_and_remove_offset(self,dacs,fb_arr,n_normal_pts=10,use_ave_offset=False,showplot=False):
+        ''' Remove DC offset from a set of IV curves and ensure IV is right side up, 
+            i.e the slope in the normal branch is positive
 
             dacs: voltage bias in dac units (1xn array)
             fb_arr: nxm array of all feedback values in dac units
             n_normal_pts: number of normal points to use for fitting normal branch
-            use_ave_offset: use the average of all IV slope in normal branch for subtraction
+            use_ave_offset: use the average of all IV slope in normal branch for subtraction.  This might make sense
+                            when analyzing a set of IV curves from the same bolometer.
             showplot: if True, plot the figure
 
         '''
 
         m,b,fb_align = self.fit_normal_branch(dacs,fb_arr,align_dc=True,n_normal_pts=n_normal_pts)
-        if np.std(b)/np.mean(b) > 0.01:
-            print('Warning DC offset of curves differs by > 1\%')
-            print('Offset fit: ',np.mean(b),'+/-',np.std(b))
-        if use_ave_offset: b = np.mean(b)
+        if use_ave_offset: 
+            print('Using average offset from all IV curves for DC offset removal.')
+            if np.std(b)/np.mean(b) > 0.01:
+                print('Warning DC offset of curves differs by > 1\%')
+                print('Offset fit: ',np.mean(b),'+/-',np.std(b))
+            b = np.mean(b)
 
-        fb_align = fb_align - b
-        if m[0]<0: fb_align = fb_align*-1
+        fb_align = fb_align - b # remove the DC offset
+        # ensure right side up
+        dexs = np.where(m<0)[0]
+        for dex in dexs:
+            fb_align[:,dex]=-1*fb_align[:,dex]
         if showplot:
             for ii in range(m):
                 plt.plot(dacs,fb_align[:,ii])
@@ -302,7 +309,7 @@ class IVCommon():
             self.plot_vipr([v,i,p,r])
         return v,i,p,r
 
-    def plot_vipr_method(self,v,i,p,r,fignum=1,figtitle=None,figlegend=None,row_indices=None):
+    def plot_vipr_method(self,v,i,p,r,figtitle=None,figlegend=None,row_indices=None):
 
         if type(row_indices) == int:
             row_indices = [row_indices]
@@ -346,7 +353,7 @@ class IVCommon():
         # ax[2].set_xlim((0,r[0,0]*1.1))
         # ax[2].set_ylim((0,np.max(p)*1.1))
         # ax[3].set_xlim((0,np.max(v)*1.1))
-        ax[3].set_ylim((0,r[0,0]*1.1))
+        ax[3].set_ylim((0,np.max(r[0,row_indices])*1.1))
 
         for ii in range(4):
             ax[ii].grid('on')
@@ -356,6 +363,8 @@ class IVCommon():
 
         if figlegend:
             fig.legend(figlegend)
+
+        plt.tight_layout()
         return fig
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
@@ -481,40 +490,61 @@ class IVCurveColumnDataExplore(IVCommon):
         return v, resp
 
     # plotting methods --------------------------------------
-    def plot_raw_allrow(self):
-        self.data.plot()
+    def __handle_row_input__(self,row):
+        ''' magic method to allow plotting functions to accept a single row to plot as input 
+            or a list.  NOTE THAT ROW HERE MEANS THE ROW INDEX!!!
+        '''
+        if type(row)==int:
+            row=[row]
+        elif row == 'all':
+            row=list(range(self.n_rows))
+        return row
 
-    def plot_vipr_for_row(self,row=None,fignum=1,figtitle=None):
+    def plot_raw(self,row='all',include_legend=True):
+        row = self.__handle_row_input__(row)
+        fig = plt.figure()
+        for ii in row:
+            plt.plot(self.x_raw,self.y_raw[:,ii])
+        plt.xlabel('Vb [dac]')
+        plt.ylabel('Vfb [dac]')
+        if include_legend: plt.legend(row)
+
+    def plot_vipr_for_row(self,row=None,figtitle=None):
         ''' row can be list of rows or an integer.  If None, plot them all '''
-        self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
+        fig = self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
+        return fig
 
-    def plot_iv(self, fignum=1):
-        fig = plt.figure(fignum)
-        for ii in range(self.n_rows):
+    def plot_iv(self,row='all'):
+        row = self.__handle_row_input__(row)
+        fig = plt.figure()
+        for ii in row:
             plt.plot(self.v[:,ii],self.i[:,ii],label='%02d'%ii)
         plt.xlabel(self.labels['iv']['x'])
         plt.ylabel(self.labels['iv']['y'])
         plt.legend(loc='upper right')
         return fig
 
-    def plot_responsivity(self,fignum=1):
-        fig = plt.figure(fignum)
+    def plot_responsivity(self,row='all'):
+        row = self.__handle_row_input__(row)
+        fig = plt.figure()
         v,r = self.get_responsivity()
-        #for ii in range(self.n_rows):
-        plt.plot(v,r)
+        for ii in row:
+            plt.plot(v[:,ii],r[:,ii])
         plt.xlabel(self.labels['responsivity']['x'])
         plt.ylabel(self.labels['responsivity']['y'])
         plt.legend(tuple(range(self.n_rows)),loc='upper right')
         return fig
 
-    def plot_dy(self):
+    def plot_dy(self,row='all'):
+        row = self.__handle_row_input__(row)
+        fig = plt.figure()
         dy = np.diff(self.i,axis=0)
-        print(np.shape(dy))
-        for ii in range(self.n_rows):
+        for ii in row:
             plt.plot(self.v[0:-1,ii],dy[:,ii],label='%02d'%ii)
         plt.xlabel(self.labels['dy']['x'])
         plt.ylabel(self.labels['dy']['y'])
         plt.legend(loc='upper right')
+        return fig
 
 class IVSetAnalyzeRow(IVCommon):
     def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
@@ -605,8 +635,8 @@ class IVSetAnalyzeRow(IVCommon):
         if self.figtitle != None:
             plt.title(self.figtitle)
 
-    def plot_vipr(self,fignum=1):
-        self.plot_vipr_method(self.v,self.i,self.p,self.r,fignum=fignum, figtitle=self.figtitle,figlegend=self.state_list)
+    def plot_vipr(self):
+        self.plot_vipr_method(self.v,self.i,self.p,self.r, figtitle=self.figtitle,figlegend=self.state_list)
 
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.
@@ -848,7 +878,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
                  iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None):
         # fixed globals / options
         self.n_normal_pts=10 # number of points for normal branch fit
-        self.use_ave_offset=True # use a global offset to align fb, not individual per curve
+        self.use_ave_offset=False # use a global offset to align fb, not individual per curve
         self.rn_fracs = self._handle_rn_fracs(rn_fracs) # slices in Rn space to compute electrical power versus temperature
         self.rn_fracs_legend = self._make_rn_fracs_legend_()
         self.n_rn_fracs = len(self.rn_fracs)
