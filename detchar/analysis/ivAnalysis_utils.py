@@ -361,7 +361,9 @@ class IVCommon():
         if figtitle:
             fig.suptitle(figtitle)
 
-        if figlegend:
+        if figlegend is None:
+            fig.legend(tuple(row_indices))
+        else:
             fig.legend(figlegend)
 
         plt.tight_layout()
@@ -399,6 +401,23 @@ class IVCommon():
             result[:,ii] = YY
         return result
 
+    def _get_dac_at_rfrac_method_(self,rn_frac_list,dac,ro):
+        ''' return the commanded voltage bias in dac units for an input rn_frac (not percentage),
+            given the input dac values and N pts x M row normalized resistance array ro.
+
+            The input vector and array dac and ro, are provided as the data is collected 
+            during an IV curve: from high values of dac to low.
+
+            Return is a list.  Elements of the list are np.array corresponding to the dac at the rn_frac_list provided.
+            ie dac_list[i][j] corresponds to the ith detector and jth rn_frac value given
+        '''
+        n,m=np.shape(ro)
+        dac_list = []
+        for ii in range(m):
+            dac_list.append(np.interp(rn_frac_list,ro[:,ii][::-1],dac[::-1]))
+        return dac_list
+
+
 class IVCurveColumnDataExplore(IVCommon):
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
     def __init__(self,iv_curve_column_data,iv_circuit=None):
@@ -415,7 +434,7 @@ class IVCurveColumnDataExplore(IVCommon):
         self.fb_align = self.fb_align_and_remove_offset(self.x_raw,self.y_raw,n_normal_pts=self.n_normal_pts,
                                                         use_ave_offset=False,showplot=False)
         self.v,self.i,self.p,self.r = self.get_vipr(self.data.dac_values, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
-        # self.ro = self.r / self.r[0,:]
+        self.ro = self.r / self.r[0,:]
         # self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
         # self.ro_clean = self.r_clean / self.r_clean[0,:]
 
@@ -489,6 +508,9 @@ class IVCurveColumnDataExplore(IVCommon):
         resp = di/dp
         return v, resp
 
+    def get_dac_at_rfrac(self,rn_frac_list):
+        return self._get_dac_at_rfrac_method_(rn_frac_list,self.x_raw,self.ro)
+        
     # plotting methods --------------------------------------
     def __handle_row_input__(self,row):
         ''' magic method to allow plotting functions to accept a single row to plot as input 
@@ -544,6 +566,17 @@ class IVCurveColumnDataExplore(IVCommon):
         plt.xlabel(self.labels['dy']['x'])
         plt.ylabel(self.labels['dy']['y'])
         plt.legend(loc='upper right')
+        return fig
+
+    def plot_prn_v_dac(self,row='all'):
+        row = self.__handle_row_input__(row)
+        fig = plt.figure()
+        for ii in row:
+            plt.plot(self.x_raw,self.ro[:,ii])
+        plt.ylim(0,1.1)
+        plt.xlabel('V [dac]')
+        plt.ylabel('Rn frac')
+        plt.legend(row)
         return fig
 
 class IVSetAnalyzeRow(IVCommon):
