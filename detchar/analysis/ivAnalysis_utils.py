@@ -44,7 +44,7 @@ def thermalPower(nu1,nu2,T,F=None):
         top hat band is assumed.
     '''
     try:
-        if F is None: # case for tophat
+        if F == None: # case for tophat
             P = quad(Pnu_thermal,nu1,nu2,args=(T))[0] # toss the error
     except: # case for arbitrary passband shape F
         N = len(F)
@@ -136,11 +136,13 @@ class IVCommon():
 
             If no bad data found, return the last index (such that subsequent method includes all data points)
         '''
-        assert dac[1]-dac[0] < 0, ('dac values must be in descending order')
-        #print('The threshold is = ', threshold)
+        success = True
+        if dac[1]-dac[0] > 0:
+            print('WARNING: the dac values are not in descending order.  find_bad_data_index will fail')
+            success = False 
 
         turn_dex = self.get_turn_index(dac,fb,showplot=False)
-        if turn_dex == None: return len(dac)
+        if turn_dex == None: return len(dac), success
 
         dfb = np.diff(fb,axis=0)
         norm_dfb = np.mean(dfb[0:10],axis=0)
@@ -181,7 +183,7 @@ class IVCommon():
                 # plt.plot(smooth(ddfb,3))
                 # plt.plot([dex-1],[ddfb[dex-1]],'go')
                 plt.show()
-        return dex
+        return dex, success
 
     def remove_NaN(self,arr):
         ''' only works on 1d vector, not array '''
@@ -267,9 +269,11 @@ class IVCommon():
         return fb_align
 
     def remove_bad_data(self,v,i,p,r,threshold=0.5):
-        ''' calling find_bad_data_index, remove bad data deep in transition.
-            v,i,p and r are nxm arrays
+        ''' 
+            Remove bad data from IV curve set on entire column of data, 
+            i.e. v,i,p,r is each an nxm array with n data points and m squid channels/detectors
 
+            calls find_bad_data_index for each squid channel, removes bad data deep in transition.
             returns tuple: (cleaned) v,i,p,r and list of indices of bad data
         '''
         def cut(arr,dexs):
@@ -283,7 +287,11 @@ class IVCommon():
         dexs=[]
         n,m=np.shape(i)
         for ii in range(m):
-            dexs.append(self.find_bad_data_index(v[:,ii],i[:,ii],threshold=threshold,showplot=False))
+            dex, success = self.find_bad_data_index(v[:,ii],i[:,ii],threshold=threshold,showplot=False)
+            #print(ii,dex,success)
+            if not success:
+                print('remove_band_data failed for index ',ii)
+            dexs.append(dex)
         v_clean = cut(v,dexs)
         i_clean = cut(i,dexs)
         r_clean = cut(r,dexs)
@@ -313,7 +321,7 @@ class IVCommon():
 
         if type(row_indices) == int:
             row_indices = [row_indices]
-        if row_indices is None:
+        if row_indices == None:
             n,m=np.shape(i)
             row_indices = list(range(m))
 
@@ -361,7 +369,7 @@ class IVCommon():
         if figtitle:
             fig.suptitle(figtitle)
 
-        if figlegend is None:
+        if figlegend == None:
             fig.legend(tuple(row_indices))
         else:
             fig.legend(figlegend)
@@ -429,21 +437,22 @@ class IVCurveColumnDataExplore(IVCommon):
 
         # the raw data for one column and dimensionality
         self.x_raw, self.y_raw = self.data.xy_arrays_zero_subtracted_at_dac_high() # raw units
+        # x_raw is in desending order (highest Vbias to lowest, as is typically done in TES IV curves)
+        # y_raw is also the response to the bias in decending order.
 
         # data converted to physical units
         self.fb_align = self.fb_align_and_remove_offset(self.x_raw,self.y_raw,n_normal_pts=self.n_normal_pts,
                                                         use_ave_offset=False,showplot=False)
         self.v,self.i,self.p,self.r = self.get_vipr(self.data.dac_values, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
+        # the high bias to low bias order is preserved.  i.e. v[ii,:] > v[ii+1,:]
         self.ro = self.r / self.r[0,:]
-        # self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
-        # self.ro_clean = self.r_clean / self.r_clean[0,:]
-
-        self.n_pts, self.n_rows = np.shape(self.fb_align)
+        self.is_data_clean=False
+        foo, self.n_rows = np.shape(self.fb_align)
         self.labels = self._handle_labels(iv_circuit)
 
     # data manipulation methods --------------------------------------------------------
     def _handle_iv_circuit(self, iv_circuit):
-        if iv_circuit is not None:
+        if iv_circuit != None:
             ivcirc = iv_circuit
         else:
             if self.data.extra_info:
@@ -501,6 +510,11 @@ class IVCurveColumnDataExplore(IVCommon):
                           'y':'$\delta{I}/\delta{P}$ (DAC)'}
         return labels
 
+    def clean_data(self,threshold=1):
+        self.v, self.i, self.p, self.r, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=threshold)
+        self.ro = self.r / self.r[0,:]
+        self.is_data_clean=True
+
     def get_responsivity(self):
         v = np.diff(self.v,axis=0)+self.v[:-1,:]
         di = np.diff(self.i, axis=0)
@@ -510,7 +524,7 @@ class IVCurveColumnDataExplore(IVCommon):
 
     def get_dac_at_rfrac(self,rn_frac_list):
         return self._get_dac_at_rfrac_method_(rn_frac_list,self.x_raw,self.ro)
-        
+
     # plotting methods --------------------------------------
     def __handle_row_input__(self,row):
         ''' magic method to allow plotting functions to accept a single row to plot as input 
@@ -657,8 +671,8 @@ class IVSetAnalyzeRow(IVCommon):
 
         return y
 
-    def plot_raw(self,fignum=1):
-        figXX = plt.figure(fignum)
+    def plot_raw(self):
+        figXX = plt.figure()
         for ii in range(self.num_sweeps):
             plt.plot(self.dacs, self.fb_raw[:,ii])
         #plt.plot(self.dacs,self.fb_raw)
@@ -732,43 +746,11 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         #print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
 
-    # def get_value_at_rn_frac(self,rn_fracs,arr,ro):
-    #     '''
-    #     Return the value of arr at fraction of Rn.
-    #     input:
-    #     rn_fracs: fraction of Rn values to be evaluated (NOT PERCENTAGE RN).
-    #     arr: NxM array to determine the Rn fraction at
-    #     ro: NxM normalized resistance
-    #
-    #     arr and ro must be same shape
-    #     return: len(rn_fracs) x M array of the interpolated values
-    #
-    #     '''
-    #     # ensure rn_fracs is a np.array
-    #     if type(rn_fracs)!=np.ndarray:
-    #         rn_fracs = np.array(rn_fracs)
-    #     assert len(np.where(rn_fracs>1)[0])==0, ('rn_fracs values must be < 1')
-    #     n,m=np.shape(arr)
-    #     result = np.zeros((len(rn_fracs),m))
-    #     for ii in range(m):
-    #         x = self.remove_NaN(ro[:,ii])
-    #         y = self.remove_NaN(arr[:,ii])
-    #         YY = np.interp(rn_fracs,x[::-1],y[::-1])
-    #
-    #         # over write with NaN for when data does not extend to fracRn
-    #         ro_min = np.min(x)
-    #         toCut = np.where(rn_fracs<ro_min)[0]
-    #         N = len(toCut)
-    #         if N >0:
-    #             YY[0:N] = np.zeros(N)*np.NaN
-    #         result[:,ii] = YY
-    #     return result
-
-    def plot_pr(self,fignum=1):
+    def plot_pr(self):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
         # FIG1: P versus R/Rn
-        fig = plt.figure(fignum)
+        fig = plt.figure()
         plt.plot(self.ro_clean, self.p_clean,'-') # plots for all Tbath
         plt.plot(self.rn_fracs,self.p_at_rnfrac,'ro')
         plt.xlim((0,1.1))
@@ -785,9 +767,9 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         #plt.title(self.figtitle)
         return fig
 
-    def plot_pt(self,fignum=2,include_fits=True):
+    def plot_pt(self,include_fits=True):
         # power plateau (evaluated at each rn_frac) versus T_cl
-        fig = plt.figure(fignum)
+        fig = plt.figure()
         llabels=[]
         temp_arr = np.linspace(np.min(self.temp_list_k),np.max(self.temp_list_k),100)
         for ii in range(self.num_rn_fracs):
@@ -860,7 +842,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             pcov=pcov*s_sq
         return pfit,pcov
 
-    def plot_fits(self,fignum=1):
+    def plot_fits(self):
         K=self.pfits[:,0]
         T=self.pfits[:,1]
         n=self.pfits[:,2]
@@ -869,7 +851,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         vec = [K,T,n,G]
         yaxis_label=['K','T','n','G']
         # fig 1, 2x2 of converted IV
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         ax=[ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
 
         for ii, v in enumerate(vec):
@@ -967,20 +949,20 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
     # handle methods ----------------------------------------------------------
     def _handle_row_det_name(self,row_name,det_name):
-        if row_name is None:
+        if row_name == None:
             row_name = 'Row XX'
-        if det_name is None:
+        if det_name == None:
             det_name = 'Det XX'
         return row_name, det_name
 
     def _handle_rn_fracs(self,rn_fracs):
-        if rn_fracs is None:
+        if rn_fracs == None:
             return [0.3,0.4,0.5,0.6,0.7,0.8]
         else:
             return rn_fracs
 
     def _handle_power_input(self,p_in):
-        if p_in is not None:
+        if p_in != None:
             assert len(p_in) == self.n_cl_temps, 'Hey, the dimensions of the input power do not match the number of cold load temperatures!'
             Dp, dp = self.get_power_difference_1D(p_in, self.T_cl_index)
             analyze = True
@@ -1516,14 +1498,14 @@ class IVColdloadSweepAnalyzer():
     def sweep_analysis_for_row(self,row_index,bath_temp_index,
                                     cl_indices=None,rn_fracs=None,predicted_power_w=None,
                                     dark_power_w='auto'):
-        if cl_indices is None:
+        if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
 
         if self.det_map:
             row_name = 'Row%02d'%row_index
             det_name = self.det_map.get_devname_from_row_index(row_index)
-            if dark_power_w is 'auto':
+            if dark_power_w == 'auto':
                 position = self.det_map.map_dict[row_name]['position']
                 dark_power_w = self.get_dark_power_w_(position,bath_temp_index,cl_indices)
         else:
@@ -1706,7 +1688,7 @@ class IVColdloadSweepAnalyzer():
         ''' plot the change in power for change in cold load temperature for rows in
             row_list.
         '''
-        if cl_indices is None:
+        if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
 
         for row in row_list:
@@ -1800,7 +1782,7 @@ class IVColdloadSweepAnalyzer():
         #self.det_map.print_data_for_position(position)
         assert self.det_map != None, 'Must have a detector map to plot_DpDt_for_position'
         bath_temp_index=0
-        if cl_indices is None:
+        if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
         bands = self.det_map.get_bands_for_position(position)
 
@@ -1893,11 +1875,11 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
     else:
         assert False,'unknown voltage bias'
 
-    if temp_indices is None:
+    if temp_indices == None:
         temp_indices = range(len(df.set_temps_k))
     temp_list_k = np.array(df.set_temps_k)[temp_indices]
 
-    if rn_fracs is None:
+    if rn_fracs == None:
         rn_fracs=[0.5,0.6,0.7,0.8]
 
     # circuit parameters to convert to physical units
@@ -1911,7 +1893,7 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
 
     else:
         rfb_ohm = 1698.0+50.0
-        rbias_ohm = 200.0
+        rbias_ohm = 208.0
         rsh_ohm = 0.000150
         rx_ohm = 0
         mr = 15
@@ -1937,19 +1919,20 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
     #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
 
     # plot
-    iv_tsweep.plot_raw(1)
-    iv_tsweep.plot_vipr(fignum=2)
-    iv_tsweep.plot_pr(fignum=3)
-    iv_tsweep.plot_pt(fignum=4)
-    iv_tsweep.plot_fits(fignum=5)
-    print(iv_tsweep.pfits[0])
-    plt.show()
+    iv_tsweep.plot_raw()
+    iv_tsweep.plot_vipr()
+    iv_tsweep.plot_pr()
+    iv_tsweep.plot_pt()
+    iv_tsweep.plot_fits()
+    print(iv_tsweep.pfits[:])
+    return iv_tsweep.pfits,iv_tsweep.r_clean[0:10,:].mean()
+    #plt.show()
 
 def iv_chop(file1,file2,row_index,temp_indices=[0,0],state_list=None,iv_circuit=None):
     ''' file 1 - file 2 '''
     iv1=IVTempSweepData.from_file(file1)
     iv2=IVTempSweepData.from_file(file2)
-    if iv_circuit is None: iv_circuit=iv_circuit_from_file(iv1)
+    if iv_circuit == None: iv_circuit=iv_circuit_from_file(iv1)
     ivchop = IVSetAnalyzeColumn([iv1.data[temp_indices[0]],iv2.data[temp_indices[1]]],state_list=state_list,iv_circuit=iv_circuit) #instance of IVSetAnalyzeColumn
     ivchop.plot_row(row_index,to_physical_units=True)
 
