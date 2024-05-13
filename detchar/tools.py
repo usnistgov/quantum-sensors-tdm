@@ -425,11 +425,15 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         self.ref_pp_min = 100
 
         self.ec = self._handle_easy_client_arg(easy_client)
+        self._check_num_cols_()
         self.sig_col_index = signal_column_index
         self.ref_col_index = reference_column_index
         #self.num_pts_per_period = self._handle_pts_per_period_arg(num_pts_per_period)
         self.signal_feedback_or_error = signal_feedback_or_error
         self.sig_index = self._handle_feedback_or_error_arg(signal_feedback_or_error)
+
+    def _check_num_cols_(self):
+        assert self.ec.numColumns>1, 'SoftwareLockinAcquire needs a minimum of two 2 columns.  Have you selected fibers correctly in Dastard Commander?'
 
     def _handle_feedback_or_error_arg(self, signal_feedback_or_error):
         if signal_feedback_or_error == 'feedback':
@@ -476,12 +480,14 @@ class SoftwareLockinAcquire(SoftwareLockIn):
         Acquire data and return the locked in signal for each row in one column of data.
 
         input:
-        num_periods: number of periods for lock in
+        minimumNumPoints: mimimum number of points to grab in raw buffer.  The exact number will be taken.  
         window: boolean, if true Hanning window applied
         debug: boolean, if true plot some stuff
+        num_pts_per_period: number of samples in one period of reference signal.  Needed for this to work.
 
         output: iq_arr, n_row x 2 numpy.array of I and Q
         '''
+        
         dataOut = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = minimumNumPoints, exactNumPoints = True) # dataOut[col,row,frame,error=0/fb=1]
         iq_arr = np.empty((self.ec.numRows,2))
         for ii in range(self.ec.numRows):
@@ -489,7 +495,7 @@ class SoftwareLockinAcquire(SoftwareLockIn):
                                                 window=window,integer_periods=True,num_pts_per_period=num_pts_per_period,debug=False))
 
         if debug:
-            for ii in [2]:#range(self.ec.numRows):
+            for ii in [20]:#range(self.ec.numRows):
                 ref_amp = self.get_amplitude_of_squarewave(dataOut[self.ref_col_index,ii,:,0],debug=False)
                 #ref_amp = self.get_amplitude_of_sinusoid(dataOut[reference_column_index,ii,:,0],nbins=2,debug=True)
                 sig_amp = self.get_amplitude_of_sinusoid(dataOut[self.sig_col_index,ii,:,self.sig_index],nbins=2,debug=False)
@@ -703,7 +709,8 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sampling_rate = int(125e6/128/6) # number of samples per second
-    f = 5 # Hz 
+    sampling_rate = int(125e6/142/32) # number of samples per second
+    f = 40 # Hz 
     samples_per_period = int(sampling_rate/f)
+    print(samples_per_period*20)
     sla.getData(minimumNumPoints=20*samples_per_period, window=False,debug=True,num_pts_per_period=None)
