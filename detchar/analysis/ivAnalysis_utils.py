@@ -584,14 +584,14 @@ class IVCurveColumnDataExplore(IVCommon):
 
     def plot_prn_v_dac(self,row='all'):
         row = self.__handle_row_input__(row)
-        fig = plt.figure()
+        fig,ax = plt.subplots()
         for ii in row:
-            plt.plot(self.x_raw,self.ro[:,ii])
-        plt.ylim(0,1.1)
-        plt.xlabel('V [dac]')
-        plt.ylabel('Rn frac')
-        plt.legend(row)
-        return fig
+            ax.plot(self.x_raw,self.ro[:,ii])
+        ax.set_ylim(0,1.1)
+        ax.set_xlabel('V [dac]')
+        ax.set_ylabel('Rn frac')
+        ax.legend(row)
+        return fig, ax
 
 class IVSetAnalyzeRow(IVCommon):
     def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
