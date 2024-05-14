@@ -1,5 +1,5 @@
-# nist-qsp-tdm
-This repo is intended to replace `nist_qsp_readout` and `nist_lab_internals` for the purposes of running TDM system under Python 3. Initially, it will contain only things that Galen needs to run various systems. Anything you need from the source repos can come in, as long as you test it and works with python 3 and PyQt5. I also strongly prefer to leave out all GPIB related things, but if you have something that is GPIB but lacks a serial port, we can include that code as well.
+# quantum-sensors-tdm
+This repo is intended to replace [`nist_qsp_readout`](https://bitbucket.org/nist_microcal/nist_qsp_readout) and [`nist_lab_internals`](https://bitbucket.org/nist_microcal/nist_lab_internals) for the purposes of running TDM system under Python 3. Initially, it will contain only things that Galen needs to run various systems. Anything you need from the source repos can come in, as long as you test it and works with python 3 and PyQt5. I also strongly prefer to leave out all GPIB related things, but if you have something that is GPIB but lacks a serial port, we can include that code as well.
 
 ## cringe
 GUI for setting up the crate and tower. Run as `cringe -L` from anywhere. Save cringe setup files in `~/cringe_config`.
@@ -13,11 +13,7 @@ GUI for turning on/off the tower power supplies in the right order so it doesn't
 ## tdm_term
 Run `tdm_term` to launch a terminal with named tabs and running dastard, cringe and dastard commander. Requires dastard and dastard commander to be installed. The first time you open roxterm (via `tdm_term`) go to Preferenes->Edit Current Profile->General and change "When command exists:" to "Restart Command". This seems to cause it to leave the terminal open for new commands.
 
-## Why bother with Python 3?
-The last version of `matplotlib` that supports pytPythonhon 2.7 has a bug that makes `adr_gui` use up 100% of the system memory after a day or so. It seemed better to do something forward looking than to figure out which old version of `matplotlib` didn't have the bug.
-
-
-# Before Install setup venv
+# Before installation, set up venv
 Install python3-venv and roxterm. For certain versions of Ubuntu (17.10 and newer), official Debian packages of roxterm are unavaible. An unsupported version of roxterm can be installed by adding the PPA described at https://launchpad.net/~h-realh/+archive/ubuntu/roxterm prior to running the apt install commands.
 ```
 sudo add-apt-repository ppa:h-realh/roxterm
@@ -35,11 +31,13 @@ echo "source ~/qsp/bin/activate" >> ~/.bashrc
 The echo line adds `source ~/qsp/bin/activate` to `~/.bashrc`, which activates this venv for each new terminal. You may exit this venv with `deactivate` to run code that requires a different python environment.
 
 # Installation
-You probably want to install all the stuff you need for tdm, not just this repo, so
+You probably want to install all the stuff you need for TDM, not just this repo, so
 ```  
-pip install -e git+ssh://git@bitbucket.org/nist_microcal/nist-qsp-tdm.git#egg=nistqsptdm -e git+ssh://git@bitbucket.org/joe_fowler/mass.git#egg=mass -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander
+pip install -e git+ssh://git@github.com/usnistgov/quantum-sensors-tdm.git#egg=quantumsensorstdm
+pip install -e git+ssh://git@github.com/usnistgov/mass.git#egg=mass
+pip install -e git+https://git@github.com/usnistgov/dastardcommander#egg=dastardcommander
 ```
-You may need to enter your bitbucket and or github login info. It may go smoother if you set up an ssh key with bitbucket and github so you don't need to enter loging info. If you have a a public ssh key setup, you may be required to add it. If you get an error like `Permission denied (public key)` you probably have to add your key to github or bitbucket (I've only seen this on github).
+You may need to enter your github login info. It may go smoother if you set up an ssh key with github so you don't need to enter loging info. If you have a a public ssh key setup, you may be required to add it. If you get an error like `Permission denied (public key)` you probably have to add your key to github.
 
 Here we install with the `-e` "editable" flag. On Ubuntu 18 in the venv this causes the code to be installed to `qsp/src`. On a Mac without a venv I found the code to be installed to `src` relative to where the command was executed.
 
@@ -47,7 +45,7 @@ You also need to copy `sudo cp namedserial/namedserialrc /etc` and `sudo cp adr_
 
 You can figure out which of those to remove if you only need some.
 
-Also install dastard and microscope:
+Also install the non-Python packages, Dastard and Microscope:
   * https://github.com/usnistgov/dastard
   * https://github.com/usnistgov/microscope
 
@@ -63,7 +61,7 @@ sudo ./install.sh
 cd ..
 rm -r exodriver
 ```
-On ubuntu 20 use this instead, dont install `install`
+On ubuntu 20 use this instead:
 ```
 sudo apt-get install build-essential libusb-1.0-0-dev  git-core
 ```
