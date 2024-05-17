@@ -1,10 +1,10 @@
 # quantum-sensors-tdm
-This repo is intended to replace [`nist_qsp_readout`](https://bitbucket.org/nist_microcal/nist_qsp_readout) and [`nist_lab_internals`](https://bitbucket.org/nist_microcal/nist_lab_internals) for the purposes of running TDM system under Python 3. Initially, it will contain only things that Galen needs to run various systems. Anything you need from the source repos can come in, as long as you test it and works with python 3 and PyQt5. I also strongly prefer to leave out all GPIB related things, but if you have something that is GPIB but lacks a serial port, we can include that code as well.
+This repo is intended to replace [`nist_qsp_readout`](https://bitbucket.org/nist_microcal/nist_qsp_readout) and [`nist_lab_internals`](https://bitbucket.org/nist_microcal/nist_lab_internals) for the purposes of running TDM system under Python 3. Initially, it contained only things that Galen needs to run various systems. Anything you need from the source repos can come in, as long as you test it and works with Python 3 and PyQt5. I also strongly prefer to leave out all GPIB related things, but if you have something that is GPIB but lacks a serial port, we can include that code as well.
 
-## cringe
+## Cringe
 GUI for setting up the crate and tower. Run as `cringe -L` from anywhere. Save cringe setup files in `~/cringe_config`.
 
-## adr_gui 
+## ADR GUi
 GUI for homebuilt cryo systems runs automags and a secondary feedback loop that keeps the thermometer temperature from drifting by changing the LS370 setpoint over time. Run as `adr_gui` from anywhere.
 
 ## tower_power_gui
