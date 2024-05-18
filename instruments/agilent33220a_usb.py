@@ -26,7 +26,8 @@ class Agilent33220A(instrument.Instrument):
         self.manufacturer = 'Agilent'
         self.model_number = '33220A'
         self.description  = 'Arbitrary Function Generator'
-        self.pyvisa_name = 'USB0::2391::1031::MY44057638::0::INSTR'
+        #self.pyvisa_name = 'USB0::2391::1031::MY44057638::0::INSTR'
+        self.pyvisa_name = 'usb0::2391::1031::MY44045008::INSTR'
         
         rm = pyvisa.ResourceManager()
         device_list = rm.list_resources()

@@ -39,13 +39,15 @@ class SineSweep():
                  signal_column_index=0,
                  reference_column_index=1,
                  column_str='A',
-                 rfg_ohm=10.2e3):
+                 rfg_ohm=10.2e3,
+                 rfb_ohm=None):
 
         self.fg = Agilent33220A() #function generator
         self.adr_gui_control = AdrGuiControl() #self._handle_adr_gui_control_arg(adr_gui_control)
         self.sla = SoftwareLockinAcquire(easy_client=None, signal_column_index=signal_column_index,
                                          reference_column_index=reference_column_index,
-                                         signal_feedback_or_error='feedback',num_pts_per_period=None)
+                                         signal_feedback_or_error='feedback')
+                                         
         # input parameters
         self.freq_hz = frequency_hz
         self.amp_v = amp_volt
@@ -57,7 +59,8 @@ class SineSweep():
         self.row_order = self._handle_row_to_state(row_order)
         self.column_str = column_str # purely for recording purposes
         self.rfg_ohm = rfg_ohm # for recording purposes, resistance in series at output of function generator 
-        self.easy_client_max_numpts = 390000 # easy client seems to crash with higher values
+        self.rfb_ohm = rfb_ohm # # for recording purposes, feedback resistor 
+        self.easy_client_max_numpts = int(1e8) # a vestigal remain? Make value very high so doesn't impact data collection / algorithm
         self.iq_v_freq = None
 
         self.init_fg(amp_volt, offset_volt, frequency_hz[0])
@@ -75,11 +78,11 @@ class SineSweep():
         self.fg.SetOffset(offset)
         self.fg.SetOutput(outputstate='on')
 
-    def get_iq(self,numPts=390000,window=True,num_pts_per_period=None):
+    def get_iq(self,numPts=390000,threshold=0.5):
         ''' Gets the IQ from the software lock in.
             Return array structure is n_rows x 2 (one for I and one for Q)
         '''
-        return self.sla.getData(minimumNumPoints=numPts, window=window,debug=False, num_pts_per_period=num_pts_per_period)
+        return self.sla.getData(minimumNumPoints=numPts, threshold=threshold, debug=False)
 
     def set_frequency(self,freq,diff_percent_tol = .1):
         ''' set the frequency and check that the frequency set is within diff_percent_tol % of requested. 
@@ -101,19 +104,17 @@ class SineSweep():
         for ii, freq in enumerate(self.freq_hz):
             freq_m.append(self.set_frequency(freq))
             time.sleep(self.waittime_s)
-            samples_per_period = int(self.sla.ec.sample_rate/freq)
-            assert(samples_per_period>1), 'too few samples per period. You will alias'
-            numpts = samples_per_period*self.num_lockin_periods
+            samples_per_period = int(self.sla.ec.sample_rate*1e6/freq)
+            assert(samples_per_period>1), 'Excitation frequency exceeds sampling rate.  You will alias.  Either increase the sample rate or lower the modulation frequency'
+            numpts = int(samples_per_period*self.num_lockin_periods*1.05) # take a little bit more since tools.SoftwareLockIn.lockin_func trims to integer periods
+            
             if numpts > self.easy_client_max_numpts:
                 print('%d lock-in periods results in numpts > easy_client_max_numpts.  Setting to easy_client_max_numpts=%d'%(self.num_lockin_periods,self.easy_client_max_numpts))
                 numpts = self.easy_client_max_numpts
             elif numpts < 10000:
                 numpts=10000
-            # print('frequency of tickle: %.3f Hz'%(freq))
-            # print('sample rate: %.3f Hz'%self.sla.ec.sample_rate)
-            # print('samples_per_period: ',samples_per_period)
-            # print('numpts: ',numpts)
-            iq_v_freq[ii,:,:] = self.get_iq(numpts,num_pts_per_period=samples_per_period)
+            
+            iq_v_freq[ii,:,:] = self.get_iq(numpts)
             bar.next()
         bar.finish()
         post_temp_k = self.adr_gui_control.get_temp_k()
@@ -132,7 +133,8 @@ class SineSweep():
                                          number_of_lockin_periods = self.num_lockin_periods,
                                          pre_temp_k=pre_temp_k, post_temp_k=post_temp_k,
                                          pre_time_epoch_s=pre_time, post_time_epoch_s=post_time,
-                                         extra_info=extra_info)
+                                         extra_info=extra_info,
+                                         rfb_ohm=self.rfb_ohm)
 
     def plot(self,fignum=1,semilogx=True):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
@@ -176,6 +178,7 @@ class ComplexZ(SineSweep):
                  reference_column_index=1,
                  column_str='A',
                  rfg_ohm=10.2e3,
+                 rfb_ohm=None,
                  detector_bias_list = [10000,20000],
                  temperature_list_k = [0.1],
                  voltage_source='tower',
@@ -184,11 +187,12 @@ class ComplexZ(SineSweep):
                  cringe_control=None,
                  normal_amp_volt=1.0,
                  superconducting_amp_volt=0.05,
-                 normal_above_temp_k=0.19):
+                 normal_above_temp_k=0.19,
+                 shock_normal_dac_value=65355):
 
         super().__init__(amp_volt, offset_volt, frequency_hz, num_lockin_periods,
                          row_order,signal_column_index,reference_column_index,
-                         column_str)
+                         column_str,rfg_ohm,rfb_ohm)
         self.current_amp_volt = amp_volt
         self.temp_list_k = temperature_list_k
         self.db_list = self._handle_db_input(detector_bias_list)
@@ -197,6 +201,7 @@ class ComplexZ(SineSweep):
         self.normal_amp_volt = normal_amp_volt 
         self.superconducting_amp_volt = superconducting_amp_volt 
         self.normal_above_temp_k = normal_above_temp_k
+        self.shock_normal_dac_value = shock_normal_dac_value
 
         # globals hidden from class initialization
         self.temp_settle_delay_s = 30 # wait time after commanding an ADR set point
@@ -297,7 +302,7 @@ class ComplexZ(SineSweep):
             print('Detector bias list: ',self.db_list[ii])
             if self.db_list[ii][0] != 0: # overbias if detector bias is nonzero
                 print('overbiasing detector, dropping bias down, then waiting 30s')
-                self.set_volt(65535)
+                self.set_volt(self.shock_normal_dac_value)
                 time.sleep(0.3)
                 self.set_volt(self.db_list[ii][0])
                 time.sleep(30)
@@ -342,23 +347,30 @@ if __name__ == "__main__":
 
     # plt.show()
 
-    path='/data/uber_omt/20230609/'
-    filename = 'colA_cz_20230609_4.json'
-    comment='coldload at 12K'
+    path='/data/uber_omt/20240429/'
+    filename = 'colA_cz_20240517_05.json'
+    comment='Measurements for Silva focused on RS20 and RS21, but may be useful for others.  sweep at 90,75,50,25 percent rn at 95mK. Rfb=1186'
     skip_wait_on_first_temp=True
-    temp_list_k = [0.1,0.12,0.2]
-    db_list = [[5809, 4952, 4641, 4076, 3615, 3263, 2937, 2609, 2274,0],
-                [4770, 4413, 4074, 3529, 3106, 2789, 2494, 2207, 1918],
-                [0]]
-
+    temp_list_k = [0.095]
     
-    cz = ComplexZ(amp_volt=0.1, offset_volt=0, frequency_hz=np.logspace(1,4.6,100),
+    #db_list=[[1313, 1062,  776,  544, 0]]
+    db_list=[[0,0,0,0,0,0,0,0,0,0]]
+
+    # bias = list(np.linspace(2500,500,20))
+    # bias.append(0)
+    # db_list=[bias]
+    
+    f_list = [1,5]
+    f_list.extend(list(np.logspace(1,4,50)))
+
+    cz = ComplexZ(amp_volt=0.05, offset_volt=0, frequency_hz=f_list,
                  num_lockin_periods = 10,
-                 row_order=[8,9,15,18,28,29],
+                 row_order=[19,20,21,22],
                  signal_column_index=0,
                  reference_column_index=1,
                  column_str='A',
-                 rfg_ohm = 10.2e3,
+                 rfg_ohm = 5.29e3, #10.07e3,
+                 rfb_ohm = 1186,
                  detector_bias_list = db_list,
                  temperature_list_k = temp_list_k,
                  voltage_source='tower',
@@ -366,8 +378,9 @@ if __name__ == "__main__":
                  db_tower_channel='0',
                  cringe_control=None,
                  normal_amp_volt=1.0,
-                 superconducting_amp_volt=0.1,
-                 normal_above_temp_k=0.19)
+                 superconducting_amp_volt=0.05,
+                 normal_above_temp_k=0.17,
+                 shock_normal_dac_value=50000)
 
     output = cz.run(skip_wait_on_first_temp=skip_wait_on_first_temp,extra_info={'note':comment})
     output.to_file(path+filename,overwrite=True)

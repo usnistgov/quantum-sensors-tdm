@@ -543,6 +543,7 @@ class SineSweepData(DataIO):
     pre_time_epoch_s: int
     post_time_epoch_s: int
     extra_info: dict
+    rfb_ohm: float
 
     def plot(self,fignum=1,semilogx=True):
         fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
@@ -668,7 +669,7 @@ class CzData(DataIO):
             Z[:,ii,1]=np.imag(z)
         return Z
 
-    def plotZ(self, temp_k, db_indices=None,Tc_k=0.16,semilogx=True,f_max_hz=None):
+    def plotZ(self, row, temp_k, db_indices=None,Tc_k=0.16,semilogx=True,f_max_hz=None):
         ''' plot the bias circuit subtracted impedance for all detector bias settings taken at temperature temp_k '''
         assert temp_k in self.temp_list_k, 'Requested temperature is not in temp_list_k'
         temp_index = np.where(np.array(self.temp_list_k)==temp_k)[0]
@@ -683,14 +684,13 @@ class CzData(DataIO):
         data = self.data[temp_index] #"data" is a list of SineSweepData objects, one for each db at the requested temp
         num_db = len(data)
 
-        # determine number of independent detector measurements in the mux frame
-        if len(set(data[0].row_order)) == 1:
-            num_rows = 1
+        if type(row)==int:
+            rows = [row]
         else:
-            num_rows = len(data[0].row_order)
-
+            rows = row 
+    
         # loop over rows/detectors, make plots per detector
-        for ii in range(num_rows):
+        for ii in rows:
             fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=2*ii)
             fig2,ax2 = plt.subplots(1,1,num=2*ii+1)
             row = data[0].row_order[ii]
