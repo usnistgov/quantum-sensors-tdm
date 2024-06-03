@@ -151,8 +151,10 @@ class DetectorMap():
                 txt=txt+'\t'+str(mydict[row][key])
             print(txt)
 
-    def get_row_from_position_band_pol(self,position,band,pol,fmt='int'):
-        mydict = self.get_rowdict_from_keyval_list([['position',position],['band',band],['polarization',pol]])
+    def get_row_from_position_band_pol_type(self,position,band,pol,typ,fmt='int'):
+        mydict = self.get_rowdict_from_keyval_list([['position',position],['band',band],['polarization',pol],['type',typ]])
+        if mydict=={}: # if empty
+            return None
         row_name = list(mydict.keys())[0]
         if fmt=='name':
             return row_name 
