@@ -962,7 +962,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
             return rn_fracs
 
     def _handle_power_input(self,p_in):
-        if p_in != None:
+        if p_in is not None:
             assert len(p_in) == self.n_cl_temps, 'Hey, the dimensions of the input power do not match the number of cold load temperatures!'
             Dp, dp = self.get_power_difference_1D(p_in, self.T_cl_index)
             analyze = True
@@ -1497,7 +1497,7 @@ class IVColdloadSweepAnalyzer():
 
     def sweep_analysis_for_row(self,row_index,bath_temp_index,
                                     cl_indices=None,rn_fracs=None,predicted_power_w=None,
-                                    dark_power_w='auto'):
+                                    dark_power_w='auto',dark_rn_frac=0.7):
         if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
         dacs,fb = self.get_cl_sweep_dataset_for_row(row_index=row_index,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
@@ -1505,9 +1505,29 @@ class IVColdloadSweepAnalyzer():
         if self.det_map:
             row_name = 'Row%02d'%row_index
             det_name = self.det_map.get_devname_from_row_index(row_index)
-            if dark_power_w == 'auto':
-                position = self.det_map.map_dict[row_name]['position']
-                dark_power_w = self.get_dark_power_w_(position,bath_temp_index,cl_indices)
+            position = self.det_map.map_dict[row_name]['position']
+            band = self.det_map.map_dict[row_name]['band']
+            typ = self.det_map.map_dict[row_name]['type']
+            if typ == 'dark':
+                dark_power_w=None
+
+            if dark_power_w is None:
+                pass 
+            elif type(dark_power_w) == int: # assume that an integer is a row index
+                darkbolo_index = dark_power_w 
+                foo = self.sweep_analysis_for_row(darkbolo_index,bath_temp_index,cl_indices,rn_fracs=[dark_rn_frac],dark_power_w=None)
+                dark_power_w = foo.get_power_vector_for_rnfrac(dark_rn_frac)
+            elif type(dark_power_w)==str:
+                assert dark_power_w == 'auto','unknown string input for dark_power_w '%(dark_power_w) # default is to find the appropriate dark
+                darkbolo_index = self.det_map.get_row_from_position_band_pol_type(position,band,None,'dark')
+                if darkbolo_index == None:
+                    print('A dark bolometer at position %d for band %s has not been found using the auto method.  Defining dark_power_w=None'%(position,band))
+                    dark_power_w = None
+                else: 
+                    print('Dark bolometer for position %d and band %s is row index %2d'%(position,band,darkbolo_index))
+                    foo = self.sweep_analysis_for_row(darkbolo_index,bath_temp_index,cl_indices,rn_fracs=[dark_rn_frac],dark_power_w=None)
+                    dark_power_w = foo.get_power_vector_for_rnfrac(dark_rn_frac)
+            
         else:
             row_name=det_name=dark_power_w=None
 
@@ -1518,33 +1538,6 @@ class IVColdloadSweepAnalyzer():
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
         return iva
-
-    def get_dark_power_w_(self,position,bath_temp_index,cl_indices,rn_frac=0.7):
-        def test_multiple_darks(dPs,threshold=0.1):
-            d = np.diff(dPs,axis=0)[0]
-            m  = np.mean(dPs,axis=0)
-            XX = d[1:]/m[1:]
-            if any(num > threshold for num in abs(XX)):
-                print('WARNING: multiple dark bolometers within pixel have response different by > threshold = ',threshold)
-
-        dark_rows = self.det_map.get_row_nums_from_keyval_list([['position',position],['type','dark']])
-        if len(dark_rows)==0:
-            print('No dark rows found a position ',position)
-            dark_power_w = None
-        elif len(dark_rows)==1:
-            foo = self.sweep_analysis_for_row(drow,bath_temp_index,cl_indices,rn_frac)
-            dark_power_w = foo.get_power_vector_for_rnfrac(rn_frac)
-        else:
-            print('multiple dark rows found at position %d: '%(position), dark_rows)
-            print('Default is to use the lowest index dark')
-            dark_power_w = []
-            dPs = []
-            for drow in dark_rows:
-                foo = self.sweep_analysis_for_row(drow,bath_temp_index,cl_indices,[rn_frac],dark_power_w=None)
-                dPs.append(foo.Dp_at_rnfrac[0,:])
-            dark_power_w = foo.get_power_vector_for_rnfrac(rn_frac)
-            test_multiple_darks(dPs)
-        return dark_power_w
 
     def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
                       skipsquidchannels=True):
@@ -1665,16 +1658,20 @@ class IVColdloadSweepAnalyzer():
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
 
-
-
-
     def plot_sweep_analysis_for_row(self,row_index,bath_temp_index,cl_indices=None,\
                                     rn_fracs=None,showfigs=True,savefigs=False,
-                                    predicted_power_w=None):
+                                    predicted_power_w=None,
+                                    dark_power_w='auto',dark_rn_frac=0.7,
+                                    include_darksubtraction=True):
         iva = self.sweep_analysis_for_row(row_index,bath_temp_index,
-                                    cl_indices,rn_fracs,predicted_power_w)
-        iva.plot_full_analysis(include_darksubtraction=False,showfigs=showfigs,savefigs=savefigs)
-        return iva
+                                    cl_indices,rn_fracs,predicted_power_w,dark_power_w,dark_rn_frac)
+
+        if dark_power_w is None and include_darksubtration:
+            print('include_darksubtration set to True, but no dark_power_w provided or found.  Dark subtraction not included.')
+            include_darksubtraction=False
+        
+        iva.plot_full_analysis(include_darksubtraction,showfigs,savefigs)
+        return iva 
 
 
     def _predicted_power(self,cl_temps,f_edges_ghz):
