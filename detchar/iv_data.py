@@ -396,15 +396,26 @@ class PolCalSteppedSweepData(DataIO):
         ax[1].legend()
         return fig,ax
 
-    def fit_row_index(self,row_index,plot=True,fig=None,ax=None,debias=None,normalize=True):
+    def fit_row_index(self,row_index,plot=True,fig=None,ax=None,debias=None,normalize=True,exclude_angles=None):
         ''' fit response versus pol angle to a sine wave '''
+        fit_func = lambda x,a: x[0]*np.sin(x[1]*np.array(a)+x[2]) + x[3] # fit function is A sin(B*x+C) + D
+        optimize_func = lambda x,a,b: b-fit_func(x,a) # data - fit
+
+        # remove noise bias if debias numeric value provided
         if debias is None:
             data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)
         else: 
             data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)-debias
-        fit_func = lambda x: x[0]*np.sin(x[1]*np.array(self.angle_deg_meas)+x[2]) + x[3]
-        optimize_func = lambda x: fit_func(x) - data
-        est_amp, est_freq, est_phase, est_offset = leastsq(optimize_func, [np.max(data)/2, 2*np.pi/180, 0, np.max(data)/2])[0]
+        
+        # exclude poor data points from fit if exclude_angles provided
+        if exclude_angles:
+            mask=np.isin(self.angle_deg_req,exclude_angles)
+            xfit=np.array(self.angle_deg_meas)[~mask]
+            yfit=data[~mask]
+        else:
+            xfit = np.array(self.angle_deg_meas)
+            yfit = data
+        est_amp, est_freq, est_phase, est_offset = leastsq(optimize_func, [np.max(data)/2, 2*np.pi/180, 1, np.max(data)/2],args=(xfit,yfit))[0]
         depol = (est_offset-abs(est_amp))/(abs(est_amp)+est_offset)
         print('Polarization Efficiency = ',1-depol)
         if plot:
@@ -412,14 +423,14 @@ class PolCalSteppedSweepData(DataIO):
                 fig,ax = plt.subplots(2,1)
                 fig.suptitle('Row%02d, index=%d'%(self.row_order[row_index],row_index))
             
-            fit = fit_func([est_amp,est_freq,est_phase,est_offset])
+            fit = fit_func([est_amp,est_freq,est_phase,est_offset],np.array(self.angle_deg_meas))
             if normalize:
                 data = data/(est_offset+abs(est_amp))
                 fit = fit/(est_offset+abs(est_amp))
                 ax[0].set_ylim((0,1.05))
 
             ax[0].plot(self.angle_deg_meas,data,'o')
-            ax[0].plot(self.angle_deg_meas,fit,'k--')
+            ax[0].plot(self.angle_deg_meas,fit,'k--',label='_no_legend_')
             ax[1].plot(self.angle_deg_meas,data-fit,'o')
             ax[1].set_xlabel('Polarization Angle (deg)')
             ax[0].set_ylabel('Response (arb)')
@@ -545,8 +556,8 @@ class SineSweepData(DataIO):
     extra_info: dict
     rfb_ohm: float
 
-    def plot(self,fignum=1,semilogx=True):
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8),num=fignum)
+    def plot(self,semilogx=True,fig=None,ax=None):
+        if fig==None and ax==None: fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         n_freq,n_row,foo = np.shape(self.iq_data)
         iq_data = np.array(self.iq_data)
         for ii in range(n_row):
@@ -568,8 +579,9 @@ class SineSweepData(DataIO):
         ax[1][1].set_ylabel('Phase')
         ax[1][0].set_xlabel('Freq (Hz)')
         ax[1][1].set_xlabel('Freq (Hz)')
-
         ax[1][1].legend(self.row_order)
+
+        return fig, ax
 
 @dataclass_json
 @dataclass
