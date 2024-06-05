@@ -13,6 +13,105 @@ import sys
 sys.path.append('/Users/hubmayr/nistgit/nistqsptdm/')
 from detchar.iv_data import CzData
 
+
+## main plotting function used in multiple classes
+def plot_quadrature_detection(f,iq, label=None,semilogx=True,fig=None,ax=None):
+    ''' Plot data in 2x2 plot of I,Q,amp, phase versus frequency    
+        for rows, temp_indices, and bias_indices.  All of these input fields can either be an integer or a list.
+
+        iq has shape (num_freq, 2)
+    '''
+    if not fig:
+        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+    
+    if semilogx:
+        ax[0][0].semilogx(f,iq[:,0],'o-')
+        ax[0][1].semilogx(f,iq[:,1],'o-')
+        ax[1][0].semilogx(f,np.sqrt(iq[:,0]**2+iq[:,1]**2),'o-')
+        ax[1][1].semilogx(f,np.unwrap(np.arctan2(iq[:,1],iq[:,0])),'o-',label=label)
+    else:
+        ax[0][0].plot(f,iq[:,0],'o-')
+        ax[0][1].plot(f,iq[:,1],'o-')
+        ax[1][0].plot(f,np.sqrt(iq[:,0]**2+iq[:,1]**2),'o-')
+        ax[1][1].plot(f,np.unwrap(np.arctan2(iq[:,1],iq[:,0])),'o-',label=label)
+
+    # axes labels
+    ax[0][0].set_ylabel('I')
+    ax[0][1].set_ylabel('Q')
+    ax[1][0].set_ylabel('Amp')
+    ax[1][1].set_ylabel('Phase')
+    ax[1][0].set_xlabel('Freq (Hz)')
+    ax[1][1].set_xlabel('Freq (Hz)')
+    return fig,ax
+
+class CzDataExplore():
+    ''' Explore a complex impedance data set stored in the CzData format.  No fitting or detailed analysis here. '''
+    def __init__(self,czdata_filename):
+        self.czdata_filename = czdata_filename
+        self.cz = CzData.from_file(czdata_filename)
+        self.data = self.cz.data # list of list of SineSweepData instances.  
+                                 # 1st index is temperature, second index is voltage bias
+        self.num_temp = len(self.cz.temp_list_k)
+        self.measured_temps = self._get_measured_temperatures_()
+        self.row_order = self.cz.data[0][0].row_order
+
+    def print_metadata(self):
+        print('Complex impedance data file %s has the following attributes'%self.czdata_filename)
+        print('Data start / stop: ',datetime.utcfromtimestamp(self.data[0][0].pre_time_epoch_s).isoformat(), 
+                datetime.utcfromtimestamp(self.data[-1][-1].post_time_epoch_s).isoformat())
+        print('Rows: ',self.cz.data[0][0].row_order)
+        print('Substrate Temperatures (K): ',self.cz.temp_list_k)
+        for ii,temp in enumerate(self.cz.temp_list_k):
+            print('Detector biases at temperature %dmK: '%(temp*1000), self.cz.db_list[ii])
+        print('Modulation frequencies: %.1f Hz -- %.1f Hz in %d steps'
+               %(min(self.cz.data[0][0].frequency_hz),max(self.cz.data[0][0].frequency_hz),len(self.cz.data[0][0].frequency_hz)))
+
+    def _get_measured_temperatures_(self):
+        measured_temps = []
+        for ii in range(self.num_temp):
+            foo = []
+            for jj in range(len(self.data[ii])):
+                foo.append([self.data[ii][jj].pre_temp_k,self.data[ii][jj].post_temp_k])
+            measured_temps.append(foo)
+        return measured_temps
+
+    # def plot_measured_temperatures(self):
+    #     print('to be written')
+
+    def plot_raw(self,row_index,temp_indices=None,bias_indices=None,semilogx=True):
+        ''' Plot raw data in 2x2 plot of I,Q,amp, phase versus frequency    
+            for rows, temp_indices, and bias_indices.  All of these input fields can either be an 
+            integer or a list.
+        '''
+
+        if not temp_indices: temp_indices=list(range(self.num_temp))
+
+        for ii in temp_indices: # loop over temp
+            fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
+            fig2, ax2 = plt.subplots(1,1)
+
+            fig.suptitle('Temperature = %.1f mK'%(self.cz.temp_list_k[ii]*1000))
+            fig2.suptitle('I-Q, Temperature = %.1f mK'%(self.cz.temp_list_k[ii]*1000))
+            if not bias_indices: bias_indices=range(len(self.cz.db_list[ii]))
+            for jj in bias_indices: # loop over detector bias
+                ss = self.data[ii][jj]
+                db = self.cz.db_list[ii][jj]
+                n_freq,n_row,foo = np.shape(ss.iq_data)
+                iq_data = np.array(ss.iq_data)
+
+                # I,Q,amp,phase versus frequency
+                plot_quadrature_detection(f=ss.frequency_hz,iq=iq_data[:,row_index,:],
+                                          label='Tb=%dmK, b=%d'%(self.cz.temp_list_k[ii]*1000,db),
+                                          semilogx=semilogx,fig=fig,ax=ax)
+
+                # plot I vs Q as second plot
+                ax2.plot(iq_data[:,row_index,0],iq_data[:,row_index,1],'o-',label='Tb=%dmK, b=%d'%(self.cz.temp_list_k[ii]*1000,db))
+
+        ax2.set_xlabel('I')
+        ax2.set_ylabel('Q')
+        ax2.set_aspect('equal','box')
+        ax2.legend()
+
 class CzSingle():
     ''' Base class for single complex impedance measurement '''
     def __init__(self,freq_hz,iq_data,iq_data_sc,amp,amp_sc,rfb_ohm=1, rfg_ohm=1,
@@ -71,6 +170,7 @@ class CzSingle():
         ax.plot(self.Z[:,0],self.Z[:,1],'o-')
         ax.set_xlabel('Re(Z)')
         ax.set_ylabel('Im(Z)')
+        ax.set_aspect('equal')
 
     def plot(self,fmt='raw',semilogx=True,fig=None,ax=None,label=None):
         if not fig: fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
@@ -86,24 +186,7 @@ class CzSingle():
             assert False, print('format type unknown: ',fmt)
         
         for data in datas:
-            if semilogx:
-                ax[0][0].semilogx(self.f,data[:,0],'o-')
-                ax[0][1].semilogx(self.f,data[:,1],'o-')
-                ax[1][0].semilogx(self.f,np.sqrt(data[:,0]**2+data[:,1]**2),'o-')
-                ax[1][1].semilogx(self.f,np.unwrap(np.arctan2(data[:,1],data[:,0])),'o-',label=label)
-            else:
-                ax[0][0].plot(self.f,data[:,0],'o-')
-                ax[0][1].plot(self.f,data[:,1],'o-')
-                ax[1][0].plot(self.f,np.sqrt(data[:,0]**2+data[:,1]**2),'o-')
-                ax[1][1].plot(self.f,np.unwrap(np.arctan2(data[:,1],data[:,0])),'o-')
-        
-        # axes labels
-        ax[0][0].set_ylabel('I')
-        ax[0][1].set_ylabel('Q')
-        ax[1][0].set_ylabel('Amp')
-        ax[1][1].set_ylabel('Phase')
-        ax[1][0].set_xlabel('Freq (Hz)')
-        ax[1][1].set_xlabel('Freq (Hz)')
+            plot_quadrature_detection(f=self.f,iq=data,label=label,semilogx=semilogx,fig=fig,ax=ax)
         fig.suptitle(fmt)
         return fig, ax
 
@@ -138,90 +221,6 @@ class CzSingle():
         else:
             return p
   
-class CzDataExplore():
-    ''' Explore a complex impedance data set stored in the CzData format '''
-    def __init__(self,czdata_filename):
-        self.czdata_filename = czdata_filename
-        self.cz = CzData.from_file(czdata_filename)
-        self.data = self.cz.data # list of list of SineSweepData instances.  
-                                 # 1st index is temperature, second index is voltage bias
-        self.num_temp = len(self.cz.temp_list_k)
-        self.measured_temps = self._get_measured_temperatures_()
-        self.row_order = self.cz.data[0][0].row_order
-
-    def print_metadata(self):
-        print('Complex impedance data file %s has the following attributes'%self.czdata_filename)
-        print('Data start / stop: ',datetime.utcfromtimestamp(self.data[0][0].pre_time_epoch_s).isoformat(), 
-                datetime.utcfromtimestamp(self.data[-1][-1].post_time_epoch_s).isoformat())
-        print('Rows: ',self.cz.data[0][0].row_order)
-        print('Substrate Temperatures (K): ',self.cz.temp_list_k)
-        for ii,temp in enumerate(self.cz.temp_list_k):
-            print('Detector biases at temperature %dmK: '%(temp*1000), self.cz.db_list[ii])
-        print('Modulation frequencies: %.1f Hz -- %.1f Hz in %d steps'
-               %(min(self.cz.data[0][0].frequency_hz),max(self.cz.data[0][0].frequency_hz),len(self.cz.data[0][0].frequency_hz)))
-
-    def _get_measured_temperatures_(self):
-        measured_temps = []
-        for ii in range(self.num_temp):
-            foo = []
-            for jj in range(len(self.data[ii])):
-                foo.append([self.data[ii][jj].pre_temp_k,self.data[ii][jj].post_temp_k])
-            measured_temps.append(foo)
-        return measured_temps
-
-    def plot_measured_temperatures(self):
-        print('to be written')
-
-    def plot_raw(self,row_index,temp_indices=None,bias_indices=None,semilogx=True):
-        ''' Plot raw data in 2x2 plot of I,Q,amp, phase versus frequency    
-            for rows, temp_indices, and bias_indices.  All of these input fields can either be an 
-            integer or a list.
-        '''
-
-        if not temp_indices: temp_indices=list(range(self.num_temp))
-
-        for ii in temp_indices: # loop over temp
-            fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
-            fig2, ax2 = plt.subplots(1,1)
-
-            fig.suptitle('Temperature = %.1f mK'%(self.cz.temp_list_k[ii]*1000))
-            fig2.suptitle('I-Q, Temperature = %.1f mK'%(self.cz.temp_list_k[ii]*1000))
-            if not bias_indices: bias_indices=range(len(self.cz.db_list[ii]))
-            for jj in bias_indices: # loop over detector bias
-                ss = self.data[ii][jj]
-                db = self.cz.db_list[ii][jj]
-                n_freq,n_row,foo = np.shape(ss.iq_data)
-                iq_data = np.array(ss.iq_data)
-
-                if semilogx:
-                    ax[0][0].semilogx(ss.frequency_hz,iq_data[:,row_index,0],'o-')
-                    ax[0][1].semilogx(ss.frequency_hz,iq_data[:,row_index,1],'o-')
-                    ax[1][0].semilogx(ss.frequency_hz,np.sqrt(iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2),'o-')
-                    ax[1][1].semilogx(ss.frequency_hz,np.unwrap(np.arctan2(iq_data[:,row_index,1],iq_data[:,row_index,0])),'o-',
-                    label='Tb=%dmK, b=%d'%(self.cz.temp_list_k[ii]*1000,db))
-                else:
-                    ax[0][0].plot(ss.frequency_hz,iq_data[:,row_index,0],'o-')
-                    ax[0][1].plot(ss.frequency_hz,iq_data[:,row_index,1],'o-')
-                    ax[1][0].plot(np.sqrt(ss.frequency_hz,iq_data[:,row_index,0]**2+iq_data[:,row_index,1]**2),'o-')
-                    ax[1][1].plot(ss.frequency_hz,np.unwrap(np.arctan2(iq_data[:,row_index,1],iq_data[:,row_index,0])),'o-')
-
-                # plot I vs Q as second plot
-                ax2.plot(iq_data[:,row_index,0],iq_data[:,row_index,1],'o-',label='Tb=%dmK, b=%d'%(self.cz.temp_list_k[ii]*1000,db))
-
-        # axes labels
-        ax[0][0].set_ylabel('I')
-        ax[0][1].set_ylabel('Q')
-        ax[1][0].set_ylabel('I^2+Q^2')
-        ax[1][1].set_ylabel('Phase')
-        ax[1][0].set_xlabel('Freq (Hz)')
-        ax[1][1].set_xlabel('Freq (Hz)')
-        ax[1][1].legend()
-
-        ax2.set_xlabel('I')
-        ax2.set_ylabel('Q')
-        ax2.set_aspect('equal','box')
-        ax2.legend()
-
 class CzSuperConductingBranch():
     ''' Class for superconducting branch '''
     def __init__(self,czdata_filename):
@@ -291,35 +290,7 @@ class CzSuperConductingBranch():
         #     ax.plot(self.f,iq_all_mean_subtracted[:,0,0],'o-')
 
         
-def plot_quadrature_detection(f,iq,row_index,label=None,semilogx=True,fig=None,ax=None):
-    ''' Plot data in 2x2 plot of I,Q,amp, phase versus frequency    
-        for rows, temp_indices, and bias_indices.  All of these input fields can either be an integer or a list.
 
-        iq has shape (num_freq, num_det, 2)
-    '''
-    if not fig:
-        fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
-    
-    if semilogx:
-        ax[0][0].semilogx(f,iq[:,row_index,0],'o-')
-        ax[0][1].semilogx(f,iq[:,row_index,1],'o-')
-        ax[1][0].semilogx(f,np.sqrt(iq[:,row_index,0]**2+iq[:,row_index,1]**2),'o-')
-        ax[1][1].semilogx(f,np.unwrap(np.arctan2(iq[:,row_index,1],iq[:,row_index,0])),'o-',label=label)
-    else:
-        ax[0][0].plot(f,iq[:,row_index,0],'o-')
-        ax[0][1].plot(f,iq[:,row_index,1],'o-')
-        ax[1][0].plot(f,np.sqrt(iq[:,row_index,0]**2+iq[:,row_index,1]**2),'o-')
-        ax[1][1].plot(f,np.unwrap(np.arctan2(iq[:,row_index,1],iq[:,row_index,0])),'o-',label=label)
-
-    # axes labels
-    ax[0][0].set_ylabel('I')
-    ax[0][1].set_ylabel('Q')
-    ax[1][0].set_ylabel('Amp')
-    ax[1][1].set_ylabel('Phase')
-    ax[1][0].set_xlabel('Freq (Hz)')
-    ax[1][1].set_xlabel('Freq (Hz)')
-    
-    return fig,ax
     
 if __name__ == '__main__':
     # cze = CzDataExplore('/Users/hubmayr/projects/uber_omt/data/velma_uber_omt/20240429/colA_cz_20240517_04.json')
