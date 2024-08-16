@@ -257,9 +257,9 @@ class IVTempSweepData(DataIO):
             X = np.array(self.data[0].dac_values) # big X is the main 2D array to write to file
         sub_header=''
         if temp_index_list is None:
-            temp_list_index = list(range(len(self.set_temps_k)))
-        for ii in temp_list_index: # loop over all temperatures in list
-            curve =self.data[ii]
+            temp_index_list = list(range(len(self.set_temps_k)))
+        for ii,temp_ind in enumerate(temp_index_list): # loop over all temperatures in list
+            curve =self.data[temp_ind]
             t_meas_mK = (curve.post_temp_k+curve.pre_temp_k)*1e3/2
             if zero == "origin": #y is n_dac x n_row array
                 x, y = curve.xy_arrays_zero_subtracted_at_origin()

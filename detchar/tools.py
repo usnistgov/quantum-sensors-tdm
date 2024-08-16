@@ -176,6 +176,7 @@ class SoftwareLockIn(SignalAnalysis):
         ''' 
             DSP quadrature detection using software generated I and Q sine waves based on sampled square wave.
             Algorithm forces an integer number of modulation periods and as such windowing is not required.
+            new by JH on 5/17/2024
             
             sig: signal, 1D array
             ref: sampled square wave 1D array
@@ -184,7 +185,9 @@ class SoftwareLockIn(SignalAnalysis):
                     is > threshold x peak_to_peak of square wave
             debug: <bool>, show plots for debugging
 
-            new JH 5/17/2024
+            return I,Q (in-phase and quadrature detection in amplitude units (not rms or peak!!))
+
+            
         '''
         assert threshold>0 and threshold<1,'threshold out of range. 0 < threshold < 1'
         N = len(ref)
