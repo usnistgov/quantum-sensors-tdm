@@ -315,40 +315,52 @@ class IVCircuit():
     rfb_ohm: float # feedback resistor
     rbias_ohm: float # bias resistor
     rsh_ohm: float # shunt resistor
-    rx_ohm: float # parasitic resistance in series with TES
-    m_ratio: float # ratio of feedback mutual inductance to input mutual inductance
-    vfb_gain: float # volts/arbs of feeback (14 bit dac)
-    vbias_gain: float # volts/arbs of bias (16 bit dac for blue boxes)
+    rx_ohm: float = 0 # parasitic resistance in series with TES
+    m_ratio: float = 8 # ratio of feedback mutual inductance to input mutual inductance
+    vfb_gain: float = 6.20765e-5 # volts/arbs of feeback (1.017 V / (2**14-1) )
+    vbias_gain: float = 3.814755e-5 # volts/arbs of bias (2.5 V / (2**16-1) This is the default for the tower voltage source
+    
+    def __post_init__(self):
+        self.to_i_bias = self._to_i_bias()
+        self.to_i_tes = self._to_i_tes()
+
+    def _to_i_bias(self):
+        return self.vbias_gain/self.rbias_ohm 
+    
+    def _to_i_tes(self):
+        return self.vfb_gain/self.rfb_ohm/self.m_ratio
+
+    def to_physical_units(self,dac_values,fb_array):
+        ''' return v_tes and i_tes for input dac_values (corresponding to voltage bias) 
+            and fb_array (the digital feedback for n readout channels) 
+
+            if fb_array is shape N,M then v_tes and i_tes will be returned as N,M arrays
+
+            THIS METHOD DOES NOT REMOVE THE DC OFFSET, JUST APPLIES THE CONVERSION FACTORS TO PHYSICAL
+            UNITS.  IT IS ASSUMED THAT THIS HAS BEEN TAKEN CARE OF WITHIN FB_ARRAY
+        '''
+        i_tes = np.array(fb_array)*self.to_i_tes
+        i_bias = np.array(dac_values)*self.to_i_bias # current sent to TES bias network
+        if len(np.shape(i_tes)) == 1:
+            v_tes = self.rsh_ohm*(i_bias - i_tes)-self.rx_ohm*i_tes
+        else:
+            n,m = np.shape(i_tes)
+            v_tes = np.zeros((n,m))
+            # v_tes will be different for each sensor depending on resisistance, so create v_tes for each row
+            for ii in range(m):
+                v_tes[:,ii] = self.rsh_ohm*(i_bias - i_tes[:,ii])-self.rx_ohm*i_tes[:,ii]
+                #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
+        return v_tes,i_tes
 
     def iv_raw_to_physical_fit_rpar(self, vbias_arbs, vfb_arbs, sc_below_vbias_arbs):
+        # this method not checked by Hannes; written by Galen?
         ites0, vtes0 = self.iv_raw_to_physical(vbias_arbs, vfb_arbs, rpar_ohm=0)
         sc_inds = np.where(vbias_arbs<sc_below_vbias_arbs)[0]
         pfit_sc = Polynomial.fit(ites0[sc_inds], vtes0[sc_inds], deg=1)
         rpar_ohm = pfit_sc.deriv(m=1)(0)
         return ites0, vtes0-ites0*rpar_ohm, rpar_ohm
 
-    def iv_raw_to_physical_simple(self, vbias_arbs, vfb_arbs, rpar_ohm):
-        #assume rbias >> rshunt
-        ifb = vfb_arbs*self.vfb_gain / self.rfb_ohm # feedback current
-        ites = ifb / self.m_ratio # tes current
-        ibias = vbias_arbs*self.vbias_gain/self.rbias_ohm # bias current
-        # rtes = rsh_ohm + rpar_ohm - ibias*rsh_ohm/ites
-        vtes = (ibias-ites)*self.rsh_ohm-ites*rpar_ohm
-        return ites, vtes
-
-    def to_physical_units(self,dac_values,fb_array):
-        ''' return voltage bias across and current through TES.
-            both dac_values and fb_array are 1D vectors
-        '''
-        y = fb_array*self.vfb_gain *(self.rfb_ohm*self.m_ratio)**-1
-        I = dac_values*self.vbias_gain/self.rbias_ohm # current sent to TES bias network
-        n,m = np.shape(y)
-        x = np.zeros((n,m))
-        # v_bias will be different for each sensor depending on resisistance, so create v_b for each row
-        for ii in range(m):
-            #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm[ii]) # for future for unique rx per sensor
-            x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
-        return x,y
+    
 
 ### polcal data classes ---------------------------------------------------------------------
 
