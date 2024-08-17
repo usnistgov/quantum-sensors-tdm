@@ -958,18 +958,26 @@ class NoiseSweepData(DataIO):
             m=1
         return m, y_label_str
 
-    def plot_row(self,row_index,temp,bias_indices=None,list=None,physical_units=True,fig=None,ax=None):
+    def print_metadata(self):
+        print('Column ',self.column)
+        print('Row sequence: ',self.row_sequence)
+        print('Temperatures (K): ',self.temp_list_k)
+        for ii,t in enumerate(self.temp_list_k):
+            print('Temperature ',t,'K Detector biases: ',self.db_list[ii])
+
+    def plot_row(self,row_index,temp=None,bias_indices=None,physical_units=True,fig=None,ax=None):
         fig,ax = self._handle_fig(fig,ax)
         fig.suptitle('Column %s, Row %02d'%(self.column,self.row_sequence[row_index]))
         temp_m = []
         m, y_label_str = self._phys_units(physical_units)
-        if type(temp) == float or type(temp) == int:
-            temp_indices = [self.temp_list_k.index(temp)]
-        else:
+        # handle temp inputs, which may be different types and collect temperature indices
+        if isinstance(temp, np.ndarray) or isinstance(temp, list):
             temp_indices=[]
             for t in temp:
                 temp_indices.append(self.temp_list_k.index(t))
-        
+        elif isinstance(temp,float) or isinstance(temp,int): temp_indices = [self.temp_list_k.index(temp)]
+        else: temp_indices = list(range(len(self.temp_list_k)))
+
         for jj,dex in enumerate(temp_indices):
             data = self.data[dex]
             if bias_indices==None:

@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
 from scipy.integrate import quad, simps
 from scipy.optimize import leastsq
+import matplotlib.colors as Colors
 
 def smooth(y, box_pts=5):
     box = np.ones(box_pts)/box_pts
@@ -375,7 +376,7 @@ class IVCommon():
             fig.legend(figlegend)
 
         plt.tight_layout()
-        return fig
+        return fig,ax
 
     def get_value_at_rn_frac(self,rn_fracs,arr,ro):
         '''
@@ -425,6 +426,158 @@ class IVCommon():
             dac_list.append(np.interp(rn_frac_list,ro[:,ii][::-1],dac[::-1]))
         return dac_list
 
+    def _handle_figax(self,fig,ax):
+        if not fig: fig,ax = plt.subplots()
+        return fig,ax
+
+class IVCurveAnalyzeSingle():
+    ''' class for analyzing a single IV curve measured in the standard experimental config.
+        The standard config assumes a voltage source in series with some large resistance (rbias_ohm)
+        produces a current that runs to the shunt/tes/squid input circuit: a shunt resistance (rsh_ohm)
+        with a value much less than the TES is wired in parallel with the TES and the input inductance 
+        of a squid.  There may be a parasitic resistance (rx_ohm) in series with the TES.  
+    '''
+    def __init__(self,x,y,rsh_ohm,rx_ohm=0,to_i_bias=1,to_i_tes=1):
+        self.x_raw = np.array(x) # commanded voltage bias
+        self.y_raw = np.array(y) # measured current in some arbitrary units
+        self.rsh_ohm = rsh_ohm 
+        self.rx_ohm = rx_ohm 
+        self.to_i_tes = to_i_tes  
+        self.to_i_bias = to_i_bias
+
+        # get basic quantities of interest
+        # here things are flipped into ascending order in voltage bias
+        self.v_tes,self.i_tes,self.p_tes,self.r_tes,self.si, self.rn, self.rl, self.x, self.y = self.analyze_iv()
+
+    def analyze_iv(self,plot=False):
+        ''' based on algorithm in pySmurf from Ari Cukierman '''
+            #    rsh_ohm=450e-6,rbias_ohm=207.2,rfb_ohm=206.2,m_ratio=8,
+            #    vbias_arbs_per_v=26214,vfb_arbs_per_v=16109.1445,plot=True):
+        
+        N=len(self.x_raw)
+    
+        # place in ascending order
+        if self.x_raw[1]-self.x_raw[0] < 0:
+            x=self.x_raw[::-1]
+            y=self.y_raw[::-1]
+        else:
+            x=self.x_raw 
+            y=self.y_raw 
+        
+        # determine IV polarity. if negative, flip
+        pval = np.polyfit(x[-10:],y[-10:],1)
+        if pval[0] < 0: y=y*-1
+        
+        # take derivatives
+        dfb = np.diff(y)
+        ddfb = np.diff(dfb)
+    
+        # Define IV curve regimes: superconducting, in transition, normal
+        sc_idx = np.argmax(abs(ddfb))+1 # find superconducting index
+        turn_idx = np.argmin(abs(dfb[sc_idx:]))+sc_idx+1
+        n_idx = int(N-(N-turn_idx)/2) # defined has half way from IV turn-around to highest Vbias point
+    
+        # fit normal and superconducting branches 
+        p_norm = np.polyfit(x[n_idx:],y[n_idx:],1)
+        p_sc = np.polyfit(x[:sc_idx],y[:sc_idx],1)
+        
+        slope_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
+        print('superconducting and normal branch offsets differ by: %.2f%%'%(100*(p_norm[1]-p_sc[1])/p_norm[1]))
+        
+        y-=p_norm[1] # subtract arbitrary offset using normal branch
+        if slope_diff > 5: y[0:sc_idx]-=p_sc[1]-p_norm[1] # 
+    
+        i_bias = x*self.to_i_bias
+
+        # get quantities of interest
+        i_tes = y*self.to_i_tes
+        r_tes = self.rsh_ohm*(i_bias/i_tes - 1)-self.rx_ohm
+        v_tes = i_tes*r_tes # voltage over TES
+        p_tes = i_tes*v_tes # electrical power on TES
+
+        R_n = np.mean(r_tes[n_idx:]) # is it better to just use the fit?
+        R_L = np.mean(r_tes[1:sc_idx]) # load resistance
+    
+        # smooth the data
+        smooth_dist = 5
+        w_len = 2*smooth_dist + 1
+        w = (1./float(w_len))*np.ones(w_len) # window
+        i_tes_smooth = np.convolve(i_tes, w, mode='same')
+        v_tes_smooth = np.convolve(v_tes, w, mode='same')
+        r_tes_smooth = v_tes_smooth/i_tes_smooth
+
+        # Take derivatives
+        di_tes = np.diff(i_tes_smooth)
+        dv_tes = np.diff(v_tes_smooth)
+
+        # Responsivity estimate
+        R_L_smooth = np.ones(len(r_tes_smooth))*R_L
+        R_L_smooth[:sc_idx] = dv_tes[:sc_idx]/di_tes[:sc_idx]
+        r_tes_smooth_noStray = r_tes_smooth - R_L_smooth
+        i0 = i_tes_smooth[:-1]
+        r0 = r_tes_smooth_noStray[:-1]
+        rL = R_L_smooth[:-1]
+        si_etf = -1./(i0*r0)
+        beta = 0.
+
+        si = -(1./i0)*( dv_tes/di_tes - (r0+rL+beta*r0) ) / \
+            ( (2.*r0-rL+beta*r0)*dv_tes/di_tes - 3.*rL*r0 - rL**2 )
+    
+        if plot:
+            colors = list(Colors.TABLEAU_COLORS)
+            
+            # plot raw data
+            fig,ax=plt.subplots()
+            ax.plot(x,y,color=colors[0])
+            ax.plot(x[sc_idx],y[sc_idx],'r.')
+            ax.plot(x[turn_idx],y[turn_idx],'r.')
+            ax.plot(x[n_idx],y[n_idx],'r.')
+            ax.plot(x,np.polyval([p_norm[0],0],x),linestyle='--',color=colors[1])
+            ax.plot(x[:sc_idx],np.polyval([p_sc[0],0],x[:sc_idx]),linestyle='--',color=colors[1])
+            ax.axvspan(xmin=x[0],xmax=x[sc_idx],alpha=0.1,color='r')
+            ax.axvspan(xmin=x[sc_idx],xmax=x[turn_idx],alpha=0.1)
+            ax.axvspan(xmin=x[turn_idx],xmax=x[n_idx],alpha=0.1,color='y')
+            ax.set_xlabel('V [dac]')
+            ax.set_ylabel('I [dac]')
+
+            fig,ax=plt.subplots(3,1)
+            ax[0].plot(v_tes,i_tes,color=colors[0])
+            ax[0].plot(v_tes[sc_idx],i_tes[sc_idx],'r.')
+            ax[0].plot(v_tes[turn_idx],i_tes[turn_idx],'r.')
+            ax[0].plot(v_tes[n_idx],i_tes[n_idx],'r.')
+            ax[0].plot(v_tes,np.polyval([p_norm[0],0],x)*self.to_i_tes,linestyle='--',color=colors[1])
+            ax[0].plot(v_tes[:sc_idx],np.polyval([p_sc[0],0],x[:sc_idx])*self.to_i_tes,linestyle='--',color=colors[1])
+            ax[0].set_ylabel('I')
+            
+            ax[1].plot(v_tes,r_tes*1e3,color=colors[0])
+            ax[1].axvspan(xmin=v_tes[sc_idx],xmax=v_tes[turn_idx],alpha=0.1)
+            ax[1].set_ylabel('R (m$\Omega$)')
+            
+            ax[2].plot(v_tes[:-1],si,color=colors[0])
+            ax[2].plot(v_tes[:-1],si_etf,linestyle='--',color=colors[1])
+            ax[2].set_ylabel('$S_{I}$')
+            ax[2].set_ylim((si[sc_idx+1]*1.1,1e6))
+            ax[2].set_xlabel('V')
+
+            for ii in range(3):
+                ax[ii].axvspan(xmin=v_tes[0],xmax=v_tes[sc_idx],alpha=0.1,color='r')
+                ax[ii].axvspan(xmin=v_tes[sc_idx],xmax=v_tes[turn_idx],alpha=0.1)
+                ax[ii].axvspan(xmin=v_tes[turn_idx],xmax=v_tes[n_idx],alpha=0.1,color='y')
+            plt.tight_layout()
+        return v_tes,i_tes,p_tes,r_tes,si,R_n,R_L,x,y
+    
+    def get_virp_at_rfrac(self,rfrac):
+        idx = np.argmin(abs(self.r_tes/self.rn - rfrac)) 
+        return self.v_tes[idx], self.i_tes[idx], self.r_tes[idx], self.p_tes[idx] 
+
+    def get_dac_at_rfrac(self,rfrac):
+        idx = np.argmin(abs(self.r_tes/self.rn - rfrac)) 
+        return self.x[idx]
+
+    def get_r_for_dac(self,dac,frac=True):
+        idx = np.argmin((self.x-dac))
+        if frac: return self.r[idx]/self.rn
+        else: return self.r[idx]
 
 class IVCurveColumnDataExplore(IVCommon):
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
@@ -516,7 +669,7 @@ class IVCurveColumnDataExplore(IVCommon):
         self.is_data_clean=True
 
     def get_responsivity(self):
-        v = np.diff(self.v,axis=0)+self.v[:-1,:]
+        v = np.diff(self.v,axis=0)/2+self.v[:-1,:]
         di = np.diff(self.i, axis=0)
         dp = np.diff(self.i*self.v, axis=0)
         resp = di/dp
@@ -536,55 +689,56 @@ class IVCurveColumnDataExplore(IVCommon):
             row=list(range(self.n_rows))
         return row
 
-    def plot_raw(self,row='all',include_legend=True):
+    def plot_raw(self,row='all',include_legend=True,fig=None,ax=None):
+        fig,ax = self._handle_figax(fig,ax)  
         row = self.__handle_row_input__(row)
-        fig = plt.figure()
         for ii in row:
-            plt.plot(self.x_raw,self.y_raw[:,ii])
+            ax.plot(self.x_raw,self.y_raw[:,ii])
         plt.xlabel('Vb [dac]')
         plt.ylabel('Vfb [dac]')
         if include_legend: plt.legend(row)
+        return fig,ax
 
     def plot_vipr_for_row(self,row=None,figtitle=None):
         ''' row can be list of rows or an integer.  If None, plot them all '''
-        fig = self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
-        return fig
+        fig, ax = self.plot_vipr_method(self.v,self.i,self.p,self.r,figtitle=figtitle,figlegend=None,row_indices=row)
+        return fig,ax
 
-    def plot_iv(self,row='all'):
+    def plot_iv(self,row='all',fig=None,ax=None):
+        fig,ax = self._handle_figax(fig,ax) 
         row = self.__handle_row_input__(row)
-        fig = plt.figure()
         for ii in row:
             plt.plot(self.v[:,ii],self.i[:,ii],label='%02d'%ii)
         plt.xlabel(self.labels['iv']['x'])
         plt.ylabel(self.labels['iv']['y'])
         plt.legend(loc='upper right')
-        return fig
+        return fig,ax
 
-    def plot_responsivity(self,row='all'):
+    def plot_responsivity(self,row='all',fig=None,ax=None):
+        fig,ax = self._handle_figax(fig,ax) 
         row = self.__handle_row_input__(row)
-        fig = plt.figure()
         v,r = self.get_responsivity()
         for ii in row:
             plt.plot(v[:,ii],r[:,ii])
         plt.xlabel(self.labels['responsivity']['x'])
         plt.ylabel(self.labels['responsivity']['y'])
         plt.legend(tuple(range(self.n_rows)),loc='upper right')
-        return fig
+        return fig,ax
 
-    def plot_dy(self,row='all'):
+    def plot_dy(self,row='all',fig=None,ax=None):
+        fig,ax = self._handle_figax(fig,ax) 
         row = self.__handle_row_input__(row)
-        fig = plt.figure()
         dy = np.diff(self.i,axis=0)
         for ii in row:
             plt.plot(self.v[0:-1,ii],dy[:,ii],label='%02d'%ii)
         plt.xlabel(self.labels['dy']['x'])
         plt.ylabel(self.labels['dy']['y'])
         plt.legend(loc='upper right')
-        return fig
+        return fig,ax
 
-    def plot_prn_v_dac(self,row='all'):
+    def plot_prn_v_dac(self,row='all',fig=None,ax=None):
+        fig,ax = self._handle_figax(fig,ax) 
         row = self.__handle_row_input__(row)
-        fig,ax = plt.subplots()
         for ii in row:
             ax.plot(self.x_raw,self.ro[:,ii])
         ax.set_ylim(0,1.1)
@@ -683,7 +837,8 @@ class IVSetAnalyzeRow(IVCommon):
             plt.title(self.figtitle)
 
     def plot_vipr(self):
-        self.plot_vipr_method(self.v,self.i,self.p,self.r, figtitle=self.figtitle,figlegend=self.state_list)
+        fig,ax = self.plot_vipr_method(self.v,self.i,self.p,self.r, figtitle=self.figtitle,figlegend=self.state_list)
+        return fig,ax
 
 class IVSetAnalyzeColumn():
     ''' analyze IV curves taken under different physical conditions.

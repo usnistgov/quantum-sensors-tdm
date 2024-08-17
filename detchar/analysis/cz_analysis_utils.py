@@ -3,6 +3,10 @@
 software to analyze complex impedance data stored in a CzData class
 
 @author JH, 5/2024
+
+classes: 
+CzDataExplore: quicklook to understand what a datafile is and plot raw response
+CzSingle: Analyze comnplex Z for a single freuquency sweep
 '''
 
 import matplotlib.pyplot as plt
@@ -113,73 +117,90 @@ class CzDataExplore():
         ax2.legend()
 
 class CzSingle():
-    ''' Base class for single complex impedance measurement '''
+    ''' Base class for single complex impedance measurement.  
+
+        The global Z is the tes impedance.  By default it is normalized by the 
+    '''
     def __init__(self,freq_hz,iq_data,iq_data_sc,amp,amp_sc,rfb_ohm=1, rfg_ohm=1,
-                      rsh_ohm=1,m_ratio=8,fb_dac_per_v=16383,vfb_gain=1.017):
+                      rsh_ohm=1,rbias_ohm=207.0,m_ratio=8,fb_dac_per_v=16383,vfb_gain=1.017):
         # make input accessible throughout class
         self.f = freq_hz
-        self.iq_data_raw = iq_data
-        self.iq_data_sc_raw = iq_data_sc # IQ data in the superconducting branch
-        self.amp=amp
-        self.amp_sc=amp_sc
+        self.iq_data_raw = np.copy(iq_data)
+        self.iq_data_sc_raw = np.copy(iq_data_sc) # IQ data in the superconducting branch
+        self.amp_volt=amp # amplitude of CZ stimulus from function generator when in superconducting transition state
+        self.amp_volt_sc=amp_sc # ampltude of CZ stimulus from function generator when in superconducting state
         self.rfb_ohm=rfb_ohm
         self.rfg_ohm=rfg_ohm # resistance in series with the function generator
+        self.rbias_ohm = rbias_ohm # series resistance in detector bias line 
         self.rsh_ohm = rsh_ohm
         self.m_ratio=m_ratio
         self.fb_dac_per_v=fb_dac_per_v
         self.vfb_gain=vfb_gain
-
-        self.Io = self.amp/self.rfg_ohm # amplitude of current stimulus for non SC state
-        self.Io_sc = self.amp_sc/self.rfg_ohm # amplitude of current stimulus for SC state
-
+        self.arbs_to_A = self.vfb_gain / (self.fb_dac_per_v*self.rfb_ohm*self.m_ratio) # convert raw to current in amps
         self.polarity = self._get_polarity_()
+
         self.iq_data = self.to_physical_units(self.iq_data_raw)
         self.iq_data_sc = self.to_physical_units(self.iq_data_sc_raw)
-
-        self.Z = self.getZ()
+        self.Z = self.getZ(self.rsh_ohm)
 
     def _get_polarity_(self):
         ''' Due to choice of wirebonds, signal can be inverted.  
             This magic method checks the sign of the lowest frequency 
             in-phase component of the superconducting response 
         '''
-        if self.iq_data_sc_raw[np.argmin(self.f),0] < 1:
+        if self.iq_data_sc_raw[np.argmin(self.f),0] < 0: # if lowest freq component of I is negative
             return -1
         else:
             return 1
 
     def to_physical_units(self,iq):
         ''' converts the quadrature data from arbs to current '''
-        iq[:,0]=iq[:,0]*self.polarity
-        iq = iq/self.fb_dac_per_v*self.vfb_gain/self.rfb_ohm/self.m_ratio
-        return iq
+        iqp=np.copy(iq)
+        iqp=iqp*self.polarity # flip if IV curve negative
+        iqp[:,1]=iqp[:,1]*-1 # flip Q component due to my software lock in convention 
+                             # (the 90deg phase shifted copy of reference seems opposite convension)
+        iqp = iqp*self.arbs_to_A
+        return iqp
     
-    def getZ(self,fmt=None):
-        ''' returns Z/Rsh '''
-        A = self.iq_data[:,0]+1j*self.iq_data[:,1]
-        B = self.iq_data_sc[:,0]+1j*self.iq_data_sc[:,1]
-        Z = self.rsh_ohm*((A/self.Io)**-1-(B/self.Io_sc)**-1)
+    def getZ(self,rsh_ohm=1):
+        ''' returns Z, the complex impedance.  The algorithm naturally returns Z/Rsh.  Provide a 
+            shunt resistance (Rsh) other than 1 to rescale to physical units 
+        '''
+
+        A = (self.iq_data[:,0]+1j*self.iq_data[:,1]) * (self.amp_volt/(self.rfg_ohm+self.rbias_ohm))**-1 #/self.iq_data_sc[np.argmin(self.f),0] # normalize to the current measured in the superconducting branch at lowest frequency
+        B = (self.iq_data_sc[:,0]+1j*self.iq_data_sc[:,1]) * (self.amp_volt_sc/(self.rfg_ohm+self.rbias_ohm))**-1 #/self.iq_data_sc[np.argmin(self.f),0]
+        Z = A**-1-B**-1
         foo = np.zeros([len(Z),2])
-        foo[:,0] = Z.real 
-        foo[:,1] = Z.imag
+        foo[:,0] = Z.real*rsh_ohm
+        foo[:,1] = Z.imag*rsh_ohm
         return foo 
 
-    def plot_complex_plane(self):
-        fig,ax=plt.subplots()
+    def _make_mask(self,fmin=None,fmax=None):
+        if not fmin: fmin=min(self.f)
+        if not fmax: fmax=max(self.f)
+        mask = (np.array(self.f)>=fmin) & (np.array(self.f)<=fmax)
+        return mask
+
+    def plot_complex_plane(self,fig=None,ax=None,label=None,fmin=None,fmax=None):
+        if not fig: fig,ax=plt.subplots()
+        mask=self._make_mask(fmin,fmax)
         ax.set_aspect('equal', adjustable='box')
-        ax.plot(self.Z[:,0],self.Z[:,1],'o-')
+        ax.plot(self.Z[mask,0],self.Z[mask,1],'o',label=label)
         ax.set_xlabel('Re(Z)')
         ax.set_ylabel('Im(Z)')
         ax.set_aspect('equal')
+        return fig,ax
 
-    def plot(self,fmt='raw',semilogx=True,fig=None,ax=None,label=None):
+    def plot(self,fmt='raw',fig=None,ax=None,semilogx=True,label=None):
         if not fig: fig, ax = plt.subplots(nrows=2,ncols=2,sharex=False,figsize=(12,8))
         if fmt=='raw':
             datas = [self.iq_data_raw,self.iq_data_sc_raw]
         elif fmt=='phys':
             datas = [self.iq_data,self.iq_data_sc]
         elif fmt=='trans':
-            datas = [2*np.sqrt(2)*self.iq_data/self.Io,2*np.sqrt(2)*self.iq_data_sc/self.Io_sc]
+            datas = [self.iq_data/(self.amp_volt/self.rfg_ohm),self.iq_data_sc/(self.amp_volt_sc/self.rfg_ohm)]
+        elif fmt=='1/trans':
+            datas = [(self.amp_volt/self.rfg_ohm)/self.iq_data,(self.amp_volt_sc/self.rfg_ohm)/self.iq_data_sc]
         elif fmt=='Z':
             datas=[self.Z]
         else:
@@ -190,33 +211,35 @@ class CzSingle():
         fig.suptitle(fmt)
         return fig, ax
 
-    def q_func(self,p):
-        ''' 
-            p[0] = overall normalization
-            p[1] = tau
-        '''
-        return 
-
     def _guess_tau(self,f_max=1e3):
         ind = np.argmin(self.Z[np.array(self.f)<f_max,1]) # minimum of Q 
         return (2*np.pi*self.f[ind])**-1
     
-    def fitQ(self,plot=False,fig=None,ax=None):
-        fit_func = lambda p,f: p[0]*2*np.pi*f*p[1]/(1+(p[1]*2*np.pi*f)**2) #p[0] overall normalization, p[1]=tau
+    def fitQ(self,plot=False,fig=None,ax=None,fmin=None,fmax=None,label=None,semilogx=True):
+        mask=self._make_mask(fmin,fmax)
+        # In fit function below, p[0] = -2\pi\tau_o LG/(1-LG)^2, the overall amplitude, and p[1] = (2\pi * \tau_I)^2 = (2\pi\tau_o/(1-LG))^2
+        # as such the ratio of the fit paraemters p[0]/p[1] = -LG/2\pi\tau_o
+        fit_func = lambda p,f: p[0]*f/(1+p[1]*f**2) # form is A/1+B*x^2, in which A and B are the free parameters
         optimize_func = lambda p,f,d: d-fit_func(p,f) # data - fit
 
         tau_est = self._guess_tau()
-        p = leastsq(optimize_func, [1,tau_est],args=(np.array(self.f),self.Z[:,1]))[0]
+        p = leastsq(optimize_func, [1,tau_est],args=(np.array(self.f)[mask],self.Z[mask,1]))[0]
 
         if plot:
-            if not fig: fig,ax=plt.subplots(2,1)
-            ax[0].semilogx(self.f,self.Z[:,1],'o')
-            xfit=np.linspace(min(self.f),max(self.f),1000)
+            xfit=np.logspace(np.log10(min(self.f)),np.log10(max(self.f)),1000)
             yfit=fit_func(p,xfit)
-            ax[0].semilogx(xfit,yfit,'--')
-            ax[0].set_ylabel('Q')
-            ax[1].semilogx(self.f,self.Z[:,1]-fit_func(p,np.array(self.f)),'o')
+            if not fig: fig,ax=plt.subplots(2,1)
+            if semilogx:
+                ax[0].semilogx(np.array(self.f)[mask],self.Z[mask,1],'o',label=label)
+                ax[0].semilogx(xfit,yfit,'k--')
+                ax[1].semilogx(np.array(self.f)[mask],self.Z[mask,1]-fit_func(p,np.array(self.f)[mask]),'o')
+            else:
+                ax[0].plot(np.array(self.f)[mask],self.Z[mask,1],'o',label=label)
+                ax[0].plot(xfit,yfit,'k--')
+                ax[1].plot(np.array(self.f)[mask],self.Z[mask,1]-fit_func(p,np.array(self.f)[mask]),'o')
+            ax[0].set_ylabel('Q')    
             ax[1].set_xlabel('Frequency (Hz)')
+            ax[1].set_ylabel('Data - fit')
             return p, fig, ax
         else:
             return p
