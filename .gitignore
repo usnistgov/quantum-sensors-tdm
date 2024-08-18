@@ -4,4 +4,9 @@ __pycache__
 *.npy
 last_fbastats
 .build
-.json
+*.json
+detchar/iv.config
+.ipynb_checkpoints
+detchar/test_polcal_data*
+detchar/analysis/Kate_Analysis
+detchar/analysis/kate_analysis.py

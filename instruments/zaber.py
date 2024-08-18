@@ -14,6 +14,12 @@ from . import serial_instrument
 # protocol reference:
 # https://www.zaber.com/protocol-manual?protocol=Binary#topic_action_055_echo_data
 #
+# except
+# that 
+# they updated that above link to a way different firmware version.
+#
+# https://www.zaber.com/manuals/T-NM Try this instead. This is the correct manual for the heatswitch motor on the Velma cryostat.
+#
 # by Doug Bennett
 # Based of similar class for Matlab by Dan Schmidt
 # modified by Frank Schima
@@ -35,6 +41,9 @@ ZABER_ERRORS = {
     39 : "hold current invalid",
     64 : "requested command number is invalid in this firmware version"
 } # this dict is incomplete, but basically it just means the command failed and the keyis the command number
+
+class MotorError(Exception):
+    pass
 
 class Zaber(serial_instrument.SerialInstrument):
 
@@ -111,11 +120,11 @@ class Zaber(serial_instrument.SerialInstrument):
     def __parseReplyToInt(self, command, reply, command_value):
         self._debug(f"reply={reply}")
         if len(reply) == 0:
-            raise Exception(f"command {command} got empty reply")
+            raise MotorError(f"command {command} got empty reply")
         elif len(reply) > 6:
-            raise Exception(f"reply too long, length={len(reply)} reply={reply}")
+            raise MotorError(f"reply too long, length={len(reply)} reply={reply}")
         elif len(reply) != 6: 
-            raise Exception(f"all reply should be length 6, got length {len(reply)}, reply={reply}")
+            raise MotorError(f"all reply should be length 6, got length {len(reply)}, reply={reply}")
         b = struct.unpack("BBBBBB", reply)
         self._debug(f"reply_bytes={b}")
         assert b[0] == self.unit
@@ -125,7 +134,7 @@ class Zaber(serial_instrument.SerialInstrument):
         if b[5] > 127: # handle twos complement
             v -= 256**4
         if b[1] == 255:
-            raise Exception(self.__errorString(v, command, command_value))
+            raise MotorError(self.__errorString(v, command, command_value))
         else:
             assert b[1] == command, f"2nd reply byte was {b[1]}, should equal the command {command}"
         return v
@@ -172,6 +181,12 @@ class Zaber(serial_instrument.SerialInstrument):
     def SetRunningCurrent(self, current=10):
         #set running current
         #set running current Range 0, 10-127   0: no current, 10 max , 127 min
+        if self.serial.in_waiting > 0:
+            oldtimeout = self.serial.timeout
+            self.serial.timeout=0.1
+            junk_data=self.serial.read(self.serial.in_waiting)
+            print(f"junk data in buffer: {repr(junk_data)}")
+            self.serial.timeout = oldtimeout
         self.__sendCommandParseReply(value=current, command=38)
 
     # dont use this, because it doesnt return a reply until it finishes, so you need logic to
@@ -252,14 +267,15 @@ class Zaber(serial_instrument.SerialInstrument):
         code = self.__sendCommandParseReply(value=0, command=54)
         interp_dict = {
             0  : "idle",
-            21 : "motion", # seems to be returned during motion, even though manual says it should be 99
+            21 : "motion", # seems to be returned during motion, even though manual says it should be 99 
+            # !! See note about api references from the future at the top of this file! 21 is the correct code.
             65 : "parked",
             90 : "diabled",
             93 : "inactive",
             99 : "motion"
         }
         if code not in interp_dict:
-            raise Exception(f"status code = {code} invalid, not in interp_dict = {interp_dict}")
+            raise MotorError(f"status code = {code} invalid, not in interp_dict = {interp_dict}")
         return interp_dict[code]
 
     def getPowerSupplyVoltage(self):
@@ -270,7 +286,8 @@ class Zaber(serial_instrument.SerialInstrument):
 
     def waitForRelativeMoveToComplete(self, timeout_s):
         """ this function should work, but it always causes an error of some sort, 
-        don't expect it to work"""
+        don't expect it to work
+        2024: CR observes that this function does usually work? """
         tstart = time.time()
         while True:
             reply = self.serial.read(6)
@@ -282,10 +299,10 @@ class Zaber(serial_instrument.SerialInstrument):
                 assert b[1] == 21, f"expected respond to move relative (21), got {b[1]}"    
                 break
             else:
-                raise Exception(f"reply should be length 0 or 6, got {length(reply)}, reply={reply}")
+                raise MotorError(f"reply should be length 0 or 6, got {length(reply)}, reply={reply}")
             elapsed_s = time.time()-tstart
             if elapsed_s > timeout_s:
-                raise Exception(f"should have finished relative move by now. elapsed_s = {elapsed_s}, timeout_s = {timeout_s}")
+                raise MotorError(f"should have finished relative move by now. elapsed_s = {elapsed_s}, timeout_s = {timeout_s}")
 
     def MoveRelativeThenWait(self, microsteps, speed):
         revolutions = microsteps/self.MicroStepsPerRev
@@ -297,7 +314,7 @@ class Zaber(serial_instrument.SerialInstrument):
     # in practice this just causes the heat switch to turn a lot, so commenting it out
     # def setKnobDisable(self, val: bool):
     #     assert isinstance(val, bool)
-    #     self.__sendCommand(107, int(val))
+    #     self.__sendCommand(107, int(val)) 
 
     # setting it to "displacement" causes the motor to just keep turning
     # def setKnobMovementMode(self, mode):
