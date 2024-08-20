@@ -29,7 +29,7 @@ class Labjack(object):
         #self.lj = u6.U6() # Opens first found u6 over USB
         print("Opened labjack device...")
 
-    def getAnalogInput(self, analog_input):
+    def getAnalogInput(self, analog_input,verbose=True):
         '''Get the voltage from one of the analog inputs'''
         
         # Reading Analog Input using Modbus
@@ -39,7 +39,8 @@ class Labjack(object):
         self.safeLJOpen()
         voltage = self.lj.getAIN(analog_input)
         self.lj.close()
-        print(("AI %s: %s" % (analog_input, voltage)))
+        if verbose:
+            print(("AI %s: %s" % (analog_input, voltage)))
         
         return voltage
  
