@@ -47,8 +47,9 @@ class AdrLogParser():
         else:
             # cols: date/time, epoch time (s), adr temp, heater output
             self.logtype = 'adr_gui'
-            self.header = ['date','epoch_time','adr','heater']
+            self.header = ['date','epoch_time','adr','heater','magnet_current']
             df = pd.read_csv(self.path+self.logfile,names=self.header) 
+            print(df)
         return df
 
     def print_metadata(self):
@@ -75,8 +76,8 @@ class AdrLogParser():
             plot = ax1.plot
         if self.logtype == 'adr_gui':
             color = 'tab:blue'
-            ax1.set_ylabel('adr temp (K)',color=color)
-            plot(t,self.df.iloc[:,2],color=color)
+            ax1.set_ylabel('adr temp (K)/ magnet current [A]',color=color)
+            plot(t,self.df.iloc[:,2],color=color,label="ADR temperature")
             ax1.tick_params(axis='y', labelcolor=color)
             ax1.grid('on')
 
@@ -84,11 +85,13 @@ class AdrLogParser():
             color = 'tab:red'
             ax2.set_ylabel('heater out (%)',color=color)  # we already handled the x-label with ax1
             if semilog:
-                ax2.semilogy(t,self.df.iloc[:,3],color=color)
+                ax2.semilogy(t,self.df.iloc[:,3],color=color,label="Heater")
             else:
-                ax2.plot(t,self.df.iloc[:,3],color=color)
+                ax2.plot(t,self.df.iloc[:,3],color=color,label="heater")
             ax2.tick_params(axis='y', labelcolor=color)
             fig.tight_layout()  # otherwise the right y-label is slightly clipped
+            ax1.plot(t,self.df.iloc[:,4],label="magnet current",color="C2")
+            ax1.legend()
 
         elif self.logtype == 'full':
             ax1.set_ylabel('Temperature (K)')
