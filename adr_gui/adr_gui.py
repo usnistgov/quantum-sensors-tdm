@@ -201,8 +201,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
         self.tempPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'temperature (K)', '')
         self.currentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'heater out %', '')
+        self.actualCurrentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'Mag. Current [A]', '')
+
         self.tempPlotLayout.addWidget(self.tempPlot)
         self.currentPlotLayout.addWidget(self.currentPlot)
+        self.currentPlotLayout_2.addWidget(self.actualCurrentPlot)
 
 
 
@@ -372,7 +375,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         return True, x
 
     def enforceAllowedRange(self, line_edit):
-        v = float(line_edit.text())
+        try:
+            v = float(line_edit.text())
+        except ValueError:
+            v = line_edit.value 
         if v < line_edit.allowed_range[0]: v = line_edit.allowed_range[0]
         if v > line_edit.allowed_range[1]: v = line_edit.allowed_range[1]
         line_edit.setText(str(v))
@@ -496,9 +502,13 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     def updateCurrentPlot(self):
         self.currentPlot.add_point(time.time()-self.startTime, self.lastHOut)
 
+        self.actualCurrentPlot.add_point(time.time()-self.startTime,self.lastCurrentReading)
+
+
     def clearPlots(self):
         self.tempPlot.clear_points()
         self.currentPlot.clear_points()
+        self.actualCurrentPlot.clear_points()
 
     def isControlState(self):
         return self.stateLabel.text().split(": ")[1] == "control"
@@ -595,24 +605,24 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.printStatus("hold after mag down %d s left"%(60*self.magDownHoldMinsEdit.value-time.time()+self.stateStartTime))
     def controlStateTick(self):
         currentSetPoint = self.tempControl.getSetTemp()
-#         if currentSetPoint != 1e-3*self.setPointmKEdit.value:
-#             self.tempControl.setSetTemp(1e-3*self.setPointmKEdit.value)
-#             self.printStatus("changed temp set point to %f mK"%self.setPointmKEdit.value)
-#             time.sleep(2)
-        error = (1e-3*self.setPointmKEdit.value-self.lastTemp_K) #kelvin
-        self.errorIntegral += error
-        newSetPoint = 1e-3*self.setPointmKEdit.value + error + self.errorIntegral*(1/12.0)
+        if currentSetPoint != 1e-3*self.setPointmKEdit.value:
+            self.tempControl.setSetTemp(1e-3*self.setPointmKEdit.value)
+            # self.printStatus("changed temp set point to %f mK"%self.setPointmKEdit.value)
+            # time.sleep(2)
+        # error = (1e-3*self.setPointmKEdit.value-self.lastTemp_K) #kelvin
+        # self.errorIntegral += error
+        # newSetPoint = 1e-3*self.setPointmKEdit.value + error + self.errorIntegral*(1/12.0)
 
-        if error > 0.0001: self.errorIntegral = 0
+        # if error > 0.0001: self.errorIntegral = 0
 
-#         self.tempControl.setSetTemp(2*1e-3*self.setPointmKEdit.value-self.lastTemp_K)
-        if newSetPoint < 1e-3*(self.setPointmKEdit.value-.1) :
-            newSetPoint = 1e-3*(self.setPointmKEdit.value-.1)
-        if newSetPoint > 1e-3*(self.setPointmKEdit.value+.1):
-            newSetPoint = 1e-3*(self.setPointmKEdit.value+.1)
+        # # self.tempControl.setSetTemp(2*1e-3*self.setPointmKEdit.value-self.lastTemp_K)
+        # if newSetPoint < 1e-3*(self.setPointmKEdit.value-.1) :
+        #     newSetPoint = 1e-3*(self.setPointmKEdit.value-.1)
+        # if newSetPoint > 1e-3*(self.setPointmKEdit.value+.1):
+        #     newSetPoint = 1e-3*(self.setPointmKEdit.value+.1)
 
 
-        self.tempControl.setSetTemp(newSetPoint)
+        # self.tempControl.setSetTemp(newSetPoint)
 
 #         print("%g %g %g"%(self.setPointmKEdit.value, self.lastTemp_K, 2*self.setPointmKEdit.value*1e-3-self.lastTemp_K))
         stddev, duration = self.controlTempStdDev()
@@ -693,7 +703,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     def pollTempControl(self):
         self.lastTemp_K = self.tempControl.getTemp()
         self.lastHOut = self.tempControl.getHeaterOut()
-        logger.log("%s, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut))
+        lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
+        lj_current = lj_volts * (3278+9950) / 3278  # measured resistor values are 3278 and 9950 ohms
+        self.lastCurrentReading = lj_current
+        logger.log("%s, %f, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut, self.lastCurrentReading))
         if self.lastTemp_K > 1000*self.thresholdTemperatureK:
             self.SIG_panic.emit()
 
