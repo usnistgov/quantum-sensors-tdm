@@ -128,7 +128,7 @@ class EasyClientDastard():
 
 
     def tdmChannelNumber(self, col, row):
-        return 1+col*self.numRows+row
+        return col*self.numRows+row
 
     # def fbChannelIndex(self, col, row):
     #     return 2*(col*self.numRows+row)+1
