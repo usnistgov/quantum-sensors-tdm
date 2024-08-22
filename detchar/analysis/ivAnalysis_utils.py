@@ -480,12 +480,13 @@ class IVCurveAnalyzeSingle():
         # fit normal and superconducting branches 
         p_norm = np.polyfit(x[n_idx:],y[n_idx:],1)
         p_sc = np.polyfit(x[:sc_idx],y[:sc_idx],1)
-        
-        slope_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
-        print('superconducting and normal branch offsets differ by: %.2f%%'%(100*(p_norm[1]-p_sc[1])/p_norm[1]))
-        
+
+        # remove arbitrary DC offset
         y-=p_norm[1] # subtract arbitrary offset using normal branch
-        if slope_diff > 5: y[0:sc_idx]-=p_sc[1]-p_norm[1] # 
+        slope_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
+        if slope_diff > 5: 
+            print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(slope_diff))
+            y[0:sc_idx]-=p_sc[1]-p_norm[1] # 
     
         i_bias = x*self.to_i_bias
 
@@ -575,9 +576,9 @@ class IVCurveAnalyzeSingle():
         return self.x[idx]
 
     def get_r_for_dac(self,dac,frac=True):
-        idx = np.argmin((self.x-dac))
-        if frac: return self.r[idx]/self.rn
-        else: return self.r[idx]
+        idx = np.argmin(abs(self.x-dac))
+        if frac: return self.r_tes[idx]/self.rn
+        else: return self.r_tes[idx]
 
 class IVCurveColumnDataExplore(IVCommon):
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
@@ -748,7 +749,7 @@ class IVCurveColumnDataExplore(IVCommon):
         return fig, ax
 
 class IVSetAnalyzeRow(IVCommon):
-    def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None):
+    def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None,use_IVCurveAnalyzeSingle=False):
         ''' Analyze IV set at different physical conditions for one row.
             This class is useful for inspection of IV families or for determining the power
             difference between two states (like a 300K to 77K IV chop).
@@ -783,11 +784,33 @@ class IVSetAnalyzeRow(IVCommon):
 
         # do standard IV analysis
         #self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
-        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb_raw,self.n_normal_pts,
+        if not use_IVCurveAnalyzeSingle:
+            self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb_raw,self.n_normal_pts,
                                                         use_ave_offset=self.use_ave_offset,showplot=False)
-        self.v,self.i,self.p,self.r = self.get_vipr(self.dacs, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
-        #self.v,self.i,self.p,self.r,ro = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=0.5)
-        #self.ro = self.r / self.r[0,:]
+            self.v,self.i,self.p,self.r = self.get_vipr(self.dacs, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
+
+        else:
+            assert iv_circuit, 'if use_IVCurveAnalyzeSingle=True, an IVCircuit object must be supplied'
+            ivs = []
+            for ii in range(self.num_sweeps):
+                ivs.append(IVCurveAnalyzeSingle(x=self.dacs,y=self.fb_raw[:,ii],rsh_ohm=iv_circuit.rsh_ohm,rx_ohm=iv_circuit.rx_ohm,
+                                                to_i_bias=iv_circuit.to_i_bias,to_i_tes=iv_circuit.to_i_tes))
+            self.fb_align, self.v, self.i, self.p, self.r = self._package_iv_globals_(ivs)
+
+    def _package_iv_globals_(self,ivs):
+        result = []
+        for iv in ivs:
+            result_ii=[]
+            for foo in [iv.y,iv.v_tes,iv.i_tes,iv.p_tes,iv.r_tes]:
+                result_ii.append(foo)
+            result.append(result_ii)
+        result=np.array(result) # shape of result : num_sweeps x num_params x num_dacs
+        fb_align = result[:,0,:].transpose()
+        v = result[:,1,:].transpose()
+        i = result[:,2,:].transpose()
+        p = result[:,3,:].transpose()
+        r = result[:,4,:].transpose()
+        return fb_align, v, i, p, r
 
     def power_difference_analysis(self,fignum=1):
 
@@ -2012,7 +2035,7 @@ class IVColdloadSweepAnalyzer():
 
 #######################################
 
-def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None):
+def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None,cal_params_dict=None):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']
@@ -2042,14 +2065,17 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
         rsh_ohm = cal['rjnoise']
         mr = cal['mr']
         vfb_gain = cal['vfb_gain']/(2**14-1)
+        vbias_gain = vb_max/(2**16-1)
 
     else:
-        rfb_ohm = 1698.0+50.0
-        rbias_ohm = 208.0
-        rsh_ohm = 0.000150
-        rx_ohm = 0
-        mr = 15
-        vfb_gain = 1.017/(2**14-1)
+        assert cal_params, 'if use_config=False, must provide calibration numbers in cal_params_dict'
+        rfb_ohm = cal_params_dict['rfb_ohm']
+        rbias_ohm = cal_params_dict['rbias_ohm']
+        rsh_ohm = cal_params_dict['rsh_ohm']
+        rx_ohm = cal_parmas_dict['rx_ohm']
+        mr = cal_params_dict['mr']
+        vfb_gain = cal_params_dict['fb_v_per_bit'] #1.017/(2**14-1)
+        vbias_gain = cal_params_dict['vdac_v_per_bit'] #v_max / 2**16-1
 
     iv_circuit = IVCircuit(rfb_ohm=rfb_ohm,
                            rbias_ohm=rbias_ohm,
@@ -2057,7 +2083,7 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
                            rx_ohm=0,
                            m_ratio=mr,
                            vfb_gain=vfb_gain,
-                           vbias_gain=vb_max/(2**16-1))
+                           vbias_gain=vbias_gain)
 
     # construct fb_arr versus Tbath for a single row
     dac, fb = df.data[0].xy_arrays()

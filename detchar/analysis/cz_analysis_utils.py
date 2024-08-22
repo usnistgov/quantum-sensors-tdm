@@ -216,10 +216,18 @@ class CzSingle():
         return (2*np.pi*self.f[ind])**-1
     
     def fitQ(self,plot=False,fig=None,ax=None,fmin=None,fmax=None,label=None,semilogx=True):
+        ''' Fit the quadrature phase (imaginary) part of the impedance  
+            if plot!=True only return the fit parameters "p" as a tuple.  
+            p[0] = -2\pi\tau_o LG/(1-LG)^2
+            p[1] = (2\pi)^2 \tau_I^2
+
+            if plot=True return p, fig, ax 
+        '''
+
         mask=self._make_mask(fmin,fmax)
         # In fit function below, p[0] = -2\pi\tau_o LG/(1-LG)^2, the overall amplitude, and p[1] = (2\pi * \tau_I)^2 = (2\pi\tau_o/(1-LG))^2
         # as such the ratio of the fit paraemters p[0]/p[1] = -LG/2\pi\tau_o
-        fit_func = lambda p,f: p[0]*f/(1+p[1]*f**2) # form is A/1+B*x^2, in which A and B are the free parameters
+        fit_func = lambda p,f: p[0]*f/(1+p[1]*f**2) # form is Ax/1+B*x^2, in which A and B are the free parameters
         optimize_func = lambda p,f,d: d-fit_func(p,f) # data - fit
 
         tau_est = self._guess_tau()
@@ -243,8 +251,69 @@ class CzSingle():
             return p, fig, ax
         else:
             return p
+
+    def fitI(self,plot=False,fig=None,ax=None,fmin=None,fmax=None,label=None,semilogx=True):
+        ''' fit the in-phase component of the response, the "real" part of Z. 
+            p[0]: Ro(1+\beta) 
+            p[1]: Ro(LG/1-LG)(2+\beta)
+            p[3]: (2\pi\tau)^2
+        '''
+        mask=self._make_mask(fmin,fmax)
+        fit_func = lambda p,f: p[0]+p[1]/(1+p[2]*f**2) # form is A+B/(1+C*x^2), in which A,B,C are free parameters
+        optimize_func = lambda p,f,d: d-fit_func(p,f) # data - fit
+
+        tau_est = self._guess_tau()
+        p = leastsq(optimize_func, [1,1,tau_est],args=(np.array(self.f)[mask],self.Z[mask,0]))[0]
+
+        if plot:
+            xfit=np.logspace(np.log10(min(self.f)),np.log10(max(self.f)),1000)
+            yfit=fit_func(p,xfit)
+            if not fig: fig,ax=plt.subplots(2,1)
+            if semilogx:
+                ax[0].semilogx(np.array(self.f)[mask],self.Z[mask,0],'o',label=label)
+                ax[0].semilogx(xfit,yfit,'k--')
+                ax[1].semilogx(np.array(self.f)[mask],self.Z[mask,0]-fit_func(p,np.array(self.f)[mask]),'o')
+            else:
+                ax[0].plot(np.array(self.f)[mask],self.Z[mask,0],'o',label=label)
+                ax[0].plot(xfit,yfit,'k--')
+                ax[1].plot(np.array(self.f)[mask],self.Z[mask,0]-fit_func(p,np.array(self.f)[mask]),'o')
+            ax[0].set_ylabel('I')    
+            ax[1].set_xlabel('Frequency (Hz)')
+            ax[1].set_ylabel('Data - fit')
+            return p, fig, ax
+        else:
+            return p
+
+    def fit(self,plot=False,fig=None,ax=None,fmin=None,fmax=None,label=None,semilogx=True):
+        mask=self._make_mask(fmin,fmax)
+        # p[0]=Ro, p[1]:beta, p[2]: loopgain, p[3]: \tau_o
+        fit_func = lambda p,f: p[0]*(1 + p[1] + p[2]/(1-p[2]) * (2+p[1]) * (1+(p[3]/(1-p[2]))**2*(2*np.pi*f)**2)**-1)
+        optimize_func = lambda p,f,d: d-fit_func(p,f) # data - fit
+
+        p = leastsq(optimize_func, [1e-3,1,1,.1],args=(np.array(self.f)[mask],self.Z[mask,0]))[0]
+
+        if plot:
+            xfit=np.logspace(np.log10(min(self.f)),np.log10(max(self.f)),1000)
+            yfit=fit_func(p,xfit)
+            if not fig: fig,ax=plt.subplots(2,1)
+            if semilogx:
+                ax[0].semilogx(np.array(self.f)[mask],self.Z[mask,0],'o',label=label)
+                ax[0].semilogx(xfit,yfit,'k--')
+                ax[1].semilogx(np.array(self.f)[mask],self.Z[mask,0]-fit_func(p,np.array(self.f)[mask]),'o')
+            else:
+                ax[0].plot(np.array(self.f)[mask],self.Z[mask,0],'o',label=label)
+                ax[0].plot(xfit,yfit,'k--')
+                ax[1].plot(np.array(self.f)[mask],self.Z[mask,0]-fit_func(p,np.array(self.f)[mask]),'o')
+            ax[0].set_ylabel('I')    
+            ax[1].set_xlabel('Frequency (Hz)')
+            ax[1].set_ylabel('Data - fit')
+            return p, fig, ax
+        else:
+            return p
+
   
 class CzSuperConductingBranch():
+    
     ''' Class for superconducting branch '''
     def __init__(self,czdata_filename):
         self.czdata_filename = czdata_filename

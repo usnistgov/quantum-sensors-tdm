@@ -107,6 +107,10 @@ class IVCurveColumnData(DataIO):
     column_number: int
     extra_info: dict
     pre_shock_dac_value: float
+    
+    def __post_init__(self):
+        self.iv_circuit = None   
+        self.allowed_keys = list(vars(IVCircuit(1,1,1)).keys()) 
 
     def plot(self):
         #plt.figure()
@@ -180,6 +184,34 @@ class IVCurveColumnData(DataIO):
                                rn_frac_list=[0.5],fulloutput=True)
             dac_list.append(np.interp(dac,x[::-1],r[::-1]))
         return dac_list
+
+    def _get_iv_circuit(self,vfb_gain,vbias_gain):
+        assert 'config' in list(self.extra_info.keys())
+        assert 'calnums' in list(self.extra_info['config'].keys())
+        cal = self.extra_info['config']['calnums']
+        if 'rx' in list(cal.keys()) or 'rx_ohm' in list(cal.keys()): rx = cal['rx']
+        else: rx=0
+        params = [cal['rfb'], cal['rbias'], cal['rjnoise'], rx, cal['mr']]
+        if vfb_gain: 
+            params.append(vfb_gain)
+        else:
+            params.append(6.20765e-5) # this is stupid
+        if vbias_gain: params.append(vbias_gain)
+
+        self.iv_circuit = IVCircuit(*params) 
+
+    def get_to_i_tes(self,vfb_gain=None,vbias_gain=None):
+        if not self.iv_circuit: self._get_iv_circuit(vfb_gain,vbias_gain)
+        return self.iv_circuit.to_i_tes
+        
+    def get_to_i_bias(self,vfb_gain=None,vbias_gain=None):
+        if not self.iv_circuit: self._get_iv_circuit(vfb_gain,vbias_gain)
+        return self.iv_circuit.to_i_bias
+
+    def get_cal_value(self,key,vfb_gain=None,vbias_gain=None):
+        if not self.iv_circuit: self._get_iv_circuit(vfb_gain,vbias_gain)
+        assert key in self.allowed_keys
+        return self.iv_circuit.__dict__[key]
 
 @dataclass_json
 @dataclass
@@ -352,18 +384,7 @@ class IVCircuit():
                 #x[:,ii] = I*self.rsh_ohm - y[:,ii]*(self.rsh_ohm+self.rx_ohm)
         return v_tes,i_tes
 
-    def iv_raw_to_physical_fit_rpar(self, vbias_arbs, vfb_arbs, sc_below_vbias_arbs):
-        # this method not checked by Hannes; written by Galen?
-        ites0, vtes0 = self.iv_raw_to_physical(vbias_arbs, vfb_arbs, rpar_ohm=0)
-        sc_inds = np.where(vbias_arbs<sc_below_vbias_arbs)[0]
-        pfit_sc = Polynomial.fit(ites0[sc_inds], vtes0[sc_inds], deg=1)
-        rpar_ohm = pfit_sc.deriv(m=1)(0)
-        return ites0, vtes0-ites0*rpar_ohm, rpar_ohm
-
-    
-
 ### polcal data classes ---------------------------------------------------------------------
-
 @dataclass_json
 @dataclass
 class PolCalSteppedSweepData(DataIO):
@@ -542,9 +563,6 @@ class BeamMapSingleGridAngleData(DataIO):
         ax.set_xlabel('Position (mm)')
         ax.legend()
         return fig,ax
-
-
-
 
 ### complex impedance / responsivity data classes ------------------------------------------
 
