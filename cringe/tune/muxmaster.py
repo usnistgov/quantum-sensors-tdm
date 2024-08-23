@@ -12,8 +12,9 @@ class MuxMaster():
         badraps = []
         badstates = []
         for idx, val in enumerate(self.cringe.class_vector):
-            #if val == "DFBCLK":
-                #log.debug("DFBCLK, dont care")
+            if val == "DFBCLK":
+                # log.debug("DFBCLK, dont care")
+                dfbraps.append(self.cringe.crate_widgets[idx].dfbclk_widget1)
             if val == "DFBx2":
                 #log.debug(idx, val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)

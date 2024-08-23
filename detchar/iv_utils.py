@@ -69,11 +69,13 @@ class IVPointTaker():
         rows_relocked_hi = []
         rows_relocked_lo = []
         for row, fb in enumerate(avg_col):
+            col_to_report = (row/24 +1 ) %3 # HACK for velma! be careful.
+            row_to_report = row % 24
             if fb < self.relock_lo_threshold:
-                self.cc.relock_fba(self.col, row)
+                self.cc.relock_fba(col_to_report, row_to_report)
                 rows_relocked_lo.append(row)
             if fb > self.relock_hi_threshold:
-                self.cc.relock_fba(self.col, row)
+                self.cc.relock_fba(col_to_report, row_to_report)
                 rows_relocked_hi.append(row)
         avg_col_out = avg_col[:]
         if len(rows_relocked_lo)+len(rows_relocked_hi) > 0:
@@ -87,7 +89,11 @@ class IVPointTaker():
         return avg_col_out-self._relock_offset
 
     def set_tower(self, dacvalue):
-        self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
+        if type(self.bayname) is list:
+            for bay in self.bayname:
+                self.cc.set_tower_channel(self.db_cardname, bay, int(dacvalue))
+        else:
+            self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
 
     def set_bluebox(self, dacvalue):
         self.bb.setVoltDACUnits(int(dacvalue))

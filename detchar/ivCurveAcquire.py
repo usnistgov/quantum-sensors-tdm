@@ -50,15 +50,21 @@ def handle_column(col):
         This "channel" is called "bayname" in the iv_utils software and BAY_NAMES 
         in the towerwidget.py.  So I follow this poor naming convention 
     '''
-    assert col in ['a','b','c','d','A','B','C','D'], 'uknown column.  Column must be A,B,C, or D'
-    if col.upper() == 'A':
-        bayname = "0"
-    elif col.upper() == 'B':
-        bayname = "1"
-    elif col.upper() == 'C':
-        bayname = "2"
-    elif col.upper() == 'D':
-        bayname = "3"
+    col = col.upper()
+    if len(col) == 1:
+        assert col in ['A','B','C','D'], 'unknown column.  Column must be A,B,C, or D'
+        if col == 'A':
+            bayname = "0"
+        elif col == 'B':
+            bayname = "1"
+        elif col == 'C':
+            bayname = "2"
+        elif col == 'D':
+            bayname = "3"
+    elif len(col) > 1:
+        bayname = []
+        for c in col:
+            bayname.append(handle_column(c))
     return bayname
 
 def create_filename():
@@ -87,7 +93,7 @@ with open(config_filename, 'r') as ymlfile:
 write_filename = create_filename()
 
 # voltage bias things ------------------------------
-if cfg['voltage_bias']['source'] in ['bluebox','BlueBox','Blue Box','blue box']:
+if cfg['voltage_bias']['source'].lower() in ['bluebox','blue box']:
     voltage_source = 'bluebox'
 else:
     voltage_source = None
