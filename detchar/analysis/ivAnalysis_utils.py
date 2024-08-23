@@ -127,6 +127,17 @@ class IVCommon():
     #        dc offset removal in a smart way
     #    '''
 
+    # def find_band_data_index_new(self,dac,fb,threshold,showplot=False):
+    #     assert True,'unfinished!!!'
+    #     # take derivatives
+    #     dfb = np.diff(y)
+    #     ddfb = np.diff(dfb)
+    
+    #     # Define IV curve regimes: superconducting, in transition, normal
+    #     sc_idx = np.argmax(abs(ddfb))+1 # find superconducting index
+    #     turn_idx = np.argmin(abs(dfb[sc_idx:]))+sc_idx+1
+    #     n_idx = int(N-(N-turn_idx)/2) # defined has half way from IV turn-around to highest Vbias point
+
     def find_bad_data_index(self,dac,fb,threshold=0.5,showplot=False):
         ''' Return the index where IV curve misbehaves.
             dac and fb(dac) must be in descending order
@@ -749,7 +760,7 @@ class IVCurveColumnDataExplore(IVCommon):
         return fig, ax
 
 class IVSetAnalyzeRow(IVCommon):
-    def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None,use_IVCurveAnalyzeSingle=False):
+    def __init__(self,dac_values,fb_values_arr,state_list=None,iv_circuit=None,figtitle=None,use_IVCurveAnalyzeSingle=True):
         ''' Analyze IV set at different physical conditions for one row.
             This class is useful for inspection of IV families or for determining the power
             difference between two states (like a 300K to 77K IV chop).
@@ -767,6 +778,7 @@ class IVSetAnalyzeRow(IVCommon):
                         used in the legend of plots
             iv_circuit: instance of iv_data.IVCircuit used to convert data to physical units
             figtitle: title of figure
+            use_IVCurveAnalyzeSingle: <bool> if True use IVCurveAnalyzeSingle to get v,i,p,r
         '''
         # options
         self.n_normal_pts = 10
@@ -790,6 +802,7 @@ class IVSetAnalyzeRow(IVCommon):
             self.v,self.i,self.p,self.r = self.get_vipr(self.dacs, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
 
         else:
+            print('IV analysis through IVCurveAnalyzeSingle')
             assert iv_circuit, 'if use_IVCurveAnalyzeSingle=True, an IVCircuit object must be supplied'
             ivs = []
             for ii in range(self.num_sweeps):
@@ -805,16 +818,16 @@ class IVSetAnalyzeRow(IVCommon):
                 result_ii.append(foo)
             result.append(result_ii)
         result=np.array(result) # shape of result : num_sweeps x num_params x num_dacs
-        fb_align = result[:,0,:].transpose()
-        v = result[:,1,:].transpose()
-        i = result[:,2,:].transpose()
-        p = result[:,3,:].transpose()
-        r = result[:,4,:].transpose()
+        fb_align = result[:,0,:].transpose()[::-1,:]
+        v = result[:,1,:].transpose()[::-1,:]
+        i = result[:,2,:].transpose()[::-1,:]
+        p = result[:,3,:].transpose()[::-1,:]
+        r = result[:,4,:].transpose()[::-1,:]
         return fb_align, v, i, p, r
 
-    def power_difference_analysis(self,fignum=1):
+    def power_difference_analysis(self,fig=None,ax=None):
 
-        fig,ax = plt.subplots(2,num=fignum)#,figsize=(45,5))
+        if not fig: fig,ax = plt.subplots(2)
         for ii in range(self.num_sweeps):
             ax[0].plot(self.r[:,ii]*1000,self.p[:,ii]*1e12,label=ii)
 
@@ -830,7 +843,7 @@ class IVSetAnalyzeRow(IVCommon):
         ax[1].set_xlabel('Resistance (mOhms)')
         ax[1].set_ylabel('dP (pW)')
 
-        return fig
+        return fig,ax
 
     def normal_branch_subtraction(self,showplot=True):
         m,b,fb_align = self.fit_normal_branch(self.dacs,self.fb_raw,align_dc=True,n_normal_pts=self.n_normal_pts)
@@ -901,7 +914,8 @@ class IVSetAnalyzeColumn():
 
 class IVversusADRTempOneRow(IVSetAnalyzeRow):
     ''' analyze thermal transport from IV curve set from one row in which ADR temperature is varied '''
-    def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None,figtitle=None):
+    def __init__(self,dac_values,fb_values_arr, temp_list_k, normal_resistance_fractions=[0.8,0.9],iv_circuit=None,
+                 figtitle=None,use_IVCurveAnalyzeSingle=True):
         ''' dac_values: np_array of dac_values (corresponding to voltage bias across TES),
                         a common dac_value for all IVs is required
             fb_values_arr: N_dac_val x N_sweep numpy array, column ordered in which columns are for different adr temperatures
@@ -916,7 +930,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         temp_list_k_str = []
         for ii in range(len(temp_list_k)):
             temp_list_k_str.append(str(temp_list_k[ii]))
-        super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit,figtitle)
+        super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit,figtitle,use_IVCurveAnalyzeSingle)
         self.ro = self.r / self.r[0,:]
         self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
         self.ro_clean = self.r_clean / self.r_clean[0,:]
@@ -953,7 +967,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         for ii in range(self.num_rn_fracs):
             if not np.isnan(self.p_at_rnfrac[ii,:]).any():
                 plt.plot(self.temp_list_k,self.p_at_rnfrac[ii,:],'o')
-                llabels.append(self.rn_fracs[ii])
+                llabels.append('%.3f'%(self.rn_fracs[ii]))
 
         if include_fits:
             for ii in range(self.num_rn_fracs):
@@ -2035,7 +2049,8 @@ class IVColdloadSweepAnalyzer():
 
 #######################################
 
-def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None,cal_params_dict=None):
+def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None,
+                           cal_params_dict=None, use_IVCurveAnalyzeSingle=True):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']
@@ -2093,9 +2108,11 @@ def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,
         fb_arr[:,ii] = fb[:,row_index]
 
     # do the analysis
-    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, temp_list_k=temp_list_k, normal_resistance_fractions=rn_fracs,iv_circuit=iv_circuit)
-    #iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr[:,:-2], temp_list_k=df.set_temps_k[:-2], normal_resistance_fractions=[0.4,0.5,0.6,0.7,0.8],iv_circuit=iv_circuit)
-
+    iv_tsweep = IVversusADRTempOneRow(dac_values=dac,fb_values_arr=fb_arr, 
+                                      temp_list_k=temp_list_k, 
+                                      normal_resistance_fractions=rn_fracs,
+                                      iv_circuit=iv_circuit,
+                                      use_IVCurveAnalyzeSingle=use_IVCurveAnalyzeSingle)
     # plot
     iv_tsweep.plot_raw()
     iv_tsweep.plot_vipr()
@@ -2116,7 +2133,7 @@ def iv_chop(file1,file2,row_index,temp_indices=[0,0],state_list=None,iv_circuit=
 
 def iv_circuit_from_file(iv_temp_sweep_data):
     if type(iv_temp_sweep_data) is str:
-        df = IVTempSweepData.from_file(filename) # df = "data frame"
+        df = IVTempSweepData.from_file(iv_temp_sweep_data) # df = "data frame"
     else:
         df = iv_temp_sweep_data
     cfg = df.data[0].extra_info['config']
