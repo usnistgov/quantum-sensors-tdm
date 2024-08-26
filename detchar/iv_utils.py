@@ -10,9 +10,7 @@ import time
 import numpy as np
 import pylab as plt
 import progress.bar
-import os
-from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
-#from .iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
+from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData
 from instruments import BlueBox
 
 class IVPointTaker():
@@ -58,13 +56,13 @@ class IVPointTaker():
         self._relock_offset = np.zeros(self.ec.nrow)
         self.set_volt = self._handle_voltage_source_arg(voltage_source)
 
-    def _handle_voltage_source_arg(self,voltage_source):
+    def _handle_voltage_source_arg(self, voltage_source):
         # set "set_volt" to either tower or bluebox
-        if voltage_source == None or voltage_source == 'tower':
-            set_volt = self.set_tower # 0-2.5V in 2**16 steps
+        if voltage_source is None or voltage_source == 'tower':
+            set_volt = self.set_tower  # 0-2.5V in 2**16 steps
         elif voltage_source == 'bluebox':
             self.bb = BlueBox(port='vbox', version='mrk2')
-            set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
+            set_volt = self.set_bluebox  # 0 to 6.5535V in 2**16 steps
         else:
             raise ValueError("voltage_source must be None, 'tower', or 'bluebox'.")
         return set_volt
@@ -78,7 +76,7 @@ class IVPointTaker():
 
     def _handle_cringe_control_arg(self, cringe_control):
         if cringe_control is not None:
-             return cringe_control
+            return cringe_control
         return CringeControl()
 
     def get_iv_pt(self, dacvalue):
@@ -98,13 +96,11 @@ class IVPointTaker():
         rows_relocked_hi = []
         rows_relocked_lo = []
         for row, fb in enumerate(avg_col):
-            col_to_report = row/24 
-            row_to_report = row % 24
             if fb < self.relock_lo_threshold:
-                self.cc.relock_fba(col_to_report, row_to_report)
+                self.cc.relock_fba(self.col, row)
                 rows_relocked_lo.append(row)
             if fb > self.relock_hi_threshold:
-                self.cc.relock_fba(col_to_report, row_to_report)
+                self.cc.relock_fba(self.col, row)
                 rows_relocked_hi.append(row)
         avg_col_out = avg_col[:]
         if len(rows_relocked_lo)+len(rows_relocked_hi) > 0:
@@ -141,6 +137,42 @@ class IVPointTaker():
     def relock_all_locked_rows(self):
         print("relock all locked rows")
         self.cc.relock_all_locked_fba(self.col)
+
+
+class IVPointTakerMulti(IVPointTaker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self._relock_offset = np.zeros(self.ec.nrow * self.ec.ncol)
+
+    def get_iv_pt(self, dacvalue):
+        self.set_volt(dacvalue)
+        time.sleep(self.delay_s)
+        data = self.ec.getNewData2(16)
+        numChans = self.ec.numRows*self.ec.numColumns
+        processed_data = np.zeros(numChans)
+        relocked_chans = []
+        for i in range(numChans):
+            chan_ts = data[f"chan{i}"] >> 2  # Following easyClient getNewData, throw out two lsb
+            chan_avg = np.mean(chan_ts)
+            processed_data[i] = chan_avg
+            if not self.relock_lo_threshold < chan_avg < self.relock_hi_threshold:
+                relocked_chans.append(i)
+                self.cc.relock_fba(i // self.ec.numRows, i % self.ec.numRows)
+        
+        if len(relocked_chans) > 0:
+            time.sleep(self.delay_s)
+            post_relock_data = self.ec.getNewData2(16)
+            for i in relocked_chans:
+                avg_after = np.mean(post_relock_data[f"chan{i}"] >> 2)
+                self._relock_offset[i] += avg_after - processed_data[i]
+                processed_data[i] = avg_after
+
+        return processed_data - self._relock_offset
+
+    def relock_all_locked_rows(self):
+        print("relock all locked rows")
+        for c in self.col:
+            self.cc.relock_all_locked_fba(c)
 
 class IVCurveTaker():
     def __init__(self, point_taker, temp_settle_delay_s=60, shock_normal_dac_value=2**16-1, zero_tower_at_end=True, adr_gui_control=None):

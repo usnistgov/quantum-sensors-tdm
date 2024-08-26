@@ -14,11 +14,14 @@ v1: 4/2021 updated to allow plotting and to take IV curve at current temperature
 v2: 5/2023 updated to use the tower card detector bias
 '''
 
-import yaml, sys, os
+import yaml
+import sys
+import os
 import iv_utils as iv
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+
 
 def plot_iv_groups(iv_temp_sweep_inst, num_in_group=8):
     N = len(iv_temp_sweep_inst.set_temps_k) # number of temp sweeps
@@ -119,7 +122,15 @@ def main():
     #     bath_temps = [ls370.getTemperatureSetPoint()]
 
     #############
-    pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], bayname=bayname, voltage_source = voltage_source)
+    if type(bayname) is list:
+        pt_taker = iv.IVPointTakerMulti(
+            db_cardname=cfg['voltage_bias']['db_cardname'],
+            bayname=bayname,
+            voltage_source=voltage_source,
+            column_number=[0,1,2]
+        )
+    else:
+        pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], bayname=bayname, voltage_source = voltage_source)
     curve_taker = iv.IVCurveTaker(
         pt_taker, 
         temp_settle_delay_s=cfg['runconfig']['temp_settle_delay_s'], 
