@@ -11,10 +11,11 @@ class MuxMaster():
         dfbraps = []
         badraps = []
         badstates = []
+        dfb_clk = None
         for idx, val in enumerate(self.cringe.class_vector):
             if val == "DFBCLK":
                 # log.debug("DFBCLK, dont care")
-                dfbraps.append(self.cringe.crate_widgets[idx].dfbclk_widget1)
+                dfb_clk = self.cringe.crate_widgets[idx].dfbclk_widget1
             if val == "DFBx2":
                 #log.debug(idx, val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)
@@ -26,6 +27,12 @@ class MuxMaster():
         #log.debug(dfbraps)
         #log.debug(badraps)
         #log.debug(badstates)
+        if dfb_clk is not None:
+            self.dfbraps.append(dfb_clk) # At least in the Velma system the dfb_clk is used for
+            # column 3/C. In most systems it is not used at all, so it should not be the 0th value
+            # in the dfbraps array even if the dfbclk is the first card in the class vector. 
+            # in fact, the dfb_clk dfb was explicitly ignored until CTR added it in Aug 2024. 
+            # See the commented log.debug("don't care")
         self.dfbraps = dfbraps
         self.badraps = badraps
         self.badstates = badstates
