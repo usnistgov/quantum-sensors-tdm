@@ -1,10 +1,11 @@
 import numpy as np
+from cringe.shared import log
+
 
 class MuxMaster():
     def __init__(self,cringe):
         self.cringe=cringe
         self.gatherAllCards()
-
 
     def gatherAllCards(self):
         "Learn about all DFBx2 raps and BAD16 raps and states from the GUI."
@@ -32,7 +33,8 @@ class MuxMaster():
             # column 3/C. In most systems it is not used at all, so it should not be the 0th value
             # in the dfbraps array even if the dfbclk is the first card in the class vector. 
             # in fact, the dfb_clk dfb was explicitly ignored until CTR added it in Aug 2024. 
-            # See the commented log.debug("don't care")
+            # See the commented log.debug("don't care") The main branch puts dfb_clk into a separate
+            # member variable
         self.dfbraps = dfbraps
         self.badraps = badraps
         self.badstates = badstates
@@ -43,7 +45,7 @@ class MuxMaster():
         self.cringe.tower_widget.set_channel_dac(cardname, bay_index, dacvalue)
 
     def setTowerCardAllChannelsToSameDAC(self, cardname, dacvalue):
-        self.cringe.tower_widget.set_card_dac(cardname, bay_index, dacvalue)
+        self.cringe.tower_widget.set_card_dac(cardname, dacvalue)
 
     def relockFBAifLocked(self, col, row):
         dfbrap=self.dfbraps[col]
