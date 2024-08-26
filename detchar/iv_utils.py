@@ -16,8 +16,35 @@ from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepD
 from instruments import BlueBox
 
 class IVPointTaker():
+    """ The IVPointTaker commands the bias value then calls easyClientDastard, which waits `delay_s` and then
+    takes data. 
+
+    Note that when you initialize IVPointTaker, the member `self.set_volt` is set to either point to
+    the function `self.set_bluebox` or `self.set_tower` depending on the value passed to the initializer
+    in the `voltage_source` argument.
+
+    """
     def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000),
-    easy_client=None, cringe_control=None, voltage_source = None, column_number = 0):
+    easy_client=None, cringe_control=None, voltage_source = 'tower', column_number = 0):
+        """ IVPointTaker class constructor.
+        :param db_cardname: which card in the Tower to use for detector biasing. Note this is ignored if `voltage_source` is `bluebox`
+        :param bayname: which output on the Tower Card specified in `db_cardname` to set. This is either a string containing a single digit number 
+            or a list of strings containing single digit numbers, e.g. `bayname = "1"` or `bayname=["0","1","2"]`
+        :param delay_s: how long to wait between setting the bias and taking data
+        :param relock_threshold_lo_hi: tuple containing two ints. If a feedback value goes outside this range, attempt to relock.
+        :param easy_client: optional. if None, create a new Easy Client.
+        :param cringe_control: optional. if None, create a new Cringe Control.
+        :param voltage_source: optional. Defaults to Tower. Possible values: 'tower', 'bluebox'
+        :param column_number: optional. Defaults to 0. Which column of data should be returned. 
+            This param has caveats. Right now it can only be zero, I think. It controls not only which column is selected
+            from the data returned by EasyClient in ec.getNewData(...)[self.col,:,:,1].mean(axis=-1), but also which column
+            is set up by Cringe with ARL=0. Theoretically should it == bayname? Depends on how the system is wired.
+            CTR has three DFB cards wired with dfbx2[0]->"A" dfbx2[1]->"B" dfb_clk->"C". Historically,
+            dfbx2[0] was manually physically swapped between cols, which required bayname to change and column_number to remain at 0.
+
+
+        """
+
         self.ec = self._handle_easy_client_arg(easy_client)
         self.cc = self._handle_cringe_control_arg(cringe_control)
         # these should be args
@@ -38,12 +65,14 @@ class IVPointTaker():
         elif voltage_source == 'bluebox':
             self.bb = BlueBox(port='vbox', version='mrk2')
             set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
+        else:
+            raise ValueError("voltage_source must be None, 'tower', or 'bluebox'.")
         return set_volt
 
     def _handle_easy_client_arg(self, easy_client):
         if easy_client is not None:
             return easy_client
-        easy_client = EasyClient()
+        easy_client = EasyClient() # will either be an easyClient NDFB or Dastard... Hopefully Dastard?
         easy_client.setupAndChooseChannels()
         return easy_client
 
@@ -69,7 +98,7 @@ class IVPointTaker():
         rows_relocked_hi = []
         rows_relocked_lo = []
         for row, fb in enumerate(avg_col):
-            col_to_report = (row/24 +1 ) %3 # HACK for velma! be careful.
+            col_to_report = row/24 
             row_to_report = row % 24
             if fb < self.relock_lo_threshold:
                 self.cc.relock_fba(col_to_report, row_to_report)
