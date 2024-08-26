@@ -118,7 +118,9 @@ class EasyClientDastard():
         self._getStatus()
         self.linePeriodSeconds = self.linePeriod/self.clockMhz
         self.samplePeriod = self.linePeriodSeconds*self.numRows
-        print(self)
+        if DEBUG:
+            print("setupAndChooseChannels prints:")
+            print(self)
 
     @property
     def channelIndicies(self):
