@@ -2306,7 +2306,12 @@ class Cringe(QtWidgets.QWidget):
         log.debug(tc.FCTCALL + "load pickle settings:", tc.ENDC)
 
         if filename is None or filename == False:
-            self.load_filename = str(QtWidgets.QFileDialog.getOpenFileName())
+            temp = str(QtWidgets.QFileDialog.getOpenFileName()[0])
+            if temp == '':
+                # If the user hits close this will cleanly exit the method call
+                return
+            else:
+                self.load_filename = temp
         else:
             self.load_filename = filename
         self.filenameEdit.setText(self.load_filename)

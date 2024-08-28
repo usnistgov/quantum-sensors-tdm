@@ -10,14 +10,39 @@ import time
 import numpy as np
 import pylab as plt
 import progress.bar
-import os
-from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
-#from .iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData, IVCircuit
+from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData
 from instruments import BlueBox
 
 class IVPointTaker():
+    """ The IVPointTaker commands the bias value then calls easyClientDastard, which waits `delay_s` and then
+    takes data. 
+
+    Note that when you initialize IVPointTaker, the member `self.set_volt` is set to either point to
+    the function `self.set_bluebox` or `self.set_tower` depending on the value passed to the initializer
+    in the `voltage_source` argument.
+
+    """
     def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000),
-    easy_client=None, cringe_control=None, voltage_source = None, column_number = 0):
+    easy_client=None, cringe_control=None, voltage_source = 'tower', column_number = 0):
+        """ IVPointTaker class constructor.
+        :param db_cardname: which card in the Tower to use for detector biasing. Note this is ignored if `voltage_source` is `bluebox`
+        :param bayname: which output on the Tower Card specified in `db_cardname` to set. This is either a string containing a single digit number 
+            or a list of strings containing single digit numbers, e.g. `bayname = "1"` or `bayname=["0","1","2"]`
+        :param delay_s: how long to wait between setting the bias and taking data
+        :param relock_threshold_lo_hi: tuple containing two ints. If a feedback value goes outside this range, attempt to relock.
+        :param easy_client: optional. if None, create a new Easy Client.
+        :param cringe_control: optional. if None, create a new Cringe Control.
+        :param voltage_source: optional. Defaults to Tower. Possible values: 'tower', 'bluebox'
+        :param column_number: optional. Defaults to 0. Which column of data should be returned. 
+            This param has caveats. Right now it can only be zero, I think. It controls not only which column is selected
+            from the data returned by EasyClient in ec.getNewData(...)[self.col,:,:,1].mean(axis=-1), but also which column
+            is set up by Cringe with ARL=0. Theoretically should it == bayname? Depends on how the system is wired.
+            CTR has three DFB cards wired with dfbx2[0]->"A" dfbx2[1]->"B" dfb_clk->"C". Historically,
+            dfbx2[0] was manually physically swapped between cols, which required bayname to change and column_number to remain at 0.
+
+
+        """
+
         self.ec = self._handle_easy_client_arg(easy_client)
         self.cc = self._handle_cringe_control_arg(cringe_control)
         # these should be args
@@ -31,25 +56,27 @@ class IVPointTaker():
         self._relock_offset = np.zeros(self.ec.nrow)
         self.set_volt = self._handle_voltage_source_arg(voltage_source)
 
-    def _handle_voltage_source_arg(self,voltage_source):
+    def _handle_voltage_source_arg(self, voltage_source):
         # set "set_volt" to either tower or bluebox
-        if voltage_source == None or voltage_source == 'tower':
-            set_volt = self.set_tower # 0-2.5V in 2**16 steps
+        if voltage_source is None or voltage_source == 'tower':
+            set_volt = self.set_tower  # 0-2.5V in 2**16 steps
         elif voltage_source == 'bluebox':
             self.bb = BlueBox(port='vbox', version='mrk2')
-            set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
+            set_volt = self.set_bluebox  # 0 to 6.5535V in 2**16 steps
+        else:
+            raise ValueError("voltage_source must be None, 'tower', or 'bluebox'.")
         return set_volt
 
     def _handle_easy_client_arg(self, easy_client):
         if easy_client is not None:
             return easy_client
-        easy_client = EasyClient()
+        easy_client = EasyClient() # will either be an easyClient NDFB or Dastard... Hopefully Dastard?
         easy_client.setupAndChooseChannels()
         return easy_client
 
     def _handle_cringe_control_arg(self, cringe_control):
         if cringe_control is not None:
-             return cringe_control
+            return cringe_control
         return CringeControl()
 
     def get_iv_pt(self, dacvalue):
@@ -87,7 +114,11 @@ class IVPointTaker():
         return avg_col_out-self._relock_offset
 
     def set_tower(self, dacvalue):
-        self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
+        if type(self.bayname) is list:
+            for bay in self.bayname:
+                self.cc.set_tower_channel(self.db_cardname, bay, int(dacvalue))
+        else:
+            self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
 
     def set_bluebox(self, dacvalue):
         self.bb.setVoltDACUnits(int(dacvalue))
@@ -106,6 +137,42 @@ class IVPointTaker():
     def relock_all_locked_rows(self):
         print("relock all locked rows")
         self.cc.relock_all_locked_fba(self.col)
+
+
+class IVPointTakerMulti(IVPointTaker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self._relock_offset = np.zeros(self.ec.nrow * self.ec.ncol)
+
+    def get_iv_pt(self, dacvalue):
+        self.set_volt(dacvalue)
+        time.sleep(self.delay_s)
+        data = self.ec.getNewData2(16)
+        numChans = self.ec.numRows*self.ec.numColumns
+        processed_data = np.zeros(numChans)
+        relocked_chans = []
+        for i in range(numChans):
+            chan_ts = data[f"chan{i}"] >> 2  # Following easyClient getNewData, throw out two lsb
+            chan_avg = np.mean(chan_ts)
+            processed_data[i] = chan_avg
+            if not self.relock_lo_threshold < chan_avg < self.relock_hi_threshold:
+                relocked_chans.append(i)
+                self.cc.relock_fba(i // self.ec.numRows, i % self.ec.numRows)
+        
+        if len(relocked_chans) > 0:
+            time.sleep(self.delay_s)
+            post_relock_data = self.ec.getNewData2(16)
+            for i in relocked_chans:
+                avg_after = np.mean(post_relock_data[f"chan{i}"] >> 2)
+                self._relock_offset[i] += avg_after - processed_data[i]
+                processed_data[i] = avg_after
+
+        return processed_data - self._relock_offset
+
+    def relock_all_locked_rows(self):
+        print("relock all locked rows")
+        for c in self.col:
+            self.cc.relock_all_locked_fba(c)
 
 class IVCurveTaker():
     def __init__(self, point_taker, temp_settle_delay_s=60, shock_normal_dac_value=2**16-1, zero_tower_at_end=True, adr_gui_control=None):
