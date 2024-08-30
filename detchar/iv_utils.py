@@ -130,12 +130,25 @@ class IVPointTakerMulti(IVPointTaker):
         if len(relocked_chans) > 0:
             time.sleep(self.delay_s)
             post_relock_data = self.ec.getNewData2(16)
+            print(f"Relocked: {relocked_chans}")
             for i in relocked_chans:
                 avg_after = np.mean(post_relock_data[f"chan{i}"] >> 2)
                 self._relock_offset[i] += avg_after - processed_data[i]
                 processed_data[i] = avg_after
 
         return processed_data - self._relock_offset
+
+    def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = None):
+        for c in self.col:
+            if ARLoff:
+                print("setting ARL (autorelock) off")
+                self.cc.set_arl_off(c)
+            if I is not None:
+                print(f"setting I to {I}")
+                self.cc.set_fb_i(c, I)
+            if fba_offset is not None:
+                print(f"setting fba offset to {fba_offset}")
+                self.cc.set_fba_offset(c, fba_offset)
 
     def relock_all_locked_rows(self):
         print("relock all locked rows")

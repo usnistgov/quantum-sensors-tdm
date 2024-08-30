@@ -183,6 +183,9 @@ class FitNoiseTemperatureSweep():
 def noise_sweep_data_parser(noisesweepdata_filename,detbias_index=0,row_sequence_index=0,temp_list=None):
     ''' helps parse the raw NoiseSweepData json file into the structure that FitNoiseTemperatureSweep expects '''
     ns = NoiseSweepData.from_file(noisesweepdata_filename)
+    print("Loading noise sweep:")
+    print(f"    temperatures: {ns.temp_list_k}")
+    print(f"    biases: {ns.db_list}")
     m, y_label_str = ns._phys_units(True)
     if temp_list is None:
         ntemps = len(ns.temp_list_k)
