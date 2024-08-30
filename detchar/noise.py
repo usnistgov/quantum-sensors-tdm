@@ -6,8 +6,8 @@ is suited for storing data and scripting to loop over temperature and bias point
 @author JH, 5/2023
 '''
 
-from .iv_data import NoiseData, NoiseSweepData
-from detchar.acquire import Acquire
+from detchar.iv_data import NoiseData, NoiseSweepData
+from detchar import acquire
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -110,7 +110,7 @@ import yaml
 #             self.axes.legend(self.legend,loc='upper left')
 #         self.draw()
 
-class NoiseAcquire(Acquire):
+class NoiseAcquire(acquire.Acquire):
     ''' Acquire multiplexed, averaged noise data.
         No sensor setup is done.
     '''
@@ -124,10 +124,14 @@ class NoiseAcquire(Acquire):
                  easy_client=None, 
                  adr_gui_control=None,
                  **kwargs):
+        if "db_source" in kwargs:
+            db_source = kwargs.pop('db_source')
+        else:
+            db_souce = 'tower'
         super().__init__(
-            'tower',
+            db_source,
             easy_client=easy_client,
-            adr_gui_control=adr_gui_control
+            adr_control=adr_gui_control,
             **kwargs
         )
         self.column = column_str
@@ -161,7 +165,7 @@ class NoiseAcquire(Acquire):
         numPoints = self._handle_num_points(self.f_min_hz,force_power_of_two)
         Pxx_all = np.zeros(((self.ec.numRows,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
         pre_time = time.time()
-        pre_temp_k = self.adr_gui_control.get_temp_k()
+        pre_temp_k = self.adr.get_temp_k()
 
         for ii in range(self.num_averages):
             print('Noise PSD, average number = %d'%ii)
@@ -294,21 +298,11 @@ class NoiseSweep(NoiseAcquire):
             output_sorted.append(db)
         return output_sorted
 
-    def set_temp(self,temp_k):
-        self.adr.set_temp_k(float(temp_k))
-        stable = self._is_temp_stable(temp_k)
-        print('Temperature has been reached, waiting %d s to stabilize'%self.temp_settle_delay_s)
-        time.sleep(self.temp_settle_delay_s)
-        return stable
-
     def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, extra_info={}):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k): #loop over temperature list
             print('Setting to temperature %.1f mK'%(temp*1000))
-            if np.logical_and(ii==0,skip_wait_on_first_temp):
-                self.adr.set_temp_k(float(temp))
-            else:
-                self.set_temp(temp)
+            self.set_temp_and_settle(temp)
             print('Detector bias list: ',self.db_list[ii])
             if self.db_list[ii][0] != 0: # if detector bias non-zero, autobias device onto transition
                 print('overbiasing detector, dropping bias down, then waiting 30s')
@@ -330,7 +324,7 @@ class NoiseSweep(NoiseAcquire):
         return NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
                               temp_list_k=self.temp_list_k, db_list=self.db_list,
                               signal_column_index=self.signal_column_index,
-                              db_cardname=self.db_cardname, db_tower_channel_str=self.db_tower_channel,
+                              db_cardname=self.db_cardname, db_tower_channel_str=self.db_bay,
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
 
@@ -377,33 +371,42 @@ if __name__ == "__main__":
     # print('wrote file %s to disk'%(path+filename))
 
     args = _make_parser_()
-    if args.filename is not None:
-        with open(args.filename, 'r') as yml:
+    if args.file is not None:
+        with open(args.file, 'r') as yml:
             config = yaml.load(yml, Loader=yaml.FullLoader)
-
+        column = acquire.column_name_to_num(config['detectors']['Column'])
         ns = NoiseSweep(
             column_str = config['detectors']['Column'],
-            row_sequence = config['detectors']['Rows'],
+            row_sequence_list = config['detectors']['Rows'],
             m_ratio = config['calnums']['mr'],
             rfb_ohm = config['calnums']['rfb'],
-            temperature_list_k = config['runconfig']['bathTemperatures']
+            temperature_list_k = config['runconfig']['bathTemperatures'],
+            detector_bias_list = config['voltage_bias']['v_dac_list'],
+            db_tower_channel = column,
+            signal_column_index = int(column)
 
         )
-        ns.temp_settle_delay_s = config["runconfig"]["temp_settle_delay_s"]
-    if args.row_sequence is None:
-        row_sequence = list(range(32))
-    else: 
-        row_sequence = args.row_sequence 
-    nn = NoiseAcquire(column_str=args.column_str, 
-                      row_sequence_list=row_sequence, 
-                      m_ratio=args.m_ratio, 
-                      rfb_ohm=args.rfb_ohm, 
-                      f_min_hz=args.f_min_hz, 
-                      num_averages=args.num_averages)
-    nn.take()
-    
-    nn.plot_avg_psds(rows=args.indices_to_plot)
-    plt.show()
+        nd=ns.run()
+        for i in range(len(config['detectors']['Rows'])):
+            nd.plot_row(i)
+            plt.show()
+        nd.to_file(filename = config['io']['SaveTo'])
+
+    else:
+        if args.row_sequence is None:
+            row_sequence = list(range(32))
+        else: 
+            row_sequence = args.row_sequence 
+        nn = NoiseAcquire(column_str=args.column_str, 
+                        row_sequence_list=row_sequence, 
+                        m_ratio=args.m_ratio, 
+                        rfb_ohm=args.rfb_ohm, 
+                        f_min_hz=args.f_min_hz, 
+                        num_averages=args.num_averages)
+        nn.take()
+        
+        nn.plot_avg_psds(rows=args.indices_to_plot)
+        plt.show()
 
     # nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
     #              easy_client=None, adr_gui_control=None)
