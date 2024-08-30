@@ -46,7 +46,7 @@ class AdrGuiControl:
         success, extra_info = self.send_decode_reply(f"{command} {x}")
         assert success
         assert extra_info == x
-        return reply
+        return x
 
     def get_temp_k(self):
         success, extra_info = self.send_decode_reply("get_temp_k")
@@ -65,10 +65,6 @@ class AdrGuiControl:
 
     def set_ramp_rate_kpm(self, ramp_rate_kpm):
         success, extra_info = self.send_decode_reply(f"set_ramp_rate_kpm {float(ramp_rate_kpm)}")
-        return success
-
-    def set_temp_k(self, setpoint_k):
-        success, extra_info = self.send_decode_reply(f"set_temp_k {float(setpoint_k)}")
         return success
 
     def get_temp_rms_uk(self):
