@@ -139,7 +139,7 @@ class FitNoiseTemperatureSweep():
                 plt.loglog(fit[0],fit[1])
             plt.legend(self.temp_list)
             for ii, fit in enumerate(fit_data_list):
-                plt.loglog(fit[0],self.fns[0].func(fit[0], *popt_list[ii]),'k--')    
+                plt.loglog(fit[0],self.fns[0].func(fit[0], *popt_list[ii]), 'k--')    
             plt.xlabel('Frequency (Hz)')
             plt.ylabel('Current noise density (A$^2$/Hz)')
         self.popt_list = popt_list
