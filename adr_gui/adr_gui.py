@@ -321,9 +321,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         ramp_status, ramp_rate = tc.getRamp()
         return True, ramp_rate   
 
-    def rpc_get_temp_rms_uk(self):
+    def rpc_get_temp_rms_uk(self, n=61):
+        n=int(n)
         assert self.isControlState()
-        return True, self._last_stddev_uk
+        return True, self.controlTempStdDev(n=n)[0]*1e6
 
     def rpc_get_slope_hout_per_hour(self):
         assert self.isControlState()
@@ -682,8 +683,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.printStatus("something is wrong, in state goingToIntitalState_ZeroCurrentTicket with nonzero heater out and not readyToControl")
 
 
-    def controlTempStdDev(self):
-        last_n_points = self.tempPlot.last_n_points(61)
+    def controlTempStdDev(self,n=61):
+        last_n_points = self.tempPlot.last_n_points(n)
         stddev, duration = numpy.NAN, numpy.NAN
         if last_n_points is not None:
             stddev = numpy.std(last_n_points[1])

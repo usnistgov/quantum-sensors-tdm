@@ -71,6 +71,11 @@ class AdrGuiControl:
         success, extra_info = self.send_decode_reply("get_temp_rms_uk")
         assert success
         return float(extra_info)   
+    
+    def get_temp_rms_uk_npts(self,n):
+        success, extra_info = self.send_decode_reply(f"get_temp_rms_uk {int(n)}")
+        assert success
+        return float(extra_info) 
 
     def get_hout(self):
         success, extra_info = self.send_decode_reply("get_hout")
