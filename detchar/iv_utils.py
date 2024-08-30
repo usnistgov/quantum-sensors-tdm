@@ -3,17 +3,14 @@
 
     was previously "galen_iv.py"
 '''
-from cringe.cringe_control import CringeControl
-from adr_gui.adr_gui_control import AdrGuiControl
-from nasa_client import EasyClient
 import time
 import numpy as np
 import pylab as plt
 import progress.bar
 from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData
-from instruments import BlueBox
+from detchar.acquire import Acquire
 
-class IVPointTaker():
+class IVPointTaker(Acquire):
     """ The IVPointTaker commands the bias value then calls easyClientDastard, which waits `delay_s` and then
     takes data. 
 
@@ -22,8 +19,10 @@ class IVPointTaker():
     in the `voltage_source` argument.
 
     """
-    def __init__(self, db_cardname, bayname, delay_s=0.05, relock_threshold_lo_hi  = (2000, 14000),
-    easy_client=None, cringe_control=None, voltage_source = 'tower', column_number = 0):
+    def __init__(self, db_cardname=None, bayname=None, delay_s=0.05, 
+                 relock_threshold_lo_hi = (2000, 14000),
+    easy_client=None, cringe_control=None, voltage_source = 'tower', 
+    column_number = 0, **kwargs):
         """ IVPointTaker class constructor.
         :param db_cardname: which card in the Tower to use for detector biasing. Note this is ignored if `voltage_source` is `bluebox`
         :param bayname: which output on the Tower Card specified in `db_cardname` to set. This is either a string containing a single digit number 
@@ -42,42 +41,21 @@ class IVPointTaker():
 
 
         """
-
-        self.ec = self._handle_easy_client_arg(easy_client)
-        self.cc = self._handle_cringe_control_arg(cringe_control)
-        # these should be args
-        self.delay_s = delay_s
+        super().__init__(
+            voltage_source,
+            db_cardname,
+            bayname,
+            delay_s,
+            relock_threshold_lo_hi,
+            easy_client,
+            cringe_control,
+            column_number,
+            **kwargs
+            )
         self.relock_lo_threshold = relock_threshold_lo_hi[0]
         self.relock_hi_threshold = relock_threshold_lo_hi[1]
         assert self.relock_hi_threshold - self.relock_lo_threshold > 2000
-        self.db_cardname = db_cardname
-        self.bayname = bayname
-        self.col = column_number
         self._relock_offset = np.zeros(self.ec.nrow)
-        self.set_volt = self._handle_voltage_source_arg(voltage_source)
-
-    def _handle_voltage_source_arg(self, voltage_source):
-        # set "set_volt" to either tower or bluebox
-        if voltage_source is None or voltage_source == 'tower':
-            set_volt = self.set_tower  # 0-2.5V in 2**16 steps
-        elif voltage_source == 'bluebox':
-            self.bb = BlueBox(port='vbox', version='mrk2')
-            set_volt = self.set_bluebox  # 0 to 6.5535V in 2**16 steps
-        else:
-            raise ValueError("voltage_source must be None, 'tower', or 'bluebox'.")
-        return set_volt
-
-    def _handle_easy_client_arg(self, easy_client):
-        if easy_client is not None:
-            return easy_client
-        easy_client = EasyClient() # will either be an easyClient NDFB or Dastard... Hopefully Dastard?
-        easy_client.setupAndChooseChannels()
-        return easy_client
-
-    def _handle_cringe_control_arg(self, cringe_control):
-        if cringe_control is not None:
-            return cringe_control
-        return CringeControl()
 
     def get_iv_pt(self, dacvalue):
         self.set_volt(dacvalue)
@@ -113,16 +91,6 @@ class IVPointTaker():
                 avg_col_out[row] = avg_col_after[row]
         return avg_col_out-self._relock_offset
 
-    def set_tower(self, dacvalue):
-        if type(self.bayname) is list:
-            for bay in self.bayname:
-                self.cc.set_tower_channel(self.db_cardname, bay, int(dacvalue))
-        else:
-            self.cc.set_tower_channel(self.db_cardname, self.bayname, int(dacvalue))
-
-    def set_bluebox(self, dacvalue):
-        self.bb.setVoltDACUnits(int(dacvalue))
-
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = None):
         if ARLoff:
             print("setting ARL (autorelock) off")
@@ -141,7 +109,7 @@ class IVPointTaker():
 
 class IVPointTakerMulti(IVPointTaker):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args,**kwargs)
+        super().__init__(*args, **kwargs)
         self._relock_offset = np.zeros(self.ec.nrow * self.ec.ncol)
 
     def get_iv_pt(self, dacvalue):
@@ -175,9 +143,8 @@ class IVPointTakerMulti(IVPointTaker):
             self.cc.relock_all_locked_fba(c)
 
 class IVCurveTaker():
-    def __init__(self, point_taker, temp_settle_delay_s=60, shock_normal_dac_value=2**16-1, zero_tower_at_end=True, adr_gui_control=None):
+    def __init__(self, point_taker, temp_settle_delay_s=60, shock_normal_dac_value=2**16-1, zero_tower_at_end=True):
         self.pt = point_taker
-        self.adr_gui_control = self._handle_adr_gui_control_arg(adr_gui_control)
         self.temp_settle_delay_s = temp_settle_delay_s
         self._last_setpoint_k = -1e9
         self.shock_normal_dac_value = shock_normal_dac_value
@@ -185,34 +152,29 @@ class IVCurveTaker():
         self._was_prepped = False
         self.post_overbias_settle_s = 30.0
 
-    def _handle_adr_gui_control_arg(self, adr_gui_control):
-        if adr_gui_control is not None:
-            return adr_gui_control
-        return AdrGuiControl()
-
     def set_temp_and_settle(self, setpoint_k):
-        self.adr_gui_control.set_temp_k(float(setpoint_k))
+        self.pt.adr.set_temp_k(float(setpoint_k))
         self._last_setpoint_k = setpoint_k
         print(f"set setpoint to {setpoint_k} K and now sleeping for {self.temp_settle_delay_s} s")
         time.sleep(self.temp_settle_delay_s)
-        print(f"done sleeping")
+        print("done sleeping")
 
     def overbias(self, overbias_temp_k, setpoint_k, dac_value, verbose=True):
         ''' raise ADR temperature above Tc, overbias bolometer, cool back to base temperature to keep bolometer in the normal state
         '''
         if verbose:
             print('Overbiasing detectors.  Raise temperature to %.1f mK, apply dac_value = %d, then cool to %.1f mK.'%(overbias_temp_k*1000,dac_value,setpoint_k*1000))
-        self.adr_gui_control.set_temp_k(float(overbias_temp_k))
+        self.pt.adr.set_temp_k(float(overbias_temp_k))
         ThighStable = self.is_temp_stable(overbias_temp_k,tol=0.005,time_out_s=180) # determine that it got to Thigh
 
         if verbose:
             if ThighStable:
                 print('Successfully raised Tb > %.3f K.  Appling detector voltage bias and cooling back down.'%(overbias_temp_k))
             else:
-                print('Could not get to the desired temperature above Tc.  Current temperature = ', self.adr_gui_control.get_temp_k())
+                print('Could not get to the desired temperature above Tc.  Current temperature = ', self.pt.adr.get_temp_k())
         self.pt.set_volt(dac_value) # voltage bias to stay above Tc
-        self.adr_gui_control.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
-        TlowStable = self.is_temp_stable(setpoint_k,tol=0.001,time_out_s=180) # determine that it got to Tbath target
+        self.pt.adr.set_temp_k(float(setpoint_k)) # set back down to Tbath, base temperature
+        TlowStable = self.is_temp_stable(setpoint_k, tol=0.001, time_out_s=180) # determine that it got to Tbath target
         if verbose:
             bar = progress.bar.Bar("Wait for temp to settle after over bias, %d seconds"%self.post_overbias_settle_s,max=100)
             if TlowStable:
@@ -223,29 +185,14 @@ class IVCurveTaker():
                     bar.next()
                 bar.finish()
             else:
-                print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.adr_gui_control.get_temp_k())
-
-    def is_temp_stable(self, setpoint_k, tol=.005, time_out_s=180):
-        ''' determine if the servo has reached the desired temperature '''
-        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"
-        cur_temp=self.adr_gui_control.get_temp_k()
-        it_num=0
-        while abs(cur_temp-setpoint_k)>tol:
-            time.sleep(10)
-            cur_temp=self.adr_gui_control.get_temp_k()
-            print('Current Temp: ' + str(cur_temp))
-            it_num=it_num+1
-            if it_num>round(int(time_out_s/10)):
-                print('exceeded the time required for temperature stability: %d seconds'%(round(int(10*it_num))))
-                return False
-        return True
+                print('Could not cool back to base temperature'+str(setpoint_k)+'. Current temperature = ', self.pt.adr.get_temp_k())
 
     def get_curve(self, dac_values, extra_info = {}, ignore_prep_requirement=False):
         assert ignore_prep_requirement or self._was_prepped, "call prep_fb_settings before get_curve, or pass ignore_prep_requirement=True"
         dac_values = self._handle_dac_values_int(dac_values)
-        pre_temp_k = self.adr_gui_control.get_temp_k()
+        pre_temp_k = self.pt.adr.get_temp_k()
         pre_time = time.time()
-        pre_hout = self.adr_gui_control.get_hout()
+        pre_hout = self.pt.adr.get_hout()
         # temp_rms and slope will not be very useful if you just changed temp, so get them at end only
         self.pt.set_volt(self.shock_normal_dac_value)
         time.sleep(0.05) # inserted because immediately commanding the lower dac value didn't take.
@@ -260,13 +207,13 @@ class IVCurveTaker():
             fb_values.append(self.pt.get_iv_pt(dac_value))
             bar.next()
         bar.finish()
-        post_temp_k = self.adr_gui_control.get_temp_k()
+        post_temp_k = self.pt.adr.get_temp_k()
         post_time = time.time()
-        post_hout = self.adr_gui_control.get_hout()
-        post_temp_rms_uk = self.adr_gui_control.get_temp_rms_uk()
-        post_slope_hout_per_hour = self.adr_gui_control.get_slope_hout_per_hour()
+        post_hout = self.pt.adr.get_hout()
+        #post_temp_rms_uk = self.pt.adr.get_temp_rms_uk()
+        post_slope_hout_per_hour = self.pt.adr.get_slope_hout_per_hour()
         if self.zero_tower_at_end:
-            print(f"zero detector bias")
+            print("zero detector bias")
             self.pt.set_volt(0)
 
         return IVCurveColumnData(nominal_temp_k = self._last_setpoint_k, pre_temp_k=pre_temp_k, post_temp_k=post_temp_k,
@@ -297,9 +244,8 @@ class IVTempSweeper():
 
     def initialize_bath_temp(self,set_temp_k):
         if self.to_normal_method == None:
-            self.curve_taker.adr_gui_control.set_temp_k(float(set_temp_k))
-            self.curve_taker.is_temp_stable(set_temp_k, tol=.001, time_out_s=180)
             self.curve_taker.set_temp_and_settle(set_temp_k)
+            self.curve_taker.pt.wait_temp_stable(set_temp_k, tol=.001, time_out_s=180)
         elif self.to_normal_method == "overbias":
             self.curve_taker.overbias(self.overbias_temp_k, setpoint_k = set_temp_k, dac_value=self.overbias_dac_value, verbose=True)
             self.curve_taker.set_temp_and_settle(set_temp_k)
@@ -420,7 +366,7 @@ def tc_tickle():
     fbs = []
     while True:
         try:
-            t.append(curve_taker.adr_gui_control.get_temp_k())
+            t.append(curve_taker.pt.adr.get_temp_k())
             fb0 = curve_taker.pt.get_iv_pt(0)
             fb1 = curve_taker.pt.get_iv_pt(50)
             fbs.append(fb1-fb0)
