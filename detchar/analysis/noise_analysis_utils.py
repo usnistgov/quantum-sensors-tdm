@@ -34,13 +34,13 @@ class FitNoiseSingle():
         plt.grid('on')
 
     def func(self,x,a,b,c):
-        ''' white noise term rolled off to background noise 
+        r""" white noise term rolled off to background noise 
             input 
             x: x-axis variable, (frequency)
             a: white noise amplitude at low frequency 
             b: determines roll-off frequency.  If x = frequency in Hz, then b=(2\pi\tau)**2
             c: white noise amplitude at high frequency
-        '''
+        """
         return a*(1+b*x**2)**-1+c
 
     def remove_freqs(self,toremove_hz=[60,180,300],bw=[5,0,1]):
