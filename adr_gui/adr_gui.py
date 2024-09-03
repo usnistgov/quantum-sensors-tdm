@@ -288,14 +288,12 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 self.adr_gui_commands[command]['fname'])
 
     def handleMessage(self, message):
-        logger.log(f"got message: {message}")
         command_words = message.split()
         # original commands were uppercase - still accept those
         command = command_words[0].lower()
         command_args = command_words[1:]
         if command in self.adr_gui_commands:
             f = self.adr_gui_commands[command]['func']
-            logger.log(f"calling: {f}")
             try:
                 success, extra_info = f(*command_args)
             except Exception as ex:
