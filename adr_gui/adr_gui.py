@@ -158,6 +158,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         #self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
         self.advancedButton.clicked.connect(self.advanced_popup)
         self.advanced_settings_window = AdvancedPopup()
+        self.advanced_settings_window.accepted.connect(self.advanced_accept)
+        self.advanced_settings_window.rejected.connect(self.advanced_reject)
 
         self.excitationCurrentValues = numpy.sqrt(numpy.logspace(1,21,21))*10.0**-12
         self.excitationCurrentStrings = ['3.16 pA', '10.0 pA', '31.6 pA', '100 pA', '316 pA', \
@@ -208,8 +210,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.currentPlotLayout.addWidget(self.currentPlot)
         self.currentPlotLayout_2.addWidget(self.actualCurrentPlot)
 
-
-
         self.machine = QStateMachine(self)
         self.states = {}
         self.states["magUp"] = QState()
@@ -246,8 +246,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.states['initialState_ZeroCurrent'].exited.connect(self.disableModifyControlSettings)
         self.states['initialState_ZeroCurrent'].entered.connect(self.enableModifyControlSettings)
 
-
-
         timer = QTimer(self)
         timer.timeout.connect(self.timerHandler)
         self.tickDuration_s = 2
@@ -260,6 +258,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl = tempControl.TempControl(PyQt5.QtWidgets.QApplication,0.001,
         controlThermExcitation=self.currentExcitationCurrent,
         channel = self.controlChannel)
+
+        p, i, d = self.tempControl.a.temperature_controller.getPIDValues()
+        r = self.tempControl.a.temperature_controller.getRamp()
+        self.pidr = [p, i, d, r]
 
         # these are to turn on and off the crate and tower during and after mags
         self.power_supplies = tower_power_supplies.TowerPowerSupplies()
@@ -746,12 +748,30 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         else:
             advanced.show()
 
-class AdvancedPopup(QWidget):
+    def advanced_accept(self):
+        adv = self.advanced_settings_window
+        p = adv.spinbox_p.value
+        i = adv.spinbox_i.value
+        d = adv.spinbox_d.value
+        r = adv.spinbox_ramp.value
+        self.pidr = [p, i, d, r]
+        print("accepted" + self.pidr)
+
+    def advanced_reject(self):
+        adv = self.advanced_settings_window
+        print("rejected" + self.pidr)
+        p, i, d, r = self.pidr
+        adv.spinbox_p = p
+        adv.spinbox_i = i
+        adv.spinbox_d = d
+        adv.spinbox_ramp = r
+
+class AdvancedPopup(QDialog):
     def __init__(self):
         super().__init__()
         PyQt5.uic.loadUi(os.path.join(os.path.dirname(__file__),"lakeshore_advanced.ui"), self)
 
-    
+
 
 
 

@@ -50,7 +50,7 @@
     <rect>
      <x>20</x>
      <y>80</y>
-     <width>211</width>
+     <width>241</width>
      <height>156</height>
     </rect>
    </property>
@@ -105,7 +105,7 @@
       <item>
        <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Ramp (K/m)</string>
+         <string>Ramp (K/min)</string>
         </property>
        </widget>
       </item>
