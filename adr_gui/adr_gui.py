@@ -156,7 +156,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
         #self.enableTimeBasedMagCheckbox.setCheckState(Qt.Checked)
         #self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
-
+        self.advancedButton.clicked.connect(self.advanced_popup)
+        self.advanced_settings_window = AdvancedPopup()
 
         self.excitationCurrentValues = numpy.sqrt(numpy.logspace(1,21,21))*10.0**-12
         self.excitationCurrentStrings = ['3.16 pA', '10.0 pA', '31.6 pA', '100 pA', '316 pA', \
@@ -737,6 +738,20 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.label_altTempReading.setText(f"Channel {alt_ch} was {temp_K:.3f} K at {time_read}")
         if self.settings:   
             self.settings.setValue(self.comboBox_altChannel.label_text, self.comboBox_altChannel.currentIndex())
+
+    def advanced_popup(self):
+        advanced = self.advanced_settings_window
+        if advanced.isVisible():
+            advanced.hide()
+        else:
+            advanced.show()
+
+class AdvancedPopup(QWidget):
+    def __init__(self):
+        super().__init__()
+        PyQt5.uic.loadUi(os.path.join(os.path.dirname(__file__),"lakeshore_advanced.ui"), self)
+
+    
 
 
 
