@@ -260,8 +260,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         channel = self.controlChannel)
 
         p, i, d = self.tempControl.a.temperature_controller.getPIDValues()
-        r = self.tempControl.a.temperature_controller.getRamp()
-        self.pidr = [p, i, d, r]
+        _, r = self.tempControl.a.temperature_controller.getRamp()
+        self.pidr = [p, i, d, r] 
+        self.tempControl.rampRate = r
+        self.advanced_reject() # sets values of pid dialog to read values
 
         # these are to turn on and off the crate and tower during and after mags
         self.power_supplies = tower_power_supplies.TowerPowerSupplies()
@@ -399,7 +401,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.settings.setValue(self.controlChannelComboBox.label_text, self.controlChannelComboBox.currentIndex())
         self.controlChannel = self.controlChannelValues[self.controlChannelComboBox.currentIndex()]
         self.tempControl.controlChannel = self.controlChannel
-
 
     def ensureHeatSwitchIsClosed(self):
         print("heat switch ensure closed")
@@ -571,8 +572,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             else:
                 self.printStatus("panic, not doing anything because doesn't seem to be in either control or ramp state")
 
-
-
     def magUpStateTick(self):
         i_new, done = adrMagTick(self.lastHOut, i_target=self.maxHeatOutEdit.value, i_max=self.maxHeatOutEdit.value,
                                i_min=0.0, duration_s=self.magUpMinsEdit.value*60, step_time_s=self.tickDuration_s)
@@ -600,11 +599,13 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         if done:
             self.SIG_magDownDone.emit()
             self.stateStartTime=time.time()
+
     def holdAfterMagDownStateTick(self):
         if time.time()-self.stateStartTime>60*self.magDownHoldMinsEdit.value:
             self.SIG_holdAfterMagDownDone.emit()
             self.stateStartTime=time.time()
         self.printStatus("hold after mag down %d s left"%(60*self.magDownHoldMinsEdit.value-time.time()+self.stateStartTime))
+
     def controlStateTick(self):
         currentSetPoint = self.tempControl.getSetTemp()
         if currentSetPoint != 1e-3*self.setPointmKEdit.value:
@@ -641,7 +642,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.stateStartTime=time.time()
             self.tempControl.setSetTemp(0.0)
             self.SIG_startgoingToMagUp.emit()
-
 
     def adrShouldMagup(self,startTime24Hour, thresholdHeaterPercent, currentHeaterPercent):
         t = time.localtime()
@@ -682,7 +682,6 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 self.stateStartTime=time.time()
         else:
             self.printStatus("something is wrong, in state goingToIntitalState_ZeroCurrentTicket with nonzero heater out and not readyToControl")
-
 
     def controlTempStdDev(self,n=61):
         last_n_points = self.tempPlot.last_n_points(n)
@@ -750,29 +749,31 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def advanced_accept(self):
         adv = self.advanced_settings_window
-        p = adv.spinbox_p.value
-        i = adv.spinbox_i.value
-        d = adv.spinbox_d.value
-        r = adv.spinbox_ramp.value
+        p = adv.spinbox_p.value()
+        i = adv.spinbox_i.value()
+        d = adv.spinbox_d.value()
+        r = adv.spinbox_ramp.value()
         self.pidr = [p, i, d, r]
-        print("accepted" + self.pidr)
 
+        print("accepted new pid values:", self.pidr)
+        self.tempControl.a.temperature_controller.setPIDValues(p, i, d)
+        self.tempControl.a.temperature_controller.setRamp(ramprate=r)
+        self.tempControl.rampRate = r
+        
     def advanced_reject(self):
         adv = self.advanced_settings_window
-        print("rejected" + self.pidr)
+        print("setting pid window values to:", self.pidr)
         p, i, d, r = self.pidr
-        adv.spinbox_p = p
-        adv.spinbox_i = i
-        adv.spinbox_d = d
-        adv.spinbox_ramp = r
+        adv.spinbox_p.setValue(p)
+        adv.spinbox_i.setValue(i)
+        adv.spinbox_d.setValue(d)
+        adv.spinbox_ramp.setValue(r)
+
 
 class AdvancedPopup(QDialog):
     def __init__(self):
         super().__init__()
         PyQt5.uic.loadUi(os.path.join(os.path.dirname(__file__),"lakeshore_advanced.ui"), self)
-
-
-
 
 
 def main():
