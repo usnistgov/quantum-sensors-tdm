@@ -967,7 +967,7 @@ class NoiseSweepData(DataIO):
     column: str # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     temp_list_k: List[float]
-    db_list: List[int]
+    db_list: List[List[int]]
     signal_column_index: int
     db_cardname: str
     db_tower_channel_str: str
