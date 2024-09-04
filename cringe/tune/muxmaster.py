@@ -29,7 +29,7 @@ class MuxMaster():
         #log.debug(badraps)
         #log.debug(badstates)
         if dfb_clk is not None:
-            self.dfbraps.append(dfb_clk) # At least in the Velma system the dfb_clk is used for
+            dfbraps.append(dfb_clk) # At least in the Velma system the dfb_clk is used for
             # column 3/C. In most systems it is not used at all, so it should not be the 0th value
             # in the dfbraps array even if the dfbclk is the first card in the class vector. 
             # in fact, the dfb_clk dfb was explicitly ignored until CTR added it in Aug 2024. 

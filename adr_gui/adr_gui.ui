@@ -635,7 +635,7 @@
      <rect>
       <x>520</x>
       <y>190</y>
-      <width>181</width>
+      <width>131</width>
       <height>20</height>
      </rect>
     </property>
@@ -726,6 +726,22 @@
     </property>
     <layout class="QVBoxLayout" name="currentPlotLayout_2"/>
    </widget>
+   <widget class="QPushButton" name="advancedButton">
+    <property name="geometry">
+     <rect>
+      <x>680</x>
+      <y>190</y>
+      <width>97</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>advanced...</string>
+    </property>
+    <property name="checkable">
+     <bool>false</bool>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -733,7 +749,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>28</height>
     </rect>
    </property>
   </widget>

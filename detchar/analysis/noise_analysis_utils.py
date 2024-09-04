@@ -34,13 +34,13 @@ class FitNoiseSingle():
         plt.grid('on')
 
     def func(self,x,a,b,c):
-        ''' white noise term rolled off to background noise 
+        r""" white noise term rolled off to background noise 
             input 
             x: x-axis variable, (frequency)
             a: white noise amplitude at low frequency 
             b: determines roll-off frequency.  If x = frequency in Hz, then b=(2\pi\tau)**2
             c: white noise amplitude at high frequency
-        '''
+        """
         return a*(1+b*x**2)**-1+c
 
     def remove_freqs(self,toremove_hz=[60,180,300],bw=[5,0,1]):
@@ -139,7 +139,7 @@ class FitNoiseTemperatureSweep():
                 plt.loglog(fit[0],fit[1])
             plt.legend(self.temp_list)
             for ii, fit in enumerate(fit_data_list):
-                plt.loglog(fit[0],self.fns[0].func(fit[0], *popt_list[ii]),'k--')    
+                plt.loglog(fit[0],self.fns[0].func(fit[0], *popt_list[ii]), 'k--')    
             plt.xlabel('Frequency (Hz)')
             plt.ylabel('Current noise density (A$^2$/Hz)')
         self.popt_list = popt_list
@@ -183,6 +183,9 @@ class FitNoiseTemperatureSweep():
 def noise_sweep_data_parser(noisesweepdata_filename,detbias_index=0,row_sequence_index=0,temp_list=None):
     ''' helps parse the raw NoiseSweepData json file into the structure that FitNoiseTemperatureSweep expects '''
     ns = NoiseSweepData.from_file(noisesweepdata_filename)
+    print("Loading noise sweep:")
+    print(f"    temperatures: {ns.temp_list_k}")
+    print(f"    biases: {ns.db_list}")
     m, y_label_str = ns._phys_units(True)
     if temp_list is None:
         ntemps = len(ns.temp_list_k)

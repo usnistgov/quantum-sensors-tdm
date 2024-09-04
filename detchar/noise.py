@@ -6,11 +6,8 @@ is suited for storing data and scripting to loop over temperature and bias point
 @author JH, 5/2023
 '''
 
-from nasa_client import EasyClient
-from cringe.cringe_control import CringeControl
-from adr_gui.adr_gui_control import AdrGuiControl
-from .iv_data import NoiseData, NoiseSweepData
-
+from detchar.iv_data import NoiseData, NoiseSweepData
+from detchar import acquire
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -24,6 +21,7 @@ import scipy.signal
 # from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 # from matplotlib.figure import Figure
 import argparse
+import yaml
 
 # class MplCanvas(FigureCanvasQTAgg):
 #     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
@@ -112,21 +110,37 @@ import argparse
 #             self.axes.legend(self.legend,loc='upper left')
 #         self.draw()
 
-class NoiseAcquire():
+class NoiseAcquire(acquire.Acquire):
     ''' Acquire multiplexed, averaged noise data.
         No sensor setup is done.
     '''
-    def __init__(self, column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz=1, num_averages=10,
-                 easy_client=None, adr_gui_control=None):
+    def __init__(self, 
+                 column_str, 
+                 row_sequence_list, 
+                 m_ratio, 
+                 rfb_ohm, 
+                 f_min_hz=1, 
+                 num_averages=10,
+                 easy_client=None, 
+                 adr_gui_control=None,
+                 **kwargs):
+        if "db_source" in kwargs:
+            db_source = kwargs.pop('db_source')
+        else:
+            db_souce = 'tower'
+        super().__init__(
+            db_source,
+            easy_client=easy_client,
+            adr_control=adr_gui_control,
+            **kwargs
+        )
         self.column = column_str
         self.row_sequence = row_sequence_list # mux row order
         self.m_ratio = m_ratio # mutual inductance ratio of SQ1
         self.rfb_ohm = rfb_ohm
         self.num_averages = num_averages
         self.f_min_hz = f_min_hz # requested minimum frequency (affects acquisition time)
-
-        self.ec = self._handle_easy_client_arg(easy_client)
-        self.adr_gui_control = self._handle_adr_gui_control_arg(adr_gui_control)
+        
         self.numPoints = self._handle_num_points(f_min_hz)
         self.dfb_bits_to_A = ((2**14-1)*m_ratio*(rfb_ohm+50))**-1 # conversion from dfb counts to amps
 
@@ -142,18 +156,6 @@ class NoiseAcquire():
             npts=2**(int(np.log2(npts)))
         return int(npts)
 
-    def _handle_easy_client_arg(self, easy_client):
-        if easy_client is not None:
-            return easy_client
-        easy_client = EasyClient()
-        easy_client.setupAndChooseChannels()
-        return easy_client
-
-    def _handle_adr_gui_control_arg(self, adr_gui_control):
-        if adr_gui_control is not None:
-            return adr_gui_control
-        return AdrGuiControl()
-
     def take(self,extra_info={},force_power_of_two=True):
         ''' get psds.  Store the averaged PSD as class variable Pxx. 
             return the fft bins (freqs) and the individual psds for each measurement 
@@ -163,7 +165,7 @@ class NoiseAcquire():
         numPoints = self._handle_num_points(self.f_min_hz,force_power_of_two)
         Pxx_all = np.zeros(((self.ec.numRows,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
         pre_time = time.time()
-        pre_temp_k = self.adr_gui_control.get_temp_k()
+        pre_temp_k = self.adr.get_temp_k()
 
         for ii in range(self.num_averages):
             print('Noise PSD, average number = %d'%ii)
@@ -260,20 +262,27 @@ class NoiseSweep(NoiseAcquire):
                  db_tower_channel='0',
                  cringe_control=None):
 
-        super().__init__(column_str, row_sequence_list, m_ratio, rfb_ohm, f_min_hz, num_averages,
-                         easy_client, adr_gui_control)
+        super().__init__(column_str, 
+                         row_sequence_list, 
+                         m_ratio, 
+                         rfb_ohm, 
+                         f_min_hz, 
+                         num_averages,
+                         easy_client, 
+                         adr_gui_control,
+                         cringe_control=cringe_control,
+                         db_source=voltage_source,
+                         db_card=db_cardname,
+                         db_bay=db_tower_channel,
+                         )
+
 
         self.temp_list_k = temperature_list_k
         self.db_list = self._handle_db_input(detector_bias_list)
-        self.db_cardname = db_cardname
-        self.db_tower_channel = db_tower_channel
         self.signal_column_index=signal_column_index
 
         # globals hidden from class initialization
         self.temp_settle_delay_s = 60 # wait time after commanding an ADR set point
-
-        self.cc = self._handle_cringe_control_arg(cringe_control)
-        self.set_volt = self._handle_voltage_source_arg(voltage_source)
 
     def _handle_db_input(self,db_list):
         if type(db_list[0]) == list:
@@ -289,56 +298,11 @@ class NoiseSweep(NoiseAcquire):
             output_sorted.append(db)
         return output_sorted
 
-    def _handle_cringe_control_arg(self, cringe_control):
-        if cringe_control is not None:
-             return cringe_control
-        return CringeControl()
-
-    def _handle_voltage_source_arg(self,voltage_source):
-        # set "set_volt" to either tower or bluebox
-        if voltage_source == None or voltage_source == 'tower':
-            set_volt = self.set_tower # 0-2.5V in 2**16 steps
-        elif voltage_source == 'bluebox':
-            self.bb = BlueBox(port='vbox', version='mrk2')
-            set_volt = self.set_bluebox # 0 to 6.5535V in 2**16 steps
-        return set_volt
-
-    def set_tower(self, dacvalue):
-        self.cc.set_tower_channel(self.db_cardname, self.db_tower_channel, int(dacvalue))
-
-    def set_bluebox(self, dacvalue):
-        self.bb.setVoltDACUnits(int(dacvalue))
-
-    def _is_temp_stable(self, setpoint_k, tol=.005, time_out_s=180):
-        ''' determine if the servo has reached the desired temperature '''
-        assert time_out_s > 10, "time_out_s must be greater than 10 seconds"
-        cur_temp=self.adr_gui_control.get_temp_k()
-        it_num=0
-        while abs(cur_temp-setpoint_k)>tol:
-            time.sleep(10)
-            cur_temp=self.adr_gui_control.get_temp_k()
-            print('Current Temp: ' + str(cur_temp))
-            it_num=it_num+1
-            if it_num>round(int(time_out_s/10)):
-                print('exceeded the time required for temperature stability: %d seconds'%(round(int(10*it_num))))
-                return False
-        return True
-
-    def set_temp(self,temp_k):
-        self.adr_gui_control.set_temp_k(float(temp_k))
-        stable = self._is_temp_stable(temp_k)
-        print('Temperature has been reached, waiting %d s to stabilize'%self.temp_settle_delay_s)
-        time.sleep(self.temp_settle_delay_s)
-        return stable
-
     def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, extra_info={}):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k): #loop over temperature list
             print('Setting to temperature %.1f mK'%(temp*1000))
-            if np.logical_and(ii==0,skip_wait_on_first_temp):
-                self.adr_gui_control.set_temp_k(float(temp))
-            else:
-                self.set_temp(temp)
+            self.set_temp_and_settle(temp)
             print('Detector bias list: ',self.db_list[ii])
             if self.db_list[ii][0] != 0: # if detector bias non-zero, autobias device onto transition
                 print('overbiasing detector, dropping bias down, then waiting 30s')
@@ -360,7 +324,7 @@ class NoiseSweep(NoiseAcquire):
         return NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
                               temp_list_k=self.temp_list_k, db_list=self.db_list,
                               signal_column_index=self.signal_column_index,
-                              db_cardname=self.db_cardname, db_tower_channel_str=self.db_tower_channel,
+                              db_cardname=self.db_cardname, db_tower_channel_str=self.db_bay,
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
 
@@ -374,7 +338,7 @@ def _make_parser_():
     parser.add_argument('--rfb_ohm', type=float, help='Feedback resistance in Ohms. Onlu used if physical_units=True',default=1207)
     parser.add_argument('--f_min_hz', type=float, help='Lowest frequency bin in PSD.  Determines length of data acquired.',default=1)
     parser.add_argument('--num_averages', type=int, help='Number of PSDs to take and average',default=10)
-    
+    parser.add_argument('-F', '--file', type=str, help="read parameters from an iv.config style file", default=None)
     args = parser.parse_args()
     return args
 
@@ -407,16 +371,42 @@ if __name__ == "__main__":
     # print('wrote file %s to disk'%(path+filename))
 
     args = _make_parser_()
-    if args.row_sequence is None:
-        row_sequence = list(range(32))
-    else: 
-        row_sequence = args.row_sequence 
-    nn = NoiseAcquire(column_str=args.column_str, row_sequence_list=row_sequence, m_ratio=args.m_ratio, rfb_ohm=args.rfb_ohm, 
-                      f_min_hz=args.f_min_hz, num_averages=args.num_averages)
-    nn.take()
-    
-    nn.plot_avg_psds(rows=args.indices_to_plot)
-    plt.show()
+    if args.file is not None:
+        with open(args.file, 'r') as yml:
+            config = yaml.load(yml, Loader=yaml.FullLoader)
+        column = acquire.column_name_to_num(config['detectors']['Column'])
+        ns = NoiseSweep(
+            column_str = config['detectors']['Column'],
+            row_sequence_list = config['detectors']['Rows'],
+            m_ratio = config['calnums']['mr'],
+            rfb_ohm = config['calnums']['rfb'],
+            temperature_list_k = config['runconfig']['bathTemperatures'],
+            detector_bias_list = config['voltage_bias']['v_dac_list'],
+            db_tower_channel = column,
+            signal_column_index = int(column)
+
+        )
+        nd=ns.run()
+        for i in range(len(config['detectors']['Rows'])):
+            nd.plot_row(i)
+            plt.show()
+        nd.to_file(filename = config['io']['SaveTo'])
+
+    else:
+        if args.row_sequence is None:
+            row_sequence = list(range(32))
+        else: 
+            row_sequence = args.row_sequence 
+        nn = NoiseAcquire(column_str=args.column_str, 
+                        row_sequence_list=row_sequence, 
+                        m_ratio=args.m_ratio, 
+                        rfb_ohm=args.rfb_ohm, 
+                        f_min_hz=args.f_min_hz, 
+                        num_averages=args.num_averages)
+        nn.take()
+        
+        nn.plot_avg_psds(rows=args.indices_to_plot)
+        plt.show()
 
     # nn = NoiseAcquire(column_str='A', row_sequence_list=list(range(32)), m_ratio=15.08, rfb_ohm=1206, f_min_hz=1, num_averages=10,
     #              easy_client=None, adr_gui_control=None)
