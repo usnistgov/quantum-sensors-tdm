@@ -84,8 +84,9 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def __init__(self, min_mag_time=20):
         super(ADR_Gui, self).__init__()
-        PyQt5.uic.loadUi(os.path.join(os.path.dirname(__file__),"adr_gui.ui"), self)
-        self.setWindowIcon(QIcon("adr_gui.png"))
+        my_directory = os.path.dirname(__file__)
+        PyQt5.uic.loadUi(os.path.join(my_directory,"adr_gui.ui"), self)
+        self.setWindowIcon(QIcon(os.path.join(my_directory,"adr_gui.png")))
 
         # give variabiles initial values
         self.stateStartTime = time.time()

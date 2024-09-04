@@ -10,6 +10,7 @@ Versions:
 '''
 
 import sys
+import os
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -24,7 +25,8 @@ class MainWindow(QMainWindow):
         self.app = app
         self.power_on = False
         self.power_state_string = "Power is OFF"
-        pixmap = QPixmap("towerpowericon.png")
+        my_dir = os.path.dirname(__file__)
+        pixmap = QPixmap(os.path.join(my_dir,"towerpowericon.png"))
         self.setWindowIcon(QIcon(pixmap))
 
         self.version = "1.0.2"

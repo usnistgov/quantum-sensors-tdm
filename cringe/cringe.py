@@ -35,7 +35,8 @@ class Cringe(QtWidgets.QWidget):
                  seqln=30, lsync=40, tower_vector=None, argfilename=None, calibrationtab=False):
 
         super(Cringe, self).__init__()
-        self.setWindowIcon(QtGui.QIcon("cringe_img.jpg"))
+        my_directory = os.path.dirname(__file__)
+        self.setWindowIcon(QtGui.QIcon(os.path.join(my_directory,"cringe_img.jpg")))
 
         self.serialport = named_serial.Serial(port='rack', shared=True)
         self.seqln_timer = None
