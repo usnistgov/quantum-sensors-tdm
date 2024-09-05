@@ -2439,6 +2439,9 @@ class Cringe(QtWidgets.QWidget):
     def unpackTune(self):
         self.tune_widget.unpackState(self.loadTune["TuneParameters"])
 
+    def closeEvent(self,event):
+        self.saveSettings()
+        event.accept()
 
 def main():
 
