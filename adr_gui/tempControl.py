@@ -78,15 +78,33 @@ class TempControl():
 
     def safeAutorange(self):
         resistance = self.a.temperature_controller.getResistance(channel=self.controlChannel)
-        newstring = self.resistanceToResistanceRangeString(resistance).encode()
+        new_r = resistance * 1.1 # hysteresis range = 10%
+        oldstring = self.resistanceToResistanceRangeString(resistance).encode()
+        newstring = self.resistanceToResistanceRangeString(new_r).encode()
         nowstring = self.getCurrentResistanceRangeString()
-        # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
-        if newstring != nowstring:
-            self.a.temperature_controller.setReadChannelSetup(channel=self.controlChannel,exciterange=self.controlThermExcitation, resistancerange=resistance*1.1)
+        if oldstring != nowstring and newstring != nowstring:
+            # both calculated values disagree with the lakeshore, so update the lakeshore
+            self.a.temperature_controller.setReadChannelSetup(
+                channel=self.controlChannel,
+                exciterange=self.controlThermExcitation, 
+                resistancerange=new_r
+            )
             print(("safeAutorange changing from %s to %s"%(nowstring, newstring)))
             return True
+        # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
         else:
+            #if one of our two values still agrees with the lakeshore, 
+            # defer switching modes until we're further out of range
+            # basically adds hysteresis to the range change.
             return False
+        """
+        example behavior:
+        R = 180 new_R = 198 olds = 11 news = 11 lakeshore = 11 -> do nothing
+        R = 190 new_R = 209 olds = 11 news = 12 lakeshore = 11 -> do nothing
+        R = 201 new_R = 221 olds = 12 news = 12 lakeshore = 11 -> update lakeshore
+        R = 190 new_R = 209 olds = 11 news = 12 lakeshore = 12 -> do nothing
+        R = 180 new_R = 198 olds = 11 news = 11 lakeshore = 12 -> update lakeshore
+        """ 
 
     def getSetTemp(self):
         return self.a.temperature_controller.getTemperatureSetPoint()
