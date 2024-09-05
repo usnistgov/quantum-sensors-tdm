@@ -260,7 +260,8 @@ class NoiseSweep(NoiseAcquire):
                  voltage_source='tower',
                  db_cardname = 'DB',
                  db_tower_channel='0',
-                 cringe_control=None):
+                 cringe_control=None,
+                 temp_settle_delay_s = 300):
 
         super().__init__(column_str, 
                          row_sequence_list, 
@@ -274,6 +275,7 @@ class NoiseSweep(NoiseAcquire):
                          db_source=voltage_source,
                          db_card=db_cardname,
                          db_bay=db_tower_channel,
+                         
                          )
 
 
@@ -282,7 +284,7 @@ class NoiseSweep(NoiseAcquire):
         self.signal_column_index=signal_column_index
 
         # globals hidden from class initialization
-        self.temp_settle_delay_s = 60 # wait time after commanding an ADR set point
+        self.temp_settle_delay_s = temp_settle_delay_s # wait time after commanding an ADR set point
 
     def _handle_db_input(self,db_list):
         if type(db_list[0]) == list:
@@ -298,11 +300,12 @@ class NoiseSweep(NoiseAcquire):
             output_sorted.append(db)
         return output_sorted
 
-    def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, extra_info={}):
+    def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, tmp_file=None, extra_info={}):
         temp_output = []
         for ii,temp in enumerate(self.temp_list_k): #loop over temperature list
             print('Setting to temperature %.1f mK'%(temp*1000))
-            self.set_temp_and_settle(temp)
+            if not self.set_temp_and_settle(temp,timeout=self.temp_settle_delay_s):
+                raise RuntimeError("Unable to reach temperature within allotted time")
             print('Detector bias list: ',self.db_list[ii])
             if self.db_list[ii][0] != 0: # if detector bias non-zero, autobias device onto transition
                 print('overbiasing detector, dropping bias down, then waiting 30s')
@@ -320,13 +323,16 @@ class NoiseSweep(NoiseAcquire):
                 result = self.take(extra_info={},force_power_of_two=force_power_of_two)
                 det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
             temp_output.append(det_bias_output)
-
-        return NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
+            nsd = NoiseSweepData(data=temp_output, column=self.column, row_sequence=self.row_sequence,
                               temp_list_k=self.temp_list_k, db_list=self.db_list,
                               signal_column_index=self.signal_column_index,
                               db_cardname=self.db_cardname, db_tower_channel_str=self.db_bay,
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
+            if tmp_file is not None:
+                nsd.to_file(filename=tmp_file,overwrite=True)
+            
+        return nsd
 
 def _make_parser_():
     parser = argparse.ArgumentParser(description='Take and plot noise spectrum.')
@@ -383,10 +389,10 @@ if __name__ == "__main__":
             temperature_list_k = config['runconfig']['bathTemperatures'],
             detector_bias_list = config['voltage_bias']['v_dac_list'],
             db_tower_channel = column,
-            signal_column_index = int(column)
-
+            signal_column_index = int(column),
+            temp_settle_delay_s = config["runconfig"]["temp_settle_delay_s"]
         )
-        nd=ns.run()
+        nd=ns.run(tmp_file = config['io']['SaveTo']+'.tmp')
         for i in range(len(config['detectors']['Rows'])):
             nd.plot_row(i)
             plt.show()
