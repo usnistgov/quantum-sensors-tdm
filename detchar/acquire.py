@@ -43,10 +43,11 @@ class Acquire():
         self.adr = adr_control or AdrGuiControl()
         self.acq_delay = delay_between_acqs
         self.relock_bounds = relock_bounds
+        self.col = data_column
         if relock_bounds[1] - relock_bounds[0] < 2000:
             raise ValueError("Insufficient range for relock!")
 
-        if db_source == 'tower':
+        if db_source == 'tower' or db_source is None:
             self.is_tower = True  # 0-2.5V in 2**16 steps
         elif db_source == 'bluebox':
             self.is_tower = False

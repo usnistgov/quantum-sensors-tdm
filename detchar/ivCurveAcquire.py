@@ -122,21 +122,23 @@ def main():
     #     bath_temps = [ls370.getTemperatureSetPoint()]
 
     #############
-    if type(bayname) is list:
-        pt_taker = iv.IVPointTakerMulti(
+    #if type(bayname) is list:
+    pt_taker = iv.IVPointTakerMulti(
             db_cardname=cfg['voltage_bias']['db_cardname'],
             bayname=bayname,
             voltage_source=voltage_source,
-            column_number=[0,1,2]
+            column_number=[1,2]
         )
-    else:
-        pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], bayname=bayname, voltage_source = voltage_source)
+    # else:
+    #     pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
+    #       bayname=bayname, 
+    #       voltage_source = voltage_source,
+    #       relock_threshold_lo_hi = (4000, 14000))
     curve_taker = iv.IVCurveTaker(
         pt_taker, 
         temp_settle_delay_s=cfg['runconfig']['temp_settle_delay_s'], 
         shock_normal_dac_value=cfg['voltage_bias']['shock_normal_dac_value'], 
-        zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV'], 
-        adr_gui_control=None
+        zero_tower_at_end=cfg['voltage_bias']['setVtoZeroPostIV']
     )
     curve_taker.prep_fb_settings(I=cfg['dfb']['i'], fba_offset=cfg['dfb']['dac_a_offset'], ARLoff=True)
     ivsweeper = iv.IVTempSweeper(curve_taker, to_normal_method=to_normal_method, overbias_temp_k=overbias_temp_k, overbias_dac_value = cfg['voltage_bias']['v_start_dac'])
