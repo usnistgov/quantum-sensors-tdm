@@ -330,6 +330,13 @@ class NoiseSweep(NoiseAcquire):
                               temp_settle_delay_s=self.temp_settle_delay_s,
                               extra_info=extra_info)
             if tmp_file is not None:
+                # This slows the script a little, but it's way better than
+                # having the script crash and discard all the data it collected
+                # so far. And maybe we can even do it while changing temperature.
+                try:
+                    self.set_temp(self.temp_list_k[ii+1])
+                except IndexError:
+                    pass
                 nsd.to_file(filename=tmp_file,overwrite=True)
             
         return nsd
@@ -393,6 +400,7 @@ if __name__ == "__main__":
             temp_settle_delay_s = config["runconfig"]["temp_settle_delay_s"]
         )
         nd=ns.run(tmp_file = config['io']['SaveTo']+'.tmp')
+        ns.set_temp(0.1)
         for i in range(len(config['detectors']['Rows'])):
             nd.plot_row(i)
             plt.show()
