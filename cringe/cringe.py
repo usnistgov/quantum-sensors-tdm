@@ -1014,8 +1014,9 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=int(fba_offset))
         return True, ""
 
-
-
+    def rpc_set_seq_len(self, length):
+        self.seqln_spin.setValue(int(length))
+        return True, ""
 
     def seqln_changed(self):
         if self.seqln_timer == None:
