@@ -75,15 +75,15 @@ class AliasSweep:
             self.cc.relock_all_locked_fba(self.na.db_bay)
             noise_data.append(self.na.take(extra_info={"seq_len":i}))
         kludged_noise_sweep_data = NoiseSweepData(
-            data = noise_data,
+            data = [noise_data],
             column = self.na.column,
             row_sequence = self.na.row_sequence,
             signal_column_index = self.na.column,
             db_cardname = self.na.db_cardname,
             db_tower_channel_str = self.na.db_bay,
-            temp_settle_delay_s = None,
-            temp_list_k = [None],
-            db_list = [[None]],
+            temp_settle_delay_s = 1e-30,
+            temp_list_k = [1e-30],
+            db_list = [[1]],
             extra_info={
                 'seq_len_list': seq_len_list,
                 'type': 'Alias Sweep'
