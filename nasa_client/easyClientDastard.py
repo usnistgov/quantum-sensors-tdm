@@ -26,7 +26,7 @@ class EasyClientDastard():
         self.baseport = baseport
         self.context = zmq.Context()
         self.samplePeriod = None # learn this from first observed data packet
-        self._restoredOldTriggerSettings = False
+        self._restoredOldTriggerSettings = False # unused?
         if setupOnInit:
             self.setupAndChooseChannels()
 
@@ -105,6 +105,13 @@ class EasyClientDastard():
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
             self.sequenceLength = d["DastardOutput"]["SequenceLength"]
             self.linePeriod = d["DastardOutput"]["Lsync"]
+            self.lancero_config = { # These are the parameters used to set up Lancero. Copied from dc.py
+                "ClockMHz": self.clockMhz,
+                "Nsamp": self.nSamp,
+                "AvailableCards":[]
+            }
+            for key in ["FiberMask","CardDelay","ActiveCards","ChanSepCards","ChanSepColumns","FirstRow"]:
+                self.lancero_config[key] = d[key]
         if topic == "TRIGGER":
             self._oldTriggerDict = d[0]
 
@@ -119,6 +126,23 @@ class EasyClientDastard():
         if DEBUG:
             print("setupAndChooseChannels prints:")
             print(self)
+
+    def start_data_lancero(self):
+        # Start lancero card with same settings as used before
+
+        self.rpc.call("SourceControl.ConfigureLanceroSource",self.lancero_config)
+        ok = self.rpc.call("SourceControl.Start", "LANCEROSOURCE")
+        if not ok:
+            print("Could not start data!")
+
+        return ok
+
+    def stop_data(self):
+        ok = self.rpc.call("SourceControl.Stop","")
+        if not ok:
+            print("Could not stop data!")
+
+        return ok
 
     @property
     def channelIndicies(self):
