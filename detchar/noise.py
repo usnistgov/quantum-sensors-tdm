@@ -114,8 +114,25 @@ class NoiseAcquire(acquire.Acquire):
     ''' Acquire multiplexed, averaged noise data.
         No sensor setup is done.
     '''
+    @classmethod
+    def from_yaml(cls, yaml):
+        with open(yaml, 'r') as ymlfile:
+            config = yaml.load(yml, Loader=yaml.FullLoader)
+        column = acquire.column_name_to_num(config['detectors']['Column'])
+        return cls(
+            column_str = config['detectors']['Column'],
+            row_sequence_list = config['detectors']['Rows'],
+            m_ratio = config['calnums']['mr'],
+            rfb_ohm = config['calnums']['rfb'],
+            f_min_hz = config['runconfig']['min_freq'],
+            num_averages = config['runconfig']['n_avg'],
+            db_source = config['voltage_bias']['source'],
+            db_card = config['voltage_bias']['db_cardname'],
+            db_bay = column
+        )
+ 
     def __init__(self, 
-                 column_str, 
+                 column_str, # Only used in metadata recording
                  row_sequence_list, 
                  m_ratio, 
                  rfb_ohm, 
@@ -224,7 +241,6 @@ class NoiseAcquire(acquire.Acquire):
             ax.loglog(self.freqs,self.Pxx_all[row_index,:,ii])
         ax.set_xlabel('Frequency (Hz)')
         ax.legend(range(self.num_averages))
-
 
     # def _init_ui(self):
     #     ''' initialize UI '''
