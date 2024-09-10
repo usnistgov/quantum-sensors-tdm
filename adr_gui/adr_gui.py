@@ -259,7 +259,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl = tempControl.TempControl(PyQt5.QtWidgets.QApplication,0.001,
         controlThermExcitation=self.currentExcitationCurrent,
         channel = self.controlChannel)
-
+        
         p, i, d = self.tempControl.a.temperature_controller.getPIDValues()
         _, r = self.tempControl.a.temperature_controller.getRamp()
         self.pidr = [p, i, d, r] 
@@ -706,7 +706,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     def pollTempControl(self):
         self.lastTemp_K = self.tempControl.getTemp()
         self.lastHOut = self.tempControl.getHeaterOut()
-        lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
+        try:
+            lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
+        except:
+            self.tempControl.a.magnet_control_relay.lj.configAnalog(6) # Current sense pin
+            lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
         lj_current = lj_volts * (3278+9950) / 3278  # measured resistor values are 3278 and 9950 ohms
         self.lastCurrentReading = lj_current
         logger.log("%s, %f, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut, self.lastCurrentReading))
