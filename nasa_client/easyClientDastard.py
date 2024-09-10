@@ -68,6 +68,8 @@ class EasyClientDastard():
                     self.numRows = self.sequenceLength
                     self.numColumns = self.numChannels//(2*self.numRows)
                     assert self.numChannels%(2*self.numRows) == 0
+                    self.linePeriodSeconds = self.linePeriod/self.clockMhz
+                    self.samplePeriod = self.linePeriodSeconds*self.numRows
                 if self.sourceName == "SimPulses":
                     self.numColumns = 1
                     self.numRows = self.numChannels
@@ -121,8 +123,6 @@ class EasyClientDastard():
         self._connectRPC()
         self._connectStatusSub()
         self._getStatus()
-        self.linePeriodSeconds = self.linePeriod/self.clockMhz
-        self.samplePeriod = self.linePeriodSeconds*self.numRows
         if DEBUG:
             print("setupAndChooseChannels prints:")
             print(self)
