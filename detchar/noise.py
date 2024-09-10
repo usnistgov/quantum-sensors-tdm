@@ -115,9 +115,9 @@ class NoiseAcquire(acquire.Acquire):
         No sensor setup is done.
     '''
     @classmethod
-    def from_yaml(cls, yaml):
-        with open(yaml, 'r') as ymlfile:
-            config = yaml.load(yml, Loader=yaml.FullLoader)
+    def from_yaml(cls, yml_filename):
+        with open(yml_filename, 'r') as ymlfile:
+            config = yaml.load(ymlfile, Loader=yaml.FullLoader)
         column = acquire.column_name_to_num(config['detectors']['Column'])
         return cls(
             column_str = config['detectors']['Column'],
