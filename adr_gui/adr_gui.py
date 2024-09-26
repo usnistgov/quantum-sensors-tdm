@@ -259,7 +259,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl = tempControl.TempControl(PyQt5.QtWidgets.QApplication,0.001,
         controlThermExcitation=self.currentExcitationCurrent,
         channel = self.controlChannel)
-        
+        self.tempControl.a.temperature_controller.serial.flush()
         p, i, d = self.tempControl.a.temperature_controller.getPIDValues()
         _, r = self.tempControl.a.temperature_controller.getRamp()
         self.pidr = [p, i, d, r] 
