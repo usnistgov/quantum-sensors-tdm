@@ -17,7 +17,8 @@ CRINGE_COMMANDS = {
     'set_fba_offset':{'fname':'rpc_set_fba_offset', 'args':['col', 'fba_offset'], 'help':'set fba_offset for all rows in this column'},
     'set_fb_i':{'fname':'rpc_set_fb_i', 'args':['col', 'fb_i'], 'help':'set feedback parameter I for all rows in this column'},
     'set_tower_channel':{'fname':'rpc_set_tower_channel', 'args':['cardname', 'bayname', 'dacvalue'], 'help':'set the dac value for a tower card by cardname and bayname (strings)'},
-    'set_tower_card_all_channels':{'fname':'rpc_set_tower_card_all_channels', 'args':['cardname', 'dacvalue'], 'help':'set the dac value for all tower channels in one card'}
+    'set_tower_card_all_channels':{'fname':'rpc_set_tower_card_all_channels', 'args':['cardname', 'dacvalue'], 'help':'set the dac value for all tower channels in one card'},
+    'set_sequence_length':{'fname':'rpc_set_seq_len', 'args':['length'], 'help':'Set the number of rows to read.'}
 #    'devtest':{'fname':'devtest', 'args':['arg1'], 'help':'temporary for development testing'},      
 #    'cmd':{'fname':name, 'args':[], 'help':''},      
     }
@@ -74,6 +75,8 @@ class CringeControl:
     def relock_all_locked_fba(self, col):
         return self.send(" ".join(("relock_all_locked_fba", str(int(col)))))
 
+    def set_sequence_length(self, length):
+        return self.send(" ".join(("set_sequence_length", str(int(length)))))
 
     def test(self):
         command = 'devtest'

@@ -2,6 +2,8 @@ import json
 import itertools
 import socket
 DEBUG = False
+class RpcError(Exception):
+    pass
 
 class JSONClient(object):
     def __init__(self, addr, codec=json, qtParent = None):
@@ -46,7 +48,7 @@ class JSONClient(object):
             print(response)
 
         if response.get('id') != id:
-            raise Exception("expected id=%s, received id=%s: %s" %
+            raise RpcError("expected id=%s, received id=%s: %s" %
                             (id, response.get('id'),
                              response.get('error')))
 
@@ -55,7 +57,7 @@ class JSONClient(object):
                 print(("Yikes! Request is: ", request))
                 print(("Reponse is: ", response))
             if self.qtParent is None:
-                raise Exception(response.get('error'))
+                raise RpcError(response.get('error'))
             else:
                 em = QtWidgets.QErrorMessage(self.qtParent)
                 em.showMessage("DASTARD Error: \n%s"%response.get('error'))

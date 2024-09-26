@@ -259,7 +259,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl = tempControl.TempControl(PyQt5.QtWidgets.QApplication,0.001,
         controlThermExcitation=self.currentExcitationCurrent,
         channel = self.controlChannel)
-
+        self.tempControl.a.temperature_controller.serial.flush()
         p, i, d = self.tempControl.a.temperature_controller.getPIDValues()
         _, r = self.tempControl.a.temperature_controller.getRamp()
         self.pidr = [p, i, d, r] 
@@ -541,10 +541,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 setpoint = tc.getTemperatureSetPoint() 
                 temperror = self.tempControl.getTempError()
                 if control_mode == 'closed' and\
-                ramp_status == 'on' and\
-                0<ramp_rate<.2 and\
-                0.04<setpoint<0.35 and\
-                numpy.abs(temperror)<0.005:
+                 ramp_status == 'on' and\
+                 0<ramp_rate<.2 and\
+                 0.04<setpoint<0.80 and\
+                 numpy.abs(temperror)<0.005:
                     print(("started with heater out %0.2f, but determined it is already in control state"%self.lastHOut))
                     print("STARTING IN CONTROL STATE")
                     self.heatSwitchIsClosedCheckBox.setCheckState(Qt.Unchecked)
@@ -555,6 +555,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                     warningBox = QMessageBox()
                     warningBox.setText("Warning heater out is %0.2f, should be zero in initial state (unless its in closed loop control).  Manually correct system and try again.  Will exit after this."%self.lastHOut)
                     warningBox.exec_()
+                    print(ramp_status, control_mode, ramp_rate, setpoint)
                     sys.exit()
             elif self.adrShouldMagup(self.startTimeEdit.value, self.startOutEdit.value, self.lastHOut):
                 self.SIG_startgoingToMagUp.emit()
@@ -705,7 +706,11 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
     def pollTempControl(self):
         self.lastTemp_K = self.tempControl.getTemp()
         self.lastHOut = self.tempControl.getHeaterOut()
-        lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
+        try:
+            lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
+        except:
+            self.tempControl.a.magnet_control_relay.lj.configAnalog(6) # Current sense pin
+            lj_volts = self.tempControl.a.magnet_control_relay.getAnalogInput(6,verbose=False)
         lj_current = lj_volts * (3278+9950) / 3278  # measured resistor values are 3278 and 9950 ohms
         self.lastCurrentReading = lj_current
         logger.log("%s, %f, %f, %f, %f"%(time.asctime(),time.time(), self.lastTemp_K, self.lastHOut, self.lastCurrentReading))
