@@ -967,7 +967,7 @@ class NoiseSweepData(DataIO):
     column: str # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     temp_list_k: List[float]
-    db_list: List[int]
+    db_list: List[List[int]]
     signal_column_index: int
     db_cardname: str
     db_tower_channel_str: str
@@ -1018,7 +1018,7 @@ class NoiseSweepData(DataIO):
             for ii,db in enumerate(db_list):
                 df = data[ii]
                 temp_m.append(df.pre_temp_k)
-                ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2,label='temp %d, bias %.2f'%(df.pre_temp_k*1000,db))
+                ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2,label='temp %.0f, bias %.2f'%(df.pre_temp_k*1000,db))
         ax.set_xlabel('Frquency (Hz)')
         ax.set_ylabel(y_label_str)
         ax.legend()

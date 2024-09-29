@@ -35,7 +35,8 @@ class Cringe(QtWidgets.QWidget):
                  seqln=30, lsync=40, tower_vector=None, argfilename=None, calibrationtab=False):
 
         super(Cringe, self).__init__()
-        self.setWindowIcon(QtGui.QIcon("cringe_img.jpg"))
+        my_directory = os.path.dirname(__file__)
+        self.setWindowIcon(QtGui.QIcon(os.path.join(my_directory,"cringe_img.jpg")))
 
         self.serialport = named_serial.Serial(port='rack', shared=True)
         self.seqln_timer = None
@@ -1013,8 +1014,9 @@ class Cringe(QtWidgets.QWidget):
         self.tune_widget.mm.changedfbrow(col=int(col), row="master", d2aA=int(fba_offset))
         return True, ""
 
-
-
+    def rpc_set_seq_len(self, length):
+        self.seqln_spin.setValue(int(length))
+        return True, ""
 
     def seqln_changed(self):
         if self.seqln_timer == None:
@@ -2306,7 +2308,12 @@ class Cringe(QtWidgets.QWidget):
         log.debug(tc.FCTCALL + "load pickle settings:", tc.ENDC)
 
         if filename is None or filename == False:
-            self.load_filename = str(QtWidgets.QFileDialog.getOpenFileName())
+            temp = str(QtWidgets.QFileDialog.getOpenFileName()[0])
+            if temp == '':
+                # If the user hits close this will cleanly exit the method call
+                return
+            else:
+                self.load_filename = temp
         else:
             self.load_filename = filename
         self.filenameEdit.setText(self.load_filename)
@@ -2433,6 +2440,9 @@ class Cringe(QtWidgets.QWidget):
     def unpackTune(self):
         self.tune_widget.unpackState(self.loadTune["TuneParameters"])
 
+    def closeEvent(self,event):
+        self.saveSettings()
+        event.accept()
 
 def main():
 

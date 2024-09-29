@@ -1,19 +1,22 @@
 import numpy as np
+from cringe.shared import log
+
 
 class MuxMaster():
     def __init__(self,cringe):
         self.cringe=cringe
         self.gatherAllCards()
 
-
     def gatherAllCards(self):
         "Learn about all DFBx2 raps and BAD16 raps and states from the GUI."
         dfbraps = []
         badraps = []
         badstates = []
+        dfb_clk = None
         for idx, val in enumerate(self.cringe.class_vector):
-            #if val == "DFBCLK":
-                #log.debug("DFBCLK, dont care")
+            if val == "DFBCLK":
+                # log.debug("DFBCLK, dont care")
+                dfb_clk = self.cringe.crate_widgets[idx].dfbclk_widget1
             if val == "DFBx2":
                 #log.debug(idx, val)
                 dfbraps.append(self.cringe.crate_widgets[idx].dfbx2_widget1)
@@ -25,6 +28,13 @@ class MuxMaster():
         #log.debug(dfbraps)
         #log.debug(badraps)
         #log.debug(badstates)
+        if dfb_clk is not None:
+            dfbraps.append(dfb_clk) # At least in the Velma system the dfb_clk is used for
+            # column 3/C. In most systems it is not used at all, so it should not be the 0th value
+            # in the dfbraps array even if the dfbclk is the first card in the class vector. 
+            # in fact, the dfb_clk dfb was explicitly ignored until CTR added it in Aug 2024. 
+            # See the commented log.debug("don't care") The main branch puts dfb_clk into a separate
+            # member variable
         self.dfbraps = dfbraps
         self.badraps = badraps
         self.badstates = badstates
@@ -35,7 +45,7 @@ class MuxMaster():
         self.cringe.tower_widget.set_channel_dac(cardname, bay_index, dacvalue)
 
     def setTowerCardAllChannelsToSameDAC(self, cardname, dacvalue):
-        self.cringe.tower_widget.set_card_dac(cardname, bay_index, dacvalue)
+        self.cringe.tower_widget.set_card_dac(cardname, dacvalue)
 
     def relockFBAifLocked(self, col, row):
         dfbrap=self.dfbraps[col]

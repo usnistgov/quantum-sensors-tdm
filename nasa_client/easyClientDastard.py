@@ -5,6 +5,7 @@ import time
 import collections
 import json
 import numpy as np
+import os
 
 DEBUG = True
 rpc_client_for_easy_client.DEBUG = False
@@ -25,22 +26,20 @@ class EasyClientDastard():
         self.baseport = baseport
         self.context = zmq.Context()
         self.samplePeriod = None # learn this from first observed data packet
-        self._restoredOldTriggerSettings = False
+        self._restoredOldTriggerSettings = False # unused?
         if setupOnInit:
             self.setupAndChooseChannels()
-
 
     def _connectStatusSub(self):
         """ connect to the status update port of dastard """
         self.statusSub = self.context.socket(zmq.SUB)
         address = "tcp://%s:%d" % (self.host, self.baseport+1)
         self.statusSub.setsockopt(zmq.RCVTIMEO, 1000) # this doesn't seem to do anything
-        self.statusSub.setsockopt( zmq.LINGER,      0 )
+        self.statusSub.setsockopt(zmq.LINGER,      0)
         self.statusSub.connect(address)
         print(("Collecting updates from dastard at %s" % address))
         self.statusSub.setsockopt_string(zmq.SUBSCRIBE, "")
         self.messagesSeen = collections.Counter()
-
 
     def _connectRPC(self):
         """ connect to the rpc port of dastard """
@@ -69,6 +68,8 @@ class EasyClientDastard():
                     self.numRows = self.sequenceLength
                     self.numColumns = self.numChannels//(2*self.numRows)
                     assert self.numChannels%(2*self.numRows) == 0
+                    self.linePeriodSeconds = self.linePeriod/self.clockMhz
+                    self.samplePeriod = self.linePeriodSeconds*self.numRows
                 if self.sourceName == "SimPulses":
                     self.numColumns = 1
                     self.numRows = self.numChannels
@@ -106,9 +107,15 @@ class EasyClientDastard():
             self.clockMhz = d["DastardOutput"]["ClockMHz"]
             self.sequenceLength = d["DastardOutput"]["SequenceLength"]
             self.linePeriod = d["DastardOutput"]["Lsync"]
+            self.lancero_config = { # These are the parameters used to set up Lancero. Copied from dc.py
+                "ClockMHz": self.clockMhz,
+                "Nsamp": self.nSamp,
+                "AvailableCards":[]
+            }
+            for key in ["FiberMask","CardDelay","ActiveCards","ChanSepCards","ChanSepColumns","FirstRow"]:
+                self.lancero_config[key] = d[key]
         if topic == "TRIGGER":
             self._oldTriggerDict = d[0]
-
 
     def setupAndChooseChannels(self, streamFbChannels = True, streamErrorChannels = True):
         """ sets up the server to stream all Fb Channels or all error channels or both
@@ -116,16 +123,30 @@ class EasyClientDastard():
         self._connectRPC()
         self._connectStatusSub()
         self._getStatus()
-        self.linePeriodSeconds = self.linePeriod/self.clockMhz
-        self.samplePeriod = self.linePeriodSeconds*self.numRows
-        print(self)
+        if DEBUG:
+            print("setupAndChooseChannels prints:")
+            print(self)
+
+    def start_data_lancero(self):
+        # Start lancero card with same settings as used before
+
+        self.rpc.call("SourceControl.ConfigureLanceroSource",self.lancero_config)
+        ok = self.rpc.call("SourceControl.Start", "LANCEROSOURCE")
+        if not ok:
+            print("Could not start data!")
+
+        return ok
+
+    def stop_data(self):
+        ok = self.rpc.call("SourceControl.Stop","")
+        if not ok:
+            print("Could not stop data!")
+
+        return ok
 
     @property
     def channelIndicies(self):
         return list(range(self.numChannels))
-
-
-
 
     def tdmChannelNumber(self, col, row):
         return col*self.numRows+row
@@ -149,12 +170,15 @@ class EasyClientDastard():
         self.rpc.call("SourceControl.ConfigureMixFraction", config)
 
     def requestData(self, nsamples):
-        config = {"N":int(nsamples)}
         result_npz_path = self.rpc.call("SourceControl.StoreRawDataBlock", nsamples)
         return result_npz_path
     
     def newStyleDataToOldStyleData(self, data):
-        # the numbers here use channel number not index
+        """ New style data returned by Dastard is dictionary-like.
+        It's an npz file with keys like "chan0" "err0" each with a time series.
+        Old style data is a 4-D numpy array indexed by [column, row, time_series, is_fb]
+        where is_fb is 0 for error channels and 1 for feedback channels.
+        """
         if "chan0" in data:
             n = len(data["chan0"]) # simpulsesource does this
         if "chan1" in data:
@@ -170,11 +194,9 @@ class EasyClientDastard():
                 dataOut[0, row, :, 1] = data[f"chan{row}"]
         return dataOut
 
-
     def getNewData2(self, npts):
         npz_filename = self.requestData(npts)
         # wait for the file to exist
-        import os
         tstart = time.time()
         expect_s = self.samplePeriod*npts
         too_long_s = 1.1*expect_s+5
@@ -187,7 +209,6 @@ class EasyClientDastard():
         # now the file exists, lets open it
         data = np.load(npz_filename)        
         return data
-
 
     def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True):
         time.sleep(delaySeconds)

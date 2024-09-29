@@ -174,6 +174,12 @@ class Zaber(serial_instrument.SerialInstrument):
 
 
     def SetHoldCurrent(self, current=0):
+        if self.serial.in_waiting > 0:
+            oldtimeout = self.serial.timeout
+            self.serial.timeout=0.1
+            junk_data=self.serial.read(self.serial.in_waiting)
+            print(f"junk data in buffer: {repr(junk_data)}")
+            self.serial.timeout = oldtimeout
         #set running current
         #set running current Range 0, 10-127   0: no current, 10 max , 127 min
         self.__sendCommandParseReply(value=current, command=39)
