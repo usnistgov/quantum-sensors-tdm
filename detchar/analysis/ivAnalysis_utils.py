@@ -494,9 +494,9 @@ class IVCurveAnalyzeSingle():
 
         # remove arbitrary DC offset
         y-=p_norm[1] # subtract arbitrary offset using normal branch
-        slope_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
-        if slope_diff > 5: 
-            print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(slope_diff))
+        offset_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
+        if offset_diff > 5: 
+            print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
             y[0:sc_idx]-=p_sc[1]-p_norm[1] # 
     
         i_bias = x*self.to_i_bias
