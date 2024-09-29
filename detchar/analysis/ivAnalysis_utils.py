@@ -448,7 +448,19 @@ class IVCurveAnalyzeSingle():
         with a value much less than the TES is wired in parallel with the TES and the input inductance 
         of a squid.  There may be a parasitic resistance (rx_ohm) in series with the TES.  
     '''
-    def __init__(self,x,y,rsh_ohm,rx_ohm=0,to_i_bias=1,to_i_tes=1):
+    def __init__(self,x,y,rsh_ohm,rx_ohm=0,to_i_bias=1,to_i_tes=1,analyze_on_init=True):
+        ''' 
+            self.x_raw: the raw x-data (voltage) provided to the class.  This is often in descending order.
+            self.y_raw: the raw y-data (current) provided to the class.  This is often in descending order.
+            self.x: the x-data in ascending order 
+            self.y: the y-data in ascending order and ensured IV curve is "right-side up" 
+            self.v_tes, i_tes, p_tes, r_tes: voltage across, current through, power dissipated, and resistance of tes
+            self.si: responsivity derived from IV curve
+            self.rn: TES normal resistance, defined as the mean of points in the r_tes vector with index greater than the normal resistance index.
+                     The normal resistance index is defined as halfway between the IV turn index (where slope is zero) and the maximum V bias 
+            self.rl: load resistance
+    
+        '''
         self.x_raw = np.array(x) # commanded voltage bias
         self.y_raw = np.array(y) # measured current in some arbitrary units
         self.rsh_ohm = rsh_ohm 
@@ -458,57 +470,26 @@ class IVCurveAnalyzeSingle():
 
         # get basic quantities of interest
         # here things are flipped into ascending order in voltage bias
-        self.v_tes,self.i_tes,self.p_tes,self.r_tes,self.si, self.rn, self.rl, self.x, self.y = self.analyze_iv()
+        if analyze_on_init: self.analyze_iv()
+        else: self.v_tes=self.i_tes=self.p_tes=self.r_tes=self.si=self.rn=self.rl=self.x=self.y=None
 
-    def analyze_iv(self,plot=False):
+    ### Main analysis methods ----------------------------------------------------------------
+    ### ---------------------------------------------------------------------------------
+
+    def analyze_iv(self,plot=False,beta=0):
         ''' based on algorithm in pySmurf from Ari Cukierman '''
-            #    rsh_ohm=450e-6,rbias_ohm=207.2,rfb_ohm=206.2,m_ratio=8,
-            #    vbias_arbs_per_v=26214,vfb_arbs_per_v=16109.1445,plot=True):
-        
-        N=len(self.x_raw)
+        x,y = self.determine_iv_regimes()
+        y = self.remove_dc_offset(x,y)
     
-        # place in ascending order
-        if self.x_raw[1]-self.x_raw[0] < 0:
-            x=self.x_raw[::-1]
-            y=self.y_raw[::-1]
-        else:
-            x=self.x_raw 
-            y=self.y_raw 
-        
-        # determine IV polarity. if negative, flip
-        pval = np.polyfit(x[-10:],y[-10:],1)
-        if pval[0] < 0: y=y*-1
-        
-        # take derivatives
-        dfb = np.diff(y)
-        ddfb = np.diff(dfb)
-    
-        # Define IV curve regimes: superconducting, in transition, normal
-        sc_idx = np.argmax(abs(ddfb))+1 # find superconducting index
-        turn_idx = np.argmin(abs(dfb[sc_idx:]))+sc_idx+1
-        n_idx = int(N-(N-turn_idx)/2) # defined has half way from IV turn-around to highest Vbias point
-    
-        # fit normal and superconducting branches 
-        p_norm = np.polyfit(x[n_idx:],y[n_idx:],1)
-        p_sc = np.polyfit(x[:sc_idx],y[:sc_idx],1)
-
-        # remove arbitrary DC offset
-        y-=p_norm[1] # subtract arbitrary offset using normal branch
-        offset_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
-        if offset_diff > 5: 
-            print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
-            y[0:sc_idx]-=p_sc[1]-p_norm[1] # 
-    
-        i_bias = x*self.to_i_bias
-
-        # get quantities of interest
+        # calculate quantities of interest
+        i_bias = x*self.to_i_bias # convert current bias to shunt network to physical units
         i_tes = y*self.to_i_tes
         r_tes = self.rsh_ohm*(i_bias/i_tes - 1)-self.rx_ohm
         v_tes = i_tes*r_tes # voltage over TES
         p_tes = i_tes*v_tes # electrical power on TES
 
-        R_n = np.mean(r_tes[n_idx:]) # is it better to just use the fit?
-        R_L = np.mean(r_tes[1:sc_idx]) # load resistance
+        R_n = np.mean(r_tes[self.normal_idx:]) # normal resistance, is it better to just use the fit?
+        R_L = np.mean(r_tes[1:self.sc_idx]) # load resistance, is it better to just use the fit?
     
         # smooth the data
         smooth_dist = 5
@@ -524,60 +505,117 @@ class IVCurveAnalyzeSingle():
 
         # Responsivity estimate
         R_L_smooth = np.ones(len(r_tes_smooth))*R_L
-        R_L_smooth[:sc_idx] = dv_tes[:sc_idx]/di_tes[:sc_idx]
+        R_L_smooth[:self.sc_idx] = dv_tes[:self.sc_idx]/di_tes[:self.sc_idx]
         r_tes_smooth_noStray = r_tes_smooth - R_L_smooth
         i0 = i_tes_smooth[:-1]
         r0 = r_tes_smooth_noStray[:-1]
         rL = R_L_smooth[:-1]
         si_etf = -1./(i0*r0)
-        beta = 0.
 
         si = -(1./i0)*( dv_tes/di_tes - (r0+rL+beta*r0) ) / \
             ( (2.*r0-rL+beta*r0)*dv_tes/di_tes - 3.*rL*r0 - rL**2 )
+
+        # pass these vectors to globals
+        self.v_tes=v_tes; self.i_tes=i_tes; self.p_tes=p_tes; self.r_tes=r_tes; self.si=si; self.rn=R_n; self.rl=R_L; self.x=x; self.y=y; self.si_etf=si_etf
+
+        if plot: 
+            fig,ax = self.plot_raw()
+            fig,ax = self.plot()
+
+    def determine_iv_regimes(self,plot=False):
+        ''' Place data in ascending order, make IV curve right-side-up, determine 3 IV regimes: superconducting, in-transition, normal. 
+            based on algorithm in pySmurf from Ari Cukierman
+
+            return: x,y,[sc_idx,turn_idx,normal_idx] 
+            x: (voltage) in ascending order
+            y: (current) in ascending order that is right-side up.  Offset is not subtracted
+            sc_idx: index that marks the end of the superconducting regime
+            turn_idx: index that marks the slope=0 point
+            normal_idx: index that marks the normal branch.  Indices > normal_idx are in the normal branch
+        '''
+        N=len(self.x_raw)
     
+        # place in ascending order
+        if self.x_raw[1]-self.x_raw[0] < 0:
+            x=np.copy(self.x_raw[::-1])
+            y=np.copy(self.y_raw[::-1])
+        else:
+            x=np.copy(self.x_raw) 
+            y=np.copy(self.y_raw) 
+        
+        # determine IV polarity. if negative, flip
+        pval = np.polyfit(x[-10:],y[-10:],1)
+        if pval[0] < 0: y=y*-1
+        
+        # take derivatives
+        dfb = np.diff(y)
+        ddfb = np.diff(dfb)
+    
+        # Define IV curve regimes: superconducting, in transition, normal
+        sc_idx = np.argmax(abs(ddfb))+1 # superconducting index determined from maximum of 2nd derivative 
+        turn_idx = np.argmin(abs(dfb[sc_idx:]))+sc_idx+1 # "turn index" where slope = 0
+        n_idx = int(N-(N-turn_idx)/2) # defined has half way from IV turn-around to highest Vbias point
+
+        self.sc_idx=sc_idx; self.turn_idx=turn_idx; self.normal_idx = n_idx
+
         if plot:
+        # plot raw data
             colors = list(Colors.TABLEAU_COLORS)
-            
-            # plot raw data
             fig,ax=plt.subplots()
-            ax.plot(x,y,color=colors[0])
+            ax.plot(x,y,'o',color=colors[0])
+            #ax.plot(x[:sc_idx+1],y[:sc_idx+1],'ko')
             ax.plot(x[sc_idx],y[sc_idx],'r.')
             ax.plot(x[turn_idx],y[turn_idx],'r.')
             ax.plot(x[n_idx],y[n_idx],'r.')
-            ax.plot(x,np.polyval([p_norm[0],0],x),linestyle='--',color=colors[1])
-            ax.plot(x[:sc_idx],np.polyval([p_sc[0],0],x[:sc_idx]),linestyle='--',color=colors[1])
             ax.axvspan(xmin=x[0],xmax=x[sc_idx],alpha=0.1,color='r')
             ax.axvspan(xmin=x[sc_idx],xmax=x[turn_idx],alpha=0.1)
             ax.axvspan(xmin=x[turn_idx],xmax=x[n_idx],alpha=0.1,color='y')
             ax.set_xlabel('V [dac]')
             ax.set_ylabel('I [dac]')
+            return x,y,fig,ax
 
-            fig,ax=plt.subplots(3,1)
-            ax[0].plot(v_tes,i_tes,color=colors[0])
-            ax[0].plot(v_tes[sc_idx],i_tes[sc_idx],'r.')
-            ax[0].plot(v_tes[turn_idx],i_tes[turn_idx],'r.')
-            ax[0].plot(v_tes[n_idx],i_tes[n_idx],'r.')
-            ax[0].plot(v_tes,np.polyval([p_norm[0],0],x)*self.to_i_tes,linestyle='--',color=colors[1])
-            ax[0].plot(v_tes[:sc_idx],np.polyval([p_sc[0],0],x[:sc_idx])*self.to_i_tes,linestyle='--',color=colors[1])
-            ax[0].set_ylabel('I')
-            
-            ax[1].plot(v_tes,r_tes*1e3,color=colors[0])
-            ax[1].axvspan(xmin=v_tes[sc_idx],xmax=v_tes[turn_idx],alpha=0.1)
-            ax[1].set_ylabel('R (m$\Omega$)')
-            
-            ax[2].plot(v_tes[:-1],si,color=colors[0])
-            ax[2].plot(v_tes[:-1],si_etf,linestyle='--',color=colors[1])
-            ax[2].set_ylabel('$S_{I}$')
-            ax[2].set_ylim((si[sc_idx+1]*1.1,1e6))
-            ax[2].set_xlabel('V')
+        else: return x,y
 
-            for ii in range(3):
-                ax[ii].axvspan(xmin=v_tes[0],xmax=v_tes[sc_idx],alpha=0.1,color='r')
-                ax[ii].axvspan(xmin=v_tes[sc_idx],xmax=v_tes[turn_idx],alpha=0.1)
-                ax[ii].axvspan(xmin=v_tes[turn_idx],xmax=v_tes[n_idx],alpha=0.1,color='y')
-            plt.tight_layout()
-        return v_tes,i_tes,p_tes,r_tes,si,R_n,R_L,x,y
-    
+    def remove_dc_offset(self,x,y,plot=False):
+        ''' remove DC offset of IV curve. x,y must be provided in ascending order and 
+            right-side up.  This is done within self.determine_iv_regimes
+        '''
+        
+        if self.sc_idx > self.normal_idx:
+            print('WARNING: superconducting branch found at higher voltage bias than normal branch.  Setting sc branch to index 1.')
+            self.sc_idx = 1 
+
+        # fit normal regime, remove the offset
+        p_norm = np.polyfit(x[self.normal_idx:],y[self.normal_idx:],1)
+        if self.sc_idx == 0: 
+            print('WARNING: no superconducting branch found.')
+            y-=p_norm[1] # subtract arbitrary offset using normal branch
+            p_sc = None
+            
+        else:
+            # fit superconducting branches 
+            p_sc = np.polyfit(x[:self.sc_idx+1],y[:self.sc_idx+1],1)
+            y-=p_norm[1] # subtract arbitrary offset using normal branch
+            offset_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
+            if offset_diff > 5: 
+                print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
+                y[0:self.sc_idx+1]-=p_sc[1]-p_norm[1] 
+
+        self.p_norm=p_norm; self.p_sc = p_sc 
+
+        if plot:
+            fig,ax=plt.subplots()
+            ax.plot(x,y,'o-')
+            ax.plot(x[:self.sc_idx+1],y[:self.sc_idx+1],'ro')
+            ax.plot(x[self.sc_idx],y[self.sc_idx],'go')
+            ax.plot(x[normal_index:],y[normal_index:],'ro')
+            ax.plot(x,np.polyval([p_norm[0],0],x),linestyle='--',color='k')
+            if p_sc is not None: ax.plot(x[:self.sc_idx],np.polyval([p_sc[0],0],x[:self.sc_idx]),linestyle='--',color='k')
+        return y
+
+    ### helper methods ----------------------------------------------------------------
+    ### ---------------------------------------------------------------------------------
+
     def get_virp_at_rfrac(self,rfrac):
         idx = np.argmin(abs(self.r_tes/self.rn - rfrac)) 
         return self.v_tes[idx], self.i_tes[idx], self.r_tes[idx], self.p_tes[idx] 
@@ -590,6 +628,52 @@ class IVCurveAnalyzeSingle():
         idx = np.argmin(abs(self.x-dac))
         if frac: return self.r_tes[idx]/self.rn
         else: return self.r_tes[idx]
+
+    ### plotting methods ----------------------------------------------------------------
+    ### ---------------------------------------------------------------------------------
+    def plot_raw(self,fig=None,ax=None):
+        colors = list(Colors.TABLEAU_COLORS)
+        if not fig: fig,ax=plt.subplots()
+        ax.plot(self.x,self.y,color=colors[0])
+        ax.plot(self.x[self.sc_idx],self.y[self.sc_idx],'r.')
+        ax.plot(self.x[self.turn_idx],self.y[self.turn_idx],'r.')
+        ax.plot(self.x[self.n_idx],self.y[self.n_idx],'r.')
+        if self.p_norm is not None: ax.plot(self.x,np.polyval([self.p_norm[0],0],self.x),linestyle='--',color=colors[1])
+        if self.p_sc is not None: ax.plot(self.x[:self.sc_idx],np.polyval([self.p_sc[0],0],self.x[:self.sc_idx]),linestyle='--',color=colors[1])
+        ax.axvspan(xmin=self.x[0],xmax=self.x[self.sc_idx],alpha=0.1,color='r')
+        ax.axvspan(xmin=self.x[self.sc_idx],xmax=self.x[self.turn_idx],alpha=0.1)
+        ax.axvspan(xmin=self.x[self.turn_idx],xmax=self.x[self.normal_idx],alpha=0.1,color='y')
+        ax.set_xlabel('V [dac]')
+        ax.set_ylabel('I [dac]')
+        return fig,ax 
+
+    def plot(self,fig=None,ax=None):
+        colors = list(Colors.TABLEAU_COLORS)
+        if not fig: fig,ax=plt.subplots(3,1)
+        ax[0].plot(self.v_tes,self.i_tes,color=colors[0])
+        ax[0].plot(self.v_tes[self.sc_idx],self.i_tes[self.sc_idx],'r.')
+        ax[0].plot(self.v_tes[self.turn_idx],self.i_tes[self.turn_idx],'r.')
+        ax[0].plot(self.v_tes[self.normal_idx],self.i_tes[self.normal_idx],'r.')
+        if self.p_norm is not None: ax[0].plot(self.v_tes,np.polyval([self.p_norm[0],0],self.x)*self.to_i_tes,linestyle='--',color=colors[1])
+        if self.p_sc is not None: ax[0].plot(self.v_tes[:self.sc_idx],np.polyval([self.p_sc[0],0],self.x[:self.sc_idx])*self.to_i_tes,linestyle='--',color=colors[1])
+        ax[0].set_ylabel('I')
+            
+        ax[1].plot(self.v_tes,self.r_tes*1e3,color=colors[0])
+        ax[1].axvspan(xmin=self.v_tes[self.sc_idx],xmax=self.v_tes[self.turn_idx],alpha=0.1)
+        ax[1].set_ylabel('R (m$\Omega$)')
+            
+        ax[2].plot(self.v_tes[self.sc_idx:-1],self.si[self.sc_idx:],color=colors[0])
+        ax[2].plot(self.v_tes[self.sc_idx:-1],self.si_etf[self.sc_idx:],linestyle='--',color=colors[1])
+        ax[2].set_ylabel('$S_{I}$')
+        ax[2].set_ylim((self.si[self.sc_idx+1]*1.1,1))
+        ax[2].set_xlabel('V')
+
+        for ii in range(3):
+            ax[ii].axvspan(xmin=self.v_tes[0],xmax=self.v_tes[self.sc_idx],alpha=0.1,color='r')
+            ax[ii].axvspan(xmin=self.v_tes[self.sc_idx],xmax=self.v_tes[self.turn_idx],alpha=0.1)
+            ax[ii].axvspan(xmin=self.v_tes[self.turn_idx],xmax=self.v_tes[self.normal_idx],alpha=0.1,color='y')
+        plt.tight_layout()
+        return fig,ax
 
 class IVCurveColumnDataExplore(IVCommon):
     ''' Explore IV data taken on a single column at a single bath temperature.  '''
