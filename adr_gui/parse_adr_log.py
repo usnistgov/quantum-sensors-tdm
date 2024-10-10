@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 ''' 
 The start of some code to parse the adr log file. 
 
