@@ -264,6 +264,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         _, r = self.tempControl.a.temperature_controller.getRamp()
         self.pidr = [p, i, d, r] 
         self.tempControl.rampRate = r
+        self.do_power_on = True
+        self.demag_min = 0
         self.advanced_reject() # sets values of pid dialog to read values
 
         # these are to turn on and off the crate and tower during and after mags
@@ -490,9 +492,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 #             card.sendChannel("all")
 
     def powerOnCrateTower(self):
-        print("turning on the tower power supplies and crate")
-        self.pccc_card.powerOn()
-        self.power_supplies.powerOnSequence()
+        if self.advanced_settings_window.check_power_on.value():
+            print("turning on the tower power supplies and crate")
+            self.pccc_card.powerOn()
+            self.power_supplies.powerOnSequence()
 
     def prepForMagup(self):
         print("prepping for magup")
@@ -586,6 +589,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         if done:
             self.SIG_magUpDone.emit()
             self.stateStartTime=time.time()
+
     def holdAfterMagUpStateTick(self):
         if time.time()-self.stateStartTime>60*self.magUpHoldMinsEdit.value:
             self.SIG_holdAfterMagUpDone.emit()
@@ -601,9 +605,27 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         if done:
             self.SIG_magDownDone.emit()
             self.stateStartTime=time.time()
+            if self.demag_min < 0:
+                self.tempControl.a.temperature_controller.demagSetup()
 
     def holdAfterMagDownStateTick(self):
+        if self.demag_min < 0 and self.lastCurrentReading > 0.01:
+            i_new, done = adrMagTick(
+                self.lastHOut, 
+                i_target=self.demag_min,
+                i_min = self.demag_min,
+                duration_s = self.magDownHoldMinsEdit.value*60/2,
+                step_time_s = self.tickDuration_s
+                )
+            self.setManualHeaterOut(i_new)
+
+        elif self.demag_min<0 and self.lastCurrentReading <= 0.01:
+            self.setManualHeaterOut(0)
+            self.SIG_HoldAfterMagDownDone.emit()
+            self.stateStartTime=time.time()
+
         if time.time()-self.stateStartTime>60*self.magDownHoldMinsEdit.value:
+            self.setManualHeaterOut(0) # shouldn't be necessary, but just in case...
             self.SIG_holdAfterMagDownDone.emit()
             self.stateStartTime=time.time()
         self.printStatus("hold after mag down %d s left"%(60*self.magDownHoldMinsEdit.value-time.time()+self.stateStartTime))
@@ -652,6 +674,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         if t.tm_hour == h and t.tm_min==m and self.enableTimeBasedMagCheckbox.isChecked():
             if self.lastTemp_K > 4:
                 print(("not magging up because temp is %f, not below 4 K"%self.lastTemp_K))
+                self.ensureHeatSwitchIsClosed()
                 return False
             return True
         return False
@@ -661,9 +684,10 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.printStatus("temp set point should = 0, waiting for heater out = 0.0 before switching to mag up")
             if self.tempControl.getSetTemp() > 0.001: self.tempControl.setSetTemp(0.001)
         elif self.lastHOut == 0.0:
-            LIMIT = 4.1
+            LIMIT = 5.0 # this is arbitrary. Just a safeguard so you're not trying to magnetize at like 6 or 8 K
             if self.lastTemp_K>LIMIT:
                 print(f"in GoingToMagUp state, but temp = {self.lastTemp_K} is too high, needs to be below {LIMIT}")
+                self.ensureHeatSwitchIsClosed()
             else:
                 time.sleep(5.0)
                 self.SIG_startMagUp.emit()
@@ -765,6 +789,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl.a.temperature_controller.setPIDValues(p, i, d)
         self.tempControl.a.temperature_controller.setRamp(ramprate=r)
         self.tempControl.rampRate = r
+        self.demag_min = adv.spinbox_demag_min.value()
+        self.do_power_on = adv.check_power_on.value()
         
     def advanced_reject(self):
         adv = self.advanced_settings_window
@@ -774,6 +800,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         adv.spinbox_i.setValue(i)
         adv.spinbox_d.setValue(d)
         adv.spinbox_ramp.setValue(r)
+        adv.spinbox_demag_min.setValue(self.demag_min)
+        adv.check_power_on.setValue(self.do_power_on)
 
 
 class AdvancedPopup(QDialog):

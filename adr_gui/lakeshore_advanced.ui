@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>530</width>
+    <height>302</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,13 +33,13 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>0</y>
-     <width>371</width>
-     <height>81</height>
+     <y>-10</y>
+     <width>491</width>
+     <height>111</height>
     </rect>
    </property>
    <property name="text">
-    <string>Edit PID parameters and ramp rate for the Lakeshore. Be sure to familiarize yourself with Lakeshore's definition of P, I, and D!</string>
+    <string>Edit PID parameters and ramp rate for the Lakeshore. Be sure to familiarize yourself with Lakeshore's definition of P, I, and D! Also, should we try a  negative heater setting after demag to help drain the current? And should we power on the electronics automatically?</string>
    </property>
    <property name="wordWrap">
     <bool>true</bool>
@@ -49,9 +49,9 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>80</y>
+     <y>100</y>
      <width>241</width>
-     <height>156</height>
+     <height>141</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -110,6 +110,42 @@
        </widget>
       </item>
      </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="">
+   <property name="geometry">
+    <rect>
+     <x>270</x>
+     <y>100</y>
+     <width>229</width>
+     <height>71</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
+      <item>
+       <widget class="QDoubleSpinBox" name="spinbox_demag_min"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Demag minimum heat</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="checkBox">
+      <property name="text">
+       <string>Power on electronics?</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
