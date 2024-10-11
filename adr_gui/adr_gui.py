@@ -626,6 +626,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.stateStartTime=time.time()
 
         if time.time()-self.stateStartTime>60*self.magDownHoldMinsEdit.value:
+            self.setManualHeaterOut(0)
+            time.sleep(0.5)
             self.SIG_holdAfterMagDownDone.emit()
             self.stateStartTime=time.time()
         self.printStatus("hold after mag down %d s left"%(60*self.magDownHoldMinsEdit.value-time.time()+self.stateStartTime))
