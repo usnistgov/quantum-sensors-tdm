@@ -126,7 +126,20 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_6">
       <item>
-       <widget class="QDoubleSpinBox" name="spinbox_demag_min"/>
+       <widget class="QDoubleSpinBox" name="spinbox_demag_min">
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>-10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="label_7">
@@ -138,7 +151,7 @@
      </layout>
     </item>
     <item>
-     <widget class="QCheckBox" name="checkBox">
+     <widget class="QCheckBox" name="check_power_on">
       <property name="text">
        <string>Power on electronics?</string>
       </property>

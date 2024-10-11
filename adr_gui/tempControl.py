@@ -63,7 +63,7 @@ class TempControl():
             time.sleep(2)
 
         elif self.readyToControl is False:
-            print('tempControlTupac wont take control until the heaterOut is 0, get it there manually and try again')
+            print(f'tempControlTupac wont take control until the heaterOut is 0, get it there manually and try again. {heaterOut}')
         else:
             print('tempControlTupac thinks it is already controlling the temperature, so it didnt change anything')
 

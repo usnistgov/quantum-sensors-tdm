@@ -492,7 +492,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 #             card.sendChannel("all")
 
     def powerOnCrateTower(self):
-        if self.advanced_settings_window.check_power_on.value():
+        if self.do_power_on:
             print("turning on the tower power supplies and crate")
             self.pccc_card.powerOn()
             self.power_supplies.powerOnSequence()
@@ -621,16 +621,19 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
         elif self.demag_min<0 and self.lastCurrentReading <= 0.01:
             self.setManualHeaterOut(0)
-            self.SIG_HoldAfterMagDownDone.emit()
+            time.sleep(0.5)
+            self.SIG_holdAfterMagDownDone.emit()
             self.stateStartTime=time.time()
 
         if time.time()-self.stateStartTime>60*self.magDownHoldMinsEdit.value:
-            self.setManualHeaterOut(0) # shouldn't be necessary, but just in case...
             self.SIG_holdAfterMagDownDone.emit()
             self.stateStartTime=time.time()
         self.printStatus("hold after mag down %d s left"%(60*self.magDownHoldMinsEdit.value-time.time()+self.stateStartTime))
 
     def controlStateTick(self):
+        if not self.tempControl.readyToControl:
+            self.printStatus("Failed to take control, doing nothing. please click stop temp control.")
+            return
         currentSetPoint = self.tempControl.getSetTemp()
         if currentSetPoint != 1e-3*self.setPointmKEdit.value:
             self.tempControl.setSetTemp(1e-3*self.setPointmKEdit.value)
@@ -790,7 +793,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl.a.temperature_controller.setRamp(ramprate=r)
         self.tempControl.rampRate = r
         self.demag_min = adv.spinbox_demag_min.value()
-        self.do_power_on = adv.check_power_on.value()
+        self.do_power_on = adv.check_power_on.isChecked()
         
     def advanced_reject(self):
         adv = self.advanced_settings_window
@@ -801,7 +804,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         adv.spinbox_d.setValue(d)
         adv.spinbox_ramp.setValue(r)
         adv.spinbox_demag_min.setValue(self.demag_min)
-        adv.check_power_on.setValue(self.do_power_on)
+        adv.check_power_on.setChecked(self.do_power_on)
 
 
 class AdvancedPopup(QDialog):
