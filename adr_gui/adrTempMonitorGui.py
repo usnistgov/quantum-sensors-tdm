@@ -27,8 +27,10 @@ import time, sys, os
 from instruments import Lakeshore370, Cryocon22 
 from lxml import etree
 
+DEMAG_TICK_MS = 2000
+
 class MyLogger():
-    def __init__(self):
+    def __init__(self,file_pattern="adrFullLog_%Y%m%d_t%H%M%S.txt"):
         logDirectory = os.path.join(os.path.dirname(__file__),"logs")
         XML_CONFIG_FILE = "/etc/adr_system_setup.xml"
         if os.path.isfile(XML_CONFIG_FILE):
@@ -41,7 +43,7 @@ class MyLogger():
         if not os.path.isdir(logDirectory): 
             os.mkdir(logDirectory)
 
-        self.filename = os.path.join(logDirectory,time.strftime("adrFullLog_%Y%m%d_t%H%M%S.txt"))
+        self.filename = os.path.join(logDirectory,time.strftime(file_pattern))
         self.file = open(self.filename,"w")
         print(f"adr_gui log directory: {logDirectory}")
         print(f"adr_gui log filename: {self.filename}")
@@ -146,16 +148,17 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
 
     def __init__(self,ls370_channels={1:'faa',2:'fp',3:'s1',4:'s2',5:'ggg'}, cc_channels={'A':'bb1','B':'bb2'}, plotstyle='semilogy'):
         super(adrTempMonitorGui, self).__init__()
-
+        self.demag=False
         self.printToScreen = True 
         self.plotstyle=plotstyle
-        
+        self.do_calibration=False
         self.ls370_channels = list(ls370_channels.keys())
         self.ls370_channel_names = list(ls370_channels.values())  
         self.ls370_allowed_channels = range(1,17)
         self.N_ls370_channels = len(self.ls370_channels)
         self.cc_allowed_channels = ['a','b','A','B']
         self.names = self.ls370_channel_names
+        self.channel_dict = ls370_channels
 
         # handle cases with cryocon channels and without
         if cc_channels != None:
@@ -189,6 +192,7 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
 
         # classes
         self.ls370 = Lakeshore370()
+        self.ls370.setScan(self.ls370_channels[0],'on') # instead of micromanaging the lakeshore, let it do its thing
         if cc_channels != None:
             self.cc = Cryocon22()
             self.cc.getTemperature(self.cc_get_temperature_toggle) # 1st use of this returns nan for channel B, so exercise this command 1st (a cludge)
@@ -219,14 +223,14 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         self.setGeometry(500, 300, 1000, 500)
         self.setWindowTitle('ADR Temperature Monitor')
 
-    def initLakeShore370():
-        ''' initial LakeShore, put into a state to scan all LS thermometers '''
-        ls_init = input('Is the lakeshore setup for monitoring? 1=yes else=no')
-        if ls_init==1:
-            pass
-        else:
-            print('Setup the lakeshore manually for monitoring and try again')
-            sys.exit()
+    # def initLakeShore370():
+    #     ''' initial LakeShore, put into a state to scan all LS thermometers '''
+    #     ls_init = input('Is the lakeshore setup for monitoring? 1=yes else=no')
+    #     if ls_init==1:
+    #         pass
+    #     else:
+    #         print('Setup the lakeshore manually for monitoring and try again')
+    #         sys.exit()
         
     def getCCtemps(self):
         ''' return list of cryocon thermometer temperatures '''
@@ -236,10 +240,14 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         ''' return list of lakeshore thermometer temperatures '''
         temps=[0]*self.N_ls370_channels
         for ii in range(self.N_ls370_channels):
-            self.ls370.setScan(self.ls370_channels[ii],'off')
-            time.sleep(self.waitBeforeLSsample)
+            # self.ls370.setScan(self.ls370_channels[ii],'off')
+            # time.sleep(self.waitBeforeLSsample)
             temps[ii] = self.ls370.getTemperature(channel=self.ls370_channels[ii])
-        self.ls370.setScan(self.ls370_channels[ii],'off')
+        # self.ls370.setScan(self.ls370_channels[ii],'off')
+        if self.do_calibration:
+            temp_cal = temps[self.ls370_channels.index(self.calibrated_sensor)]
+            resistance = self.ls370.getResistance(channel=self.sensor_to_calibrate)
+            self.cal_logger.log(f"{time.asctime()}, {time.time():.1f}, {temp_cal}, {resistance}")
         return temps
 
     def getAllTemps(self):
@@ -268,7 +276,34 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         self.pollTemp()
         self.updateTempPlot()
         #self.settings.sync()
-        
+
+    def start_demag(self, demag_time_min):
+        demag_timer = QTimer(self)
+        demag_timer.timeout.connect(self.demagTimerHandler)
+        demag_timer.start(DEMAG_TICK_MS)
+        self.demag_timer = demag_timer
+        heater_now = self.ls370.GetManualHeaterOut()  
+        print("Starting Demag! DID YOU OPEN THE HEAT SWITCH.")
+        self.heater_dt = heater_now / (demag_time_min * 60000/DEMAG_TICK_MS)
+
+    def demagTimerHandler(self):
+        heater = self.ls370.GetManualHeaterOut()
+        heater -= self.heater_dt
+        heater = max(heater, 0)
+        if heater == 0:
+            print("demag done")
+            self.demag_timer.stop()
+        print(f"setting magnet to {heater:.2f}%")
+        self.ls370.SetManualHeaterOut(heater)
+    
+    def add_calibration(self, args):
+        self.do_calibration=True
+        self.calibrated_sensor = args[0]
+        self.sensor_to_calibrate = args[1]
+        self.cal_logger = MyLogger(file_pattern="ThermometerCalibration_%Y%m%d_t%H%M%S.txt")
+        sensorname_1 = self.channel_dict[self.calibrated_sensor]
+        sensorname_2 = self.channel_dict[self.sensor_to_calibrate]
+        self.cal_logger.writeHeader(f"#date, epoch, {sensorname_1} [K], {sensorname_2} [Ohms]")
 
 def main():
     import argparse
@@ -277,14 +312,34 @@ def main():
                     prog='ADR Temperature Monitor',
                     description='Monitors temperatures in Velma cryostat mostly for cooldown and warm up')
     parser.add_argument("--include_coldload",type=bool,help="boolean to include monitoring cold load channels with the cryocon 22.",default=False)
+    parser.add_argument('-9','--sensor-nine',help="read out 'sensor #9' on the lakeshore (the calibrated cernox)",action="store_true")
+    parser.add_argument('-D','--demag',help="demagnetize the ADR over the course of n minutes while reading temperatures.",type=int)
+    parser.add_argument(
+        '-c',
+        '--calibration-mode',
+        help="write an extra file containing temperatures from the 1st sensor and resistances from the 2nd sensor",
+        nargs=2,
+        type=int,
+        metavar=('calibrated','to_calibrate')
+    )
     args=parser.parse_args()
     
 
     app = PyQt5.QtWidgets.QApplication(sys.argv)
     if args.include_coldload:
         mainWin = adrTempMonitorGui()
+    elif args.sensor_nine:
+        
+        mainWin = adrTempMonitorGui(
+            cc_channels=None,
+            ls370_channels={1:'faa',2:'fp',3:'s1',4:'s2',5:'ggg',9:"s2_calib"}
+        )
     else:
         mainWin = adrTempMonitorGui(cc_channels=None)
+    if args.demag:
+        mainWin.start_demag(args.demag)
+    if args.calibration_mode:
+        mainWin.add_calibration(args.calibration_mode)
     mainWin.show()
     sys.exit(app.exec_())
 
