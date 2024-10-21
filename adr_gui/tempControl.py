@@ -44,6 +44,7 @@ class TempControl():
         print(("and excitation = {}".format(self.controlThermExcitation)))
         heaterOut = self.getHeaterOut()
         if heaterOut == 0:
+            self.a.temperature_controller.setControlPolarity(polarity = 'unipolar')
             self.a.magnet_control_relay.setRelayToControl()
             self.a.temperature_controller.setScan(channel = self.controlChannel, autoscan = 'off')
             time.sleep(5)
@@ -54,7 +55,6 @@ class TempControl():
             # temp setpoint should respond instantly when heater range is zero
             self.a.temperature_controller.setTemperatureControlSetup(channel = self.controlChannel, units='Kelvin', maxrange=100, delay_s=2, output='current', filterread='unfiltered')
             self.a.temperature_controller.setControlMode(controlmode = 'closed')
-            self.a.temperature_controller.setControlPolarity(polarity = 'unipolar')
             self.a.temperature_controller.setTemperatureSetPoint(setpoint=0.035)
             self.a.temperature_controller.setRamp(rampmode = 'on' , ramprate = self.rampRate)
             self.a.temperature_controller.setHeaterRange(range=100)
@@ -90,6 +90,7 @@ class TempControl():
                 resistancerange=new_r
             )
             print(("safeAutorange changing from %s to %s"%(nowstring, newstring)))
+            print(f"Autorange reporting resistance={resistance}")
             return True
         # print("resistance {}, newstring {}, nowstring {}".format(resistance, newstring, nowstring))
         else:
