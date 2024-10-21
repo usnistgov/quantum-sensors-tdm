@@ -524,7 +524,7 @@ class Lakeshore370(serial_instrument.SerialInstrument):
             curveindex: the curve index location in the lakeshore 370 (1 thru 20)
             thermname: sensor type
             serialnumber: thermometer serial number
-            interp: if True the data will be evenly spaced from the max to min with 200 pts
+            interp: NYI! if True the data will be evenly spaced from the max to min with 200 pts
                     if False the raw data is used.  User must ensure no doubles and < 200 pts
             temp_lim: temperature limit (K)
             tempco: 1 if dR/dT is negative, 2 if dR/dT is positive
