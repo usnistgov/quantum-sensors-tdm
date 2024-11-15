@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 ''' 
 adrTempMonitorGui.py 
 
@@ -28,6 +29,9 @@ from instruments import Lakeshore370, Cryocon22
 from lxml import etree
 
 DEMAG_TICK_MS = 2000
+SENSOR_NAMES = {1:'faa',2:'fp',3:'s1',4:'s2',5:'ggg',9:"s2_calib"}
+DEFAULT_SENSORS = [1,2,3,4,5]
+
 
 class MyLogger():
     def __init__(self,file_pattern="adrFullLog_%Y%m%d_t%H%M%S.txt"):
@@ -177,8 +181,8 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
         self.num_therms = self.N_ls370_channels + self.N_cc_channels
         
         # define some globals, initialize
-        self.waitBeforeLSsample = 10 # seconds to wait before grabing temperature reading (the LS is slow)
-        self.loopPeriod = self.waitBeforeLSsample*self.N_ls370_channels+10 
+        self.waitBeforeLSsample = 11 # seconds to wait before grabing temperature reading (the LS is slow)
+        self.loopPeriod = self.waitBeforeLSsample*self.N_ls370_channels + 2
         self.temp = np.zeros(self.num_therms) 
 
         # error handling on allowed channels
@@ -192,6 +196,12 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
 
         # classes
         self.ls370 = Lakeshore370()
+        self.ls370.setControlMode('off') # just in case.
+        for sensor in SENSOR_NAMES.keys():
+            if sensor in self.ls370_channels:
+                self.ls370.turnChannelOn(sensor)
+            else:
+                self.ls370.turnChannelOff(sensor)
         self.ls370.setScan(self.ls370_channels[0],'on') # instead of micromanaging the lakeshore, let it do its thing
         if cc_channels != None:
             self.cc = Cryocon22()
@@ -268,6 +278,20 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
     def pollTemp(self):
         self.temp = self.getAllTemps()
         t1 = time.asctime(); t2 = time.time()
+        # FP sensor is very reliable*. If we get above 10 K let's disable GGG
+        # GGG seems reliable below 10 K but above 10 K it's flaky and can put
+        # lakeshore into an infinite loop trying to set proper ranges for it
+        #
+        # * It's not very *accurate* above 30 K but at least it's reliable.
+        try:
+            fp_temp = self.temp[self.ls370_channels.index(2)]
+            if 5 in self.ls370_channels:
+                if fp_temp > 10:
+                    self.ls370.turnChannelOff(5)
+        #         else:
+        #             self.ls370.turnChannelOn(5) # It's not reliable to turn it on automatically.
+        except IndexError:
+            pass
         if self.printToScreen:
             print("%f"%(t2 - self.startTime), ", %f"*self.num_therms%tuple(self.temp))
         self.logger.log("%s, %f"%(t1,t2)+", %f"*self.num_therms%tuple(self.temp))
@@ -322,26 +346,40 @@ def main():
         type=int,
         metavar=('calibrated','to_calibrate')
     )
+    parser.add_argument(
+        '-O',
+        '--calibration-only',
+        help="Requires -c, ignores all sensors other than the 2 you're calibrating.",
+        action='store_true'
+    )
     args=parser.parse_args()
-    
+    sensors = DEFAULT_SENSORS
+    if args.sensor_nine:
+        sensors += [9]
+
+    if args.calibration_only:
+        sensors = args.calibration_mode
 
     app = PyQt5.QtWidgets.QApplication(sys.argv)
     if args.include_coldload:
-        mainWin = adrTempMonitorGui()
-    elif args.sensor_nine:
-        
+        mainWin = adrTempMonitorGui() # excludes use of sensor 9
+    else:
         mainWin = adrTempMonitorGui(
             cc_channels=None,
-            ls370_channels={1:'faa',2:'fp',3:'s1',4:'s2',5:'ggg',9:"s2_calib"}
+            ls370_channels=dictionary_subset(SENSOR_NAMES, sensors)
         )
-    else:
-        mainWin = adrTempMonitorGui(cc_channels=None)
+
     if args.demag:
         mainWin.start_demag(args.demag)
+
     if args.calibration_mode:
         mainWin.add_calibration(args.calibration_mode)
     mainWin.show()
     sys.exit(app.exec_())
+
+def dictionary_subset(dict, keys_list):
+    return {k: dict[k] for k in dict.keys() & set(keys_list)}
+    # here & is the set intersection operator
 
 if __name__ == '__main__':
     main()
