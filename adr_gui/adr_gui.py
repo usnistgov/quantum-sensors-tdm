@@ -614,6 +614,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 self.lastHOut, 
                 i_target=self.demag_min,
                 i_min = self.demag_min,
+                i_max = numpy.abs(self.demag_min), # i_max determines slope
                 duration_s = self.magDownHoldMinsEdit.value*60/2,
                 step_time_s = self.tickDuration_s
                 )
