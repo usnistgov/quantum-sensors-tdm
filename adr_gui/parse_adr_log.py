@@ -21,12 +21,23 @@ class AdrLogParser():
         self.datetime_start_str = self.df.iloc[0,0]
         self.datetime_end_str = self.df.iloc[-1,0]
 
+    def get_recent(self, n):
+        list_of_files = glob.glob(self.path+'*') # * means all if need specific format then *.csv
+        list_of_files = [f for f in list_of_files if not os.path.isdir(f)]
+        logfile = sorted(list_of_files, key=os.path.getmtime)[n] # mtime is more well-defined than ctime
+        logfile = logfile.split('/')[-1]
+        return logfile
+
     def __handle_logfile__(self,logfile):
         ''' find most recent logfile if not explicitly given '''
         if logfile is None: # use the most recent file if logfile is None
-            list_of_files = glob.glob(self.path+'*') # * means all if need specific format then *.csv
-            logfile = max(list_of_files, key=os.path.getctime)
-            logfile = logfile.split('/')[-1]
+            logfile = self.get_recent(-1)
+        else:
+            try:
+                n = int(logfile)
+                logfile = self.get_recent(n)
+            except ValueError:
+                pass # logfile is not an int. It's probably a filename.
         return logfile
         
     def __get_data_frame__(self):
@@ -106,15 +117,18 @@ if __name__ == "__main__":
     import argparse
     def make_parser():
         parser = argparse.ArgumentParser(description='Plot ADR temperature log file')
-        parser.add_argument('--filename', type=str, default=None,
+        parser.add_argument('file', type=str, default=None, nargs="?",
                         help='logfile name, not full path.')
+        parser.add_argument("-f", "--filename", type=str, default=None, help="Same as file, for compatibility")
         parser.add_argument('--logplot', type=bool, default=False,
                         help='plot on logscale.  Boolean')
         args = parser.parse_args()
         return args
-
     args=make_parser()
-    al = AdrLogParser(args.filename)
+    filename = args.file or args.filename # if they are both None, filename will be None, otherwise 
+    # filename will be the first of the two args members that has a value.
+
+    al = AdrLogParser(filename)
     al.print_metadata()
     al.plot(semilog=args.logplot)
     plt.show()
