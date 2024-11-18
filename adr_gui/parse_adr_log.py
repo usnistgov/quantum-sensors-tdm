@@ -118,10 +118,10 @@ if __name__ == "__main__":
     def make_parser():
         parser = argparse.ArgumentParser(description='Plot ADR temperature log file')
         parser.add_argument('file', type=str, default=None, nargs="?",
-                        help='logfile name, not full path.')
-        parser.add_argument("-f", "--filename", type=str, default=None, help="Same as file, for compatibility")
-        parser.add_argument('--logplot', type=bool, default=False,
-                        help='plot on logscale.  Boolean')
+                        help='logfile name, not full path. Or, you can give the index of log files sorted by time. Default: -1. example: `parse_adr_log.py -2` to plot the second newest file.')
+        parser.add_argument("-f", "--filename", type=str, default=None, help="Same as positional argument `file`, for compatibility")
+        parser.add_argument("-L",'--logplot', action="store_true",
+                        help='plot on logscale. Do not put true or false after this, if this option is present it will be a logplot, otherwise it will not.')
         args = parser.parse_args()
         return args
     args=make_parser()
