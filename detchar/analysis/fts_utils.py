@@ -1215,7 +1215,7 @@ class Passband(PassbandMetrics):
         attrs = vars(self)
         for key in attrs:
             if key in ['fc_measured_ghz','fc_model_ghz','bw_measured_ghz','bw_model_ghz']:
-                print(key, ':: %.1f GHz'%attrs[key])
+                print(key, ':: ',attrs[key],' GHz')
 
     def peak_normalize(self,a):
         return a/np.max(a)
