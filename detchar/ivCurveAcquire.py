@@ -123,12 +123,16 @@ def main():
 
     #############
     #if type(bayname) is list:
-    pt_taker = iv.IVPointTakerMulti(
-            db_cardname=cfg['voltage_bias']['db_cardname'],
-            bayname=bayname,
-            voltage_source=voltage_source,
-            column_number=[1,2]
-        )
+    # pt_taker = iv.IVPointTakerMulti(
+    #         db_cardname=cfg['voltage_bias']['db_cardname'],
+    #         bayname=bayname,
+    #         voltage_source=voltage_source,
+    #         column_number=[1,2]
+        # )
+
+    pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
+          bayname=bayname, 
+          voltage_source = voltage_source)
     # else:
     #     pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
     #       bayname=bayname, 
