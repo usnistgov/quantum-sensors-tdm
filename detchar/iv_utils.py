@@ -211,9 +211,10 @@ class IVCurveTaker():
         time.sleep(0.05) # inserted because immediately commanding the lower dac value didn't take.
                          # was stuck at shock_normal_dac_value and this affected the first few points
         self.pt.set_volt(dac_values[0]) # go to the first dac value and relock all
+        print(f"shocked detectors normal with dacvalue {self.shock_normal_dac_value}")
         self.pt.relock_all_locked_rows()
-        print(f"shock detectors normal with dacvalue {self.shock_normal_dac_value}")
-        time.sleep(3) # wait after shock to settle
+        time.sleep(5) # wait after shock to settle
+        
         fb_values = []
         bar = progress.bar.Bar("getting IV points",max=len(dac_values))
         for dac_value in dac_values:
