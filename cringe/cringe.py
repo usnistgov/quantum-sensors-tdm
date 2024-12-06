@@ -1239,6 +1239,9 @@ class Cringe(QtWidgets.QWidget):
 
                 self.crate_widgets[idx].send_global("NSAMP", self.NSAMP)
             # 		self.system_resync()
+            # If we're not going to resync let's at least write the changes to the 
+            # cringe json file
+        self.writeGlobalsToDotCringeDirectory()
         self.NSAMP_delay_timer.stop()
         self.NSAMP_delay_timer = None
 
@@ -1269,6 +1272,9 @@ class Cringe(QtWidgets.QWidget):
                 self.crate_widgets[idx].send_global("SETT", self.SETT)
 
             # 		self.system_resync()
+            # If we're not going to resync let's at least write the changes to the 
+            # cringe json file
+        self.writeGlobalsToDotCringeDirectory()
         self.SETT_delay_timer.stop()
         self.SETT_delay_timer = None
 
