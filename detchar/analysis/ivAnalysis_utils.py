@@ -20,9 +20,11 @@ from detchar import IVColdloadSweepData, IVTempSweepData
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import k,h,c
-from scipy.integrate import quad, simps
+from scipy.integrate import quad, simpson
 from scipy.optimize import leastsq
 import matplotlib.colors as Colors
+
+
 
 def smooth(y, box_pts=5):
     box = np.ones(box_pts)/box_pts
@@ -38,7 +40,7 @@ def Pnu_thermal(nu,T):
     return B
 
 def thermalPower(nu1,nu2,T,F=None):
-    ''' Calculate the single mode thermal power (in pW) emitted from a blackbody
+    r''' Calculate the single mode thermal power (in pW) emitted from a blackbody
         at temperature T (in Kelvin) from frequency nu1 to nu2 (in Hz).
         F = F(\nu) is an arbitrary absolute passband defined between nu1 and nu2 with linear
         sampling between nu1 and nu2.  The default is F=None, in which case a
@@ -51,7 +53,7 @@ def thermalPower(nu1,nu2,T,F=None):
         N = len(F)
         nu = np.linspace(nu1,nu2,N)
         integrand = self.Pnu_thermal(nu,T)*F
-        P = simps(integrand,nu)
+        P = simpson(integrand,nu)
     return P
 
 def get_xy_for_row_from_temp_sweep(iv_tempsweep_data,row):
@@ -111,7 +113,7 @@ class IVCommon():
             fig1 = plt.figure(1) # plot of delta i
             plt.plot(dfb,'o-')
             plt.xlabel('Index')
-            plt.ylabel('$\Delta$ fb')
+            plt.ylabel(r'$\Delta$ fb')
             if dex != None: plt.plot(dex,val,'ro')
 
             fig2 = plt.figure(2)
@@ -265,7 +267,7 @@ class IVCommon():
         if use_ave_offset: 
             print('Using average offset from all IV curves for DC offset removal.')
             if np.std(b)/np.mean(b) > 0.01:
-                print('Warning DC offset of curves differs by > 1\%')
+                print(r'Warning DC offset of curves differs by > 1\%')
                 print('Offset fit: ',np.mean(b),'+/-',np.std(b))
             b = np.mean(b)
 
@@ -660,7 +662,7 @@ class IVCurveAnalyzeSingle():
             
         ax[1].plot(self.v_tes,self.r_tes*1e3,color=colors[0])
         ax[1].axvspan(xmin=self.v_tes[self.sc_idx],xmax=self.v_tes[self.turn_idx],alpha=0.1)
-        ax[1].set_ylabel('R (m$\Omega$)')
+        ax[1].set_ylabel(r'R (m$\Omega$)')
             
         ax[2].plot(self.v_tes[self.sc_idx:-1],self.si[self.sc_idx:],color=colors[0])
         ax[2].plot(self.v_tes[self.sc_idx:-1],self.si_etf[self.sc_idx:],linestyle='--',color=colors[1])
@@ -735,14 +737,14 @@ class IVCurveColumnDataExplore(IVCommon):
                           'y':'Current (A)'}
             labels['vp']={'x':'Vbias (V)',
                           'y':'Power (W)'}
-            labels['rp']={'x':'Resistance ($\Omega$)',
+            labels['rp']={'x':r'Resistance ($\Omega$)',
                           'y':'Power (W)'}
             labels['vr']={'x':'Vbias (V)',
-                          'y':'Resistance ($\Omega$)'}
+                          'y':r'Resistance ($\Omega$)'}
             labels['dy']={'x':'Vbias (V)',
-                          'y':'$\Delta{I}$ (A)'}
+                          'y':r'$\Delta{I}$ (A)'}
             labels['responsivity']={'x':'Vbias (V)',
-                          'y':'$\delta{I}$/$\delta{P}$ (V$^{-1})'}
+                          'y':r'$\delta{I}$/$\delta{P}$ (V$^{-1})'}
 
         else:
             labels['iv']={'x':'Vbias (DAC)',
@@ -754,9 +756,9 @@ class IVCurveColumnDataExplore(IVCommon):
             labels['vr']={'x':'Vbias (DAC)',
                           'y':'Resistance (DAC)'}
             labels['dy']={'x':'Vbias (DAC)',
-                          'y':'$\Delta{I}$ (DAC)'}
+                          'y':r'$\Delta{I}$ (DAC)'}
             labels['responsivity']={'x':'Vbias (DAC)',
-                          'y':'$\delta{I}/\delta{P}$ (DAC)'}
+                          'y':r'$\delta{I}/\delta{P}$ (DAC)'}
         return labels
 
     def clean_data(self,threshold=1):
@@ -1437,7 +1439,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
         if showplot:
             fig,ax=plt.subplots(2,1)
-            ax[0].set_ylabel('$\Delta{P}$ [W]')
+            ax[0].set_ylabel(r'$\Delta{P}$ [W]')
             ax[1].set_ylabel('residuals')
             ax[1].set_xlabel('T$_{cl}$ - %.1f K'%self.cl_temps_k[self.T_cl_index])
 
@@ -1492,7 +1494,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # xlabels = ['V ($\mu$V)','V ($\mu$V)','P (pW)','V ($\mu$V)']
         # ylabels = ['I ($\mu$A)', 'P (pW)', 'R (m$\Omega$)', 'R (m$\Omega$)']
         xlabels = ['V (V)','V (V)','P (W)','V (V)']
-        ylabels = ['I (A)', 'P (W)', 'R ($\Omega$)', 'R ($\Omega$)']
+        ylabels = ['I (A)', 'P (W)', r'R ($\Omega$)', r'R ($\Omega$)']
 
         for ii in range(4):
             ax[ii].set_xlabel(xlabels[ii])
@@ -1552,7 +1554,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         fig = plt.figure()
         legend_vals = []
         if include_prediction and self.analyze_eta:
-            plt.plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label='$\Delta{P}_{pred}$')
+            plt.plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label=r'$\Delta{P}_{pred}$')
         jj=0
         for ii in range(len(self.rn_fracs)):
             if not np.isnan(self.Dp_at_rnfrac[ii,:]).any():
@@ -1594,7 +1596,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
         # ax[0]: fixed reference point method; ax[1]: differential method
         if include_prediction and self.analyze_eta:
-            ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label='$\Delta{P}_{pred}$')
+            ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-',label=r'$\Delta{P}_{pred}$')
             ax[1].plot(x,self.predicted_dp_w,'k-',label='$dP_{pred}$')
 
         jj=0
