@@ -10,3 +10,5 @@ detchar/iv.config
 detchar/test_polcal_data*
 detchar/analysis/Kate_Analysis
 detchar/analysis/kate_analysis.py
+*.png
+*.DS_Store
