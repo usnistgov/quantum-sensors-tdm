@@ -104,7 +104,7 @@ class IVCurveColumnData(DataIO):
     fb_values: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
     bayname: str
     db_cardname: str
-    column_number: int
+    column_number: int | List[int]
     extra_info: dict
     pre_shock_dac_value: float
     
@@ -395,7 +395,7 @@ class PolCalSteppedSweepData(DataIO):
     row_order: List[int]
     #bayname: str
     #db_cardname: str
-    column_number: int
+    column_number: int | List[int]
     source_amp_volt: float
     source_offset_volt: float
     source_frequency_hz: float
