@@ -1141,6 +1141,31 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
 
         return fig
 
+    @classmethod
+    def from_iv_temp_sweep_data(cls, temp_sweep_data, row, **kwargs):
+        """Kwargs can be:
+            * normal_resistance_fractions (default [0.8,0.9])
+            * figtitle (Default None) 
+            * use_IVCurveAnalyzeSingle (Default True)
+        """
+        tsd=temp_sweep_data
+        temp_list_k = tsd.set_temps_k
+        fb_values_arr = []
+        dac_values = tsd.data[0].dac_values
+        for ivcd in tsd.data:
+            fb_values_arr.append(ivcd.fb_values[row])
+        iv_circuit = detchar.iv_data.make_iv_circuit(tsd.data[0].extra_info)
+
+
+        cls(
+            dac_values, 
+            fb_values_arr, 
+            temp_list_k, 
+            iv_circuit=iv_circuit,
+            **kwargs
+        )
+
+
 class IVColdloadAnalyzeOneRow(IVCommon):
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
