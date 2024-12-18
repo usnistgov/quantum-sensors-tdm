@@ -419,7 +419,7 @@ class IVCommon():
             toCut = np.where(rn_fracs<ro_min)[0]
             N = len(toCut)
             if N >0:
-                YY[0:N] = np.zeros(N)*np.NaN
+                YY[0:N] = np.zeros(N)*np.nan
             result[:,ii] = YY
         return result
 
