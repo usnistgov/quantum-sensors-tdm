@@ -1037,7 +1037,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             plt.ylim((0,1.25*np.max(pPlot[~np.isnan(pPlot)])))
         except:
             pass
-        plt.xlabel('Normalized Resistance')
+        plt.xlabel('$R_n$ Fraction')
         plt.ylabel('Power')
         #plt.title(plottitle)
         plt.legend(tuple(self.temp_list_k))
@@ -1146,6 +1146,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
     @classmethod
     def from_iv_temp_sweep_data(cls, temp_sweep_data, row, **kwargs):
         """Kwargs can be:
+            * temp_cut: data points with T>temp_cut will be discarded
             * normal_resistance_fractions (default [0.8,0.9])
             * figtitle (Default None) 
             * use_IVCurveAnalyzeSingle (Default True)
@@ -1155,13 +1156,22 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         fb_values_arr = []
         dac_values = tsd.data[0].dac_values
         for ivcd in tsd.data:
-            fb_values_arr.append(ivcd.fb_values[row])
+            raw_fb_arr = np.array(ivcd.fb_values)
+            fb_values_arr.append(raw_fb_arr[:,row])
+        fb_values_arr = np.array(fb_values_arr)
         iv_circuit = detchar.iv_data.make_iv_circuit(tsd.data[0].extra_info)
-
-
-        cls(
+        try:
+            temp_cut = kwargs["temp_cut"]
+            tempr_arr = np.array(temp_list_k)
+            flag_arr = tempr_arr <= temp_cut
+            temp_list_k = list(tempr_arr[flag_arr])
+            fb_values_arr = fb_values_arr[flag_arr]
+            kwargs.pop("temp_cut")
+        except KeyError:
+            pass
+        return cls(
             dac_values, 
-            fb_values_arr, 
+            fb_values_arr.T, 
             temp_list_k, 
             iv_circuit=iv_circuit,
             **kwargs
