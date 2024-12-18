@@ -948,10 +948,11 @@ class FtsMeasurementSet():
             
 
     '''
-    def __init__(self, path):
+    def __init__(self, path, allow_missing=False):
         self.path = path
         if path[-1] != '/':
             self.path = path+'/'
+        self.allow_missing = allow_missing
         self.filename_list = self._get_filenames(path)
         self.all_scans = self._get_all_scans()
         self.prefix_set = self._get_prefix_set() # normally the row select
@@ -1052,7 +1053,14 @@ class FtsMeasurementSet():
         for file_number in file_number_list:
             fname = prefix+'_'+self.filename_list[0].split('_')[1]+'_%04d'%file_number+'_ifg.csv'
             file_names.append(fname)
-            scan_list.append(self.all_scans[self.filename_list.index(fname)])
+            try:
+                scan_list.append(self.all_scans[self.filename_list.index(fname)])
+            except ValueError:
+                if self.allow_missing:
+                    del file_names[-1]
+                    scan_list[0].num_scans -= 1
+                else:
+                    raise
         return file_names, scan_list
 
     def print_measurement_metadata(self):
