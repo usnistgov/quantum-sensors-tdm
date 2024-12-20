@@ -927,7 +927,7 @@ class CzData(DataIO):
 class NoiseData(DataIO):
     freq_hz: List[Any]
     Pxx: List[Any] = dataclasses.field(repr=False) # averaged PSD with indices [row,sample #]
-    column: str # 'A','B','C', or 'D' for velma system
+    column: str | List[str]# 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     num_averages: int
     pre_temp_k: float
@@ -964,11 +964,11 @@ class NoiseData(DataIO):
 @dataclass
 class NoiseSweepData(DataIO):
     data: List[List[NoiseData]]
-    column: str # 'A','B','C', or 'D' for velma system
+    column: str | List[str] # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     temp_list_k: List[float]
     db_list: List[List[int]]
-    signal_column_index: int
+    signal_column_index: int | List[int]
     db_cardname: str
     db_tower_channel_str: str
     temp_settle_delay_s: float
