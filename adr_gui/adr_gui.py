@@ -266,7 +266,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl.rampRate = r
         self.do_power_on = True
         self.demag_min = 0
-        self.advanced_reject() # sets values of pid dialog to read values
+        self.advanced_reject() # sets values of pid dialog to values we just got from the controller
 
         # these are to turn on and off the crate and tower during and after mags
         self.power_supplies = tower_power_supplies.TowerPowerSupplies()
@@ -677,6 +677,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         t = time.localtime()
         h = numpy.floor(startTime24Hour)
         m = numpy.floor((startTime24Hour-h)*60)
+        if currentHeaterPercent > thresholdHeaterPercent:
+            return False
         if t.tm_hour == h and m<=t.tm_min<=m+2 and self.enableTimeBasedMagCheckbox.isChecked():
             if self.lastTemp_K > 4:
                 print(("not magging up because temp is %f, not below 4 K"%self.lastTemp_K))
@@ -690,7 +692,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
             self.printStatus("temp set point should = 0, waiting for heater out = 0.0 before switching to mag up")
             if self.tempControl.getSetTemp() > 0.001: self.tempControl.setSetTemp(0.001)
         elif self.lastHOut == 0.0:
-            LIMIT = 5.0 # this is arbitrary. Just a safeguard so you're not trying to magnetize at like 6 or 8 K
+            LIMIT = 5.0 # this is arbitrary. Just a safeguard so you're not trying to magnetize when the 2nd stage is at like 6 or 8 K
             if self.lastTemp_K>LIMIT:
                 print(f"in GoingToMagUp state, but temp = {self.lastTemp_K} is too high, needs to be below {LIMIT}")
                 self.ensureHeatSwitchIsClosed()
