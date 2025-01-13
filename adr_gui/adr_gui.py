@@ -677,6 +677,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         t = time.localtime()
         h = numpy.floor(startTime24Hour)
         m = numpy.floor((startTime24Hour-h)*60)
+        if currentHeaterPercent > thresholdHeaterPercent:
+            return False
         if t.tm_hour == h and m<=t.tm_min<=m+2 and self.enableTimeBasedMagCheckbox.isChecked():
             if self.lastTemp_K > 4:
                 print(("not magging up because temp is %f, not below 4 K"%self.lastTemp_K))
