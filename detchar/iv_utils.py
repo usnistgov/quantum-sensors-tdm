@@ -49,7 +49,7 @@ class IVPointTaker(Acquire):
             relock_threshold_lo_hi,
             easy_client,
             cringe_control,
-            column_number,
+            column_number, # gets put into self.col. Used for converting Dastard channels to Cringe column indices
             **kwargs
             )
         self.relock_lo_threshold = relock_threshold_lo_hi[0]
@@ -111,6 +111,7 @@ class IVPointTakerMulti(IVPointTaker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._relock_offset = np.zeros(self.ec.nrow * self.ec.ncol)
+        self.times_relocked = {}
 
     def get_iv_pt(self, dacvalue):
         self.set_volt(dacvalue)
@@ -120,12 +121,26 @@ class IVPointTakerMulti(IVPointTaker):
         processed_data = np.zeros(numChans)
         relocked_chans = []
         for i in range(numChans):
+            try:
+                relocks = self.times_relocked[i]
+            except KeyError:
+                relocks = 0
             chan_ts = data[f"chan{i}"] >> 2  # Following easyClient getNewData, throw out two lsb
             chan_avg = np.mean(chan_ts)
             processed_data[i] = chan_avg
             if not self.relock_lo_threshold < chan_avg < self.relock_hi_threshold:
-                relocked_chans.append(i)
-                self.cc.relock_fba(i // self.ec.numRows, i % self.ec.numRows)
+                if relocks < 5: # Give up on a channel if it relocks a bunch of times really quickly
+                    relocked_chans.append(i)
+                    cringe_col_for_relock = self.dfb_chans[i // self.ec.numRows]
+                    cringe_row_for_relock = i % self.ec.numRows
+                    self.cc.relock_fba(cringe_col_for_relock, cringe_row_for_relock)
+                    relocks += 1
+            else:
+                relocks = max(0, relocks-0.2)
+                    
+                # print(f"Relocked channel {i} (col={cringe_col_for_relock} row={cringe_row_for_relock})")
+            self.times_relocked[i] = relocks
+                # self.col is the indices for input channels as listed by cringecontrol
         
         if len(relocked_chans) > 0:
             time.sleep(self.acq_delay)
@@ -139,7 +154,7 @@ class IVPointTakerMulti(IVPointTaker):
         return processed_data - self._relock_offset
 
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = None):
-        for c in self.col:
+        for c in self.dfb_chans:
             if ARLoff:
                 print("setting ARL (autorelock) off")
                 self.cc.set_arl_off(c)
@@ -152,7 +167,7 @@ class IVPointTakerMulti(IVPointTaker):
 
     def relock_all_locked_rows(self):
         print("relock all locked rows")
-        for c in self.col:
+        for c in self.dfb_chans:
             self.cc.relock_all_locked_fba(c)
 
 class IVCurveTaker():

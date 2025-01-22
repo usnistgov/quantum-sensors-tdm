@@ -1,5 +1,6 @@
 from cringe.cringe_control import CringeControl
 from adr_gui.adr_gui_control import AdrGuiControl
+from instruments.srs980 import SRS980
 from nasa_client import EasyClient
 from instruments import BlueBox
 import time
@@ -15,7 +16,8 @@ class Acquire():
         relock_bounds=(2000, 14000), # wip
         easy_client=None,
         cringe_control=None,
-        data_column=None, # wip
+        dfb_channels=None, 
+        dastard_columns=[0],
         adr_control=None
     ):
         """
@@ -31,9 +33,8 @@ class Acquire():
         :param db_bay: required if db_source=='tower',
             which bay(s) on the db_card to use for bias
             (string or list of strings)
-        :param data_column: Which column to extract from
-            the EasyClient. If this is None we'll flatten
-            the array and use channel numbers like Microscope
+        :param dfb_channels: List of channels to relock with cringecontrol.
+            In Velma the mapping is 0: DFBx2 CH1, 1: DFBx2 CH2, 2: DFBx1CLK CH1.
         """
         
         # neat trick: the or operator returns the first non-falseish argument
@@ -43,7 +44,8 @@ class Acquire():
         self.adr = adr_control or AdrGuiControl()
         self.acq_delay = delay_between_acqs
         self.relock_bounds = relock_bounds
-        self.col = data_column
+        self.dfb_chans = dfb_channels
+        self.col=dastard_columns
         if relock_bounds[1] - relock_bounds[0] < 2000:
             raise ValueError("Insufficient range for relock!")
 
@@ -53,22 +55,40 @@ class Acquire():
             self.is_tower = False
             self.bb = BlueBox(port='vbox', version='mrk2')
             # 0 to 6.5535V in 2**16 steps
+        elif db_source == 'srs':
+            self.is_tower = False
+            if type(db_bay) is list:
+                self.srs = [SRS980(i) for i in db_bay]
+            else:
+                self.srs = [SRS980(db_bay)]
+            for srs in self.srs:
+                srs.output_on()
         else:
             raise ValueError("voltage_source must be None, 'tower', or 'bluebox'.")
+        self.db_source = db_source
         self.db_bay = db_bay
         self.bayname = db_bay 
         self.db_cardname = db_card #required that these member variables always exist for backward compatibility 
         # with noise.py at least
 
+    def __del__(self):
+        if self.db_source == "srs":
+            for srs in self.srs:
+                srs.output_off()
+
     def set_volt(self, voltage):
         voltage = int(voltage)
         if self.is_tower:
             self._set_tower(voltage)
-        else:
+        elif self.db_source == 'bluebox':
             self._set_blue_box(voltage)
+        else:
+            self._set_srs(voltage)
 
-    def _set_blue_box(self, voltage):
-        self.bb.setVoltDACUnits(voltage)
+    def _set_blue_box(self, dac_value):
+        # We'll convert dac values here so that blue box acts the same as the tower
+        tower_v = dac_value * 2.5 / 2**16
+        self.bb.setvolt(tower_v)
 
     def _set_tower(self, voltage):
         if type(self.db_bay) is list:
@@ -77,6 +97,9 @@ class Acquire():
         else:
             self.cc.set_tower_channel(self.db_cardname, self.db_bay, voltage)
 
+    def _set_srs(self, dac_value):
+        for srs in self.srs:
+            srs.setvolt(dac_value * 2.5 / 2**16)
     # def get_data(self, npts):
     #     data = self.ec.getNewData(minimumNumPoints=npts)
     #     
@@ -126,7 +149,7 @@ def column_name_to_num(col):
     elif len(col) > 1:
         bayname = []
         for c in col:
-            bayname.append(handle_column(c))
+            bayname.append(column_name_to_num(c))
     return bayname
 
 if __name__ == "__main__":
