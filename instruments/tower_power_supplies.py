@@ -72,6 +72,7 @@ class TowerPowerSupplies(object):
 
         self.power_supply_1.setCurrentLimit("P25V", self.kdVa, self.kdVa_limit_amps)
         self.power_supply_1.setCurrentLimit("N25V", -1 * self.kdVa, self.kdVa_limit_amps)
+        # self.power_supply_1.setCurrentLimit("P6V", 5.2, 1.3) # This allows use for Crate power supply line 2D
 
         self.power_supply_2.setCurrentLimit("P6V", self.kdVd, self.kdVd_limit_amps)
         self.power_supply_2.setCurrentLimit("P25V", self.kdVr, self.kdVr_limit_amps)
@@ -153,4 +154,5 @@ class TowerPowerSupplies(object):
         s0 = "-Va current = %6.3f_amps" % ( dI_msrd )
         print(s0)
         s+="\n"+s0
+        # s += f"\nCrate 2D: {self.power_supply_1.measureVoltage('P6V')} V {self.power_supply_1.measureCurrent('P6V')} A"
         return s
