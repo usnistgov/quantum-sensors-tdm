@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import scipy.signal
+import os
+from pathlib import Path
 
 # from PyQt5.QtGui import *
 # from PyQt5.QtCore import *
@@ -180,15 +182,17 @@ class NoiseAcquire(acquire.Acquire):
             (rows,sample,measurement index)
         '''
         numPoints = self._handle_num_points(self.f_min_hz,force_power_of_two)
-        Pxx_all = np.zeros(((self.ec.numRows,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
+        Pxx_all = np.zeros(((self.ec.numRows*self.ec.numColumns,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
         pre_time = time.time()
         pre_temp_k = self.adr.get_temp_k()
 
         for ii in range(self.num_averages):
             print('Noise PSD, average number = %d'%ii)
             y_ii = self.ec.getNewData(delaySeconds = 0.001, minimumNumPoints = numPoints, exactNumPoints = True)
-            (freqs, Pxx_ii) = scipy.signal.periodogram(y_ii[0,:,:,1], fs=self.ec.sample_rate*1e6, window='boxcar',
+            
+            (freqs, Pxx_ii) = scipy.signal.periodogram(y_ii[:,:,:,1], fs=self.ec.sample_rate*1e6, window='boxcar',
                                                        nfft=None,detrend='constant',scaling='density',axis=-1)
+            Pxx_ii=Pxx_ii.reshape(Pxx_all.shape[0:2])
             Pxx_all[:,:,ii]=Pxx_ii
             
         self.measured=True
@@ -277,7 +281,7 @@ class NoiseSweep(NoiseAcquire):
                  db_cardname = 'DB',
                  db_tower_channel='0',
                  cringe_control=None,
-                 temp_settle_delay_s = 300):
+                 temp_settle_delay_s = 300, **kwargs):
 
         super().__init__(column_str, 
                          row_sequence_list, 
@@ -291,7 +295,7 @@ class NoiseSweep(NoiseAcquire):
                          db_source=voltage_source,
                          db_card=db_cardname,
                          db_bay=db_tower_channel,
-                         
+                         **kwargs
                          )
 
 
@@ -325,16 +329,18 @@ class NoiseSweep(NoiseAcquire):
             print('Detector bias list: ',self.db_list[ii])
             if self.db_list[ii][0] != 0: # if detector bias non-zero, autobias device onto transition
                 print('overbiasing detector, dropping bias down, then waiting 30s')
-                self.set_volt(65535)
+                self.set_volt(30000)
                 time.sleep(0.3)
                 self.set_volt(self.db_list[ii][0])
-                time.sleep(30)
+                
             det_bias_output = []
             for jj,db in enumerate(self.db_list[ii]): # loop over detector bias
                 print('Setting detector bias to %d, then relocking'%db)
                 self.set_volt(db)
-                self.cc.relock_all_locked_fba(self.signal_column_index)
-                time.sleep(1)
+                time.sleep(10)
+                self.wait_temp_stable(temp, tol=100e-6)
+                for c in self.dfb_chans:
+                    self.cc.relock_all_locked_fba(c)
                 print('Collecting Noise PSD')
                 result = self.take(extra_info={},force_power_of_two=force_power_of_two)
                 det_bias_output.append(result) # return data structure indexes as [temp_index,det_bias_index,result]
@@ -404,6 +410,10 @@ if __name__ == "__main__":
         with open(args.file, 'r') as yml:
             config = yaml.load(yml, Loader=yaml.FullLoader)
         column = acquire.column_name_to_num(config['detectors']['Column'])
+        savepath = os.path.join(config['io']['RootPath'], config['io']['SaveTo'])
+        Path(config['io']['RootPath']).mkdir(parents=True, exist_ok=True)
+        if os.path.exists(savepath):
+            raise IOError('please change file name')
         ns = NoiseSweep(
             column_str = config['detectors']['Column'],
             row_sequence_list = config['detectors']['Rows'],
@@ -412,15 +422,20 @@ if __name__ == "__main__":
             temperature_list_k = config['runconfig']['bathTemperatures'],
             detector_bias_list = config['voltage_bias']['v_dac_list'],
             db_tower_channel = column,
-            signal_column_index = int(column),
-            temp_settle_delay_s = config["runconfig"]["temp_settle_delay_s"]
+            signal_column_index = column,
+            temp_settle_delay_s = config["runconfig"]["temp_settle_delay_s"],
+            dfb_channels = config["dfb"]["channels"],
+            num_averages = config["runconfig"]['num_averages'],
+            f_min_hz = config['runconfig']['min_freq'],
+            voltage_source = config['voltage_bias']['source']
         )
-        nd=ns.run(tmp_file = config['io']['SaveTo']+'.tmp')
+        nd=ns.run(tmp_file = savepath+'.tmp')
         ns.set_temp(0.1)
-        for i in range(len(config['detectors']['Rows'])):
-            nd.plot_row(i)
-            plt.show()
-        nd.to_file(filename = config['io']['SaveTo'])
+        if config["runconfig"]["show_plot"]:
+            for i in range(len(config['detectors']['Rows'])):
+                nd.plot_row(i)
+                plt.show()
+        nd.to_file(filename = savepath)
 
     else:
         if args.row_sequence is None:
