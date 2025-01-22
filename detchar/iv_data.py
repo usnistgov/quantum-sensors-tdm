@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import dataclasses
 from dataclasses_json import dataclass_json
-from typing import Any, List
+from typing import Any, List, Union
 import numpy as np
 import pylab as plt
 import collections
@@ -104,7 +104,7 @@ class IVCurveColumnData(DataIO):
     fb_values: List[Any] = dataclasses.field(repr=False) #actually a list of np arrays
     bayname: str
     db_cardname: str
-    column_number: int | List[int]
+    column_number: Union[int, List[int]]
     extra_info: dict
     pre_shock_dac_value: float
     
@@ -395,7 +395,7 @@ class PolCalSteppedSweepData(DataIO):
     row_order: List[int]
     #bayname: str
     #db_cardname: str
-    column_number: int | List[int]
+    column_number: Union[int, List[int]]
     source_amp_volt: float
     source_offset_volt: float
     source_frequency_hz: float
@@ -927,7 +927,7 @@ class CzData(DataIO):
 class NoiseData(DataIO):
     freq_hz: List[Any]
     Pxx: List[Any] = dataclasses.field(repr=False) # averaged PSD with indices [row,sample #]
-    column: str | List[str]# 'A','B','C', or 'D' for velma system
+    column: Union[str, List[str]]# 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     num_averages: int
     pre_temp_k: float
@@ -964,11 +964,11 @@ class NoiseData(DataIO):
 @dataclass
 class NoiseSweepData(DataIO):
     data: List[List[NoiseData]]
-    column: str | List[str] # 'A','B','C', or 'D' for velma system
+    column: Union[str, List[str]] # 'A','B','C', or 'D' for velma system
     row_sequence: List[int] # state sequence that maps dfb line period order to mux row select
     temp_list_k: List[float]
     db_list: List[List[int]]
-    signal_column_index: int | List[int]
+    signal_column_index: Union[int, List[int]]
     db_cardname: str
     db_tower_channel_str: str
     temp_settle_delay_s: float

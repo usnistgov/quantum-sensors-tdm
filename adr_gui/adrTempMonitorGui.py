@@ -196,7 +196,7 @@ class adrTempMonitorGui(PyQt5.QtWidgets.QMainWindow):
 
         # classes
         self.ls370 = Lakeshore370()
-        self.setRamp(rampmode = 'off')
+        self.ls370.setRamp(rampmode = 'off')
         self.ls370.setControlMode('off') 
         for sensor in SENSOR_NAMES.keys():
             if sensor in self.ls370_channels:
