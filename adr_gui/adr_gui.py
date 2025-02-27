@@ -642,7 +642,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def controlTempStdDev(self):
         last_n_points = self.tempPlot.last_n_points(61)
-        stddev, duration = numpy.NAN, numpy.NAN
+        stddev, duration = numpy.nan, numpy.nan
         if last_n_points is not None:
             stddev = numpy.std(last_n_points[1])
             duration = last_n_points[0][-1]-last_n_points[0][0]
@@ -650,8 +650,8 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def controlHeaterSlope(self):
         last_n_points = self.currentPlot.last_n_points(61)
-        slope_hour = numpy.NAN
-        duration_s = numpy.NAN
+        slope_hour = numpy.nan
+        duration_s = numpy.nan
         if last_n_points is not None:
             # duration_s = last_n_points[0][-1]-last_n_points[0][0]
             # d_heater = last_n_points[1][-1]-last_n_points[1][0]
