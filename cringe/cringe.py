@@ -29,6 +29,7 @@ from cringe.calibration.caltab import CalTab
 from cringe.cringe_control import CRINGE_COMMANDS, build_zmq_addr
 from cringe.zmq_rep import ZmqRep
 
+
 class Cringe(QtWidgets.QWidget):
     '''CRate Interface for NextGen Electronics'''
     def __init__(self, parent=None, addr_vector=None, slot_vector=None, class_vector=None,
@@ -2571,6 +2572,10 @@ def main():
 
     win.show()
     if args.interactive:
+        def to_interactive():
+            print("Going to interactive mode. Press ctrl-c to return to ipython")
+            while True:
+                app.processEvents()
         IPython.embed()
     app.exec_()
 
