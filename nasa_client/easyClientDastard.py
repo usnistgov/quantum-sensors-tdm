@@ -187,7 +187,7 @@ class EasyClientDastard():
         if self.sourceName == "Lancero":
             for col in range(self.numColumns):
                 for row in range(self.numRows):
-                    dataOut[col,row, :, 0] = data[f"err{self.tdmChannelNumber(col, row)}"]
+                    dataOut[col,row, :, 0] = data[f"err{self.tdmChannelNumber(col, row)}"].astype(np.int16)
                     dataOut[col,row, :, 1] = data[f"chan{self.tdmChannelNumber(col, row)}"]
         else:
             for row in range(self.numChannels):
