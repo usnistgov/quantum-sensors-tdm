@@ -452,15 +452,12 @@ class IVCurveAnalyzeSingle():
     '''
     def __init__(self,x,y,rsh_ohm,rx_ohm=0,to_i_bias=1,to_i_tes=1,analyze_on_init=True):
         ''' 
-            self.x_raw: the raw x-data (voltage) provided to the class.  This is often in descending order.
-            self.y_raw: the raw y-data (current) provided to the class.  This is often in descending order.
-            self.x: the x-data in ascending order 
-            self.y: the y-data in ascending order and ensured IV curve is "right-side up" 
-            self.v_tes, i_tes, p_tes, r_tes: voltage across, current through, power dissipated, and resistance of tes
-            self.si: responsivity derived from IV curve
-            self.rn: TES normal resistance, defined as the mean of points in the r_tes vector with index greater than the normal resistance index.
-                     The normal resistance index is defined as halfway between the IV turn index (where slope is zero) and the maximum V bias 
-            self.rl: load resistance
+            x: the x-data in ascending order 
+            y: the y-data in ascending order and ensured IV curve is "right-side up" 
+            rsh_ohm: shunt resistance (Ohms)
+            rx_ohm: parasitic resistance in series with TES
+            to_i_bias: convert x to current bias sent to shunt network
+            to_i_tes: convert y to current through TES
     
         '''
         self.x_raw = np.array(x) # commanded voltage bias
@@ -639,7 +636,7 @@ class IVCurveAnalyzeSingle():
         ax.plot(self.x,self.y,color=colors[0])
         ax.plot(self.x[self.sc_idx],self.y[self.sc_idx],'r.')
         ax.plot(self.x[self.turn_idx],self.y[self.turn_idx],'r.')
-        ax.plot(self.x[self.n_idx],self.y[self.n_idx],'r.')
+        ax.plot(self.x[self.normal_idx],self.y[self.normal_idx],'r.')
         if self.p_norm is not None: ax.plot(self.x,np.polyval([self.p_norm[0],0],self.x),linestyle='--',color=colors[1])
         if self.p_sc is not None: ax.plot(self.x[:self.sc_idx],np.polyval([self.p_sc[0],0],self.x[:self.sc_idx]),linestyle='--',color=colors[1])
         ax.axvspan(xmin=self.x[0],xmax=self.x[self.sc_idx],alpha=0.1,color='r')
