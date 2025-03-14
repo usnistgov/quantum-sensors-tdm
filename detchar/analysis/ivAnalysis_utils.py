@@ -1920,7 +1920,7 @@ class IVColdloadSweepAnalyzer():
         #cl_temp_list = self._package_cl_temp_to_list()
         plt.plot(self.set_cl_temps_k,self.pre_cl_temps_k,'*')
         plt.plot(self.set_cl_temps_k,self.post_cl_temps_k,'*')
-        plt.plot(list(range(self.max_cl_temp_k+1)),'b--')
+        plt.plot(list(range(int(self.max_cl_temp_k+1))),'b--')
         plt.legend(('ChA pre','ChB pre','ChA post','ChB post'))
         plt.grid()
 
