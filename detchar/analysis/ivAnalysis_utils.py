@@ -1018,8 +1018,16 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
         self.ro_clean = self.r_clean / self.r_clean[0,:]
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_clean,self.ro_clean)
+        #print(np.array(dac_values).shape, self.ro_clean.shape)
         #print(self.p_at_rnfrac)
         self.pfits = self.fit_pvt_for_all_rn_frac()
+
+    def get_biases(self):
+        n=self.ro_clean.shape[1]
+        dac_values_reshaped = np.tile(np.array(self.dacs,dtype=float), (n,1)).T
+        # print(dac_values_reshaped.shape, self.ro_clean.shape)
+        dac_values_reshaped[np.isnan(self.ro_clean)]=np.nan # ugh
+        return(self.get_value_at_rn_frac(self.rn_fracs, dac_values_reshaped, self.ro_clean))
 
     def plot_pr(self):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
