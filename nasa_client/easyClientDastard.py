@@ -210,7 +210,15 @@ class EasyClientDastard():
         data = np.load(npz_filename)        
         return data
 
-    def getNewData(self, delaySeconds = 0.001, minimumNumPoints = 4000, exactNumPoints = False, sendMode = 0, toVolts=False, divideNsamp=True):
+    def getNewData(
+        self, 
+        delaySeconds = 0.001, 
+        minimumNumPoints = 4000, 
+        exactNumPoints = False, 
+        sendMode = 0, 
+        toVolts=False, 
+        divideNsamp=True
+    ):
         time.sleep(delaySeconds)
         data = self.getNewData2(minimumNumPoints)
         dataOut = self.newStyleDataToOldStyleData(data)
