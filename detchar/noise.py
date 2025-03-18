@@ -181,6 +181,7 @@ class NoiseAcquire(acquire.Acquire):
             in the data structure ret_arr as a numpy array with the data structure 
             (rows,sample,measurement index)
         '''
+        extra_info["db_source_is_tower"] = self.is_tower
         numPoints = self._handle_num_points(self.f_min_hz,force_power_of_two)
         Pxx_all = np.zeros(((self.ec.numRows*self.ec.numColumns,int(numPoints/2+1),self.num_averages))) # [row,sample,measurement #]
         pre_time = time.time()
@@ -322,6 +323,7 @@ class NoiseSweep(NoiseAcquire):
 
     def run(self, skip_wait_on_first_temp=False, force_power_of_two=True, tmp_file=None, extra_info={}):
         temp_output = []
+        extra_info["db_source_is_tower"] = self.is_tower
         for ii,temp in enumerate(self.temp_list_k): #loop over temperature list
             print('Setting to temperature %.1f mK'%(temp*1000))
             if not self.set_temp_and_settle(temp,timeout=self.temp_settle_delay_s):
