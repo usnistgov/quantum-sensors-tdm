@@ -1859,7 +1859,7 @@ class IVColdloadSweepAnalyzer():
 
     def sweep_analysis_for_row(self,row,bath_temp_index,
                                     cl_indices=None,rn_fracs=None,predicted_power_w=None,
-                                    dark_power_w='auto',dark_rn_frac=0.7):
+                                    dark_power_w='auto',dark_rn_frac=0.7,analysis_method='advanced'):
         if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
         dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
@@ -1898,12 +1898,14 @@ class IVColdloadSweepAnalyzer():
                                       bath_temp_k=self.set_bath_temps_k[bath_temp_index],
                                       row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
-                                      predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs)
+                                      predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs,
+                                      analysis_method=analysis_method)
         return iva
 
-    def full_analysis(self,bath_temp_index,cl_indices,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
-                      skipsquidchannels=True):
+    def full_analysis(self,bath_temp_index,cl_indices=None,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
+                      skipsquidchannels=True,analysis_method='advanced'):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
+        if not cl_indices: cl_indices=list(range(self.n_cl_temps))
 
         dark_rows = self.det_map.get_row_nums_from_keyval_list([['type','dark']])
         if skipsquidchannels:
@@ -1913,22 +1915,18 @@ class IVColdloadSweepAnalyzer():
         else:
             row_indices = self.row_index_list
 
-        # first collect dark responses for each pixel and place in dark_Ps dictionary
-        dark_indices = []
-        for row in dark_rows:
-            try: dark_indices.append(self.row_sequence.index(row))
-            except: pass
         dark_Ps = {}
-        for idx in dark_indices:
-            row_name = 'Row%02d'%idx
+        for row in dark_rows:
+            row_name = 'Row%02d'%row
             row_dict = self.det_map.map_dict[row_name]
-            dacs,fb = self.get_cl_sweep_dataset_for_row(row=idx,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+            dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
             iva_dark = IVColdloadAnalyzeOneRow(dacs,fb,
-                                               cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
+                                               cl_temps_k=list(np.array(self.measured_cl_temps_k)[cl_indices]),
                                                bath_temp_k=self.set_bath_temps_k[bath_temp_index],
-                                               row_name=row_name, det_name=self.det_map.get_devname_from_row_index(idx),
+                                               row_name=row_name, det_name=self.det_map.map_dict[row_name]['devname'],
                                                iv_circuit=self.iv_circuit,
-                                               predicted_power_w=None, dark_power_w=None)
+                                               predicted_power_w=None, dark_power_w=None,
+                                               analysis_method=analysis_method)
             dark_Ps[str(row_dict['position'])]=iva_dark.get_power_vector_for_rnfrac(dark_rnfrac)
 
         # now loop over all rows
@@ -1944,11 +1942,11 @@ class IVColdloadSweepAnalyzer():
 
             iva = IVColdloadAnalyzeOneRow(dacs,fb,
                                           cl_temps_k=list(np.array(self.set_cl_temps_k)[cl_indices]),
-                                          bath_temp_k=self.set_bath_temps_k[bath_temp_index],
+                                          bath_temp_k=self.measured_cl_temps_k[bath_temp_index],
                                           row_name=row_name, det_name=self.det_map.get_devname_from_row_index(row),
                                           iv_circuit=self.iv_circuit,
                                           predicted_power_w=None,
-                                          dark_power_w=dark_P)
+                                          dark_power_w=dark_P,analysis_method=analysis_method)
 
             if rn_fracs is not None:
                 iva.rn_fracs = rn_fracs
