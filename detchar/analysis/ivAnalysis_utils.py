@@ -476,7 +476,17 @@ class IVCurveAnalyzeSingle():
     ### ---------------------------------------------------------------------------------
 
     def analyze_iv(self,plot=False,beta=0):
-        ''' based on algorithm in pySmurf from Ari Cukierman '''
+        ''' based on algorithm in pySmurf from Ari Cukierman 
+
+            creates class globals:
+            v,i,p,r _tes, in ascending order
+            si: responsivity
+            rn: normal resistance (a single number, not vector)
+            rl: load resistance in equivalent circuit
+            x: same as x_raw.  Why am I saving this?
+            y: dc offset removed tes current in computer units
+        
+        '''
         x,y = self.determine_iv_regimes()
         y = self.remove_dc_offset(x,y)
     
@@ -1182,7 +1192,6 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             **kwargs
         )
 
-
 class IVColdloadAnalyzeOneRow(IVCommon):
     ''' Analyze a set of IV curves for a single detector taken at multiple
         coldload temperatures and a single bath temperature
@@ -1208,7 +1217,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
-                 iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None):
+                 iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None,
+                 analysis_method='advanced'):
         # fixed globals / options
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=False # use a global offset to align fb, not individual per curve
@@ -1216,6 +1226,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.rn_fracs_legend = self._make_rn_fracs_legend_()
         self.n_rn_fracs = len(self.rn_fracs)
         self.bad_data_threshold = 1
+        self.iv_circuit = iv_circuit
 
         # main raw data inputs
         self.dacs = dac_values
@@ -1231,11 +1242,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
 
         # do analysis of v,i,r,p vectors.  Place main results as globals to class
-        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=self.use_ave_offset,showplot=False) # remove DC offset
-        v,i,p,r = self.get_vipr(self.dacs, self.fb_align, iv_circuit, showplot=False)
-        ro = r / r[0,:]
-        self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = v,i,p,r,ro
-        self.v, self.i, self.p, self.r, self.bad_data_idx = self.remove_bad_data(v,i,p,r,threshold=self.bad_data_threshold)
+        self._analyze_ivs_(method=analysis_method)
+        self.v, self.i, self.p, self.r, self.bad_data_idx = self.remove_bad_data(self.v_orig,self.i_orig,self.p_orig,self.r_orig,threshold=self.bad_data_threshold)
         self.ro = self.r/self.r[0,:]
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
 
@@ -1265,7 +1273,36 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # plotting stuff
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
 
-    # handle methods ----------------------------------------------------------
+    # magic methods ----------------------------------------------------------
+    def _analyze_ivs_(self,method='advanced'):
+        if method=='advanced':
+            self._analyze_ivs_advanced_()
+        else:
+            self._analyze_ivs_standard_()
+
+    def _analyze_ivs_advanced_(self):
+        ivs=[]
+        foo=[] 
+        for ii in range(self.n_cl_temps):
+            iv = IVCurveAnalyzeSingle(self.dacs,self.fb[:,ii],rsh_ohm=self.iv_circuit.rsh_ohm,rx_ohm=self.iv_circuit.rx_ohm,to_i_bias=self.iv_circuit.to_i_bias,to_i_tes=self.iv_circuit.to_i_tes,analyze_on_init=True)
+            iv.analyze_iv(plot=False,beta=0)
+            foo.append(np.array([iv.v_tes,iv.i_tes,iv.p_tes,iv.r_tes,iv.x,iv.y]))
+            ivs.append(iv)
+        foo = np.array(foo).transpose()
+        self.v_orig=foo[::-1,0,:]
+        self.i_orig=foo[::-1,1,:]
+        self.p_orig=foo[::-1,2,:]
+        self.r_orig=foo[::-1,3,:]
+        self.fb_align=foo[::-1,5,:]
+        self.ro_orig=self.r_orig/self.r_orig[0,:]
+
+    def _analyze_ivs_standard_(self):
+        self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb,self.n_normal_pts,use_ave_offset=self.use_ave_offset,showplot=False) # remove DC offset
+        v,i,p,r = self.get_vipr(self.dacs, self.fb_align, self.iv_circuit, showplot=False)
+        ro = r / r[0,:]
+        self.v_orig, self.i_orig, self.p_orig, self.r_orig, self.ro_orig = v,i,p,r,ro
+        
+    
     def _make_colors(self,n,min_grey=0.9):
         x = np.linspace(0,min_grey,n) # 0 is black, 1 is white
         colors = [str(ii) for ii in x]
