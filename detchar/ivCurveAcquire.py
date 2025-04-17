@@ -21,7 +21,7 @@ import iv_utils as iv
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-
+from IPython import embed
 
 def plot_iv_groups(iv_temp_sweep_inst, num_in_group=8):
     N = len(iv_temp_sweep_inst.set_temps_k) # number of temp sweeps
@@ -71,6 +71,7 @@ def handle_column(col):
         bayname = []
         for c in col:
             bayname.append(handle_column(c))
+
     return bayname
 
 def create_filename(cfg):
@@ -134,7 +135,7 @@ def main():
           bayname=bayname, 
           voltage_source = voltage_source)
     # else:
-    #     pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
+    #     pt_taker = iv.IVPointTaker(db_Columncardname=cfg['voltage_bias']['db_cardname'], 
     #       bayname=bayname, 
     #       voltage_source = voltage_source,
     #       relock_threshold_lo_hi = (4000, 14000))
