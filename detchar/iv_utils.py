@@ -9,6 +9,7 @@ import pylab as plt
 import progress.bar
 from detchar.iv_data import IVCurveColumnData, IVTempSweepData, IVColdloadSweepData
 from detchar.acquire import Acquire
+from IPython import embed
 
 class IVPointTaker(Acquire):
     """ The IVPointTaker commands the bias value then calls easyClientDastard, which waits `delay_s` and then
@@ -70,22 +71,22 @@ class IVPointTaker(Acquire):
             except:
                 print('\ngetNewData failed again, trying one last time')
                 data = self.ec.getNewData(delaySeconds=self.acq_delay,minimumNumPoints=16,exactNumPoints=True)             
-        avg_col = data[self.col,:,:,1].mean(axis=-1)
+        avg_col = data[self.col[0],:,:,1].mean(axis=-1)
         rows_relocked_hi = []
         rows_relocked_lo = []
         for row, fb in enumerate(avg_col):
             if fb < self.relock_lo_threshold:
-                self.cc.relock_fba(self.col, row)
+                self.cc.relock_fba(self.col[0], row)
                 rows_relocked_lo.append(row)
             if fb > self.relock_hi_threshold:
-                self.cc.relock_fba(self.col, row)
+                self.cc.relock_fba(self.col[0], row)
                 rows_relocked_hi.append(row)
         avg_col_out = avg_col[:]
         if len(rows_relocked_lo)+len(rows_relocked_hi) > 0:
             # at least one relock occured
             print(f"\nrelocked rows: too low {rows_relocked_lo}, too high {rows_relocked_hi}")
             data_after = self.ec.getNewData(delaySeconds=self.acq_delay,minimumNumPoints=16,exactNumPoints=True)
-            avg_col_after = data_after[self.col,:,:,1].mean(axis=-1)
+            avg_col_after = data_after[self.col[0],:,:,1].mean(axis=-1)
             for row in rows_relocked_lo+rows_relocked_hi:
                 self._relock_offset[row] += avg_col_after[row]-avg_col[row]
                 avg_col_out[row] = avg_col_after[row]
@@ -94,17 +95,17 @@ class IVPointTaker(Acquire):
     def prep_fb_settings(self, ARLoff=True, I=None, fba_offset = None):
         if ARLoff:
             print("setting ARL (autorelock) off")
-            self.cc.set_arl_off(self.col)
+            self.cc.set_arl_off(self.col[0])
         if I is not None:
             print(f"setting I to {I}")
-            self.cc.set_fb_i(self.col, I)
+            self.cc.set_fb_i(self.col[0], I)
         if fba_offset is not None:
             print(f"setting fba offset to {fba_offset}")
-            self.cc.set_fba_offset(self.col, fba_offset)
+            self.cc.set_fba_offset(self.col[0], fba_offset)
 
     def relock_all_locked_rows(self):
         print("relock all locked rows")
-        self.cc.relock_all_locked_fba(self.col)
+        self.cc.relock_all_locked_fba(self.col[0])
 
 
 class IVPointTakerMulti(IVPointTaker):
