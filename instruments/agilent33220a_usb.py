@@ -50,7 +50,7 @@ class Agilent33220A(instrument.Instrument):
         return function
 
     def GetFrequency(self):
-        '''Get the current frequencye'''
+        '''Get the current frequency'''
         
         commandstring = 'FREQuency?'
         result = self.fg.query(commandstring)

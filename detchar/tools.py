@@ -418,10 +418,9 @@ def test_lockin_func(f=7,phase=0,s2n=10,s2n_ref=10,threshold=0.5):
     print('Input signal phase',phase)
     print('I,Q,amp,phase: ',I,Q,np.sqrt(I**2+Q**2),np.arctan(Q/I))
 
-
 def test_lockin_acq():
     sla = SoftwareLockinAcquire(signal_feedback_or_error='error')
-    sla.getData(minimumNumPoints=1000, window=False,debug=True)
+    sla.getData(minimumNumPoints=1000, debug=True)
 
 def test_get_num_points_per_period_squarewave():
     sig,ref = make_simulated_lock_in_data(sig_params=[3,5,0,0],ref_params=[1,5,0,0],N=1024,noise_to_signal=0,ref_type='square',plotfig=False)
@@ -429,8 +428,10 @@ def test_get_num_points_per_period_squarewave():
 
 if __name__ == "__main__":
     sla = SoftwareLockinAcquire()
-    sampling_rate = int(125e6/142/4) # number of samples per second
-    f = 20 # Hz 
+    sampling_rate = int(125e6/256/4) # number of samples per second
+    f = 79 # Hz 
     samples_per_period = int(sampling_rate/f)
     print(samples_per_period*20)
-    sla.getData(minimumNumPoints=20*samples_per_period, debug=True)
+    foo=sla.getData(minimumNumPoints=20*samples_per_period, debug=False)
+    print(np.sqrt(foo[0][0]**2+foo[0][1]**2))
+
