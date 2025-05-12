@@ -656,10 +656,10 @@ class IfgToSpectrum(TimeDomainDataProcessing):
             # fig 6: interpolated phase
             plt.figure(figsize = (12,6))
             plt.title("Fitting of phase, currently using method " + phase_fit_method)
-            plt.plot(f_sym*unit_scale,theta,"o",mec = "k",label = "theta from symmetric interferogram")
-            plt.plot(f*unit_scale,theta_highres_2,".",label = "theta interpolated to higher resolution in complex plane")
-            if phase_fit_method == "poly":
-                plt.plot(np.sort(f*unit_scale),theta_highres_3[np.argsort(f)],label = "theta fitted polynomial")
+            plt.plot(f_sym*unit_scale,phase_sym,"o",mec = "k",label = "theta from symmetric interferogram")
+            plt.plot(f*unit_scale,phase_highres,".",label = "theta interpolated to higher resolution in complex plane")
+            # if phase_fit_method == "poly":
+            #     plt.plot(np.sort(f*unit_scale),theta_highres_3[np.argsort(f)],label = "theta fitted polynomial")
             plt.ylim(-5,5)
             plt.xlabel(units)
             plt.legend()
