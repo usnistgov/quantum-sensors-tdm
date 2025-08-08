@@ -2577,7 +2577,14 @@ def main():
             while True:
                 app.processEvents()
                 time.sleep(0.01) # prevent cringe from using 100% cpu
-        IPython.embed()
+        IPython.start_ipython(
+            argv=[],
+            user_ns={
+                "win":win, 
+                "app":app,
+                "to_interactive": to_interactive
+            }
+        )
     app.exec_()
 
 if __name__ == '__main__':
