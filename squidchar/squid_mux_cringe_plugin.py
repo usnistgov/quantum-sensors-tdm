@@ -19,6 +19,7 @@ import numpy as np
 import time
 import cringe
 from os import path
+from pathlib import Path
 from datetime import datetime
 from progress.bar import IncrementalBar
 #import line_profiler
@@ -332,6 +333,7 @@ def sq1_ramp_save_data(cfg, bias_array, data_array, datestr, part):
         fname = f"{datestr}_sq1_bias_ramp.npz"
     else:
         fname = f"{datestr}_sq1_bias_ramp_part_{part}.npz"
+    Path(cfg['io']['data_folder']).mkdir(parents=True, exist_ok=True)
     fpath = path.join(cfg["io"]["data_folder"], fname)
     np.savez_compressed(
         fpath,
@@ -355,7 +357,7 @@ def phase_1_1(
     global win, app
     with open(configfile, 'r') as yamlfile:
         cfg = yaml.load(yamlfile, Loader=yaml.FullLoader)
-
+    Path(cfg['io']['data_folder']).mkdir(parents=True, exist_ok=True)
     print("Prepare to measure switch flux quanta")
     print("Unlock all, disable triangle")
     feedback_lock_all("off")

@@ -83,13 +83,13 @@ phase_1_1:
   triangle_params:
     log2_dwell: 2 
     log2_num_steps: 10 # called "Range" in cringe
-    step_size: 5
+    step_size: 5 # step_size * 2**log2_num_steps < 16383
   sq1_bias: 1000 
   rs_card: [5,6] # widget number/ zero indexed tab number from cringe. If list, it is assumed the rows are sequential.
   # e.g., rowselect 16 is the 0th channel of rs_card[1]
   cs_ramp:
     start_dac: 0
-    stop_dac: 6000
+    stop_dac: 6000 # must be less than 16383
     num_steps: 30
 
 phase_1_1_analysis:
