@@ -9,6 +9,9 @@ import os
 
 DEBUG = True
 rpc_client_for_easy_client.DEBUG = False
+def debugprint(txt):
+    if DEBUG:
+        print(txt)
 
 SUMMARY_HEADER_DTYPE=np.dtype([("chan",np.uint16),("headerVersion",np.uint8),
      ("npresamples",np.uint32),("nsamples",np.uint32),("pretrig_mean","f4"),("peak_value","f4"),
@@ -170,6 +173,7 @@ class EasyClientDastard():
         self.rpc.call("SourceControl.ConfigureMixFraction", config)
 
     def requestData(self, nsamples):
+        debugprint("requesting data")
         result_npz_path = self.rpc.call("SourceControl.StoreRawDataBlock", nsamples)
         return result_npz_path
     
@@ -208,6 +212,7 @@ class EasyClientDastard():
         
         # now the file exists, lets open it
         data = np.load(npz_filename)        
+        debugprint("found data")
         return data
 
     def getNewData(

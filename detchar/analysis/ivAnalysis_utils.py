@@ -521,11 +521,26 @@ class IVCurveAnalyzeSingle():
         rL = R_L_smooth[:-1]
         si_etf = -1./(i0*r0)
 
-        si = -(1./i0)*( dv_tes/di_tes - (r0+rL+beta*r0) ) / \
+        self.si_old_maybe_wrong = -(1./i0)*( dv_tes/di_tes - (r0+rL+beta*r0) ) / \
             ( (2.*r0-rL+beta*r0)*dv_tes/di_tes - 3.*rL*r0 - rL**2 )
+        # In Ari's Notes he says that an incorrect version of this formula was committed to Github in 2019 Jan.
+        # The formula above was committed in Jan 2019, but not by Ari. It stands on the pysmurf github today
+        # i.e. has not been changed. Below is the version in the notes:
 
-        # pass these vectors to globals
-        self.v_tes=v_tes; self.i_tes=i_tes; self.p_tes=p_tes; self.r_tes=r_tes; self.si=si; self.rn=R_n; self.rl=R_L; self.x=x; self.y=y; self.si_etf=si_etf
+        self.si_new = si_etf * (dv_tes/di_tes - r0 - r0*beta - rL) / ((2+rL/r0) * dv_tes/di_tes)
+
+        #At least for beta = 0 and Taurus style bolometers in Velma, the equations produce almost identical results.
+
+        self.v_tes=v_tes
+        self.i_tes=i_tes
+        self.p_tes=p_tes
+        self.r_tes=r_tes
+        self.si=self.si_old_maybe_wrong
+        self.rn=R_n
+        self.rl=R_L
+        self.x=x
+        self.y=y
+        self.si_etf=si_etf
 
         if plot: 
             fig,ax = self.plot_raw()
@@ -607,7 +622,7 @@ class IVCurveAnalyzeSingle():
             y-=p_norm[1] # subtract arbitrary offset using normal branch
             offset_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
             if offset_diff > 5: 
-                print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
+                #print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
                 y[0:self.sc_idx+1]-=p_sc[1]-p_norm[1] 
 
         self.p_norm=p_norm; self.p_sc = p_sc 
@@ -632,6 +647,10 @@ class IVCurveAnalyzeSingle():
     def get_dac_at_rfrac(self,rfrac):
         idx = np.argmin(abs(self.r_tes/self.rn - rfrac)) 
         return self.x[idx]
+
+    def get_si_at_dac(self,dac):
+        idx = np.argmin(abs(self.x-dac))
+        return self.si[idx]
 
     def get_r_for_dac(self,dac,frac=True):
         idx = np.argmin(abs(self.x-dac))
@@ -878,7 +897,7 @@ class IVSetAnalyzeRow(IVCommon):
         self.use_ave_offset = False
         #self.vipr_unit_labels = ['($\mu$V)','($\mu$A)','(pW)','(m$\Omega$)']
         #self.vipr_scaling = [1e6,1e6,1e12,1e3]
-
+        self.ivs = []
         #
         self.figtitle = figtitle
         self.dacs = dac_values
@@ -890,18 +909,33 @@ class IVSetAnalyzeRow(IVCommon):
         # do standard IV analysis
         #self.fb_align = self.fb_align_and_remove_offset() # 2D array of aligned feedback
         if not use_IVCurveAnalyzeSingle:
-            self.fb_align = self.fb_align_and_remove_offset(self.dacs,self.fb_raw,self.n_normal_pts,
-                                                        use_ave_offset=self.use_ave_offset,showplot=False)
-            self.v,self.i,self.p,self.r = self.get_vipr(self.dacs, self.fb_align, iv_circuit=self.iv_circuit, showplot=False)
+            self.fb_align = self.fb_align_and_remove_offset(
+                self.dacs,
+                self.fb_raw,
+                self.n_normal_pts,
+                use_ave_offset=self.use_ave_offset,
+                showplot=False
+            )
+            self.v,self.i,self.p,self.r = self.get_vipr(
+                self.dacs, 
+                self.fb_align, 
+                iv_circuit=self.iv_circuit, 
+                showplot=False
+            )
 
         else:
-            print('IV analysis through IVCurveAnalyzeSingle')
+            #print('IV analysis through IVCurveAnalyzeSingle')
             assert iv_circuit, 'if use_IVCurveAnalyzeSingle=True, an IVCircuit object must be supplied'
-            ivs = []
             for ii in range(self.num_sweeps):
-                ivs.append(IVCurveAnalyzeSingle(x=self.dacs,y=self.fb_raw[:,ii],rsh_ohm=iv_circuit.rsh_ohm,rx_ohm=iv_circuit.rx_ohm,
-                                                to_i_bias=iv_circuit.to_i_bias,to_i_tes=iv_circuit.to_i_tes))
-            self.fb_align, self.v, self.i, self.p, self.r = self._package_iv_globals_(ivs)
+                self.ivs.append(IVCurveAnalyzeSingle(
+                    x=self.dacs,
+                    y=self.fb_raw[:,ii],
+                    rsh_ohm=iv_circuit.rsh_ohm,
+                    rx_ohm=iv_circuit.rx_ohm,
+                    to_i_bias=iv_circuit.to_i_bias,
+                    to_i_tes=iv_circuit.to_i_tes
+                ))
+            self.fb_align, self.v, self.i, self.p, self.r = self._package_iv_globals_(self.ivs)
 
     def _package_iv_globals_(self,ivs):
         result = []
@@ -1023,10 +1057,17 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         temp_list_k_str = []
         for ii in range(len(temp_list_k)):
             temp_list_k_str.append(str(temp_list_k[ii]))
-        super().__init__(dac_values,fb_values_arr,temp_list_k_str,iv_circuit,figtitle,use_IVCurveAnalyzeSingle)
+        super().__init__(
+            dac_values,
+            fb_values_arr,
+            temp_list_k_str,
+            iv_circuit,
+            figtitle,
+            use_IVCurveAnalyzeSingle
+        )
         self.ro = self.r / self.r[0,:]
-        self.v_clean, self.i_clean, self.p_clean, self.r_clean, dexs = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
-        self.ro_clean = self.r_clean / self.r_clean[0,:]
+        self.v_clean, self.i_clean, self.p_clean, self.r_clean, _ = self.remove_bad_data(self.v,self.i,self.p,self.r,threshold=1)
+        self.ro_clean = self.r_clean / self.r_clean[0,:] # 0th bias index is highest bias, assume detector is normal there
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p_clean,self.ro_clean)
         #print(np.array(dac_values).shape, self.ro_clean.shape)
         #print(self.p_at_rnfrac)
@@ -1072,7 +1113,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
 
         if include_fits:
             for ii in range(self.num_rn_fracs):
-                plt.plot(temp_arr,self.ktn_fit_func(self.pfits[ii],temp_arr),'k--')
+                plt.plot(temp_arr,ktn_fit_func(self.pfits[ii],temp_arr),'k--')
         plt.xlabel('T$_{b}$ (K)')
         plt.ylabel('TES power plateau')
         plt.legend((llabels))
@@ -1091,11 +1132,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             pfits[ii,:]=pfit
         return pfits
 
-    def ktn_fit_func(self,v,t):
-        '''
-        fit function is P = v[0](v[1]^v[2]-t^v[2])
-        '''
-        return v[0]*(v[1]**v[2]-t**v[2])
+
 
     def fit_pvt(self,t,p,init_guess=[20.e-9,.2,4.0]):
         ''' fits saturation power versus temperature to recover fit parameters K, T and n
@@ -1111,9 +1148,8 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             fit coefficients
             covarience matrix (diagonals are variance of fit parameters)
         '''
-        fitfunc = lambda v,x: v[0]*(v[1]**v[2]-x**v[2])
-        errfunc = lambda v,t,p: v[0]*(v[1]**v[2]-t**v[2])-p
-        lsq = leastsq(errfunc,init_guess, args=(t,p),full_output=1)
+
+        lsq = leastsq(ktn_err_func,init_guess, args=(t,p),full_output=1)
         pfit, pcov, infodict, errmsg, success = lsq
         if success > 4:
             print('Least squares fit failed.  Success index of algorithm > 4 means failure.  Success index = %d'%success)
@@ -1191,6 +1227,13 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
             iv_circuit=iv_circuit,
             **kwargs
         )
+def ktn_fit_func(v,t):
+    K, T, n = v
+    return K*(T**n-t**n)
+
+def ktn_err_func(v,t,psat): 
+    K, T, n = v
+    return K*(T**n-t**n)-psat
 
 class IVColdloadAnalyzeOneRow(IVCommon):
     ''' Analyze a set of IV curves for a single detector taken at multiple
@@ -2217,8 +2260,15 @@ class IVColdloadSweepAnalyzer():
 
 #######################################
 
-def iv_tempsweep_quicklook(filename,row_index,use_config=True,temp_indices=None,rn_fracs=None,
-                           cal_params_dict=None, use_IVCurveAnalyzeSingle=True):
+def iv_tempsweep_quicklook(
+    filename,
+    row_index,
+    use_config=True,
+    temp_indices=None,
+    rn_fracs=None,
+    cal_params_dict=None, 
+    use_IVCurveAnalyzeSingle=True
+):
 
     df = IVTempSweepData.from_file(filename) # df = "data frame"
     cfg = df.data[0].extra_info['config']

@@ -1025,11 +1025,11 @@ class NoiseSweepData(DataIO):
         print('measured temperatures: ',temp_m)
         return fig, ax
 
-    def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None):
+    def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None,label=None,**kwargs):
         df = self.data[temp_index][bias_index]
         fig,ax = self._handle_fig(fig,ax)
         m, y_label_str = self._phys_units(physical_units)
-        ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2)
+        ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2,label=label,**kwargs)
         return fig, ax
 
     def to_txt(self,filename,row_index,temp,bias_indices=None,physical_units=True):
