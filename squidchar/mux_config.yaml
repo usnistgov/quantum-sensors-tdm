@@ -1,0 +1,107 @@
+io:
+  data_folder: "./"
+
+wiring:
+  ssa_fb: A
+  sq1_fb: B
+  is_two_level: True
+  chip_select_row: [10, 26] 
+  num_rows: 10 # number of rows on-chip
+  columns: [0,1,2,3,4,5,6,7]
+  sq1_bias: "SQ1BIAS"
+  chips_per_col: 2
+  cs_seqn_map: { # During which slots in the sequence is a given
+    # chip select active?
+    10: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    26: [12,13,14,15,16,17,18,19,20,21]
+  }
+  seqn_rs_style: [0,1,2,3,4,5,6,7,8,9,-1,-1,16,17,18,19,20,21,22,23,24,25,-1,-1]
+  # options are:
+  # "same": on sequence slot n, rs n will be active
+  # "true_2ls": on sequence slot n, rs n%num_rows will be active NYI
+  # or supply a list. Also NYI really.
+
+chip_info:
+  daughtercard_row: -1 # 0 for top group of chips, i.e. row select 0-11, 1 for bottom group RS 12-23
+  # user needs to configure HDMI to agree with above
+  # -1 for both
+  chip_rcw: [[
+    [33,5,0],
+    [5,4,1],
+    [24,1,0],
+    [24,6,0],
+    [17,2,0],
+    [31,4,1],
+    [8,1,0],
+    [12,3,1]],
+    [
+      [27,2,1],
+      [17,0,1],
+      [14,5,0],
+      [2,5,0],
+      [17,8,0],
+      [23,6,1],
+      [17,5,1],
+      [36,2,0]
+    ]
+  ]
+  chip_notes: [[
+    "A21, input 8 disconnected",
+    "A25, input 7 open/nc",
+    "A25",
+    "A25",
+    "A25",
+    "A25",
+    "A25",
+    "B21, input 8 disconnected"],
+    [
+      "A25",
+      "tB21",
+      "A21",
+      "A21",
+      "tB21",
+      "A25",
+      "A21",
+      "A25"
+
+    ]
+    
+  ]
+
+sq1_bias_ramp:
+  triangle_params: 
+    log2_dwell: 2 
+    log2_num_steps: 10 # called "Range" in cringe
+    step_size: 6
+  bias_ramp:
+    start_dac: 0
+    stop_dac: 10000
+    num_steps: 30
+  row_for_triangle_echo: 11
+
+phase_1_1:
+  triangle_params:
+    log2_dwell: 2 
+    log2_num_steps: 10 # called "Range" in cringe
+    step_size: 5
+  sq1_bias: 1000 
+  rs_card: [5,6] # widget number/ zero indexed tab number from cringe. If list, it is assumed the rows are sequential.
+  # e.g., rowselect 16 is the 0th channel of rs_card[1]
+  cs_ramp:
+    start_dac: 0
+    stop_dac: 6000
+    num_steps: 30
+
+phase_1_1_analysis:
+  rs_force_zero: [10,11,22,23, 0]
+
+input_ramp:
+  triangle_params:
+    log2_dwell: 2
+    log2_num_steps: 10
+    step_size: 1 
+  rs_card: [7, 8] # which rs cards are inputs on. again, these are cringe widget numbers.
+  use_dc: True # input inductances usually high, so make sure the triangles are continuous instead of only being active
+  # for a specific sequence slot
+  sq1_bias: 4300 # temporary, should be updated to an array
+
