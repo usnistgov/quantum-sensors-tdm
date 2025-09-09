@@ -5,8 +5,17 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy.signal import decimate
 import argparse
 from progress.bar import IncrementalBar
+import yaml
 
-def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, silly=False):
+def make_all_plots_pdf(
+    sq1_bias_ramp_file, 
+    input_ramp_file, 
+    outfile, 
+    rshunt, 
+    silly=False,
+    rcw_arr_override=None,
+    chip_comments_override=None
+):
     np.seterr(divide='ignore', invalid='ignore')
     # col=5
     # chip=1
@@ -40,7 +49,8 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
     rdyn = np.gradient(shunt_uv,axis=0) / np.gradient(data_ua,axis=0)
 
     data_normalized = (data_ua - min_i_tiled)/(max_i_tiled-min_i_tiled)
-    actual_chip_rcw = z["chip_rcw"]
+    actual_chip_rcw = rcw_arr_override or z["chip_rcw"]
+    actual_chip_notes = chip_comments_override or z["chip_notes"]
     pdfpages_per_chip = {}
     nplots = len(actual_chip_rcw)*len(actual_chip_rcw[0])*9 # cols * chips * number of for loops below
     bar = IncrementalBar(
@@ -52,11 +62,12 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for col, rcw in enumerate(col_arr):
             pdfpages_per_chip[(chip,col)] = PdfPages(outfile.format(f"chip_rcw_{rcw[0]}_{rcw[1]}_{rcw[2]}"))
     cp = analysis.PlotsWithSameColors()
+
     with PdfPages(outfile.format("current_modulation")) as pdf:
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.current_modulation_plot(amplitude, icmax, bias_i, col, chip)
-                notes =z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Modulation amplitude for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -67,7 +78,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.i_i_plot(data_ua, bias_i, col, chip)
-                notes =z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"current-current for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -78,7 +89,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.i_v_plot(data_ua, shunt_uv, col, chip)
-                notes =z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"I-V Curve for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -89,7 +100,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.device_resistance_plot(min_i, max_i, rd_at_iin_min, rd_at_iin_max, col, chip)
-                notes =z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Device resistance for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -100,7 +111,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.device_dynamic_resistance_plot(min_i, max_i, rdyn_at_iin_min, rdyn_at_iin_max, col, chip)
-                notes = z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Dynamic resistance for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -113,7 +124,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.rdyn_oval_plot(data_normalized, rdyn, ic_idx, col,chip,silly=silly)
-                notes = z["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Dynamic resistance scatter for r,c,w={rcw_arr}\n{notes}")
                 plt.xlim(0,1)
                 plt.ylim(4,19)
@@ -126,7 +137,6 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
                 bar.next()
 
     tri_i, d_i, z_i = analysis.load_input_ramp(input_ramp_file)
-    chip_info = z_i["chip_info"].item()
 
     decimations=8
     tri_i_filtered = decimate(tri_i, decimations)
@@ -138,7 +148,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.squid_curve_input_plot(tri_i, d_i, col, chip)
-                notes = chip_info["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Device current vs input for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -149,7 +159,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.squid_gain_plot(tri_i_filtered, gain, col, chip)
-                notes = chip_info["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Device gain for r,c,w={rcw_arr}\n{notes}")
                 pdf.savefig()
                 pdfpages_per_chip[(chip,col)].savefig()
@@ -160,7 +170,7 @@ def make_all_plots_pdf(sq1_bias_ramp_file, input_ramp_file, outfile, rshunt, sil
         for chip, array_columns in enumerate(actual_chip_rcw):
             for col, rcw_arr in enumerate(array_columns):
                 cp.gain_oval_plot(norm_i, gain, col, chip, silly=silly)
-                notes = chip_info["chip_notes"][chip][col]
+                notes = actual_chip_notes[chip][col]
                 plt.title(f"Gain vs. Normalized Current for r,c,w={rcw_arr}\n{notes}")
                 plt.xlim(0,1)
                 plt.ylim(-8,19)
@@ -177,6 +187,25 @@ if __name__ == "__main__":
     parser.add_argument("sq1_bias_ramp", type=str, help="Squid 1 bias ramp npz file. Should have been taken with row selects properly biased.")
     parser.add_argument("input_ramp", type=str, help="Input ramp npz file.")
     parser.add_argument("outfile_prefix", type=str, help="String appended in front of all output files")
+    parser.add_argument("-o", "--chip-info-override", type=str, help="path to optional yaml file containing actual chip serial numbers if you did something wrong during experiment setup")
+    parser.add_argument("--silly", action="store_true", help=":D")
     args=parser.parse_args()
-    make_all_plots_pdf(args.sq1_bias_ramp,
-                       args.input_ramp, "6in_proc_2_{}.pdf",1,silly=False)
+    if args.chip_info_override:
+        with open(args.chip_info_override, 'r') as yamlfile:
+            overrides = yaml.load(yamlfile, Loader=yaml.FullLoader)
+        rcw_override = overrides["rcw_arr"]
+        comments_override = overrides["comments"]
+    else:
+        rcw_override = None
+        comments_override=None
+
+    make_all_plots_pdf(
+        args.sq1_bias_ramp,
+        args.input_ramp, 
+        "6in_proc_2_{}.pdf",
+        1,
+        silly=args.silly,
+        rcw_arr_override=rcw_override,
+        chip_comments_override=comments_override,
+
+        )
