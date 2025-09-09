@@ -10,6 +10,8 @@ If you import this script, the only way to access them is to
 pass them as arguments to each and every function call. Something
 similar happens with ``%run`` without the ``-i`` flag.
 
+The screening procedure is described in greater detail in an accompanying google doc/PDF
+https://docs.google.com/document/d/1ElPe3wK1m9XYn6voxOwFVISBVACSl6Jx8O_w5DDzlyM/edit?usp=sharing
 
 """
 
@@ -22,9 +24,18 @@ from os import path
 from pathlib import Path
 from datetime import datetime
 from progress.bar import IncrementalBar
+from squidchar import analysis
+from glob import glob
+
 #import line_profiler
 # import tracemalloc
 
+ #########################################################
+# Helper functions for interacting with CRINGE            #
+#                                                         #
+# Usually involve several very long lines to do something #
+# that seems simple                                       #
+ #########################################################
 def channel_process(channel):
     if channel == "A":
         a=1 
@@ -200,7 +211,12 @@ def enable_triangle_all_1_row(channel, row):
 
     app.processEvents()
 
-
+ ################################################
+# Actual scripts for screening                   #
+# Run these during the screening process         #
+# these all take an optional argument specifying #
+# the configuration file you wish to use         #
+ ################################################
 
 def sq1_bias_ramp(
         configfile="mux_config.yaml"
@@ -208,10 +224,7 @@ def sq1_bias_ramp(
     """ Run this phase with no row select current/flux in order
     to determine "I_c column". Run it with row selects configured
     properly to get most other params
-    """
 
-    #def phase_1_0
-    """
     Determine the minimum critical current of the flux activated switches
     by ramping sq1 bias with all row select lines off.
     """
@@ -342,7 +355,6 @@ def sq1_ramp_save_data(cfg, bias_array, data_array, datestr, part):
         **cfg["chip_info"] 
     )
 
-
 def phase_1_0():
     sq1_bias_ramp()
 
@@ -410,7 +422,7 @@ def phase_1_1(
         for card, cs in zip(rs_card,cs_index):
             cs_loc_on_card = cs % 16
             set_rs_params(card, row_index=cs_loc_on_card, tri=0)
-        rs_ramp = np.linspace(
+        cs_ramp = np.linspace(
             ramp_params["start_dac"],
             ramp_params["stop_dac"],
             ramp_params["num_steps"],
@@ -419,10 +431,10 @@ def phase_1_1(
         data_array = []
         bar = IncrementalBar(
             "Collecting Data:", 
-            max=len(rs_ramp),
+            max=len(cs_ramp),
             suffix=' [%(index)d/%(max)d, ETA:%(eta_td)s]')
         bar.start()
-        for bias in rs_ramp:
+        for bias in cs_ramp:
             for card, cs in zip(rs_card,cs_index):
                 cs_loc_on_card = cs % 16
                 set_rs_dacs(card, 0, bias, row_index=cs_loc_on_card)
@@ -435,7 +447,7 @@ def phase_1_1(
         datestr = now.strftime("%Y-%m-%d-T%H-%M-%S")
         np.savez_compressed(
             path.join(cfg["io"]["data_folder"], f"{datestr}_rs_ramp.npz"),
-            rs_ramp=rs_ramp,
+            cs_ramp=cs_ramp,
             data_array=data_array,
             **cfg["chip_info"] 
         )
@@ -447,7 +459,6 @@ def phase_1_1(
             data_array=daq.take_average_data(),
             **cfg["chip_info"] 
         )
-
     to_interactive()
 
 def set_fas_flux(
@@ -456,33 +467,25 @@ def set_fas_flux(
     """ Analyze the row select ramp taken with stage 1_1 and 
     set the appropriate dac values. Note that this works best if 
     phase 1_1 was configured with a narrow range of dac values so that only one
-    period of the switch is evaluated."""
+    period of the switch is evaluated.""" 
+    #TODO check this out and make sure it works
     global win, app
     with open(configfile, 'r') as yamlfile:
         cfg = yaml.load(yamlfile, Loader=yaml.FullLoader)
+    ramp_files = glob(
     stage11_results = np.load(path.join(cfg["io"]["data_folder"], "rs_ramp.npz"))
-    cs_ramp = stage11_results["rs_ramp"]
-    rs_data = stage11_results["data_array"]
-    for i in range(rs_data.shape[0]):
-        min_idx = rs_data[i,0,0,-1].argmin()
-        rs_data[i] = np.roll(rs_data[i], -min_idx, axis=3)
+    cs_ramp = stage11_results["cs_ramp"]
+    rs_data_unaligned = stage11_results["data_array"]
+    rs_data = analysis.align_ramp(rs_data_unaligned)
     tri = rs_data[0,0,0,-1]
 
     num_cols = len(cfg["wiring"]["columns"])
     num_rows = win.seqln_spin.value()
-    cs_flux_arr = np.zeros((num_cols,num_rows))
-    rs_flux_arr = np.zeros((num_cols,num_rows))
-    for col in range(num_cols):
-        for row in range(num_rows):
-            arr = rs_data[:,0,col,row,0:4096]
-            max_idx = np.unravel_index(np.argmax(arr, axis=None), arr.shape)
-            cs_flux = cs_ramp[max_idx[0]]
-            rs_flux = rs_data[max_idx[0],0,col,-1,max_idx[1]]
-            if row in cfg["phase_1_1_analysis"]["rs_force_zero"]:
-                cs_flux = np.nan
-                rs_flux = np.nan
-            cs_flux_arr[col,row] = cs_flux
-            rs_flux_arr[col,row] = rs_flux
+    cs_flux_arr, rs_flux_arr = analysis.get_fas_biases(
+        rs_data, 
+        cs_ramp,
+        ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero']
+    )
 
     #Set the chip select fluxes. 
     # From the fluxes that produced the maximum response
