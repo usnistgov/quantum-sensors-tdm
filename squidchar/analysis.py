@@ -8,7 +8,7 @@ from scipy.signal import decimate
 from glob import glob
 import re
 
-
+# Note: most arrays have indices [bias, fb/err, column, row, time]
 
 @dataclass
 class DacCircuit:
@@ -49,7 +49,6 @@ class SquidBiasCircuit(DacCircuit):
         return self.dac_to_i(sq1_bias)
 
 
-
 @dataclass
 class SquidFeedbackCircuit(DacCircuit):
     r: float = 2000
@@ -64,7 +63,14 @@ class InputCircuit(DacCircuit):
 
 
 def align_ramp(data, ramp_row=-1):
-    # We assume data is an array indexed by [bias, fb/err, column, row, time]
+    """
+    Measurements of time series for different bias values will have different
+    phases with respect to thie triangle signal. This routine reads the triangle
+    and syncs all the data.
+    We assume data is an array indexed by [bias, fb/err, column, row, time]
+    :param ramp_row: optionally specify which row the triangle signal was echoed to during data collection.
+        If this parameter is not specified we assume it's on the last row. 
+    """
     for i in range(data.shape[0]):
         data_run = data[i,0] # simplify no. of indices by extracting the only one 
         # we are looking at right now: feedback of whichever bias run are we on
@@ -91,7 +97,7 @@ def atoi(text):
 
 def natural_keys(text):
     '''
-    alist.sort(key=natural_keys) sorts in human order
+    alist.sort(key=natural_keys) sorts in human order, i.e., 1,2,3,10,11,20 instead of 1,10,11,2,20,3
     http://nedbatchelder.com/blog/200712/human_sorting.html
     (See Toothy's implementation in the comments)
     https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
@@ -100,6 +106,8 @@ def natural_keys(text):
 
 def load_big_ramp(file_pattern):
     """
+    Probably don't use this function because super fine grid sampling is unnecessary.
+
     Warning: if you're using this loader function, make sure you have around 
     32 GB of ram available. I'll do my best to clean up arrays as they become unused
     but the single data array takes up ~4 GB and we need to do calculations and make 
@@ -139,6 +147,7 @@ def googly_eyes(eyes_xy, eye_size, pupil_size, x_factor, y_factor):
     translation = (r*np.sin(theta)*x_factor, r*np.cos(theta)*y_factor)
     pupils_xy = eyes_xy + np.array(translation).T
     plt.plot(pupils_xy[:,0],pupils_xy[:,1],'o',markersize=pupil_size,color='k')
+
 def normalize_current_for_ovals(data):
     min_i = np.min(data,axis=-1)
     max_i = np.max(data,axis=-1)
@@ -157,11 +166,30 @@ def normalize_current_for_ovals(data):
     return data_normalized
 
 def get_colors(base_cmap="turbo", squish_factor=30, num_colors=10):
+    """
+    Make two sets of colors, each with num_colors values (usually 10 or 11)
+    Each set of colors has num_colors similar colors to represent different rows
+    One set contains blue shades to represent minimum values and the other contains
+    shades of red to represent maximum values. 
+    :param base_cmap: By default, to produce red and blue shades, we use the colormap "turbo"
+        But if you want you can do something else. This function selects colors from opposite ends
+        of the colormap though, so keep that in mind.
+    :param squish_factor: This is the size of the grid to use. Larger squish_factors will result
+        in the returned colors being more similar within a set. squish_factor > num_colors*2
+    :param num_colors: how many colors in a set. 10 for 2ls muxes, 11 for normal fas muxes.
+    """
     cmap = plt.get_cmap(base_cmap)
     colors = cmap(np.linspace(0,1,squish_factor))
     low_colors = colors[0:num_colors]
     hi_colors = colors[-num_colors:][::-1]
     return low_colors, hi_colors
+
+
+ ###############################################
+# Plot functions!                               #
+# For examples of what each plot function does, #
+# see the accompanying ipython notebook.        #
+ ###############################################
 
 def fas_activation_plot(rs_data_ua, tri_ua, cs_ramp_ua, row, col):
     plt.figure()
@@ -189,12 +217,32 @@ def get_fas_biases(rs_data,
             max_idx = np.unravel_index(np.argmax(arr, axis=None), arr.shape)
             cs_flux = cs_ramp[max_idx[0]]
             rs_flux = rs_data[max_idx[0],0,col,-1,max_idx[1]]
-            if row in [10,11,22,23]+ignore_rows: # these 4 rows are never connected: 10, 11, 22, 23
+            if row in [10,11,22,23]+ignore_rows: # these 2 rows are never connected: 11, 23
+                # TODO: rows 10 and 22 ARE connected in 1x11 FAS muxes, but not in 2 level switch muxes
                 cs_flux = np.nan 
                 rs_flux = np.nan
             cs_flux_arr[col,row] = cs_flux
             rs_flux_arr[col,row] = rs_flux
     return cs_flux_arr, rs_flux_arr
+
+def get_fas_biases_1x11(
+    rs_data, 
+    num_cols=8, 
+    num_rows=24,
+    ignore_rows=[]
+):
+    rs_flux_arr = np.zeros((num_cols,num_rows))
+    for col in range(num_cols):
+        for row in range(num_rows):
+            arr = rs_data[:,0,col,row,0:4096]
+            max_idx = np.unravel_index(np.argmax(arr, axis=None), arr.shape)
+            rs_flux = rs_data[max_idx[0],0,col,-1,max_idx[1]]
+            if row in [11,23]+ignore_rows: # these 2 rows are never connected: 11, 23
+                # TODO: rows 10 and 22 ARE connected in 1x11 FAS muxes, but not in 2 level switch muxes
+                rs_flux = np.nan
+            rs_flux_arr[col,row] = rs_flux
+    return  rs_flux_arr
+
 
 def load_data_and_convert(filename,ramp_row=11,ssa=None,s1b=None):
     ssa = ssa or SeriesArrayCircuit()
@@ -228,12 +276,16 @@ def calculate_icmax(bias, data):
 
     returns: amplitude array, index of icmax, icmax
     """
-
     amplitude = np.ptp(data, axis=3) # indices now [bias, column, row]
     max_idx = np.argmax(amplitude, axis=0) # indices now [column, row]
     return amplitude, max_idx, bias[max_idx] 
 
 class PlotsWithSameColors:
+    """
+    To avoid repeatedly calling get_colors or having to pass two color arrays to every function,
+    this class stores the two color arrays as member variables and then all the plot functions can
+    access them
+    """
     def __init__(self, low_colors=None, high_colors=None):
         lc,hc = get_colors()
         self.low_colors = low_colors or lc
@@ -242,8 +294,6 @@ class PlotsWithSameColors:
     def current_modulation_plot(self, amplitude, icmax, bias_i, inspect_col, inspect_chip):
         plt.figure()
         # icmin = np.zeros(8)
-
-        
         for i in range(10):
             # for j in range(4,len(amplitude)):
             #     subarray = amplitude[0:j]
@@ -328,6 +378,7 @@ class PlotsWithSameColors:
         plt.title("Device normal resistance")
         plt.xlabel("SQ1 current [$\\mu$A]")
         plt.ylabel("SQ1 resistance [$\\Omega$]")
+
     def device_dynamic_resistance_plot(self,min_i, max_i, rdyn_at_iin_min, rdyn_at_iin_max, inspect_col, inspect_chip):
         plt.figure()
         col_idx = inspect_col
@@ -356,6 +407,7 @@ class PlotsWithSameColors:
         if silly:
             eyes_xy = np.array([(0.3,16),(0.7,16)])
             googly_eyes(eyes_xy, 50, 25, 0.04, 0.5)
+
     def squid_curve_input_plot(self, tri_i, d_i, inspect_col, inspect_chip):
         col_idx = inspect_col
         row_start= inspect_chip*12
@@ -367,6 +419,7 @@ class PlotsWithSameColors:
             plt.plot(tri_i[:stop_idx], current_subtracted,c=self.low_colors[i],label=i)
             plt.xlabel("input current [uA]")
             plt.ylabel("Device current (uA) + arb offset")
+
     def squid_gain_plot(self, tri_i, gain, inspect_col, inspect_chip):
         plt.figure()
         col_idx = inspect_col
@@ -384,6 +437,7 @@ class PlotsWithSameColors:
             #plt.plot(tri_i_filtered[stop_idx+1:],np.gradient(d_i_filtered[1,3,stop_idx+1:]*1e6)/np.gradient(tri_i_filtered[stop_idx+1:]),label="decreasing I")
         plt.xlabel("Input current [$\\mu$A]")
         plt.ylabel("Gain [unitless] = $dI_{SQ1}/dI_{in}$")
+
     def gain_oval_plot(self, norm_i, gain, inspect_col, inspect_chip, silly=False):
         plt.figure()
         col_idx = inspect_col
