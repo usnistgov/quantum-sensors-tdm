@@ -472,8 +472,10 @@ def set_fas_flux(
     global win, app
     with open(configfile, 'r') as yamlfile:
         cfg = yaml.load(yamlfile, Loader=yaml.FullLoader)
-    ramp_files = glob(
-    stage11_results = np.load(path.join(cfg["io"]["data_folder"], "rs_ramp.npz"))
+
+    ramp_files = glob(path.join(cfg["io"]["data_folder"], "*rs_ramp.npz"))
+    most_recent_file = sorted(ramp_files)[-1]
+    stage11_results = np.load(most_recent_file)
     cs_ramp = stage11_results["cs_ramp"]
     rs_data_unaligned = stage11_results["data_array"]
     rs_data = analysis.align_ramp(rs_data_unaligned)
