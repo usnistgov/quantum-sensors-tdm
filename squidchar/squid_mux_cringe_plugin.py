@@ -478,7 +478,10 @@ def set_fas_flux(
     stage11_results = np.load(most_recent_file)
 
     rs_data_unaligned = stage11_results["data_array"]
-    rs_data = analysis.align_ramp(rs_data_unaligned)
+    if cfg.is_two_level:
+        rs_data = analysis.align_ramp(rs_data_unaligned)
+    else:
+        rs_data = analysis.align_ramp(np.array(rs_data_unaligned))
     tri = rs_data[0,0,0,-1]
 
     num_cols = len(cfg["wiring"]["columns"])

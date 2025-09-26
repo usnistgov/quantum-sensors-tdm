@@ -165,7 +165,7 @@ def normalize_current_for_ovals(data):
     data_normalized = (data - min_i_tiled)/(max_i_tiled-min_i_tiled)
     return data_normalized
 
-def get_colors(base_cmap="turbo", squish_factor=30, num_colors=10):
+def get_colors(base_cmap="turbo", squish_factor=30, num_colors=11):
     """
     Make two sets of colors, each with num_colors values (usually 10 or 11)
     Each set of colors has num_colors similar colors to represent different rows
@@ -300,13 +300,13 @@ class PlotsWithSameColors:
         else:
             self.high_colors = hc # can't do the high_colors or hc trick when numpy arrays are involved
 
-    def fas_activation_plot_1x11(rs_data_ua, tri_ua, chip, col):
+    def fas_activation_plot_1x11(self, rs_data_ua, tri_ua, chip, col, slope="pos"):
         plt.figure()
         for i in range(11):
             if slope=="pos":
-                plt.plot(tri_ua[0:4096], rs_data_ua[:,inspect_col,i+inspect_chip*12,0:4096], label=f"RS {i}", c=self.low_colors[i])
+                plt.plot(tri_ua[0:4096], rs_data_ua[0,0,col,i+chip*12,0:4096], label=f"RS {i}", c=self.low_colors[i])
             else:
-                plt.plot(tri_ua[4096:], rs_data_ua[:,inspect_col,i+inspect_chip*12,4096:], label=f"RS {i}", c=self.low_colors[i])
+                plt.plot(tri_ua[4096:], rs_data_ua[0,0,col,i+chip*12,4096:], label=f"RS {i}", c=self.low_colors[i])
         plt.xlabel("row select flux [$\\mu$A]")
         plt.ylabel("sq1 response [$\\mu$A]")
 
