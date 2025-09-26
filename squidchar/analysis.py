@@ -288,8 +288,15 @@ class PlotsWithSameColors:
     """
     def __init__(self, low_colors=None, high_colors=None):
         lc,hc = get_colors()
-        self.low_colors = low_colors or lc
-        self.high_colors = high_colors or hc
+        if low_colors is not None:
+            self.low_colors = low_colors 
+        else:
+            self.low_colors = lc
+
+        if high_colors is not None:
+            self.high_colors = high_colors 
+        else:
+            self.high_colors = hc # can't do the high_colors or hc trick when numpy arrays are involved
 
     def current_modulation_plot(self, amplitude, icmax, bias_i, inspect_col, inspect_chip):
         plt.figure()

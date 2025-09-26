@@ -202,7 +202,7 @@ if __name__ == "__main__":
     make_all_plots_pdf(
         args.sq1_bias_ramp,
         args.input_ramp, 
-        "6in_proc_2_{}.pdf",
+        f"{args.outfile_prefix}_{{}}.pdf",
         1,
         silly=args.silly,
         rcw_arr_override=rcw_override,
