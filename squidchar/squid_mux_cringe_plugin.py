@@ -472,13 +472,13 @@ def set_fas_flux(
     global win, app
     with open(configfile, 'r') as yamlfile:
         cfg = yaml.load(yamlfile, Loader=yaml.FullLoader)
-
+    is_two_level = cfg["wiring"]["is_two_level"]
     ramp_files = glob(path.join(cfg["io"]["data_folder"], "*rs_ramp.npz"))
     most_recent_file = sorted(ramp_files)[-1]
     stage11_results = np.load(most_recent_file)
 
     rs_data_unaligned = stage11_results["data_array"]
-    if cfg.is_two_level:
+    if is_two_level:
         rs_data = analysis.align_ramp(rs_data_unaligned)
     else:
         rs_data = analysis.align_ramp(np.array(rs_data_unaligned))
@@ -486,7 +486,7 @@ def set_fas_flux(
 
     num_cols = len(cfg["wiring"]["columns"])
     num_rows = win.seqln_spin.value()
-    if cfg.is_two_level:
+    if is_two_level:
         cs_ramp = stage11_results["cs_ramp"]
         cs_flux_arr, rs_flux_arr = analysis.get_fas_biases(
             rs_data, 
