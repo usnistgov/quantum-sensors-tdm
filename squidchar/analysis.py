@@ -204,6 +204,8 @@ def fas_activation_plot(rs_data_ua, tri_ua, cs_ramp_ua, row, col):
     plt.ylabel("chip select flux [$\\mu$A]")
     plt.colorbar(label="sq1 response [$\\mu$A]")
 
+
+
 def get_fas_biases(rs_data, 
                    cs_ramp, 
                    num_cols=8, 
@@ -298,10 +300,20 @@ class PlotsWithSameColors:
         else:
             self.high_colors = hc # can't do the high_colors or hc trick when numpy arrays are involved
 
-    def current_modulation_plot(self, amplitude, icmax, bias_i, inspect_col, inspect_chip):
+    def fas_activation_plot_1x11(rs_data_ua, tri_ua, chip, col):
+        plt.figure()
+        for i in range(11):
+            if slope=="pos":
+                plt.plot(tri_ua[0:4096], rs_data_ua[:,inspect_col,i+inspect_chip*12,0:4096], label=f"RS {i}", c=self.low_colors[i])
+            else:
+                plt.plot(tri_ua[4096:], rs_data_ua[:,inspect_col,i+inspect_chip*12,4096:], label=f"RS {i}", c=self.low_colors[i])
+        plt.xlabel("row select flux [$\\mu$A]")
+        plt.ylabel("sq1 response [$\\mu$A]")
+
+    def current_modulation_plot(self, amplitude, icmax, bias_i, inspect_col, inspect_chip, nrows=10):
         plt.figure()
         # icmin = np.zeros(8)
-        for i in range(10):
+        for i in range(nrows):
             # for j in range(4,len(amplitude)):
             #     subarray = amplitude[0:j]
             #     mad = stats.median_abs_deviation(subarray)
@@ -320,18 +332,18 @@ class PlotsWithSameColors:
         plt.ylabel("Response [$\\mu$A]")
         # np.median(bias[ic_idx])
 
-    def i_i_plot(self, data_ua, bias_i, inspect_col, inspect_chip, bad_rs=[]):
+    def i_i_plot(self, data_ua, bias_i, inspect_col, inspect_chip, bad_rs=[],nrows=10):
         plt.figure()
         min_i = np.min(data_ua,axis=3)
         max_i = np.max(data_ua,axis=3)
-        for i in range(10):
+        for i in range(nrows):
             if i+inspect_chip*12 in bad_rs:
                 continue 
             min_i_row = min_i[:,inspect_col,i+inspect_chip*12] #- data_i[0,inspect_col,i+inspect_chip*12,0]
         
             plt.plot(bias_i,min_i_row,label=f"column {i}",c=self.low_colors[i])
         
-        for i in range(10):
+        for i in range(nrows):
             if i+inspect_chip*12 in bad_rs:
                 continue
             max_i_row = max_i[:,inspect_col,i+inspect_chip*12]# - data_i[0,inspect_col,i+inspect_chip*12,0]
@@ -341,7 +353,7 @@ class PlotsWithSameColors:
         plt.xlabel("SQ1 Bias [$\\mu$A]")
         plt.ylabel("SQ1 Current [$\\mu$A]")
 
-    def i_v_plot(self, data_ua, shunt_uv, inspect_col, inspect_chip):
+    def i_v_plot(self, data_ua, shunt_uv, inspect_col, inspect_chip,nrows=10):
         min_i = np.min(data_ua,axis=3)
         max_i = np.max(data_ua,axis=3)
         plt.figure()
@@ -350,9 +362,7 @@ class PlotsWithSameColors:
         col_idx = inspect_col
         row_start= inspect_chip*12
         
-        for i in range(10):
-            if i == 0 and inspect_chip == 0:
-                continue # row 0 is currently not behaving
+        for i in range(nrows):
             row_idx = row_start + i
             data_i_row = data_ua[:,col_idx,row_idx]
             shunt_v_row = shunt_uv[:,col_idx,row_idx]
@@ -371,13 +381,21 @@ class PlotsWithSameColors:
         plt.xlabel("SQ1 Bias [$\\mu$V]")
         plt.ylabel("SQ1 Current [$\\mu$A]")
 
-    def device_resistance_plot(self, min_i, max_i, rd_at_iin_min, rd_at_iin_max, inspect_col, inspect_chip):
+    def device_resistance_plot(
+        self, 
+        min_i, 
+        max_i, 
+        rd_at_iin_min, 
+        rd_at_iin_max, 
+        inspect_col, 
+        inspect_chip,
+        nrows=10):
     # Extract 1 column and 12 rows from the whole data set
         col_idx = inspect_col
         row_start= inspect_chip*12
         
         plt.figure()
-        for i in range(10):
+        for i in range(nrows):
             row_idx = row_start + i
             plt.plot(max_i[1:,col_idx,row_idx],rd_at_iin_max[1:,col_idx,row_idx],c=self.high_colors[i])
             plt.plot(min_i[1:,col_idx,row_idx],rd_at_iin_min[1:,col_idx,row_idx],c=self.low_colors[i])
@@ -386,11 +404,18 @@ class PlotsWithSameColors:
         plt.xlabel("SQ1 current [$\\mu$A]")
         plt.ylabel("SQ1 resistance [$\\Omega$]")
 
-    def device_dynamic_resistance_plot(self,min_i, max_i, rdyn_at_iin_min, rdyn_at_iin_max, inspect_col, inspect_chip):
+    def device_dynamic_resistance_plot(
+        self,min_i, 
+        max_i, 
+        rdyn_at_iin_min, 
+        rdyn_at_iin_max, 
+        inspect_col, 
+        inspect_chip,
+        nrows=10):
         plt.figure()
         col_idx = inspect_col
         row_start= inspect_chip*12
-        for i in range(10):
+        for i in range(nrows):
             row_idx = row_start + i
             plt.plot(max_i[1:,col_idx,row_idx],rdyn_at_iin_max[1:,col_idx,row_idx],'-',c=self.high_colors[i])
             plt.plot(min_i[1:,col_idx,row_idx],rdyn_at_iin_min[1:,col_idx,row_idx],'-',c=self.low_colors[i])
@@ -399,12 +424,12 @@ class PlotsWithSameColors:
         plt.xlabel("SQ1 current [$\\mu$A]")
         plt.ylabel("SQ1 R$_{dyn}$ [$\\Omega$]")
 
-    def rdyn_oval_plot(self,data_normalized, rdyn, ic_idx, inspect_col, inspect_chip, silly=False):
+    def rdyn_oval_plot(self,data_normalized, rdyn, ic_idx, inspect_col, inspect_chip, silly=False,nrows=10):
         col_idx = inspect_col
         row_start= inspect_chip*12
         
         plt.figure()
-        for i in range(10):
+        for i in range(nrows):
             row_idx = row_start + i 
             
             ic_i = ic_idx[col_idx, row_idx] 
@@ -415,11 +440,11 @@ class PlotsWithSameColors:
             eyes_xy = np.array([(0.3,16),(0.7,16)])
             googly_eyes(eyes_xy, 50, 25, 0.04, 0.5)
 
-    def squid_curve_input_plot(self, tri_i, d_i, inspect_col, inspect_chip):
+    def squid_curve_input_plot(self, tri_i, d_i, inspect_col, inspect_chip,nrows=10):
         col_idx = inspect_col
         row_start= inspect_chip*12
         plt.figure()
-        for i in range(10):
+        for i in range(nrows):
             stop_idx = tri_i.shape[0]//2
             device_current = d_i[col_idx,row_start+i,:stop_idx]*1e6
             current_subtracted = device_current-min(device_current)
@@ -427,14 +452,14 @@ class PlotsWithSameColors:
             plt.xlabel("input current [uA]")
             plt.ylabel("Device current (uA) + arb offset")
 
-    def squid_gain_plot(self, tri_i, gain, inspect_col, inspect_chip):
+    def squid_gain_plot(self, tri_i, gain, inspect_col, inspect_chip,nrows=10):
         plt.figure()
         col_idx = inspect_col
         row_start= inspect_chip*12
 
         stop_idx = tri_i.shape[0]//2
         plt.axhline(0,color='k',linewidth=1)
-        for i in range(10):
+        for i in range(nrows):
             
             plt.plot(tri_i[1:stop_idx],
                      gain[col_idx,row_start+i,1:stop_idx]*1e6,
@@ -445,11 +470,11 @@ class PlotsWithSameColors:
         plt.xlabel("Input current [$\\mu$A]")
         plt.ylabel("Gain [unitless] = $dI_{SQ1}/dI_{in}$")
 
-    def gain_oval_plot(self, norm_i, gain, inspect_col, inspect_chip, silly=False):
+    def gain_oval_plot(self, norm_i, gain, inspect_col, inspect_chip, silly=False,nrows=10):
         plt.figure()
         col_idx = inspect_col
         row_start= inspect_chip*12
-        for i in range(10):
+        for i in range(nrows):
             plt.plot(norm_i[col_idx, row_start+i], gain[col_idx, row_start+i]*1e6, '.', color=self.low_colors[i], markersize=0.5)
         if silly:
             eyes_xy = np.array([(0.3,16),(0.7,16)])

@@ -476,18 +476,20 @@ def set_fas_flux(
     ramp_files = glob(path.join(cfg["io"]["data_folder"], "*rs_ramp.npz"))
     most_recent_file = sorted(ramp_files)[-1]
     stage11_results = np.load(most_recent_file)
-    cs_ramp = stage11_results["cs_ramp"]
+
     rs_data_unaligned = stage11_results["data_array"]
     rs_data = analysis.align_ramp(rs_data_unaligned)
     tri = rs_data[0,0,0,-1]
 
     num_cols = len(cfg["wiring"]["columns"])
     num_rows = win.seqln_spin.value()
-    cs_flux_arr, rs_flux_arr = analysis.get_fas_biases(
-        rs_data, 
-        cs_ramp,
-        ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero']
-    )
+    if cfg.is_two_level:
+        cs_ramp = stage11_results["cs_ramp"]
+        cs_flux_arr, rs_flux_arr = analysis.get_fas_biases(
+            rs_data, 
+            cs_ramp,
+            ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero']
+        )
 
     #Set the chip select fluxes. 
     # From the fluxes that produced the maximum response
@@ -502,6 +504,10 @@ def set_fas_flux(
         row_idx = cs % 16
         set_rs_dacs(widget_index, 0, optimal_cs_flux, row_index=row_idx)
         set_rs_params(widget_index, row_index = row_idx)
+    else:
+        rs_flux_arr = analysis.get_fas_biases_1x11(rs_data,ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero'])
+
+
 
     #Set the row select fluxes.
     # From the fluxes that produced max response (above),
@@ -519,7 +525,15 @@ def set_fas_flux(
         # chips addressed bt a given RS line. 
     # else: pass, the user gave us an array
     for seq_slot, rs_active in enumerate(seq_rs):
+        if np.count_nonzero(seq_rs==rs_active)>1 and rs_active!=-1:
+            Warning("True two level switching is not yet implemented")
         optimal_flux = np.nanmedian(rs_flux_arr[:,seq_slot])
+        widget_index=cfg["phase_1_1"]["rs_card"][rs_active//16]
+        row_index = rs_active % 16
+        if np.isnan(optimal_flux):
+            optimal_flux=0
+        set_rs_dacs(widget_index,0,int(optimal_flux), row_index=row_index)
+        set_rs_params(widget_index, row_index=row_index)
 
 def phase_2(
         configfile="mux_config.yaml"
