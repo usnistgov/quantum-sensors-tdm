@@ -41,8 +41,8 @@ class MyLogger():
         print(f"adr_gui log filename: {self.filename}")
 
     def log(self,s):
-	    self.file.write(s+"\n")
-	    self.file.flush()
+        self.file.write(s+"\n")
+        self.file.flush()
 logger = MyLogger()
 
 def adrMagTick(i_now, i_target, i_max=1.0, i_min=0.0, duration_s=60*1.0, step_time_s=0.5):
