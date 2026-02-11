@@ -195,6 +195,18 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
                 iComboBox.indexValue = iComboBox.startindex
             iComboBox.setCurrentIndex(iComboBox.indexValue)
 
+        # load 'advanced' settings from qsettings
+        try:
+            self.settings.beginGroup("advancedwindow")
+            self.do_power_on = self.settings.value("power_on", type=bool)
+            self.demag_min = self.settings.value("demag_min", type=float)
+            self.show_actual_current = self.settings.value("show_actual_current",type=bool)
+            self.settings.endGroup()
+        except:
+            self.do_power_on=True
+            self.demag_min=0
+            self.show_actual_current=True
+
         self.currentExcitationCurrent = self.excitationCurrentValues[self.currentExcitationComboBox.currentIndex()]
         self.controlChannel = self.controlChannelValues[self.controlChannelComboBox.currentIndex()]
         # Send current excitation to lakeshore here
@@ -205,11 +217,12 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
         self.tempPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'temperature (K)', '')
         self.currentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'heater out %', '')
-        self.actualCurrentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'Mag. Current [A]', '')
-
+        
         self.tempPlotLayout.addWidget(self.tempPlot)
         self.currentPlotLayout.addWidget(self.currentPlot)
-        self.currentPlotLayout_2.addWidget(self.actualCurrentPlot)
+        if self.show_actual_current:
+            self.actualCurrentPlot = matplotlibCanvas.DynamicMplCanvas('time (s)', 'Mag. Current [A]', '')
+            self.currentPlotLayout_2.addWidget(self.actualCurrentPlot)
 
         self.machine = QStateMachine(self)
         self.states = {}
@@ -264,8 +277,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         _, r = self.tempControl.a.temperature_controller.getRamp()
         self.pidr = [p, i, d, r] 
         self.tempControl.rampRate = r
-        self.do_power_on = True
-        self.demag_min = 0
+
         self.advanced_reject() # sets values of pid dialog to values we just got from the controller
 
         # these are to turn on and off the crate and tower during and after mags
@@ -508,14 +520,15 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
 
     def updateCurrentPlot(self):
         self.currentPlot.add_point(time.time()-self.startTime, self.lastHOut)
-
-        self.actualCurrentPlot.add_point(time.time()-self.startTime,self.lastCurrentReading)
+        if self.show_actual_current:
+            self.actualCurrentPlot.add_point(time.time()-self.startTime,self.lastCurrentReading)
 
 
     def clearPlots(self):
         self.tempPlot.clear_points()
         self.currentPlot.clear_points()
-        self.actualCurrentPlot.clear_points()
+        if self.show_actual_current:
+            self.actualCurrentPlot.clear_points()
 
     def isControlState(self):
         return self.stateLabel.text().split(": ")[1] == "control"
@@ -799,6 +812,18 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         self.tempControl.rampRate = r
         self.demag_min = adv.spinbox_demag_min.value()
         self.do_power_on = adv.check_power_on.isChecked()
+        if self.show_actual_current != adv.check_show_actual_current.isChecked():
+            warningBox = QMessageBox()
+            warningBox.setText("restart adr_gui to show/hide actual current plot")
+            warningBox.exec_()
+            # we don't actually change the variable value because
+            # that could cause errors trying to add points to a non-existent plot!
+        if self.settings:
+            self.settings.beginGroup("advancedwindow")
+            self.settings.setValue("power_on", self.do_power_on)
+            self.settings.setValue("demag_min", self.demag_min)
+            self.settings.setValue("show_actual_current",adv.check_show_actual_current.isChecked())
+            self.settings.endGroup()
         
     def advanced_reject(self):
         adv = self.advanced_settings_window
@@ -810,6 +835,7 @@ class ADR_Gui(PyQt5.QtWidgets.QMainWindow):
         adv.spinbox_ramp.setValue(r)
         adv.spinbox_demag_min.setValue(self.demag_min)
         adv.check_power_on.setChecked(self.do_power_on)
+        adv.check_show_actual_current.setChecked(self.show_actual_current)
 
 
 class AdvancedPopup(QDialog):
