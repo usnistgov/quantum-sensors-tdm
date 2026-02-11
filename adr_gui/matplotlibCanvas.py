@@ -3,6 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -82,4 +83,97 @@ class DynamicMplCanvas(MplCanvas):
         self.axes.set_xlabel(self.xlabel)
         self.axes.set_ylabel(self.ylabel)
         self.axes.set_title(self.title)
+        self.draw()
+
+
+class SubplotsCanvas(FigureCanvasQTAgg):
+    """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
+    def __init__(self, nrows, ncols, sharex=False, sharey=False, parent=None, width=5, height=4, dpi=100):
+        fig,axs = plt.subplots(
+            nrows, 
+            ncols, 
+            sharex=sharex, 
+            sharey=sharey, 
+            figsize=(width, height), 
+            dpi=dpi, 
+            constrained_layout=True,
+            squeeze=False
+        )
+        self.fig=fig
+        self.axs=axs
+        FigureCanvasQTAgg.__init__(self, fig)
+        self.setParent(parent)
+
+        FigureCanvasQTAgg.setSizePolicy(self,
+                                   QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvasQTAgg.updateGeometry(self)
+
+    def sizeHint(self):
+        return QtCore.QSize(700,500) #
+    
+
+class DynamicSubplotsCanvas(SubplotsCanvas):
+    """A canvas that can be updated easily, Only one line per plot this time though,"""
+    def __init__(
+        self, 
+        nrows, 
+        ncols, 
+        sharex=False, 
+        sharey=False, 
+        xlabel="time (s)", 
+        ylabel="data (arb)", 
+        max_points = 3000, 
+        **kwargs
+    ):
+        SubplotsCanvas.__init__(
+            self,
+            nrows,
+            ncols,
+            sharex=sharex,
+            sharey=sharey,
+            **kwargs
+        )
+        self.nrows = len(self.axs)
+        self.ncols = len(self.axs[0])
+        self.x = [[[] for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.y = [[[] for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.xlabels = [[xlabel for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.ylabels = [[ylabel for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.style = "-o"
+        self.max_points = max_points
+
+
+    def set_axis_labels(self, row, col, xlabel, ylabel):
+        self.xlabels[row][col] = xlabel
+        self.ylabels[row][col] = ylabel
+        self.update_figure()
+
+    def add_point(self,row,col,x,y):
+        self.x[row][col].append(x)
+        self.y[row][col].append(y)
+        if len(self.x[row][col]) > self.max_points:
+            self.x[row][col] = self.x[row][col][-self.max_points:]
+            self.y[row][col]= self.y[row][col][-self.max_points:]
+        #allow adding multiple points before redraw
+
+    def clear_points(self):
+        self.x = [[[] for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.y = [[[] for _ in range(self.ncols)] for _ in range(self.nrows)]
+        self.update_figure()
+
+    def last_n_points(self,row,col,n):
+        if len(self.x[row][col]) < n:
+            return None
+        else:
+            return self.x[row][col][-n:], self.y[row][col][-n:]
+
+    def update_figure(self):
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                ax = self.axs[i][j]
+                ax.cla()
+                ax.plot(self.x[i][j], self.y[i][j], self.style)
+                ax.set_xlabel(self.xlabels[i][j])
+                ax.set_ylabel(self.ylabels[i][j])
         self.draw()

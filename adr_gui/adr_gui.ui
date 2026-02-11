@@ -440,10 +440,10 @@
       <x>20</x>
       <y>470</y>
       <width>761</width>
-      <height>161</height>
+      <height>511</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="tempPlotLayout">
+    <layout class="QVBoxLayout" name="plotLayout">
      <property name="spacing">
       <number>6</number>
      </property>
@@ -454,17 +454,6 @@
       <number>0</number>
      </property>
     </layout>
-   </widget>
-   <widget class="QWidget" name="verticalLayoutWidget_2">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>640</y>
-      <width>761</width>
-      <height>161</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="currentPlotLayout"/>
    </widget>
    <widget class="Line" name="vLine1">
     <property name="geometry">
@@ -715,17 +704,6 @@
      <string>No alt temp reading</string>
     </property>
    </widget>
-   <widget class="QWidget" name="verticalLayoutWidget_3">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>810</y>
-      <width>761</width>
-      <height>161</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="currentPlotLayout_2"/>
-   </widget>
    <widget class="QPushButton" name="advancedButton">
     <property name="geometry">
      <rect>
@@ -749,7 +727,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>28</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

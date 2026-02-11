@@ -73,7 +73,7 @@ class AdrLogParser():
 
     def plot(self,time_hrs=True,semilog=False):
         ''' plot data as function of epoch time '''
-        fig,ax1 = plt.subplots()
+        fig,ax1 = plt.subplots(layout="constrained")
         fig.suptitle(self.logfile)
         
         if time_hrs:
@@ -102,8 +102,8 @@ class AdrLogParser():
             else:
                 ax2.plot(t,self.df.iloc[:,3],color=color,label="heater")
             ax2.tick_params(axis='y', labelcolor=color)
-            fig.tight_layout()  # otherwise the right y-label is slightly clipped
-            ax1.plot(t,self.df.iloc[:,4],label="magnet current",color="C2")
+            if np.any(self.df.iloc[:,4]!=0):
+                ax1.plot(t,self.df.iloc[:,4],label="magnet current",color="C2")
             ax1.legend()
 
         elif self.logtype == 'full':
