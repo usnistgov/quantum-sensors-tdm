@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import scipy.signal
+from datetime import datetime
 import os
 from pathlib import Path
 
@@ -412,10 +413,11 @@ if __name__ == "__main__":
         with open(args.file, 'r') as yml:
             config = yaml.load(yml, Loader=yaml.FullLoader)
         column = acquire.column_name_to_num(config['detectors']['Column'])
-        savepath = os.path.join(config['io']['RootPath'], config['io']['SaveTo'])
+        now = datetime.now()
+        datestr = now.strftime("%Y-%m-%d-T%H-%M-%S")
+        
+        savepath = os.path.join(config['io']['RootPath'], f"{config['io']['FileName']}_{datestr}.json")
         Path(config['io']['RootPath']).mkdir(parents=True, exist_ok=True)
-        if os.path.exists(savepath):
-            raise IOError('please change file name')
         ns = NoiseSweep(
             column_str = config['detectors']['Column'],
             row_sequence_list = config['detectors']['Rows'],

@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 class MplCanvas(FigureCanvasQTAgg):
     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
     def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
+        fig = Figure(figsize=(width, height), dpi=dpi, constrained_layout=True)
         self.axes = fig.add_subplot(111)
         # We want the axes cleared every time plot() is called
 
