@@ -230,7 +230,7 @@ class IVTempSweepData(DataIO):
                 x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
             t_mK = curve.nominal_temp_k*1e3
             dt_mK = (curve.post_temp_k-curve.pre_temp_k)*1e3
-            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
+            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dT {dt_mK:0.2f} mK")
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
