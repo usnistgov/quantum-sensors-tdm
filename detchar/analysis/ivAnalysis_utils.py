@@ -305,6 +305,7 @@ class IVCommon():
             #print(ii,dex,success)
             if not success:
                 print('remove_band_data failed for index ',ii)
+                dex=0
             dexs.append(dex)
         v_clean = cut(v,dexs)
         i_clean = cut(i,dexs)
@@ -1080,6 +1081,11 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         dac_values_reshaped[np.isnan(self.ro_clean)]=np.nan # ugh
         return(self.get_value_at_rn_frac(self.rn_fracs, dac_values_reshaped, self.ro_clean))
 
+    def plot_iv(self):
+        plt.figure()
+        for i,temperature in enumerate(self.temp_list_k):
+            plt.plot(self.v_clean, self.i_clean, label=f"T={temperature} K")
+
     def plot_pr(self):
         pPlot = self.get_value_at_rn_frac([0.995],arr=self.p,ro=self.ro)
 
@@ -1096,7 +1102,8 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         plt.xlabel('$R_n$ Fraction')
         plt.ylabel('Power')
         #plt.title(plottitle)
-        plt.legend(tuple(self.temp_list_k))
+        legends = [f"T={t} K" for t in self.temp_list_k]
+        plt.legend(tuple(legends))
         plt.grid()
         #plt.title(self.figtitle)
         return fig
@@ -1107,7 +1114,7 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         llabels=[]
         temp_arr = np.linspace(np.min(self.temp_list_k),np.max(self.temp_list_k),100)
         for ii in range(self.num_rn_fracs):
-            if not np.isnan(self.p_at_rnfrac[ii,:]).any():
+            if True or not np.isnan(self.p_at_rnfrac[ii,:]).any():
                 plt.plot(self.temp_list_k,self.p_at_rnfrac[ii,:],'o')
                 llabels.append('%.3f'%(self.rn_fracs[ii]))
 
@@ -1128,7 +1135,11 @@ class IVversusADRTempOneRow(IVSetAnalyzeRow):
         '''
         pfits=np.empty((self.num_rn_fracs,3))
         for ii in range(self.num_rn_fracs):
-            pfit,pcov = self.fit_pvt(np.array(self.temp_list_k),self.p_at_rnfrac[ii])
+            t_arr = np.array(self.temp_list_k)
+            good_idx = np.isfinite(self.p_at_rnfrac[ii])
+            t_i = t_arr[good_idx]
+            p_i = self.p_at_rnfrac[ii,good_idx]
+            pfit,pcov = self.fit_pvt(t_i,p_i)
             pfits[ii,:]=pfit
         return pfits
 
