@@ -210,7 +210,7 @@ def get_fas_biases(rs_data,
                    cs_ramp, 
                    num_cols=8, 
                    num_rows=24,
-                   ignore_rows=[]):
+                   ignore_rows=[10,11,22,23]):
     cs_flux_arr = np.zeros((num_cols,num_rows))
     rs_flux_arr = np.zeros((num_cols,num_rows))
     for col in range(num_cols):
@@ -219,7 +219,7 @@ def get_fas_biases(rs_data,
             max_idx = np.unravel_index(np.argmax(arr, axis=None), arr.shape)
             cs_flux = cs_ramp[max_idx[0]]
             rs_flux = rs_data[max_idx[0],0,col,-1,max_idx[1]]
-            if row in [10,11,22,23]+ignore_rows: # these 2 rows are never connected: 11, 23
+            if row in ignore_rows: # these 2 rows are never connected: 11, 23
                 # TODO: rows 10 and 22 ARE connected in 1x11 FAS muxes, but not in 2 level switch muxes
                 cs_flux = np.nan 
                 rs_flux = np.nan
@@ -288,8 +288,8 @@ class PlotsWithSameColors:
     this class stores the two color arrays as member variables and then all the plot functions can
     access them
     """
-    def __init__(self, low_colors=None, high_colors=None):
-        lc,hc = get_colors()
+    def __init__(self, low_colors=None, high_colors=None, nrows=10):
+        lc,hc = get_colors(num_colors=nrows)
         if low_colors is not None:
             self.low_colors = low_colors 
         else:
@@ -483,7 +483,7 @@ class PlotsWithSameColors:
         plt.ylabel("Squid gain [unitless]")
 
 def calculate_device_voltage(data_ua, bias_i, rshunt):
-    bias_broadcast = np.broadcast_to(bias_i, (8,24,8192,bias_i.shape[0]))
+    bias_broadcast = np.broadcast_to(bias_i, (8,data_ua.shape[2],8192,bias_i.shape[0]))
     bias_tiled = bias_broadcast.transpose([3,0,1,2]) 
     shunt_uv = (bias_tiled - data_ua) * rshunt# also = voltage across squids
     return shunt_uv
