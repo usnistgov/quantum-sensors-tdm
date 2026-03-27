@@ -7,6 +7,7 @@ is suited for storing data and scripting to loop over temperature and bias point
 '''
 
 from detchar.iv_data import NoiseData, NoiseSweepData
+from adr_gui.adr_gui_control import FakeAdrGuiControl
 from detchar import acquire
 import numpy as np
 import matplotlib.pyplot as plt
@@ -418,6 +419,13 @@ if __name__ == "__main__":
         
         savepath = os.path.join(config['io']['RootPath'], f"{config['io']['FileName']}_{datestr}.json")
         Path(config['io']['RootPath']).mkdir(parents=True, exist_ok=True)
+        try:
+            if config["runconfig"]["dont_command_temperature"]:
+                adr_control=FakeAdrGuiControl()
+            else:
+                adr_control=None
+        except KeyError:
+            adr_control=None
         ns = NoiseSweep(
             column_str = config['detectors']['Column'],
             row_sequence_list = config['detectors']['Rows'],
@@ -431,7 +439,8 @@ if __name__ == "__main__":
             dfb_channels = config["dfb"]["channels"],
             num_averages = config["runconfig"]['num_averages'],
             f_min_hz = config['runconfig']['min_freq'],
-            voltage_source = config['voltage_bias']['source']
+            voltage_source = config['voltage_bias']['source'],
+            adr_gui_control=adr_control
         )
         nd=ns.run(tmp_file = savepath+'.tmp')
         ns.set_temp(0.1)
