@@ -419,8 +419,11 @@ def phase_1_1(
         cs_index = cfg["wiring"]["chip_select_row"]
         if type(cs_index) is not list:
             cs_index = [cs_index]
-        for card, cs in zip(rs_card,cs_index):
+
+        for cs in cs_index:
             cs_loc_on_card = cs % 16
+            card = rs_card[cs//16]
+            print(cs, card, cs_loc_on_card)
             set_rs_params(card, row_index=cs_loc_on_card, tri=0)
         cs_ramp = np.linspace(
             ramp_params["start_dac"],
@@ -435,8 +438,9 @@ def phase_1_1(
             suffix=' [%(index)d/%(max)d, ETA:%(eta_td)s]')
         bar.start()
         for bias in cs_ramp:
-            for card, cs in zip(rs_card,cs_index):
+            for cs in cs_index:
                 cs_loc_on_card = cs % 16
+                card = rs_card[cs//16]
                 set_rs_dacs(card, 0, bias, row_index=cs_loc_on_card)
             #print(f"set cs flux={bias}")
 
@@ -481,7 +485,7 @@ def set_fas_flux(
     if is_two_level:
         rs_data = analysis.align_ramp(rs_data_unaligned)
     else:
-        rs_data = analysis.align_ramp(np.array(rs_data_unaligned))
+        rs_data = analysis.align_ramp(np.array([rs_data_unaligned]))
     tri = rs_data[0,0,0,-1]
 
     num_cols = len(cfg["wiring"]["columns"])
@@ -494,19 +498,19 @@ def set_fas_flux(
             ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero']
         )
 
-    #Set the chip select fluxes. 
-    # From the fluxes that produced the maximum response
-    # that were computed above, take the median 
-    # for all the Columns and all the RSs where that CS is
-    # active.
-    cs_seq_map = cfg["wiring"]["cs_seqn_map"]
-    for cs in cs_seq_map.keys():
-        rs_arr = cs_seq_map[cs]
-        optimal_cs_flux = np.nanmedian(cs_flux_arr[:,rs_arr])
-        widget_index = cfg["phase_1_1"]["rs_card"][cs // 16]
-        row_idx = cs % 16
-        set_rs_dacs(widget_index, 0, optimal_cs_flux, row_index=row_idx)
-        set_rs_params(widget_index, row_index = row_idx)
+        #Set the chip select fluxes. 
+        # From the fluxes that produced the maximum response
+        # that were computed above, take the median 
+        # for all the Columns and all the RSs where that CS is
+        # active.
+        cs_seq_map = cfg["wiring"]["cs_seqn_map"]
+        for cs in cs_seq_map.keys():
+            rs_arr = cs_seq_map[cs]
+            optimal_cs_flux = np.nanmedian(cs_flux_arr[:,rs_arr])
+            widget_index = cfg["phase_1_1"]["rs_card"][cs // 16]
+            row_idx = cs % 16
+            set_rs_dacs(widget_index, 0, optimal_cs_flux, row_index=row_idx)
+            set_rs_params(widget_index, row_index = row_idx)
     else:
         rs_flux_arr = analysis.get_fas_biases_1x11(rs_data,ignore_rows=cfg['phase_1_1_analysis']['rs_force_zero'])
 
