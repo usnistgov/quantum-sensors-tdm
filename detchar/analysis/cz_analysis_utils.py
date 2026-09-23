@@ -353,7 +353,7 @@ class CzSuperConductingBranch():
             db = self.cz.db_list[temp_index][jj]
             n_freq,n_row,foo = np.shape(ss.iq_data)
             iq = np.array(ss.iq_data)
-            fig,ax=plot_quadrature_detection(self.f,iq,row_index,label=db,fig=fig,ax=ax)
+            fig,ax=plot_quadrature_detection(self.f,iq[:,row_index,:],label=db,fig=fig,ax=ax)
 
     def get_mean_and_std(self,temp_index,debug=True):
         n_freq,n_row,n_quad = np.shape(self.data[temp_index][0].iq_data)
