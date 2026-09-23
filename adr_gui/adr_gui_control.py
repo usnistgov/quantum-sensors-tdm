@@ -87,6 +87,46 @@ class AdrGuiControl:
         assert success
         return float(extra_info)   
 
+class FakeAdrGuiControl:
+    ''' class for your script to send remote commands to adr_gui'''
+    def __init__(self, host='localhost'):
+        self.setpt=0
+
+    def send(self, message):
+        return ""
+
+    def send_decode_reply(self, message):
+        return True, ""
+
+    def echo(self, x):
+        return x
+
+    def get_temp_k(self):
+        return float(self.setpt)
+
+    def set_temp_k(self, setpoint_k):
+        self.setpt=setpoint_k
+        return True
+
+    def get_ramp_rate_kpm(self):
+        return 0
+
+    def set_ramp_rate_kpm(self, ramp_rate_kpm):
+        return True
+
+    def get_temp_rms_uk(self):
+        return 0 
+    
+    def get_temp_rms_uk_npts(self,n):
+        return 0
+
+    def get_hout(self):
+        return 0  
+
+    def get_slope_hout_per_hour(self):
+        return 0  
+
+
 def cc_help():
     help_text = []
     for cmd in ADR_GUI_COMMANDS:

@@ -1,4 +1,5 @@
 # make stuff easier to import, eg import instrument.AgilentE3631A
+
 from .agilent_e3631a_serial import AgilentE3631A
 from .ethernet_instrument import EthernetInstrument
 from .heatswitchLabjack import HeatswitchLabjack
@@ -16,3 +17,5 @@ from .agilent33220a_usb import Agilent33220A
 from .bluebox import BlueBox
 from .velmex_serial import Velmex
 from .aerotechXY import AerotechXY
+from .soloistFTS import SoloistFTS
+

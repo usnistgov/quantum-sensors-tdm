@@ -116,18 +116,19 @@ def main():
     # bath temperature things ---------------------------
     bath_temps = cfg['runconfig']['bathTemperatures']
 
-    if type(bayname) is list:
-        pt_taker = iv.IVPointTakerMulti(
-                db_cardname=cfg['voltage_bias']['db_cardname'],
-                bayname=bayname,
-                voltage_source=voltage_source,
-                column_number=cfg["dfb"]["channels"]
-        )
-    else:
-        pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
-          bayname=bayname, 
-          voltage_source = voltage_source,
-          relock_threshold_lo_hi = (4000, 14000))
+    # if type(bayname) is list:
+    pt_taker = iv.IVPointTakerMulti(
+            db_cardname=cfg['voltage_bias']['db_cardname'],
+            bayname=bayname,
+            voltage_source=voltage_source,
+            column_number=cfg["dfb"]["channels"]
+    )
+    # else:
+    #     pt_taker = iv.IVPointTaker(db_cardname=cfg['voltage_bias']['db_cardname'], 
+    #       bayname=bayname, 
+    #       voltage_source = voltage_source,
+    #       relock_threshold_lo_hi = (4000, 14000),
+    #       column_number=)
     curve_taker = iv.IVCurveTaker(
         pt_taker, 
         temp_settle_delay_s=cfg['runconfig']['temp_settle_delay_s'], 

@@ -233,7 +233,7 @@ class IVTempSweepData(DataIO):
                 x, y = curve.xy_arrays_zero_subtracted_at_dac_high()
             t_mK = curve.nominal_temp_k*1e3
             dt_mK = (curve.post_temp_k-curve.pre_temp_k)*1e3
-            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dt {dt_mK:0.2f} mK")
+            plt.plot(x, y[:,row], label=f"{t_mK:0.2f} mK, dT {dt_mK:0.2f} mK")
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
@@ -1028,11 +1028,11 @@ class NoiseSweepData(DataIO):
         print('measured temperatures: ',temp_m)
         return fig, ax
 
-    def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None):
+    def plot_row_single(self,row_index,temp_index,bias_index,physical_units=True,fig=None,ax=None,label=None,**kwargs):
         df = self.data[temp_index][bias_index]
         fig,ax = self._handle_fig(fig,ax)
         m, y_label_str = self._phys_units(physical_units)
-        ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2)
+        ax.loglog(df.freq_hz,np.array(df.Pxx)[row_index,:]*m**2,label=label,**kwargs)
         return fig, ax
 
     def to_txt(self,filename,row_index,temp,bias_indices=None,physical_units=True):

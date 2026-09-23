@@ -113,13 +113,13 @@
     </item>
    </layout>
   </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>270</x>
      <y>100</y>
      <width>229</width>
-     <height>71</height>
+     <height>88</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -154,6 +154,16 @@
      <widget class="QCheckBox" name="check_power_on">
       <property name="text">
        <string>Power on electronics?</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="check_show_actual_current">
+      <property name="text">
+       <string>Show Actual Current Plot</string>
       </property>
       <property name="checked">
        <bool>true</bool>

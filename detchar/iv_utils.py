@@ -136,6 +136,8 @@ class IVPointTakerMulti(IVPointTaker):
                     cringe_row_for_relock = i % self.ec.numRows
                     self.cc.relock_fba(cringe_col_for_relock, cringe_row_for_relock)
                     relocks += 1
+                else:
+                    relocks -= 0.1
             else:
                 relocks = max(0, relocks-0.2)
                     

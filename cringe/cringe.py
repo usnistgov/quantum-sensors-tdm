@@ -2576,7 +2576,15 @@ def main():
             print("Going to interactive mode. Press ctrl-c to return to ipython")
             while True:
                 app.processEvents()
-        IPython.embed()
+                time.sleep(0.01) # prevent cringe from using 100% cpu
+        IPython.start_ipython(
+            argv=[],
+            user_ns={
+                "win":win, 
+                "app":app,
+                "to_interactive": to_interactive
+            }
+        )
     app.exec_()
 
 if __name__ == '__main__':
