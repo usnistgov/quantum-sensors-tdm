@@ -219,9 +219,12 @@ class IVTempSweepData(DataIO):
     set_temps_k: List[float]
     data: List[IVCurveColumnData]
 
-    def plot_row(self, row, zero="dac high"):
+    def plot_row(self, row, zero="dac high", measurement_indices=None):
         plt.figure()
-        for curve in self.data:
+        if measurement_indices is None:
+            measurement_indices = range(len(self.data))
+        for ii in measurement_indices:
+            curve = self.data[ii]
             if zero == "origin":
                 x, y = curve.xy_arrays_zero_subtracted_at_origin()
             elif zero == "fit normal":
