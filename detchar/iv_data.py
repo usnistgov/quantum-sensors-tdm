@@ -112,9 +112,15 @@ class IVCurveColumnData(DataIO):
         self.iv_circuit = None   
         self.allowed_keys = list(vars(IVCircuit(1,1,1)).keys()) 
 
-    def plot(self):
+    def plot(self,idx=None):
         #plt.figure()
-        plt.plot(self.dac_values, self.fb_values)
+        if idx is None:
+            plt.plot(self.dac_values, self.fb_values) 
+        elif type(idx) is int:
+            plt.plot(self.dac_values, self.fb_values_array()[:,idx])
+        elif type(idx) is list:
+            for id in idx:
+                plt.plot(self.dac_values, self.fb_values_array()[:,id])
         plt.xlabel("dac values (arb)")
         plt.ylabel("fb values (arb)")
         plt.title(f"bay {self.bayname}, db_card {self.db_cardname}, nominal_temp_mk {self.nominal_temp_k*1000}")
@@ -219,8 +225,8 @@ class IVTempSweepData(DataIO):
     set_temps_k: List[float]
     data: List[IVCurveColumnData]
 
-    def plot_row(self, row, zero="dac high", measurement_indices=None):
-        plt.figure()
+    def plot_row(self, row, zero="dac high", measurement_indices=None,nolegend=False):
+        #plt.figure()
         if measurement_indices is None:
             measurement_indices = range(len(self.data))
         for ii in measurement_indices:
@@ -237,7 +243,7 @@ class IVTempSweepData(DataIO):
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
         plt.title(f"row={row} bayname {curve.bayname}, db_card {curve.db_cardname}, zero={zero}")
-        plt.legend()
+        if not nolegend: plt.legend()
 
     def get_dac_at_rfrac(self, rows, rn_frac_list=[0.3,0.5,0.7],normal_above_x=None,superconducting_below_x=0,plot=False):
         ''' returns List of List of List, i.e. dac_list[temp_index][row_index][rfrac_index] '''
@@ -327,10 +333,15 @@ class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temp
     data: List[IVTempSweepData]
     extra_info: dict
 
-    def plot_row(self, row, zero=None):
+    def plot_row(self, row, zero="dac high", measurement_indices=None):
         #n=len(set_cl_temps_k)
         #plt.figure()
-        for ii, tempSweep in enumerate(self.data): # loop over IVTempSweepData instances (ie coldload temperature settings)
+        if measurement_indices is None:
+            measurement_indices = range(len(self.data))
+        for ii in measurement_indices:
+            curve = self.data[ii]
+        for ii in measurement_indices:
+            tempSweep =self.data[ii] 
             for jj, set_temp_k in enumerate(tempSweep.set_temps_k): # loop over bath temperatures
                 data = tempSweep.data[jj]
                 x = data.dac_values
