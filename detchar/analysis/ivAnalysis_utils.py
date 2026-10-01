@@ -476,7 +476,7 @@ class IVCurveAnalyzeSingle():
     ### Main analysis methods ----------------------------------------------------------------
     ### ---------------------------------------------------------------------------------
 
-    def analyze_iv(self,plot=False,beta=0):
+    def analyze_iv(self,plot=False,beta=0,sc_percent_diff=5):
         ''' based on algorithm in pySmurf from Ari Cukierman 
 
             creates class globals:
@@ -489,7 +489,7 @@ class IVCurveAnalyzeSingle():
         
         '''
         x,y = self.determine_iv_regimes()
-        y = self.remove_dc_offset(x,y)
+        y = self.remove_dc_offset(x,y,sc_percent_diff=sc_percent_diff)
     
         # calculate quantities of interest
         i_bias = x*self.to_i_bias # convert current bias to shunt network to physical units
@@ -579,7 +579,7 @@ class IVCurveAnalyzeSingle():
         # Define IV curve regimes: superconducting, in transition, normal
         sc_idx = np.argmax(abs(ddfb))+1 # superconducting index determined from maximum of 2nd derivative 
         turn_idx = np.argmin(abs(dfb[sc_idx:]))+sc_idx+1 # "turn index" where slope = 0
-        n_idx = int(N-(N-turn_idx)/2) # defined has half way from IV turn-around to highest Vbias point
+        n_idx = int(N-(N-turn_idx)/2) # defined as half way from IV turn-around to highest Vbias point
 
         self.sc_idx=sc_idx; self.turn_idx=turn_idx; self.normal_idx = n_idx
 
@@ -587,7 +587,7 @@ class IVCurveAnalyzeSingle():
         # plot raw data
             colors = list(Colors.TABLEAU_COLORS)
             fig,ax=plt.subplots()
-            ax.plot(x,y,'o',color=colors[0])
+            ax.plot(x,y,'.-',color=colors[0])
             #ax.plot(x[:sc_idx+1],y[:sc_idx+1],'ko')
             ax.plot(x[sc_idx],y[sc_idx],'r.')
             ax.plot(x[turn_idx],y[turn_idx],'r.')
@@ -601,19 +601,19 @@ class IVCurveAnalyzeSingle():
 
         else: return x,y
 
-    def remove_dc_offset(self,x,y,plot=False):
+    def remove_dc_offset(self,x,y,sc_percent_diff=5,plot=False,verbose=True):
         ''' remove DC offset of IV curve. x,y must be provided in ascending order and 
             right-side up.  This is done within self.determine_iv_regimes
         '''
         
         if self.sc_idx > self.normal_idx:
-            print('WARNING: superconducting branch found at higher voltage bias than normal branch.  Setting sc branch to index 1.')
+            if verbose: print('WARNING: superconducting branch found at higher voltage bias than normal branch.  Setting sc branch to index 1.')
             self.sc_idx = 1 
 
         # fit normal regime, remove the offset
         p_norm = np.polyfit(x[self.normal_idx:],y[self.normal_idx:],1)
         if self.sc_idx == 0: 
-            print('WARNING: no superconducting branch found.')
+            if verbose: print('WARNING: no superconducting branch found.')
             y-=p_norm[1] # subtract arbitrary offset using normal branch
             p_sc = None
             
@@ -622,8 +622,8 @@ class IVCurveAnalyzeSingle():
             p_sc = np.polyfit(x[:self.sc_idx+1],y[:self.sc_idx+1],1)
             y-=p_norm[1] # subtract arbitrary offset using normal branch
             offset_diff = abs(100*(p_norm[1]-p_sc[1])/p_norm[1])
-            if offset_diff > 5: 
-                #print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
+            if offset_diff > sc_percent_diff: 
+                if verbose: print('superconducting and normal branch offsets differ by: %.2f%%.  Applying separate DC offset to superconducting branch.'%(offset_diff))
                 y[0:self.sc_idx+1]-=p_sc[1]-p_norm[1] 
 
         self.p_norm=p_norm; self.p_sc = p_sc 
@@ -633,7 +633,7 @@ class IVCurveAnalyzeSingle():
             ax.plot(x,y,'o-')
             ax.plot(x[:self.sc_idx+1],y[:self.sc_idx+1],'ro')
             ax.plot(x[self.sc_idx],y[self.sc_idx],'go')
-            ax.plot(x[normal_index:],y[normal_index:],'ro')
+            ax.plot(x[self.normal_idx:],y[self.normal_idx:],'ro')
             ax.plot(x,np.polyval([p_norm[0],0],x),linestyle='--',color='k')
             if p_sc is not None: ax.plot(x[:self.sc_idx],np.polyval([p_sc[0],0],x[:self.sc_idx]),linestyle='--',color='k')
         return y
@@ -678,7 +678,7 @@ class IVCurveAnalyzeSingle():
 
     def plot(self,fig=None,ax=None):
         colors = list(Colors.TABLEAU_COLORS)
-        if not fig: fig,ax=plt.subplots(3,1)
+        if not fig: fig,ax = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(8, 8))#fig,ax=plt.subplots(3,1)
         ax[0].plot(self.v_tes,self.i_tes,color=colors[0])
         ax[0].plot(self.v_tes[self.sc_idx],self.i_tes[self.sc_idx],'r.')
         ax[0].plot(self.v_tes[self.turn_idx],self.i_tes[self.turn_idx],'r.')
@@ -694,7 +694,7 @@ class IVCurveAnalyzeSingle():
         ax[2].plot(self.v_tes[self.sc_idx:-1],self.si[self.sc_idx:],color=colors[0])
         ax[2].plot(self.v_tes[self.sc_idx:-1],self.si_etf[self.sc_idx:],linestyle='--',color=colors[1])
         ax[2].set_ylabel('$S_{I}$')
-        ax[2].set_ylim((self.si[self.sc_idx+1]*1.1,1))
+        ax[2].set_ylim((self.si[self.sc_idx]*1.1,1))
         ax[2].set_xlabel('V')
 
         for ii in range(3):
@@ -1614,6 +1614,8 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # ax[1].set_ylim((0,np.max(self.p)*1.1))
         for ii in [2,3]:
             ax[ii].set_ylim(0,1.2*self.r[0,0])
+        ax[2].set_xlim((0,np.max(self.p[0,:])*1.1))
+        ax[3].set_xlim((0,np.max(self.v[0,:])*1.1))
 
         figXX.suptitle(self.figtitle+'  IV, PV, RP, RV')
         ax[0].legend(tuple(self.cl_temps_k_legend),loc='upper right')
@@ -2059,7 +2061,7 @@ class IVColdloadSweepAnalyzer():
         plt.show()
 
     def plot_cl_temp_sweep_for_row(self,row,bath_temp_index,cl_indices=None):
-        if cl_indices==None:
+        if cl_indices is None:
             cl_indices = list(range(self.n_cl_temps))
         x,fb_arr = self.get_cl_sweep_dataset_for_row(row,bath_temp_index,cl_indices)
         plt.figure()
@@ -2068,7 +2070,7 @@ class IVColdloadSweepAnalyzer():
             plt.plot(self.dac_values, fb_arr[:,ii]-dy)
         plt.xlabel('DAC values')
         plt.ylabel('Feedback values')
-        plt.title('Row index = %d, Tb = %d mK'%(row,self.set_bath_temps_k[bath_temp_index]*1000))
+        plt.title('Row = %d, Tb = %d mK'%(row,self.set_bath_temps_k[bath_temp_index]*1000))
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
         plt.show()
 
