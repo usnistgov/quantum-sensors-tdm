@@ -333,7 +333,7 @@ class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temp
     data: List[IVTempSweepData]
     extra_info: dict
 
-    def plot_row(self, row, zero="dac high", measurement_indices=None):
+    def plot_row_idx(self, row_idx, zero="dac high", measurement_indices=None):
         #n=len(set_cl_temps_k)
         #plt.figure()
         if measurement_indices is None:
@@ -349,10 +349,10 @@ class IVColdloadSweepData(DataIO): #set_cl_temps_k, pre_cl_temps_k, post_cl_temp
                     y=data.fb_values_array()
                 elif zero == "dac high":
                     x, y = data.xy_arrays_zero_subtracted_at_dac_high()
-                plt.plot(x,y[:,row],label='T_cl = %.1fK; T_b = %.1f'%(self.set_cl_temps_k[ii],data.nominal_temp_k))
+                plt.plot(x,y[:,row_idx],label='T_cl = %.1fK; T_b = %.1f'%(self.set_cl_temps_k[ii],data.nominal_temp_k))
         plt.xlabel("dac value (arb)")
         plt.ylabel("feedback (arb)")
-        plt.title(f"row={row} bayname {data.bayname}, db_card {data.db_cardname}")
+        plt.title(f"row index={row_idx} bayname {data.bayname}, db_card {data.db_cardname}")
         plt.legend()
 
 @dataclass_json
