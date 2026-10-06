@@ -476,7 +476,7 @@ class IVCurveAnalyzeSingle():
     ### Main analysis methods ----------------------------------------------------------------
     ### ---------------------------------------------------------------------------------
 
-    def analyze_iv(self,plot=False,beta=0,sc_percent_diff=5):
+    def analyze_iv(self,plot=False,beta=0,sc_percent_diff=5,verbose=True):
         ''' based on algorithm in pySmurf from Ari Cukierman 
 
             creates class globals:
@@ -489,7 +489,7 @@ class IVCurveAnalyzeSingle():
         
         '''
         x,y = self.determine_iv_regimes()
-        y = self.remove_dc_offset(x,y,sc_percent_diff=sc_percent_diff)
+        y = self.remove_dc_offset(x,y,sc_percent_diff=sc_percent_diff,verbose=verbose)
     
         # calculate quantities of interest
         i_bias = x*self.to_i_bias # convert current bias to shunt network to physical units
@@ -1262,6 +1262,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         predicted_power_w: <list or 1D numpy array> predicted power (in watts) corresponding to each cl_temp, used to determine optical efficiency
         dark_power_w: <list or 1D numpy array> electrical power of dark bolometer corresponding to each cl_temp, used for dark subtraction
         rn_fracs: <list of rn fractions to use for electrical power cuts.  If None: default list used.
+        useIVCurveAnalyzeSingle: <boolean> default is True.  If True, use IVCurveAnalyzeSingle analysis class, which is the pySmurf algorithm.
 
         The data products (power at fraction of rn) are NxM, where N are the number or rn frac and M
         is the number of cold load temperatures.  Thus self.p_at_rnfrac[0] gives the power plateau at
@@ -1272,7 +1273,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
     def __init__(self,dac_values,fb_array,cl_temps_k,bath_temp_k,
                  row_name=None,det_name=None,
                  iv_circuit=None,predicted_power_w=None,dark_power_w=None,rn_fracs=None,
-                 analysis_method='advanced'):
+                 useIVCurveAnalyzeSingle=True):
         # fixed globals / options
         self.n_normal_pts=10 # number of points for normal branch fit
         self.use_ave_offset=False # use a global offset to align fb, not individual per curve
@@ -1296,7 +1297,7 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         self.n_dac_values, self.n_cl_temps = np.shape(self.fb)
 
         # do analysis of v,i,r,p vectors.  Place main results as globals to class
-        self._analyze_ivs_(method=analysis_method)
+        self._analyze_ivs_(useIVCurveAnalyzeSingle)
         self.v, self.i, self.p, self.r, self.bad_data_idx = self.remove_bad_data(self.v_orig,self.i_orig,self.p_orig,self.r_orig,threshold=self.bad_data_threshold)
         self.ro = self.r/self.r[0,:]
         self.p_at_rnfrac = self.get_value_at_rn_frac(self.rn_fracs,self.p,self.ro) # n_rn_fracs x n_cl_temps
@@ -1319,20 +1320,18 @@ class IVColdloadAnalyzeOneRow(IVCommon):
         # get efficiency
         if self.analyze_eta:
             self.get_efficiency_at_rnfrac()
-            self.eta_for_rfrac = self.get_efficiency_from_fit(self.Dp_at_rnfrac)
+            self.eta_for_rfrac = self.get_efficiency_from_fit(self.Dp_at_rnfrac,showplot=False)
             if self.dark_analysis:
                 Dp_at_rnfrac_darksubtracted = self.Dp_at_rnfrac - self.dark_Dp_w
-                self.eta_for_rfrac_darksubtracted = self.get_efficiency_from_fit(Dp_at_rnfrac_darksubtracted)
+                self.eta_for_rfrac_darksubtracted = self.get_efficiency_from_fit(Dp_at_rnfrac_darksubtracted,showplot=False)
 
         # plotting stuff
         self.colors = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
 
     # magic methods ----------------------------------------------------------
-    def _analyze_ivs_(self,method='advanced'):
-        if method=='advanced':
-            self._analyze_ivs_advanced_()
-        else:
-            self._analyze_ivs_standard_()
+    def _analyze_ivs_(self,useIVCurveAnalyzeSingle):
+        if useIVCurveAnalyzeSingle: self._analyze_ivs_advanced_()
+        else: self._analyze_ivs_standard_()
 
     def _analyze_ivs_advanced_(self):
         ivs=[]
@@ -1558,10 +1557,20 @@ class IVColdloadAnalyzeOneRow(IVCommon):
 
             if showplot:
                 ax[0].plot(self.cl_DT_k,Dp_at_rnfrac[ii,:],'o')
-                ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-')
-                ax[0].plot(self.cl_DT_k,fitfunc(pfit,self.predicted_Dp_w),'k--')
                 ax[1].plot(self.cl_DT_k,errfunc(pfit,self.predicted_Dp_w,Dp_at_rnfrac[ii,:]),'o--')
-        return np.array(etas)
+
+        if showplot:
+            #ax[0].plot(self.cl_DT_k,self.predicted_Dp_w,'k-')
+            ax[0].plot(self.cl_DT_k,fitfunc(pfit,self.predicted_Dp_w),'k--')
+            ax[0].text(0,np.max(Dp_at_rnfrac)*0.9,s='$\eta$ = %.3f'%etas[0])
+            #legend_text = self.rn_fracs_legend.append('fit')
+            #print(legend_text)
+            ax[0].legend(self.rn_fracs_legend,loc='lower right')
+            fig.suptitle(self.figtitle)
+            
+            return np.array(etas), fig,ax
+        else:
+            return np.array(etas)
 
     def get_power_vector_for_rnfrac(self,rnfrac):
         assert rnfrac in self.rn_fracs, ('requested rnfrac = ',rnfrac, 'not in self.rn_fracs = ',self.rn_fracs)
@@ -1895,14 +1904,17 @@ class IVColdloadSweepAnalyzer():
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
 
-    def get_cl_sweep_dataset_for_row(self,row,bath_temp_index=0,cl_indices=None):
+    def get_cl_sweep_dataset_for_row(self,row,bath_temp_index=0,cl_indices=None,dac_cut=0):
         if cl_indices==None:
             cl_indices = list(range(self.n_cl_temps))
-        fb = np.zeros((self.n_dac_values,len(cl_indices)))
+
+        dacs = self.dac_values[self.dac_values >= dac_cut] 
+        fb = np.zeros((len(dacs),len(cl_indices)))
         for ii,cl_idx in enumerate(cl_indices):
             dex = self._row_to_sequence_index(row)
-            fb[:,ii] = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,dex]
-        return self.dac_values, fb
+            y = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,dex]
+            fb[:,ii] = y[self.dac_values >= dac_cut]
+        return dacs, fb
 
     def print_info(self):
         # Too add in future:
@@ -1915,10 +1927,11 @@ class IVColdloadSweepAnalyzer():
 
     def sweep_analysis_for_row(self,row,bath_temp_index,
                                     cl_indices=None,rn_fracs=None,predicted_power_w=None,
-                                    dark_power_w='auto',dark_rn_frac=0.7,analysis_method='advanced'):
+                                    dark_power_w='auto',dark_rn_frac=0.7,useIVCurveAnalyzeSingle=True,
+                                    dac_cut=0):
         if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
-        dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices)
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices,dac_cut=dac_cut)
 
         if self.det_map:
             row_name = 'Row%02d'%row
@@ -1955,11 +1968,11 @@ class IVColdloadSweepAnalyzer():
                                       row_name=row_name, det_name=det_name,
                                       iv_circuit=self.iv_circuit,
                                       predicted_power_w=predicted_power_w,dark_power_w=dark_power_w,rn_fracs=rn_fracs,
-                                      analysis_method=analysis_method)
+                                      useIVCurveAnalyzeSingle=useIVCurveAnalyzeSingle)
         return iva
 
     def full_analysis(self,bath_temp_index,cl_indices=None,showfigs=False,savefigs=False,rn_fracs=None,dark_rnfrac=0.7,
-                      skipsquidchannels=True,analysis_method='advanced'):
+                      skipsquidchannels=True,useIVCurveAnalyzeSingle=True):
         assert self.det_map != None,'Must provide a detector map in order to do the full analysis'
         if not cl_indices: cl_indices=list(range(self.n_cl_temps))
 
@@ -1982,7 +1995,7 @@ class IVColdloadSweepAnalyzer():
                                                row_name=row_name, det_name=self.det_map.map_dict[row_name]['devname'],
                                                iv_circuit=self.iv_circuit,
                                                predicted_power_w=None, dark_power_w=None,
-                                               analysis_method=analysis_method)
+                                               useIVCurveAnalyzeSingle=useIVCurveAnalyzeSingle)
             dark_Ps[str(row_dict['position'])]=iva_dark.get_power_vector_for_rnfrac(dark_rnfrac)
 
         # now loop over all rows
@@ -2002,7 +2015,8 @@ class IVColdloadSweepAnalyzer():
                                           row_name=row_name, det_name=self.det_map.get_devname_from_row_index(row),
                                           iv_circuit=self.iv_circuit,
                                           predicted_power_w=None,
-                                          dark_power_w=dark_P,analysis_method=analysis_method)
+                                          dark_power_w=dark_P,
+                                          useIVCurveAnalyzeSingle=useIVCurveAnalyzeSingle)
 
             if rn_fracs is not None:
                 iva.rn_fracs = rn_fracs
@@ -2072,7 +2086,7 @@ class IVColdloadSweepAnalyzer():
         plt.ylabel('Feedback values')
         plt.title('Row = %d, Tb = %d mK'%(row,self.set_bath_temps_k[bath_temp_index]*1000))
         plt.legend((np.array(self.set_cl_temps_k)[cl_indices]),loc='upper right')
-        plt.show()
+        #plt.show()
 
     def plot_sweep_analysis_for_row(self,row,bath_temp_index,cl_indices=None,\
                                     rn_fracs=None,showfigs=True,savefigs=False,
