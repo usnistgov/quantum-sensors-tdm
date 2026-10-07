@@ -1904,16 +1904,18 @@ class IVColdloadSweepAnalyzer():
     def get_measured_coldload_temps(self,index=0):
         return 0.5*np.array(self.pre_cl_temps_k)[:,index] + 0.5*np.array(self.post_cl_temps_k)[:,index]
 
-    def get_cl_sweep_dataset_for_row(self,row,bath_temp_index=0,cl_indices=None,dac_cut=0):
+    def get_cl_sweep_dataset_for_row(self,row,bath_temp_index=0,cl_indices=None,dac_low=0,dac_high=None):
         if cl_indices==None:
             cl_indices = list(range(self.n_cl_temps))
 
-        dacs = self.dac_values[self.dac_values >= dac_cut] 
+        if dac_high is None:
+            dac_high=max(self.dac_values)
+        dacs = self.dac_values[(self.dac_values >=dac_low) & (self.dac_values <= dac_high)] 
         fb = np.zeros((len(dacs),len(cl_indices)))
         for ii,cl_idx in enumerate(cl_indices):
             dex = self._row_to_sequence_index(row)
             y = self.data[cl_idx].data[bath_temp_index].fb_values_array()[:,dex]
-            fb[:,ii] = y[self.dac_values >= dac_cut]
+            fb[:,ii] = y[(self.dac_values >=dac_low) & (self.dac_values <= dac_high)]
         return dacs, fb
 
     def print_info(self):
@@ -1928,10 +1930,10 @@ class IVColdloadSweepAnalyzer():
     def sweep_analysis_for_row(self,row,bath_temp_index,
                                     cl_indices=None,rn_fracs=None,predicted_power_w=None,
                                     dark_power_w='auto',dark_rn_frac=0.7,useIVCurveAnalyzeSingle=True,
-                                    dac_cut=0):
+                                    dac_low=0,dac_high=None):
         if cl_indices == None:
             cl_indices = list(range(len(self.set_cl_temps_k)))
-        dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices,dac_cut=dac_cut)
+        dacs,fb = self.get_cl_sweep_dataset_for_row(row=row,bath_temp_index=bath_temp_index,cl_indices=cl_indices,dac_low=dac_low,dac_high=dac_high)
 
         if self.det_map:
             row_name = 'Row%02d'%row
