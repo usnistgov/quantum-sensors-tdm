@@ -441,6 +441,7 @@ class PolCalSteppedSweepData(DataIO):
         ax[2].set_ylabel('Amplitude (DAC)')
         ax[2].set_xlabel('Angle (deg)')
         ax[1].legend()
+        plt.tight_layout()
         return fig,ax
 
     def fit_row_index(self,row_index,plot=True,fig=None,ax=None,debias=None,normalize=True,exclude_angles=None):
@@ -451,6 +452,7 @@ class PolCalSteppedSweepData(DataIO):
         # remove noise bias if debias numeric value provided
         if debias is None:
             data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)
+            #data = np.array(self.iq_v_angle)[:,row_index,1]
         else: 
             data = np.sqrt(np.array(self.iq_v_angle)[:,row_index,0]**2+np.array(self.iq_v_angle)[:,row_index,1]**2)-debias
         
@@ -485,6 +487,8 @@ class PolCalSteppedSweepData(DataIO):
             
             ax[0].grid('on')
             ax[1].grid('on')
+
+            plt.tight_layout()
 
             fig2,ax2 = plt.subplots(1,1)
             ax2.hist(data-fit)
